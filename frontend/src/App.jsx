@@ -1,6 +1,8 @@
 import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import LoginPage from './pages/LoginPage'
+import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
+import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
 import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
@@ -16,7 +18,7 @@ function Nav() {
   const { logout } = useAuth()
   return (
     <nav>
-      <NavLink to="/">Log workout</NavLink>
+      <NavLink to="/">Workout</NavLink>
       <NavLink to="/run">Log run</NavLink>
       <NavLink to="/history">History</NavLink>
       <button type="button" onClick={logout}>Log out</button>
@@ -31,7 +33,9 @@ function AppRoutes() {
       {isAuthenticated && <Nav />}
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<ProtectedRoute><LogWorkoutPage /></ProtectedRoute>} />
+        <Route path="/" element={<ProtectedRoute><WorkoutTemplatesPage /></ProtectedRoute>} />
+        <Route path="/workout/custom" element={<ProtectedRoute><LogWorkoutPage /></ProtectedRoute>} />
+        <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
         <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
       </Routes>

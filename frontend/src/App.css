@@ -126,3 +126,97 @@ td {
   color: #e24b4a;
   font-size: 14px;
 }
+
+.template-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.template-card {
+  display: block;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  text-decoration: none;
+  font-weight: 500;
+
+  &:hover {
+    border-color: var(--accent);
+  }
+}
+
+.custom-workout-link {
+  color: var(--text);
+  font-size: 14px;
+  text-align: center;
+}
+
+.active-workout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h1 {
+    margin: 0;
+  }
+}
+
+.exercise-card {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.target-reps {
+  color: var(--text);
+  font-size: 13px;
+  margin: 0;
+}
+
+.previous-cell {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.set-row.completed {
+  background: rgba(99, 153, 34, 0.15);
+}
+
+.set-row td {
+  vertical-align: middle;
+}
+
+.set-row input {
+  width: 64px;
+  padding: 6px 8px;
+}
+
+.set-row input.prefilled {
+  color: var(--text);
+}
+
+.check-btn {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--border);
+  color: var(--text);
+  font-weight: 700;
+
+  &.checked {
+    background: #639922;
+    color: white;
+  }
+}
+
+.add-set-btn {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}

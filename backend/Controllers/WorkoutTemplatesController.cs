@@ -1,0 +1,65 @@
+using Callahan.Api.Data;
+using Callahan.Api.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+
+namespace Callahan.Api.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/[controller]")]
+public class WorkoutTemplatesController : ControllerBase
+{
+    private readonly AppDbContext _db;
+
+    public WorkoutTemplatesController(AppDbContext db)
+    {
+        _db = db;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<List<WorkoutTemplateSummaryDto>>> GetAll()
+    {
+        var templates = await _db.WorkoutTemplates
+            .OrderBy(t => t.SortOrder)
+            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name))
+            .ToListAsync();
+
+        return Ok(templates);
+    }
+
+    [HttpGet("{id}/start")]
+    public async Task<ActionResult<WorkoutTemplateStartDto>> Start(int id)
+    {
+        var template = await _db.WorkoutTemplates
+            .Include(t => t.Exercises).ThenInclude(te => te.Exercise)
+            .FirstOrDefaultAsync(t => t.Id == id);
+
+        if (template is null) return NotFound();
+
+        var lastSession = await _db.WorkoutSessions
+            .Where(s => s.WorkoutTemplateId == id)
+            .Include(s => s.Sets)
+            .OrderByDescending(s => s.Date)
+            .ThenByDescending(s => s.Id)
+            .FirstOrDefaultAsync();
+
+        var exercises = template.Exercises
+            .OrderBy(te => te.ExerciseOrder)
+            .Select(te =>
+            {
+                var previousSets = lastSession?.Sets
+                    .Where(s => s.ExerciseId == te.ExerciseId)
+                    .OrderBy(s => s.SetOrder)
+                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg))
+                    .ToList() ?? [];
+
+                return new WorkoutTemplateExerciseStartDto(
+                    te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, previousSets);
+            })
+            .ToList();
+
+        return Ok(new WorkoutTemplateStartDto(template.Id, template.Name, exercises));
+    }
+}

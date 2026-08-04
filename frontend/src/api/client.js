@@ -58,6 +58,14 @@ export function createWorkoutSession(session) {
   })
 }
 
+export function getWorkoutTemplates() {
+  return apiFetch('/api/workouttemplates')
+}
+
+export function startWorkoutTemplate(id) {
+  return apiFetch(`/api/workouttemplates/${id}/start`)
+}
+
 export function getRunningSessions() {
   return apiFetch('/api/runningsessions')
 }
