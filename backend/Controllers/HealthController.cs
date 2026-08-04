@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using RepLog.Api.Data;
+using Callahan.Api.Data;
 
-namespace RepLog.Api.Controllers;
+namespace Callahan.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

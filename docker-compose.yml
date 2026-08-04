@@ -6,7 +6,7 @@ services:
     environment:
       - Cors__AllowedOrigins__0=http://localhost:8081
     volumes:
-      - replog-data:/app/App_Data
+      - callahan-data:/app/App_Data
 
   frontend:
     build:
@@ -19,4 +19,4 @@ services:
       - backend
 
 volumes:
-  replog-data:
+  callahan-data:

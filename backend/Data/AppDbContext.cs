@@ -1,6 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 
-namespace RepLog.Api.Data;
+namespace Callahan.Api.Data;
 
 public class AppDbContext : DbContext
 {

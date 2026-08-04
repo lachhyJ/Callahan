@@ -1,8 +1,8 @@
-# RepLog
+# Callahan
 
-Self-hosted training tracker — gym workouts and running sessions, replacing Hevy's subscription, with Garmin readiness/sleep data folded in later.
+Self-hosted training tracker — gym workouts and running sessions, with Garmin readiness/sleep data folded in later. Built to get out from under Hevy's history paywall and track things the way I actually want, not because of the subscription cost.
 
-Full roadmap and decisions: `~/moxie-vault/30-projects/replog/overview.md`
+Full roadmap and decisions: `~/moxie-vault/30-projects/callahan/overview.md`
 
 ## Stack
 - Backend: C# ASP.NET Core Web API (.NET 10), EF Core + SQLite

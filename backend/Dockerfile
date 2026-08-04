@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY RepLog.Api.csproj .
+COPY Callahan.Api.csproj .
 RUN dotnet restore
 COPY . .
 RUN dotnet publish -c Release -o /app/publish
@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=build /app/publish .
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
-ENTRYPOINT ["dotnet", "RepLog.Api.dll"]
+ENTRYPOINT ["dotnet", "Callahan.Api.dll"]

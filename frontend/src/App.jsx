@@ -18,7 +18,7 @@ function App() {
 
   return (
     <main style={{ fontFamily: 'sans-serif', padding: '2rem' }}>
-      <h1>RepLog</h1>
+      <h1>Callahan</h1>
       <p>Backend health check ({API_BASE}/api/health):</p>
       {health.state === 'loading' && <p>Checking…</p>}
       {health.state === 'ok' && (
