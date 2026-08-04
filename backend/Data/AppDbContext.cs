@@ -15,6 +15,7 @@ public class AppDbContext : DbContext
     public DbSet<RunningSession> RunningSessions => Set<RunningSession>();
     public DbSet<WorkoutTemplate> WorkoutTemplates => Set<WorkoutTemplate>();
     public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises => Set<WorkoutTemplateExercise>();
+    public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

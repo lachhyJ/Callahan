@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createWorkoutSession, startWorkoutTemplate } from '../api/client'
 
+const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
+const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -17,6 +20,7 @@ function buildInitialSets(targetSets, previousSets) {
       weightKg: previous ? String(previous.weightKg) : '',
       previous,
       completed: false,
+      type: 'Normal',
     }
   })
 }
@@ -27,6 +31,7 @@ export default function ActiveWorkoutPage() {
   const [exercises, setExercises] = useState(null)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [openTypeMenu, setOpenTypeMenu] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -38,6 +43,7 @@ export default function ActiveWorkoutPage() {
             exerciseId: ex.exerciseId,
             exerciseName: ex.exerciseName,
             targetReps: ex.targetReps,
+            notes: '',
             sets: buildInitialSets(ex.targetSets, ex.previousSets),
           }))
         )
@@ -55,6 +61,10 @@ export default function ActiveWorkoutPage() {
     )
   }
 
+  function updateNotes(exIdx, value) {
+    setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, notes: value })))
+  }
+
   function toggleComplete(exIdx, setIdx) {
     setExercises((prev) =>
       prev.map((ex, i) =>
@@ -63,6 +73,22 @@ export default function ActiveWorkoutPage() {
           : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
       )
     )
+  }
+
+  function setType(exIdx, setIdx, type) {
+    updateSet(exIdx, setIdx, 'type', type)
+    setOpenTypeMenu(null)
+  }
+
+  function removeSet(exIdx, setIdx) {
+    setExercises((prev) =>
+      prev.map((ex, i) =>
+        i !== exIdx
+          ? ex
+          : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 })) }
+      )
+    )
+    setOpenTypeMenu(null)
   }
 
   function addSet(exIdx) {
@@ -74,7 +100,7 @@ export default function ActiveWorkoutPage() {
               ...ex,
               sets: [
                 ...ex.sets,
-                { setOrder: ex.sets.length + 1, reps: '', weightKg: '', previous: null, completed: false },
+                { setOrder: ex.sets.length + 1, reps: '', weightKg: '', previous: null, completed: false, type: 'Normal' },
               ],
             }
       )
@@ -93,6 +119,7 @@ export default function ActiveWorkoutPage() {
             reps: Number(s.reps),
             weightKg: Number(s.weightKg),
             setOrder: s.setOrder,
+            setType: s.type,
           }))
       )
 
@@ -102,11 +129,16 @@ export default function ActiveWorkoutPage() {
         return
       }
 
+      const exerciseNotes = exercises
+        .filter((ex) => ex.notes.trim() !== '')
+        .map((ex) => ({ exerciseId: ex.exerciseId, notes: ex.notes.trim() }))
+
       await createWorkoutSession({
         date: todayIso(),
         notes: null,
         workoutTemplateId: Number(templateId),
         sets,
+        exerciseNotes,
       })
       navigate('/history')
     } catch (err) {
@@ -132,6 +164,13 @@ export default function ActiveWorkoutPage() {
         <div key={ex.exerciseId} className="exercise-card">
           <h2>{ex.exerciseName}</h2>
           <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps}</p>
+          <input
+            type="text"
+            placeholder="Add notes here…"
+            className="exercise-notes-input"
+            value={ex.notes}
+            onChange={(e) => updateNotes(exIdx, e.target.value)}
+          />
           <table>
             <thead>
               <tr>
@@ -145,7 +184,27 @@ export default function ActiveWorkoutPage() {
             <tbody>
               {ex.sets.map((s, setIdx) => (
                 <tr key={setIdx} className={s.completed ? 'set-row completed' : 'set-row'}>
-                  <td>{s.setOrder}</td>
+                  <td className="set-number-cell">
+                    <button
+                      type="button"
+                      className={`set-number set-type-${s.type.toLowerCase()}`}
+                      onClick={() => setOpenTypeMenu(openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx ? null : { exIdx, setIdx })}
+                    >
+                      {SET_TYPE_LABELS[s.type] || s.setOrder}
+                    </button>
+                    {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
+                      <div className="set-type-menu">
+                        {SET_TYPE_OPTIONS.map((opt) => (
+                          <button key={opt} type="button" onClick={() => setType(exIdx, setIdx, opt)}>
+                            {opt}
+                          </button>
+                        ))}
+                        <button type="button" className="remove-option" onClick={() => removeSet(exIdx, setIdx)}>
+                          Remove set
+                        </button>
+                      </div>
+                    )}
+                  </td>
                   <td className="previous-cell">
                     {s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—'}
                   </td>

@@ -1,6 +1,6 @@
 namespace Callahan.Api.Models;
 
-public class ExerciseSet
+public class ExerciseNote
 {
     public int Id { get; set; }
     public int WorkoutSessionId { get; set; }
@@ -9,8 +9,5 @@ public class ExerciseSet
     public int ExerciseId { get; set; }
     public Exercise Exercise { get; set; } = null!;
 
-    public int Reps { get; set; }
-    public decimal WeightKg { get; set; }
-    public int SetOrder { get; set; }
-    public SetType SetType { get; set; } = SetType.Normal;
+    public required string Notes { get; set; }
 }
