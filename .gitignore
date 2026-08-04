@@ -1,0 +1,11 @@
+# .NET
+backend/bin/
+backend/obj/
+backend/App_Data/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# OS
+.DS_Store

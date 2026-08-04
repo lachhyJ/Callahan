@@ -1,0 +1,6 @@
+@RepLog.Api_HostAddress = http://localhost:5286
+
+GET {{RepLog.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
