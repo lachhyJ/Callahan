@@ -24,7 +24,7 @@ public class WorkoutSessionsController : ControllerBase
     {
         var sessions = await _db.WorkoutSessions
             .OrderByDescending(s => s.Date)
-            .Select(s => new WorkoutSessionSummaryDto(s.Id, s.Date, s.Notes, s.Sets.Count, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null))
+            .Select(s => new WorkoutSessionSummaryDto(s.Id, s.Date, s.Notes, s.Sets.Count, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null, s.StartedAt, s.FinishedAt))
             .ToListAsync();
 
         return Ok(sessions);
@@ -49,6 +49,8 @@ public class WorkoutSessionsController : ControllerBase
             session.Id,
             session.Date,
             session.Notes,
+            session.StartedAt,
+            session.FinishedAt,
             session.Sets
                 .OrderBy(set => set.SetOrder)
                 .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString()))
@@ -71,6 +73,8 @@ public class WorkoutSessionsController : ControllerBase
             Date = request.Date,
             Notes = request.Notes,
             WorkoutTemplateId = request.WorkoutTemplateId,
+            StartedAt = request.StartedAt,
+            FinishedAt = request.FinishedAt,
             Sets = request.Sets.Select(s => new ExerciseSet
             {
                 ExerciseId = s.ExerciseId,

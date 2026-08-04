@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkoutTemplate> WorkoutTemplates => Set<WorkoutTemplate>();
     public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises => Set<WorkoutTemplateExercise>();
     public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
+    public DbSet<Finisher> Finishers => Set<Finisher>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,7 +46,15 @@ public class AppDbContext : DbContext
             new Exercise { Id = 21, Name = "Push Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 22, Name = "Chin-Ups", Category = ExerciseCategory.Pull },
             new Exercise { Id = 23, Name = "Pallof Press", Category = ExerciseCategory.Core },
-            new Exercise { Id = 24, Name = "Box Jump", Category = ExerciseCategory.Legs }
+            new Exercise { Id = 24, Name = "Box Jump", Category = ExerciseCategory.Legs },
+
+            // Optional finishers
+            new Exercise { Id = 25, Name = "Dead Bug", Category = ExerciseCategory.Core },
+            new Exercise { Id = 26, Name = "Cable Woodchop", Category = ExerciseCategory.Core },
+            new Exercise { Id = 27, Name = "Hanging Knee Raise", Category = ExerciseCategory.Core },
+            new Exercise { Id = 28, Name = "Ab Wheel Rollout", Category = ExerciseCategory.Core },
+            new Exercise { Id = 29, Name = "Cable Crunch", Category = ExerciseCategory.Core },
+            new Exercise { Id = 30, Name = "Side Plank with Reach", Category = ExerciseCategory.Core }
         );
 
         modelBuilder.Entity<WorkoutTemplate>().HasData(
@@ -76,6 +85,15 @@ public class AppDbContext : DbContext
             new WorkoutTemplateExercise { Id = 14, WorkoutTemplateId = 3, ExerciseId = 22, ExerciseOrder = 4, TargetSets = 3, TargetReps = "AMRAP" },
             new WorkoutTemplateExercise { Id = 15, WorkoutTemplateId = 3, ExerciseId = 23, ExerciseOrder = 5, TargetSets = 3, TargetReps = "12/side" },
             new WorkoutTemplateExercise { Id = 16, WorkoutTemplateId = 3, ExerciseId = 24, ExerciseOrder = 6, TargetSets = 3, TargetReps = "5" }
+        );
+
+        modelBuilder.Entity<Finisher>().HasData(
+            new Finisher { Id = 1, ExerciseId = 25, SortOrder = 1, TargetSets = 3, TargetReps = "8/side" },
+            new Finisher { Id = 2, ExerciseId = 26, SortOrder = 2, TargetSets = 3, TargetReps = "12/side" },
+            new Finisher { Id = 3, ExerciseId = 27, SortOrder = 3, TargetSets = 3, TargetReps = "12" },
+            new Finisher { Id = 4, ExerciseId = 28, SortOrder = 4, TargetSets = 3, TargetReps = "8-10" },
+            new Finisher { Id = 5, ExerciseId = 29, SortOrder = 5, TargetSets = 3, TargetReps = "15" },
+            new Finisher { Id = 6, ExerciseId = 30, SortOrder = 6, TargetSets = 3, TargetReps = "30 secs/side" }
         );
     }
 }

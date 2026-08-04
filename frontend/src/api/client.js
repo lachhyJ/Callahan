@@ -66,6 +66,10 @@ export function startWorkoutTemplate(id) {
   return apiFetch(`/api/workouttemplates/${id}/start`)
 }
 
+export function getFinishers() {
+  return apiFetch('/api/finishers')
+}
+
 export function getRunningSessions() {
   return apiFetch('/api/runningsessions')
 }

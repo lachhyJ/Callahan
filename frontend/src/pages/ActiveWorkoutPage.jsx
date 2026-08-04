@@ -1,12 +1,19 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createWorkoutSession, startWorkoutTemplate } from '../api/client'
+import { createWorkoutSession, getFinishers, startWorkoutTemplate } from '../api/client'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
+}
+
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000)
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
 function buildInitialSets(targetSets, previousSets) {
@@ -25,31 +32,59 @@ function buildInitialSets(targetSets, previousSets) {
   })
 }
 
+function exerciseFromStart(ex) {
+  return {
+    exerciseId: ex.exerciseId,
+    exerciseName: ex.exerciseName,
+    targetReps: ex.targetReps,
+    notes: '',
+    sets: buildInitialSets(ex.targetSets, ex.previousSets),
+  }
+}
+
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
   const [templateName, setTemplateName] = useState('')
   const [exercises, setExercises] = useState(null)
+  const [finishers, setFinishers] = useState([])
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
+  const [startedAt] = useState(() => new Date())
+  const [now, setNow] = useState(() => new Date())
   const navigate = useNavigate()
 
   useEffect(() => {
     startWorkoutTemplate(templateId)
       .then((data) => {
         setTemplateName(data.templateName)
-        setExercises(
-          data.exercises.map((ex) => ({
-            exerciseId: ex.exerciseId,
-            exerciseName: ex.exerciseName,
-            targetReps: ex.targetReps,
-            notes: '',
-            sets: buildInitialSets(ex.targetSets, ex.previousSets),
-          }))
-        )
+        setExercises(data.exercises.map(exerciseFromStart))
       })
       .catch((err) => setError(err.message))
+
+    getFinishers().then(setFinishers).catch(() => {})
   }, [templateId])
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const stats = useMemo(() => {
+    if (!exercises) return { volume: 0, setCount: 0 }
+    let volume = 0
+    let setCount = 0
+    for (const ex of exercises) {
+      for (const s of ex.sets) {
+        if (!s.completed) continue
+        setCount += 1
+        if (s.type !== 'Warmup') {
+          volume += (Number(s.weightKg) || 0) * (Number(s.reps) || 0)
+        }
+      }
+    }
+    return { volume, setCount }
+  }, [exercises])
 
   function updateSet(exIdx, setIdx, field, value) {
     setExercises((prev) =>
@@ -107,6 +142,10 @@ export default function ActiveWorkoutPage() {
     )
   }
 
+  function addFinisher(finisher) {
+    setExercises((prev) => [...prev, exerciseFromStart(finisher)])
+  }
+
   async function handleFinish() {
     setError(null)
     setSaving(true)
@@ -137,6 +176,8 @@ export default function ActiveWorkoutPage() {
         date: todayIso(),
         notes: null,
         workoutTemplateId: Number(templateId),
+        startedAt: startedAt.toISOString(),
+        finishedAt: new Date().toISOString(),
         sets,
         exerciseNotes,
       })
@@ -150,6 +191,9 @@ export default function ActiveWorkoutPage() {
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading…</p></main>
 
+  const addedExerciseIds = new Set(exercises.map((ex) => ex.exerciseId))
+  const availableFinishers = finishers.filter((f) => !addedExerciseIds.has(f.exerciseId))
+
   return (
     <main className="page">
       <div className="active-workout-header">
@@ -158,10 +202,15 @@ export default function ActiveWorkoutPage() {
           {saving ? 'Saving…' : 'Finish'}
         </button>
       </div>
+      <div className="live-stats">
+        <span>{formatDuration(now - startedAt)}</span>
+        <span>{stats.volume.toLocaleString()} kg</span>
+        <span>{stats.setCount} set{stats.setCount === 1 ? '' : 's'}</span>
+      </div>
       {error && <p className="error">{error}</p>}
 
       {exercises.map((ex, exIdx) => (
-        <div key={ex.exerciseId} className="exercise-card">
+        <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
           <h2>{ex.exerciseName}</h2>
           <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps}</p>
           <input
@@ -242,6 +291,18 @@ export default function ActiveWorkoutPage() {
           <button type="button" className="add-set-btn" onClick={() => addSet(exIdx)}>+ Add set</button>
         </div>
       ))}
+
+      {availableFinishers.length > 0 && (
+        <div className="finisher-list">
+          <h2 className="finisher-heading">Finishers — pick 1–2</h2>
+          {availableFinishers.map((f) => (
+            <button key={f.exerciseId} type="button" className="finisher-item" onClick={() => addFinisher(f)}>
+              <span>{f.exerciseName}</span>
+              <span className="finisher-meta">{f.targetSets} × {f.targetReps}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </main>
   )
 }
