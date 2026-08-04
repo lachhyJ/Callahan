@@ -7,5 +7,11 @@ backend/App_Data/
 frontend/node_modules/
 frontend/dist/
 
+# Secrets
+backend.env
+backend.prod.env
+!backend.env.example
+!backend.prod.env.example
+
 # OS
 .DS_Store
