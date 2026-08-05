@@ -243,7 +243,6 @@ td {
 }
 
 .weight-input-group {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -268,14 +267,9 @@ td {
 }
 
 .weight-conversion {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  margin-top: 2px;
   font-size: 11px;
   color: var(--text);
   white-space: nowrap;
-  z-index: 5;
 }
 
 .check-btn {
