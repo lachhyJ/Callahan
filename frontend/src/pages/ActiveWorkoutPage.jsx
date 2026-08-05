@@ -448,7 +448,10 @@ export default function ActiveWorkoutPage() {
               className="rest-input"
               value={ex.restSeconds}
               onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
-              onFocus={() => setFocusedRestExIdx(exIdx)}
+              onFocus={(e) => {
+                setFocusedRestExIdx(exIdx)
+                e.target.select()
+              }}
               onBlur={() => handleRestBlur(exIdx)}
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
