@@ -266,12 +266,6 @@ td {
   }
 }
 
-.weight-conversion {
-  font-size: 11px;
-  color: var(--text);
-  white-space: nowrap;
-}
-
 .check-btn {
   width: 32px;
   height: 32px;

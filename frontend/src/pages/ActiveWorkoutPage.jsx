@@ -474,7 +474,6 @@ export default function ActiveWorkoutPage() {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
                       const isFocused = focusedWeightCell === cellKey
-                      const conversionText = isLb && s.weightKg !== '' && `≈ ${s.weightKg}kg`
                       return (
                         <div className="weight-input-group">
                           <input
@@ -500,7 +499,6 @@ export default function ActiveWorkoutPage() {
                           >
                             {isLb ? 'lb' : 'kg'}
                           </button>
-                          {isFocused && conversionText && <span className="weight-conversion">{conversionText}</span>}
                         </div>
                       )
                     })()}
