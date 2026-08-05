@@ -9,4 +9,5 @@ public class Finisher
     public int SortOrder { get; set; }
     public int TargetSets { get; set; }
     public required string TargetReps { get; set; }
+    public int RestSeconds { get; set; }
 }

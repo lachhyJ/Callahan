@@ -70,6 +70,24 @@ export function getFinishers() {
   return apiFetch('/api/finishers')
 }
 
+export function subscribeToPush(subscription) {
+  return apiFetch('/api/pushsubscriptions', {
+    method: 'POST',
+    body: JSON.stringify(subscription),
+  })
+}
+
+export function scheduleRestTimer(durationSeconds, exerciseName) {
+  return apiFetch('/api/resttimer/schedule', {
+    method: 'POST',
+    body: JSON.stringify({ durationSeconds, exerciseName }),
+  })
+}
+
+export function cancelRestTimer(timerId) {
+  return apiFetch(`/api/resttimer/cancel/${timerId}`, { method: 'POST' })
+}
+
 export function getRunningSessions() {
   return apiFetch('/api/runningsessions')
 }

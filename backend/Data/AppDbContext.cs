@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises => Set<WorkoutTemplateExercise>();
     public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
     public DbSet<Finisher> Finishers => Set<Finisher>();
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -63,37 +64,41 @@ public class AppDbContext : DbContext
             new WorkoutTemplate { Id = 3, Name = "Workout 3 — Full Body Athletic", SortOrder = 3 }
         );
 
+        // Rest durations per the program's Rest Guidelines table:
+        // Heavy compounds (deadlift/squat/split squat) 150s, Accessory work 90s,
+        // Isolation/light/core 60s, Jumps & plyos 105s. Exercises the table didn't
+        // name explicitly are judgment calls — adjustable in the UI regardless.
         modelBuilder.Entity<WorkoutTemplateExercise>().HasData(
             // Workout 1 — Day A: Lower & Power
-            new WorkoutTemplateExercise { Id = 1, WorkoutTemplateId = 1, ExerciseId = 11, ExerciseOrder = 1, TargetSets = 4, TargetReps = "5-6" },
-            new WorkoutTemplateExercise { Id = 2, WorkoutTemplateId = 1, ExerciseId = 12, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg" },
-            new WorkoutTemplateExercise { Id = 3, WorkoutTemplateId = 1, ExerciseId = 8, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10-12" },
-            new WorkoutTemplateExercise { Id = 4, WorkoutTemplateId = 1, ExerciseId = 13, ExerciseOrder = 4, TargetSets = 3, TargetReps = "8-10/leg" },
+            new WorkoutTemplateExercise { Id = 1, WorkoutTemplateId = 1, ExerciseId = 11, ExerciseOrder = 1, TargetSets = 4, TargetReps = "5-6", RestSeconds = 150 },
+            new WorkoutTemplateExercise { Id = 2, WorkoutTemplateId = 1, ExerciseId = 12, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg", RestSeconds = 150 },
+            new WorkoutTemplateExercise { Id = 3, WorkoutTemplateId = 1, ExerciseId = 8, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10-12", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 4, WorkoutTemplateId = 1, ExerciseId = 13, ExerciseOrder = 4, TargetSets = 3, TargetReps = "8-10/leg", RestSeconds = 60 },
 
             // Workout 2 — Day B: Upper
-            new WorkoutTemplateExercise { Id = 5, WorkoutTemplateId = 2, ExerciseId = 14, ExerciseOrder = 1, TargetSets = 4, TargetReps = "8" },
-            new WorkoutTemplateExercise { Id = 6, WorkoutTemplateId = 2, ExerciseId = 5, ExerciseOrder = 2, TargetSets = 4, TargetReps = "6-8" },
-            new WorkoutTemplateExercise { Id = 7, WorkoutTemplateId = 2, ExerciseId = 15, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10" },
-            new WorkoutTemplateExercise { Id = 8, WorkoutTemplateId = 2, ExerciseId = 16, ExerciseOrder = 4, TargetSets = 3, TargetReps = "12" },
-            new WorkoutTemplateExercise { Id = 9, WorkoutTemplateId = 2, ExerciseId = 17, ExerciseOrder = 5, TargetSets = 3, TargetReps = "15" },
-            new WorkoutTemplateExercise { Id = 10, WorkoutTemplateId = 2, ExerciseId = 18, ExerciseOrder = 6, TargetSets = 3, TargetReps = "15-20/leg" },
+            new WorkoutTemplateExercise { Id = 5, WorkoutTemplateId = 2, ExerciseId = 14, ExerciseOrder = 1, TargetSets = 4, TargetReps = "8", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 6, WorkoutTemplateId = 2, ExerciseId = 5, ExerciseOrder = 2, TargetSets = 4, TargetReps = "6-8", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 7, WorkoutTemplateId = 2, ExerciseId = 15, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 8, WorkoutTemplateId = 2, ExerciseId = 16, ExerciseOrder = 4, TargetSets = 3, TargetReps = "12", RestSeconds = 60 },
+            new WorkoutTemplateExercise { Id = 9, WorkoutTemplateId = 2, ExerciseId = 17, ExerciseOrder = 5, TargetSets = 3, TargetReps = "15", RestSeconds = 60 },
+            new WorkoutTemplateExercise { Id = 10, WorkoutTemplateId = 2, ExerciseId = 18, ExerciseOrder = 6, TargetSets = 3, TargetReps = "15-20/leg", RestSeconds = 60 },
 
             // Workout 3 — Day C: Full Body Athletic
-            new WorkoutTemplateExercise { Id = 11, WorkoutTemplateId = 3, ExerciseId = 19, ExerciseOrder = 1, TargetSets = 4, TargetReps = "6-8" },
-            new WorkoutTemplateExercise { Id = 12, WorkoutTemplateId = 3, ExerciseId = 20, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg" },
-            new WorkoutTemplateExercise { Id = 13, WorkoutTemplateId = 3, ExerciseId = 21, ExerciseOrder = 3, TargetSets = 3, TargetReps = "6" },
-            new WorkoutTemplateExercise { Id = 14, WorkoutTemplateId = 3, ExerciseId = 22, ExerciseOrder = 4, TargetSets = 3, TargetReps = "AMRAP" },
-            new WorkoutTemplateExercise { Id = 15, WorkoutTemplateId = 3, ExerciseId = 23, ExerciseOrder = 5, TargetSets = 3, TargetReps = "12/side" },
-            new WorkoutTemplateExercise { Id = 16, WorkoutTemplateId = 3, ExerciseId = 24, ExerciseOrder = 6, TargetSets = 3, TargetReps = "5" }
+            new WorkoutTemplateExercise { Id = 11, WorkoutTemplateId = 3, ExerciseId = 19, ExerciseOrder = 1, TargetSets = 4, TargetReps = "6-8", RestSeconds = 150 },
+            new WorkoutTemplateExercise { Id = 12, WorkoutTemplateId = 3, ExerciseId = 20, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 13, WorkoutTemplateId = 3, ExerciseId = 21, ExerciseOrder = 3, TargetSets = 3, TargetReps = "6", RestSeconds = 150 },
+            new WorkoutTemplateExercise { Id = 14, WorkoutTemplateId = 3, ExerciseId = 22, ExerciseOrder = 4, TargetSets = 3, TargetReps = "AMRAP", RestSeconds = 90 },
+            new WorkoutTemplateExercise { Id = 15, WorkoutTemplateId = 3, ExerciseId = 23, ExerciseOrder = 5, TargetSets = 3, TargetReps = "12/side", RestSeconds = 60 },
+            new WorkoutTemplateExercise { Id = 16, WorkoutTemplateId = 3, ExerciseId = 24, ExerciseOrder = 6, TargetSets = 3, TargetReps = "5", RestSeconds = 105 }
         );
 
         modelBuilder.Entity<Finisher>().HasData(
-            new Finisher { Id = 1, ExerciseId = 25, SortOrder = 1, TargetSets = 3, TargetReps = "8/side" },
-            new Finisher { Id = 2, ExerciseId = 26, SortOrder = 2, TargetSets = 3, TargetReps = "12/side" },
-            new Finisher { Id = 3, ExerciseId = 27, SortOrder = 3, TargetSets = 3, TargetReps = "12" },
-            new Finisher { Id = 4, ExerciseId = 28, SortOrder = 4, TargetSets = 3, TargetReps = "8-10" },
-            new Finisher { Id = 5, ExerciseId = 29, SortOrder = 5, TargetSets = 3, TargetReps = "15" },
-            new Finisher { Id = 6, ExerciseId = 30, SortOrder = 6, TargetSets = 3, TargetReps = "30 secs/side" }
+            new Finisher { Id = 1, ExerciseId = 25, SortOrder = 1, TargetSets = 3, TargetReps = "8/side", RestSeconds = 60 },
+            new Finisher { Id = 2, ExerciseId = 26, SortOrder = 2, TargetSets = 3, TargetReps = "12/side", RestSeconds = 60 },
+            new Finisher { Id = 3, ExerciseId = 27, SortOrder = 3, TargetSets = 3, TargetReps = "12", RestSeconds = 60 },
+            new Finisher { Id = 4, ExerciseId = 28, SortOrder = 4, TargetSets = 3, TargetReps = "8-10", RestSeconds = 60 },
+            new Finisher { Id = 5, ExerciseId = 29, SortOrder = 5, TargetSets = 3, TargetReps = "15", RestSeconds = 60 },
+            new Finisher { Id = 6, ExerciseId = 30, SortOrder = 6, TargetSets = 3, TargetReps = "30 secs/side", RestSeconds = 60 }
         );
     }
 }

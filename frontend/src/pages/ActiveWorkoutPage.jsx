@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { createWorkoutSession, getFinishers, startWorkoutTemplate } from '../api/client'
+import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
+import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
@@ -15,6 +16,32 @@ function formatDuration(ms) {
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
   return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatCountdown(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function playBeep() {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext
+  if (!AudioContextClass) return
+  const ctx = new AudioContextClass()
+  for (const startDelay of [0, 0.3]) {
+    const oscillator = ctx.createOscillator()
+    const gain = ctx.createGain()
+    oscillator.type = 'sine'
+    oscillator.frequency.value = 880
+    const startTime = ctx.currentTime + startDelay
+    gain.gain.setValueAtTime(0.0001, startTime)
+    gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.01)
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25)
+    oscillator.connect(gain)
+    gain.connect(ctx.destination)
+    oscillator.start(startTime)
+    oscillator.stop(startTime + 0.25)
+  }
 }
 
 function buildInitialSets(targetSets, previousSets) {
@@ -38,6 +65,7 @@ function exerciseFromStart(ex) {
     exerciseId: ex.exerciseId,
     exerciseName: ex.exerciseName,
     targetReps: ex.targetReps,
+    restSeconds: ex.restSeconds,
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets),
   }
@@ -58,6 +86,9 @@ export default function ActiveWorkoutPage() {
   const [startedAt, setStartedAt] = useState(() => new Date())
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
+  const [restTimer, setRestTimer] = useState(null)
+  const [pushEnabled, setPushEnabled] = useState(false)
+  const [pushError, setPushError] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -76,6 +107,7 @@ export default function ActiveWorkoutPage() {
     }
 
     getFinishers().then(setFinishers).catch(() => {})
+    hasActiveSubscription().then(setPushEnabled).catch(() => {})
   }, [templateId])
 
   useEffect(() => {
@@ -87,6 +119,19 @@ export default function ActiveWorkoutPage() {
     const interval = setInterval(() => setNow(new Date()), 1000)
     return () => clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (!restTimer) return
+    if (restTimer.remainingSeconds <= 0) {
+      playBeep()
+      setRestTimer(null)
+      return
+    }
+    const interval = setInterval(() => {
+      setRestTimer((prev) => (prev ? { ...prev, remainingSeconds: prev.remainingSeconds - 1 } : prev))
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [restTimer])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -118,13 +163,29 @@ export default function ActiveWorkoutPage() {
     setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, notes: value })))
   }
 
+  async function startRestTimer(exercise) {
+    if (restTimer?.timerId) {
+      cancelRestTimer(restTimer.timerId).catch(() => {})
+    }
+    const duration = exercise.restSeconds || 90
+    setRestTimer({ remainingSeconds: duration, totalSeconds: duration, timerId: null, exerciseName: exercise.exerciseName })
+    try {
+      const { timerId } = await scheduleRestTimer(duration, exercise.exerciseName)
+      setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
+    } catch {
+      // Local countdown still works even if the backend push couldn't be scheduled.
+    }
+  }
+
   function toggleComplete(exIdx, setIdx) {
-    const set = exercises[exIdx].sets[setIdx]
+    const exercise = exercises[exIdx]
+    const set = exercise.sets[setIdx]
     if (!set.completed && set.reps === '') {
       setError('Enter reps before marking a set complete.')
       return
     }
     setError(null)
+    const nowCompleting = !set.completed
     setExercises((prev) =>
       prev.map((ex, i) =>
         i !== exIdx
@@ -132,6 +193,38 @@ export default function ActiveWorkoutPage() {
           : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
       )
     )
+    if (nowCompleting) startRestTimer(exercise)
+  }
+
+  function adjustRest(deltaSeconds) {
+    setRestTimer((prev) => {
+      if (!prev) return prev
+      const newRemaining = Math.max(0, prev.remainingSeconds + deltaSeconds)
+      if (prev.timerId) {
+        cancelRestTimer(prev.timerId).catch(() => {})
+        scheduleRestTimer(newRemaining, prev.exerciseName)
+          .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
+          .catch(() => {})
+      }
+      return { ...prev, remainingSeconds: newRemaining, timerId: null }
+    })
+  }
+
+  function skipRest() {
+    if (restTimer?.timerId) {
+      cancelRestTimer(restTimer.timerId).catch(() => {})
+    }
+    setRestTimer(null)
+  }
+
+  async function handleEnableAlerts() {
+    setPushError(null)
+    try {
+      await enableRestAlerts()
+      setPushEnabled(true)
+    } catch (err) {
+      setPushError(err.message)
+    }
   }
 
   function setType(exIdx, setIdx, type) {
@@ -212,6 +305,7 @@ export default function ActiveWorkoutPage() {
   }
 
   function handleDiscard() {
+    if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearActiveWorkout()
     navigate('/')
   }
@@ -274,6 +368,14 @@ export default function ActiveWorkoutPage() {
       </div>
       {error && <p className="error">{error}</p>}
 
+      {!pushEnabled && pushSupported() && (
+        <div className="push-prompt">
+          <span>🔔 Get a rest-timer alert even if your phone locks</span>
+          <button type="button" onClick={handleEnableAlerts}>Enable rest alerts</button>
+          {pushError && <p className="error">{pushError}</p>}
+        </div>
+      )}
+
       {exercises.map((ex, exIdx) => (
         <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
           <div className="exercise-card-header">
@@ -282,7 +384,7 @@ export default function ActiveWorkoutPage() {
               Remove
             </button>
           </div>
-          <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps}</p>
+          <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps} · rest {ex.restSeconds}s</p>
           <input
             type="text"
             placeholder="Add notes here…"
@@ -372,6 +474,15 @@ export default function ActiveWorkoutPage() {
               <span className="finisher-meta">{f.targetSets} × {f.targetReps}</span>
             </button>
           ))}
+        </div>
+      )}
+
+      {restTimer && (
+        <div className="rest-bar">
+          <button type="button" onClick={() => adjustRest(-15)}>-15</button>
+          <span className="rest-countdown">{formatCountdown(restTimer.remainingSeconds)}</span>
+          <button type="button" onClick={() => adjustRest(15)}>+15</button>
+          <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
         </div>
       )}
     </main>

@@ -9,6 +9,7 @@ public record WorkoutTemplateExerciseStartDto(
     string ExerciseName,
     int TargetSets,
     string TargetReps,
+    int RestSeconds,
     List<PreviousSetDto> PreviousSets);
 
 public record WorkoutTemplateStartDto(
