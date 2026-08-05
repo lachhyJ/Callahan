@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { createWorkoutSession, getFinishers, startWorkoutTemplate } from '../api/client'
+import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
@@ -50,20 +51,32 @@ export default function ActiveWorkoutPage() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
-  const [startedAt] = useState(() => new Date())
+  const [startedAt, setStartedAt] = useState(() => new Date())
   const [now, setNow] = useState(() => new Date())
   const navigate = useNavigate()
 
   useEffect(() => {
-    startWorkoutTemplate(templateId)
-      .then((data) => {
-        setTemplateName(data.templateName)
-        setExercises(data.exercises.map(exerciseFromStart))
-      })
-      .catch((err) => setError(err.message))
+    const saved = loadActiveWorkout()
+    if (saved && saved.templateId === Number(templateId)) {
+      setTemplateName(saved.templateName)
+      setExercises(saved.exercises)
+      setStartedAt(new Date(saved.startedAt))
+    } else {
+      startWorkoutTemplate(templateId)
+        .then((data) => {
+          setTemplateName(data.templateName)
+          setExercises(data.exercises.map(exerciseFromStart))
+        })
+        .catch((err) => setError(err.message))
+    }
 
     getFinishers().then(setFinishers).catch(() => {})
   }, [templateId])
+
+  useEffect(() => {
+    if (!exercises) return
+    saveActiveWorkout({ templateId: Number(templateId), templateName, exercises, startedAt: startedAt.toISOString() })
+  }, [exercises, templateName, templateId, startedAt])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000)
@@ -101,6 +114,12 @@ export default function ActiveWorkoutPage() {
   }
 
   function toggleComplete(exIdx, setIdx) {
+    const set = exercises[exIdx].sets[setIdx]
+    if (!set.completed && set.reps === '') {
+      setError('Enter reps before marking a set complete.')
+      return
+    }
+    setError(null)
     setExercises((prev) =>
       prev.map((ex, i) =>
         i !== exIdx
@@ -116,13 +135,19 @@ export default function ActiveWorkoutPage() {
   }
 
   function removeSet(exIdx, setIdx) {
-    setExercises((prev) =>
-      prev.map((ex, i) =>
-        i !== exIdx
-          ? ex
-          : { ...ex, sets: ex.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 })) }
-      )
-    )
+    setExercises((prev) => {
+      const ex = prev[exIdx]
+      const remainingSets = ex.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 }))
+      if (remainingSets.length === 0) {
+        return prev.filter((_, i) => i !== exIdx)
+      }
+      return prev.map((e, i) => (i !== exIdx ? e : { ...e, sets: remainingSets }))
+    })
+    setOpenTypeMenu(null)
+  }
+
+  function removeExercise(exIdx) {
+    setExercises((prev) => prev.filter((_, i) => i !== exIdx))
     setOpenTypeMenu(null)
   }
 
@@ -152,11 +177,11 @@ export default function ActiveWorkoutPage() {
     try {
       const sets = exercises.flatMap((ex) =>
         ex.sets
-          .filter((s) => s.completed && s.reps !== '' && s.weightKg !== '')
+          .filter((s) => s.completed && s.reps !== '')
           .map((s) => ({
             exerciseId: ex.exerciseId,
             reps: Number(s.reps),
-            weightKg: Number(s.weightKg),
+            weightKg: s.weightKg === '' ? 0 : Number(s.weightKg),
             setOrder: s.setOrder,
             setType: s.type,
           }))
@@ -181,6 +206,7 @@ export default function ActiveWorkoutPage() {
         sets,
         exerciseNotes,
       })
+      clearActiveWorkout()
       navigate('/history')
     } catch (err) {
       setError(err.message)
@@ -211,7 +237,12 @@ export default function ActiveWorkoutPage() {
 
       {exercises.map((ex, exIdx) => (
         <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
-          <h2>{ex.exerciseName}</h2>
+          <div className="exercise-card-header">
+            <h2>{ex.exerciseName}</h2>
+            <button type="button" className="remove-exercise-btn" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>
+              Remove
+            </button>
+          </div>
           <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps}</p>
           <input
             type="text"
@@ -261,6 +292,7 @@ export default function ActiveWorkoutPage() {
                     <input
                       type="number"
                       step="0.5"
+                      placeholder="0"
                       value={s.weightKg}
                       onChange={(e) => updateSet(exIdx, setIdx, 'weightKg', e.target.value)}
                       className={s.previous && !s.completed ? 'prefilled' : ''}

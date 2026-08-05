@@ -19,6 +19,18 @@ nav {
   button {
     margin-left: auto;
   }
+
+  .resume-link {
+    color: white;
+    background: var(--accent);
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 500;
+
+    &.active {
+      color: white;
+    }
+  }
 }
 
 .page {
@@ -177,6 +189,28 @@ td {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+.exercise-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.remove-exercise-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 4px 8px;
+
+  &:hover {
+    color: #e24b4a;
+  }
 }
 
 .target-reps {
