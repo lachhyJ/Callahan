@@ -26,6 +26,7 @@ nav {
     padding: 4px 10px;
     border-radius: 6px;
     font-weight: 500;
+    white-space: nowrap;
 
     &.active {
       color: white;
@@ -376,4 +377,39 @@ td {
 .finisher-meta {
   color: var(--text);
   font-size: 13px;
+}
+
+.summary-exercise {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+
+  h2 {
+    margin: 0 0 6px;
+  }
+}
+
+.summary-set-list {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.summary-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.back-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.discard-btn {
+  background: transparent;
+  border: 1px solid #e24b4a;
+  color: #e24b4a;
 }

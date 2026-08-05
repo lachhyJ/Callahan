@@ -43,6 +43,10 @@ function exerciseFromStart(ex) {
   }
 }
 
+function completedSetsFor(ex) {
+  return ex.sets.filter((s) => s.completed && s.reps !== '')
+}
+
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
   const [templateName, setTemplateName] = useState('')
@@ -53,6 +57,7 @@ export default function ActiveWorkoutPage() {
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
   const [startedAt, setStartedAt] = useState(() => new Date())
   const [now, setNow] = useState(() => new Date())
+  const [showSummary, setShowSummary] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -171,27 +176,19 @@ export default function ActiveWorkoutPage() {
     setExercises((prev) => [...prev, exerciseFromStart(finisher)])
   }
 
-  async function handleFinish() {
+  async function handleSave() {
     setError(null)
     setSaving(true)
     try {
       const sets = exercises.flatMap((ex) =>
-        ex.sets
-          .filter((s) => s.completed && s.reps !== '')
-          .map((s) => ({
-            exerciseId: ex.exerciseId,
-            reps: Number(s.reps),
-            weightKg: s.weightKg === '' ? 0 : Number(s.weightKg),
-            setOrder: s.setOrder,
-            setType: s.type,
-          }))
+        completedSetsFor(ex).map((s) => ({
+          exerciseId: ex.exerciseId,
+          reps: Number(s.reps),
+          weightKg: s.weightKg === '' ? 0 : Number(s.weightKg),
+          setOrder: s.setOrder,
+          setType: s.type,
+        }))
       )
-
-      if (sets.length === 0) {
-        setError('Tick at least one completed set before finishing.')
-        setSaving(false)
-        return
-      }
 
       const exerciseNotes = exercises
         .filter((ex) => ex.notes.trim() !== '')
@@ -214,8 +211,52 @@ export default function ActiveWorkoutPage() {
     }
   }
 
+  function handleDiscard() {
+    clearActiveWorkout()
+    navigate('/')
+  }
+
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading…</p></main>
+
+  if (showSummary) {
+    const exercisesWithCompletedSets = exercises
+      .map((ex) => ({ ex, sets: completedSetsFor(ex) }))
+      .filter(({ sets }) => sets.length > 0)
+
+    return (
+      <main className="page">
+        <h1>Finish {templateName}?</h1>
+        <div className="live-stats">
+          <span>{formatDuration(now - startedAt)}</span>
+          <span>{stats.volume.toLocaleString()} kg</span>
+          <span>{stats.setCount} set{stats.setCount === 1 ? '' : 's'}</span>
+        </div>
+        {error && <p className="error">{error}</p>}
+        {exercisesWithCompletedSets.length === 0 && <p>No completed sets — nothing to save.</p>}
+        {exercisesWithCompletedSets.map(({ ex, sets }) => (
+          <div key={ex.exerciseId} className="summary-exercise">
+            <h2>{ex.exerciseName}</h2>
+            <ul className="summary-set-list">
+              {sets.map((s, i) => (
+                <li key={i}>
+                  {s.weightKg === '' ? 0 : s.weightKg}kg × {s.reps}{s.type !== 'Normal' ? ` (${s.type})` : ''}
+                </li>
+              ))}
+            </ul>
+            {ex.notes && <p className="notes">{ex.notes}</p>}
+          </div>
+        ))}
+        <div className="summary-actions">
+          <button type="button" className="back-btn" onClick={() => setShowSummary(false)}>← Back to workout</button>
+          <button type="button" onClick={handleSave} disabled={saving || stats.setCount === 0}>
+            {saving ? 'Saving…' : 'Save workout'}
+          </button>
+          <button type="button" className="discard-btn" onClick={handleDiscard}>Discard workout</button>
+        </div>
+      </main>
+    )
+  }
 
   const addedExerciseIds = new Set(exercises.map((ex) => ex.exerciseId))
   const availableFinishers = finishers.filter((f) => !addedExerciseIds.has(f.exerciseId))
@@ -224,9 +265,7 @@ export default function ActiveWorkoutPage() {
     <main className="page">
       <div className="active-workout-header">
         <h1>{templateName}</h1>
-        <button type="button" onClick={handleFinish} disabled={saving}>
-          {saving ? 'Saving…' : 'Finish'}
-        </button>
+        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
       <div className="live-stats">
         <span>{formatDuration(now - startedAt)}</span>

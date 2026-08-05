@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import LoginPage from './pages/LoginPage'
@@ -18,18 +18,21 @@ function ProtectedRoute({ children }) {
 
 function Nav() {
   const { logout } = useAuth()
+  const location = useLocation()
   const [activeWorkout, setActiveWorkout] = useState(() => loadActiveWorkout())
 
   useEffect(() => onActiveWorkoutChange(() => setActiveWorkout(loadActiveWorkout())), [])
+
+  const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
 
   return (
     <nav>
       <NavLink to="/">Workout</NavLink>
       <NavLink to="/run">Log run</NavLink>
       <NavLink to="/history">History</NavLink>
-      {activeWorkout && (
+      {activeWorkout && !onThatWorkout && (
         <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
-          ▶ Resume {activeWorkout.templateName}
+          ▶ Resume
         </NavLink>
       )}
       <button type="button" onClick={logout}>Log out</button>
