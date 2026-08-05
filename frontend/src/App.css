@@ -323,6 +323,24 @@ td {
   }
 }
 
+.rest-presets {
+  display: flex;
+  gap: 6px;
+  margin: -6px 0 8px;
+}
+
+.rest-preset {
+  padding: 4px 10px;
+  font-size: 12px;
+  background: var(--code-bg);
+  color: var(--text);
+
+  &.active {
+    background: var(--accent);
+    color: white;
+  }
+}
+
 .set-number-cell {
   position: relative;
 }

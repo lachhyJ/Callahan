@@ -6,6 +6,7 @@ import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
+const REST_PRESETS = [60, 90, 120, 150, 180]
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
@@ -102,6 +103,7 @@ export default function ActiveWorkoutPage() {
   const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
+  const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -206,6 +208,12 @@ export default function ActiveWorkoutPage() {
   function updateExerciseRest(exIdx, value) {
     const restSeconds = value === '' ? '' : Math.max(0, Number(value))
     setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, restSeconds })))
+  }
+
+  function handleRestBlur(exIdx) {
+    setTimeout(() => {
+      setFocusedRestExIdx((prev) => (prev === exIdx ? null : prev))
+    }, 150)
   }
 
   async function startRestTimer(exercise) {
@@ -433,15 +441,34 @@ export default function ActiveWorkoutPage() {
             Target: {ex.sets.length} × {ex.targetReps} · rest{' '}
             <input
               type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
               min="0"
               step="15"
               className="rest-input"
               value={ex.restSeconds}
               onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
+              onFocus={() => setFocusedRestExIdx(exIdx)}
+              onBlur={() => handleRestBlur(exIdx)}
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
             s
           </p>
+          {focusedRestExIdx === exIdx && (
+            <div className="rest-presets">
+              {REST_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={ex.restSeconds === preset ? 'rest-preset active' : 'rest-preset'}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => updateExerciseRest(exIdx, preset)}
+                >
+                  {preset}s
+                </button>
+              ))}
+            </div>
+          )}
           <input
             type="text"
             placeholder="Add notes here…"
