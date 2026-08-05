@@ -242,6 +242,26 @@ td {
   color: var(--text);
 }
 
+.weight-input-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+
+  input {
+    width: 48px;
+  }
+}
+
+.unit-toggle {
+  padding: 4px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
 .check-btn {
   width: 32px;
   height: 32px;

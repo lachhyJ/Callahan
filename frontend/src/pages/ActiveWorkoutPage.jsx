@@ -24,6 +24,17 @@ function formatCountdown(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
+const KG_PER_LB = 0.45359237
+
+function lbToKgRoundedDown(lb) {
+  return Math.floor(lb * KG_PER_LB * 2) / 2
+}
+
+function kgToLbDisplay(weightKg) {
+  if (weightKg === '' || weightKg === null || weightKg === undefined) return ''
+  return String(Math.round((Number(weightKg) / KG_PER_LB) * 10) / 10)
+}
+
 function playBeep() {
   const AudioContextClass = window.AudioContext || window.webkitAudioContext
   if (!AudioContextClass) return
@@ -89,6 +100,7 @@ export default function ActiveWorkoutPage() {
   const [restTimer, setRestTimer] = useState(null)
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
+  const [lbInputs, setLbInputs] = useState({})
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -157,6 +169,27 @@ export default function ActiveWorkoutPage() {
           : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, [field]: value })) }
       )
     )
+  }
+
+  function toggleLbMode(exIdx, setIdx, weightKg) {
+    const key = `${exIdx}-${setIdx}`
+    setLbInputs((prev) => {
+      const next = { ...prev }
+      if (key in next) {
+        delete next[key]
+      } else {
+        next[key] = kgToLbDisplay(weightKg)
+      }
+      return next
+    })
+  }
+
+  function updateLbInput(exIdx, setIdx, value) {
+    const key = `${exIdx}-${setIdx}`
+    setLbInputs((prev) => ({ ...prev, [key]: value }))
+    const lbNum = Number(value)
+    const weightKg = value === '' || Number.isNaN(lbNum) ? '' : String(lbToKgRoundedDown(lbNum))
+    updateSet(exIdx, setIdx, 'weightKg', weightKg)
   }
 
   function updateNotes(exIdx, value) {
@@ -430,14 +463,33 @@ export default function ActiveWorkoutPage() {
                     {s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—'}
                   </td>
                   <td>
-                    <input
-                      type="number"
-                      step="0.5"
-                      placeholder="0"
-                      value={s.weightKg}
-                      onChange={(e) => updateSet(exIdx, setIdx, 'weightKg', e.target.value)}
-                      className={s.previous && !s.completed ? 'prefilled' : ''}
-                    />
+                    {(() => {
+                      const cellKey = `${exIdx}-${setIdx}`
+                      const isLb = cellKey in lbInputs
+                      return (
+                        <div className="weight-input-group">
+                          <input
+                            type="number"
+                            step={isLb ? '0.1' : '0.5'}
+                            placeholder="0"
+                            value={isLb ? lbInputs[cellKey] : s.weightKg}
+                            onChange={(e) =>
+                              isLb
+                                ? updateLbInput(exIdx, setIdx, e.target.value)
+                                : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
+                            }
+                            className={s.previous && !s.completed ? 'prefilled' : ''}
+                          />
+                          <button
+                            type="button"
+                            className="unit-toggle"
+                            onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
+                          >
+                            {isLb ? 'lb' : 'kg'}
+                          </button>
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td>
                     <input
