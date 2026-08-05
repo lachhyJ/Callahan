@@ -1,18 +1,127 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
+  /* ── Primitives — neutral (anchored to values already in use) ── */
+  --gray-0:   #ffffff;
+  --gray-50:  #f3f4f6;   /* existing dark --text-h */
+  --gray-100: #f4f3ec;   /* existing light --code-bg */
+  --gray-200: #e5e4e7;   /* existing light --border */
+  --gray-400: #9ca3af;   /* existing dark --text */
+  --gray-500: #6b6375;   /* existing light --text */
+  --gray-800: #2e303a;   /* existing dark --border */
+  --gray-900: #16171d;   /* existing dark --bg */
+  --gray-925: #1f2028;   /* existing dark --code-bg */
+  --gray-950: #08060d;   /* existing light --text-h */
+
+  /* ── Primitives — accent ── */
+  --accent-400: #c084fc;  /* existing dark accent */
+  --accent-500: #aa3bff;  /* existing light accent, brand */
+
+  /* ── Primitives — status bases (pulled from App.css literals) ── */
+  --red-500:   #e24b4a;
+  --amber-300: #fac775;
+  --amber-600: #ba7517;
+  --green-500: #639922;
+  --blue-400:  #7884ff;
+
+  /* ── Primitives — spacing (8pt scale) ── */
+  --space-2xs: 0.25rem;  /* 4px */
+  --space-xs:  0.5rem;   /* 8px */
+  --space-sm:  0.75rem;  /* 12px */
+  --space-md:  1rem;     /* 16px */
+  --space-lg:  1.5rem;   /* 24px */
+  --space-xl:  2rem;     /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+
+  /* ── Primitives — type ── */
+  --text-xs:   0.75rem;   /* 12px */
+  --text-sm:   0.875rem;  /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg:   1.125rem;  /* 18px */
+  --text-xl:   1.25rem;   /* 20px */
+  --text-2xl:  1.5rem;    /* 24px */
+  --text-3xl:  1.875rem;  /* 30px */
+  --text-4xl:  2.25rem;   /* 36px */
+  --text-5xl:  3rem;      /* 48px */
+  --text-display: 3.5rem; /* 56px — matches existing h1 exactly */
+
+  --font-regular:  400;
+  --font-medium:   500;
+  --font-semibold: 600;
+  --font-bold:     700;
+
+  --leading-tight:  1.1;
+  --leading-snug:   1.3;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --tracking-tight: -0.03em;
+  --tracking-normal: 0;
+  --tracking-wide:  0.01em;
+
+  /* ── Primitives — radii (matches your existing usage) ── */
+  --radius-sm:   4px;   /* code/counter */
+  --radius-md:   6px;   /* inputs, buttons, menu rows — dominant value */
+  --radius-lg:   8px;   /* cards, panels */
+  --radius-xl:   14px;  /* reserved — modals, not built yet */
+  --radius-full: 9999px; /* reserved — pills/badges */
+
+  /* ── Primitives — motion ── */
+  --duration-instant: 80ms;
+  --duration-fast:    150ms;
+  --duration-normal:  250ms;
+  --duration-slow:    400ms;
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ── Primitives — z-index ── */
+  --z-dropdown:       10;  /* matches existing .set-type-menu usage exactly */
+  --z-sticky:         20;
+  --z-modal-backdrop: 30;
+  --z-modal:          40;
+  --z-toast:          50;
+
+  /* ══ Semantics — light (unchanged values, existing names) ══ */
+  --text:     var(--gray-500);
+  --text-h:   var(--gray-950);
+  --bg:       var(--gray-0);
+  --border:   var(--gray-200);
+  --code-bg:  var(--gray-100);
+  --accent:        var(--accent-500);
+  --accent-bg:     color-mix(in srgb, var(--accent-500) 10%, transparent);
+  --accent-border: color-mix(in srgb, var(--accent-500) 50%, transparent);
   --shadow:
     rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+  /* ── Semantics — surface stack (new) ── */
+  --surface-canvas:  var(--bg);
+  --surface-raised:  color-mix(in srgb, var(--bg) 97%, var(--text-h));
+  --surface-overlay: var(--gray-0);
+  --surface-sunken:  var(--code-bg);
+  --elevation-raised: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 0 0 1px var(--border);
+
+  /* ── Semantics — text roles (new) ── */
+  --text-primary:   var(--text-h);
+  --text-secondary: var(--text);
+  --text-tertiary:  color-mix(in srgb, var(--text) 65%, var(--bg));
+
+  /* ── Semantics — status roles (new — fixes the Critical dark-mode gap) ── */
+  --error-text:   var(--red-500);
+  --error-bg:     color-mix(in srgb, var(--red-500) 20%, transparent);
+  --error-border: color-mix(in srgb, var(--red-500) 45%, transparent);
+
+  --warning-text: var(--amber-600);
+  --warning-bg:   color-mix(in srgb, var(--amber-300) 20%, transparent);
+
+  --success-text:  var(--green-500);
+  --success-bg:    color-mix(in srgb, var(--green-500) 15%, transparent);
+  --success-solid: var(--green-500);
+
+  --info-text: var(--blue-400);
+  --info-bg:   color-mix(in srgb, var(--blue-400) 20%, transparent);
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --heading: var(--sans); /* same as --sans until a display font is chosen */
   --mono: ui-monospace, Consolas, monospace;
 
   font: 18px/145% var(--sans);
@@ -32,21 +141,31 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
+    --text:     var(--gray-400);
+    --text-h:   var(--gray-50);
+    --bg:       var(--gray-900);
+    --border:   var(--gray-800);
+    --code-bg:  var(--gray-925);
+    --accent:        var(--accent-400);
+    --accent-bg:     color-mix(in srgb, var(--accent-400) 15%, transparent);
+    --accent-border: color-mix(in srgb, var(--accent-400) 50%, transparent);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+    --surface-raised:  color-mix(in srgb, var(--bg) 90%, var(--text-h));
+    --surface-overlay: var(--gray-925);
+    --surface-sunken:  color-mix(in srgb, var(--bg) 95%, black);
+    --elevation-raised: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 0 0 1px var(--border);
+
+    /* status — lightened for dark legibility, best-effort sRGB approximation */
+    --error-text:   color-mix(in srgb, var(--red-500) 85%, white);
+    --error-bg:     color-mix(in srgb, var(--red-500) 25%, transparent);
+    --warning-text: color-mix(in srgb, var(--amber-600) 80%, white);
+    --warning-bg:   color-mix(in srgb, var(--amber-300) 25%, transparent);
+    --success-text: color-mix(in srgb, var(--green-500) 80%, white);
+    --success-bg:   color-mix(in srgb, var(--green-500) 20%, transparent);
+    --info-text:    color-mix(in srgb, var(--blue-400) 90%, white);
+    --info-bg:      color-mix(in srgb, var(--blue-400) 25%, transparent);
   }
 }
 
@@ -95,15 +214,11 @@ p {
   margin: 0;
 }
 
-code,
-.counter {
+code {
   font-family: var(--mono);
   display: inline-flex;
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   color: var(--text-h);
-}
-
-code {
   font-size: 15px;
   line-height: 135%;
   padding: 4px 8px;

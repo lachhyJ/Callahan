@@ -24,7 +24,7 @@ nav {
     color: white;
     background: var(--accent);
     padding: 4px 10px;
-    border-radius: 6px;
+    border-radius: var(--radius-md);
     font-weight: 500;
     white-space: nowrap;
 
@@ -69,7 +69,7 @@ select,
 textarea {
   font: inherit;
   padding: 8px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   border: 1px solid var(--border);
   background: var(--bg);
   color: var(--text-h);
@@ -94,7 +94,7 @@ textarea {
 button {
   font: inherit;
   padding: 8px 16px;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   border: none;
   background: var(--accent);
   color: white;
@@ -147,7 +147,7 @@ td {
 }
 
 .error {
-  color: #e24b4a;
+  color: var(--error-text);
   font-size: 14px;
 }
 
@@ -160,7 +160,7 @@ td {
 .template-card {
   display: block;
   padding: 16px;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   color: var(--text-h);
   text-decoration: none;
@@ -221,7 +221,7 @@ td {
   padding: 4px 8px;
 
   &:hover {
-    color: #e24b4a;
+    color: var(--error-text);
   }
 }
 
@@ -237,7 +237,7 @@ td {
 }
 
 .set-row.completed {
-  background: rgba(99, 153, 34, 0.15);
+  background: var(--success-bg);
 }
 
 .set-row td {
@@ -281,13 +281,13 @@ td {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: var(--border);
   color: var(--text);
   font-weight: 700;
 
   &.checked {
-    background: #639922;
+    background: var(--success-solid);
     color: white;
   }
 }
@@ -360,38 +360,38 @@ td {
   width: 32px;
   height: 32px;
   padding: 0;
-  border-radius: 6px;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--text-h);
   font-weight: 600;
 }
 
 .set-type-warmup {
-  background: rgba(250, 199, 117, 0.2);
-  color: #ba7517;
+  background: var(--warning-bg);
+  color: var(--warning-text);
 }
 
 .set-type-failure {
-  background: rgba(226, 75, 74, 0.2);
-  color: #e24b4a;
+  background: var(--error-bg);
+  color: var(--error-text);
 }
 
 .set-type-drop {
-  background: rgba(120, 132, 255, 0.2);
-  color: #7884ff;
+  background: var(--info-bg);
+  color: var(--info-text);
 }
 
 .set-type-menu {
   position: absolute;
   top: 100%;
   left: 0;
-  z-index: 10;
+  z-index: var(--z-dropdown);
   display: flex;
   flex-direction: column;
   min-width: 120px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
   overflow: hidden;
 
@@ -410,7 +410,7 @@ td {
   }
 
   .remove-option {
-    color: #e24b4a;
+    color: var(--error-text);
     border-top: 1px solid var(--border);
   }
 }
@@ -479,8 +479,8 @@ td {
 
 .discard-btn {
   background: transparent;
-  border: 1px solid #e24b4a;
-  color: #e24b4a;
+  border: 1px solid var(--error-text);
+  color: var(--error-text);
 }
 
 .push-prompt {
@@ -490,7 +490,7 @@ td {
   flex-wrap: wrap;
   padding: 10px 12px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   font-size: 13px;
   color: var(--text);
 
