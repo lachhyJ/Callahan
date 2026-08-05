@@ -565,7 +565,7 @@ export default function ActiveWorkoutPage() {
                       onClick={() => toggleComplete(exIdx, setIdx)}
                       aria-label={s.completed ? 'Mark set incomplete' : 'Mark set complete'}
                     >
-                      ✓
+                      {s.completed ? '✓' : ''}
                     </button>
                   </td>
                 </tr>

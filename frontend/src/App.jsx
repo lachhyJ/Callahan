@@ -35,7 +35,7 @@ function Nav() {
           ▶ Resume
         </NavLink>
       )}
-      <button type="button" onClick={logout}>Log out</button>
+      <button type="button" className="logout-btn" onClick={logout}>Log out</button>
     </nav>
   )
 }
