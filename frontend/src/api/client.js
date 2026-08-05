@@ -8,7 +8,16 @@ export async function apiFetch(path, options = {}) {
     ...options.headers,
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  let res
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers })
+  } catch {
+    throw new Error(
+      navigator.onLine
+        ? "Couldn't reach the server. Try again in a moment."
+        : "You're offline — reconnect and try again."
+    )
+  }
 
   if (res.status === 401) {
     localStorage.removeItem('callahan_token')

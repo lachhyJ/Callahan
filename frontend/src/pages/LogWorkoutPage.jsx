@@ -91,22 +91,24 @@ export default function LogWorkoutPage() {
       </div>
 
       {sets.length > 0 && (
-        <table>
-          <thead>
-            <tr><th>#</th><th>Exercise</th><th>Reps</th><th>Weight (kg)</th><th /></tr>
-          </thead>
-          <tbody>
-            {sets.map((s, i) => (
-              <tr key={i}>
-                <td>{s.setOrder}</td>
-                <td>{s.exerciseName}</td>
-                <td>{s.reps}</td>
-                <td>{s.weightKg}</td>
-                <td><button type="button" onClick={() => removeSet(i)}>Remove</button></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Exercise</th><th>Reps</th><th>Weight (kg)</th><th /></tr>
+            </thead>
+            <tbody>
+              {sets.map((s, i) => (
+                <tr key={i}>
+                  <td>{s.setOrder}</td>
+                  <td>{s.exerciseName}</td>
+                  <td>{s.reps}</td>
+                  <td>{s.weightKg}</td>
+                  <td><button type="button" onClick={() => removeSet(i)}>Remove</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       <label>

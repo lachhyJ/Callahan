@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
+import { BellIcon, CheckIcon } from '../icons'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
@@ -431,8 +432,8 @@ export default function ActiveWorkoutPage() {
 
       {!pushEnabled && pushSupported() && (
         <div className="push-prompt">
-          <span>🔔 Get a rest-timer alert even if your phone locks</span>
-          <button type="button" onClick={handleEnableAlerts}>Enable rest alerts</button>
+          <span><BellIcon /> Get a rest-timer alert even if your phone locks</span>
+          <button type="button" className="secondary-btn" onClick={handleEnableAlerts}>Enable rest alerts</button>
           {pushError && <p className="error">{pushError}</p>}
         </div>
       )}
@@ -487,6 +488,7 @@ export default function ActiveWorkoutPage() {
             value={ex.notes}
             onChange={(e) => updateNotes(exIdx, e.target.value)}
           />
+          <div className="table-scroll">
           <table>
             <thead>
               <tr>
@@ -573,13 +575,14 @@ export default function ActiveWorkoutPage() {
                       onClick={() => toggleComplete(exIdx, setIdx)}
                       aria-label={s.completed ? 'Mark set incomplete' : 'Mark set complete'}
                     >
-                      {s.completed ? '✓' : ''}
+                      {s.completed ? <CheckIcon /> : null}
                     </button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          </div>
           <button type="button" className="add-set-btn" onClick={() => addSet(exIdx)}>+ Add set</button>
         </div>
       ))}

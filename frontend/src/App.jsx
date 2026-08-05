@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
+import { PlayIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
@@ -32,7 +33,7 @@ function Nav() {
       <NavLink to="/history">History</NavLink>
       {activeWorkout && !onThatWorkout && (
         <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
-          ▶ Resume
+          <PlayIcon /> Resume
         </NavLink>
       )}
       <button type="button" className="logout-btn" onClick={logout}>Log out</button>

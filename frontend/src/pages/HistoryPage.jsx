@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getRunningSessions, getWorkoutSessions } from '../api/client'
 
 function formatDuration(totalSeconds) {
@@ -28,7 +29,12 @@ export default function HistoryPage() {
       <h1>History</h1>
       {error && <p className="error">{error}</p>}
       {items === null && !error && <p>Loading…</p>}
-      {items?.length === 0 && <p>No sessions logged yet.</p>}
+      {items?.length === 0 && (
+        <div className="empty-state">
+          <p>No sessions logged yet.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
+        </div>
+      )}
       {items?.map((item) => (
         <div key={`${item.type}-${item.id}`} className="history-item">
           <strong>{item.date}</strong>{' '}
