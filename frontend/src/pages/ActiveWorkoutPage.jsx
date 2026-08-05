@@ -101,6 +101,7 @@ export default function ActiveWorkoutPage() {
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
+  const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -190,6 +191,12 @@ export default function ActiveWorkoutPage() {
     const lbNum = Number(value)
     const weightKg = value === '' || Number.isNaN(lbNum) ? '' : String(lbToKgRoundedDown(lbNum))
     updateSet(exIdx, setIdx, 'weightKg', weightKg)
+  }
+
+  function handleWeightBlur(cellKey) {
+    setTimeout(() => {
+      setFocusedWeightCell((prev) => (prev === cellKey ? null : prev))
+    }, 150)
   }
 
   function updateNotes(exIdx, value) {
@@ -466,6 +473,10 @@ export default function ActiveWorkoutPage() {
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
+                      const isFocused = focusedWeightCell === cellKey
+                      const conversionText = isLb
+                        ? s.weightKg !== '' && `≈ ${s.weightKg}kg`
+                        : s.weightKg !== '' && `≈ ${kgToLbDisplay(s.weightKg)}lb`
                       return (
                         <div className="weight-input-group">
                           <input
@@ -478,15 +489,20 @@ export default function ActiveWorkoutPage() {
                                 ? updateLbInput(exIdx, setIdx, e.target.value)
                                 : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
                             }
+                            onFocus={() => setFocusedWeightCell(cellKey)}
+                            onBlur={() => handleWeightBlur(cellKey)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
                           />
                           <button
                             type="button"
-                            className="unit-toggle"
+                            className={isFocused ? 'unit-toggle' : 'unit-toggle hidden'}
+                            tabIndex={isFocused ? 0 : -1}
+                            onMouseDown={(e) => e.preventDefault()}
                             onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
                           >
                             {isLb ? 'lb' : 'kg'}
                           </button>
+                          {isFocused && conversionText && <span className="weight-conversion">{conversionText}</span>}
                         </div>
                       )
                     })()}
