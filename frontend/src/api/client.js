@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5080'
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
 export async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('callahan_token')
