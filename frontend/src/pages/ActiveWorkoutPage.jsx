@@ -203,6 +203,11 @@ export default function ActiveWorkoutPage() {
     setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, notes: value })))
   }
 
+  function updateExerciseRest(exIdx, value) {
+    const restSeconds = value === '' ? '' : Math.max(0, Number(value))
+    setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, restSeconds })))
+  }
+
   async function startRestTimer(exercise) {
     if (restTimer?.timerId) {
       cancelRestTimer(restTimer.timerId).catch(() => {})
@@ -424,7 +429,19 @@ export default function ActiveWorkoutPage() {
               Remove
             </button>
           </div>
-          <p className="target-reps">Target: {ex.sets.length} × {ex.targetReps} · rest {ex.restSeconds}s</p>
+          <p className="target-reps">
+            Target: {ex.sets.length} × {ex.targetReps} · rest{' '}
+            <input
+              type="number"
+              min="0"
+              step="15"
+              className="rest-input"
+              value={ex.restSeconds}
+              onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
+              aria-label={`Rest time for ${ex.exerciseName}`}
+            />
+            s
+          </p>
           <input
             type="text"
             placeholder="Add notes here…"
