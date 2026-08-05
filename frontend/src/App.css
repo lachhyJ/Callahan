@@ -80,6 +80,17 @@ textarea {
   resize: vertical;
 }
 
+/* iOS Safari auto-zooms the viewport on focus for any text input under 16px;
+   this beats the smaller per-component font sizes below without touching
+   desktop density. */
+@media (max-width: 768px) {
+  input:not([type='checkbox']):not([type='radio']),
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 button {
   font: inherit;
   padding: 8px 16px;

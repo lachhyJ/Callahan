@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { getWorkoutTemplates } from '../api/client'
+import { loadActiveWorkout } from '../activeWorkout'
 
 export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState(null)
   const [error, setError] = useState(null)
+  const [activeWorkout] = useState(() => loadActiveWorkout())
 
   useEffect(() => {
+    if (activeWorkout) return
     getWorkoutTemplates()
       .then(setTemplates)
       .catch((err) => setError(err.message))
-  }, [])
+  }, [activeWorkout])
+
+  if (activeWorkout) {
+    return <Navigate to={`/workout/${activeWorkout.templateId}`} replace />
+  }
 
   return (
     <main className="page">
