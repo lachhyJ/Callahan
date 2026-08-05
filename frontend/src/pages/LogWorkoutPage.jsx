@@ -45,6 +45,8 @@ export default function LogWorkoutPage() {
   }
 
   function removeSet(index) {
+    const set = sets[index]
+    if (!window.confirm(`Remove set ${set.setOrder} of ${set.exerciseName}?`)) return
     setSets(sets.filter((_, i) => i !== index).map((s, i) => ({ ...s, setOrder: i + 1 })))
   }
 
@@ -83,8 +85,8 @@ export default function LogWorkoutPage() {
             </option>
           ))}
         </select>
-        <input type="number" placeholder="Reps" value={reps} onChange={(e) => setReps(e.target.value)} />
-        <input type="number" placeholder="Weight (kg)" step="0.5" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} />
+        <input type="number" placeholder="Reps" aria-label="Reps" value={reps} onChange={(e) => setReps(e.target.value)} />
+        <input type="number" placeholder="Weight (kg)" aria-label="Weight in kilograms" step="0.5" value={weightKg} onChange={(e) => setWeightKg(e.target.value)} />
         <button type="button" onClick={addSet}>Add set</button>
       </div>
 

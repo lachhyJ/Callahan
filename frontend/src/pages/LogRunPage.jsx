@@ -52,8 +52,8 @@ export default function LogRunPage() {
         <label>
           Duration
           <div className="duration-inputs">
-            <input type="number" placeholder="min" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
-            <input type="number" placeholder="sec" value={seconds} onChange={(e) => setSeconds(e.target.value)} />
+            <input type="number" placeholder="min" aria-label="Minutes" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+            <input type="number" placeholder="sec" aria-label="Seconds" value={seconds} onChange={(e) => setSeconds(e.target.value)} />
           </div>
         </label>
         <label>

@@ -286,9 +286,13 @@ export default function ActiveWorkoutPage() {
   }
 
   function removeSet(exIdx, setIdx) {
+    const ex = exercises[exIdx]
+    const set = ex.sets[setIdx]
+    const warning = set.completed ? ' This set is already marked complete.' : ''
+    if (!window.confirm(`Remove set ${set.setOrder} of ${ex.exerciseName}?${warning}`)) return
     setExercises((prev) => {
-      const ex = prev[exIdx]
-      const remainingSets = ex.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 }))
+      const target = prev[exIdx]
+      const remainingSets = target.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 }))
       if (remainingSets.length === 0) {
         return prev.filter((_, i) => i !== exIdx)
       }
@@ -298,6 +302,10 @@ export default function ActiveWorkoutPage() {
   }
 
   function removeExercise(exIdx) {
+    const ex = exercises[exIdx]
+    const completedCount = completedSetsFor(ex).length
+    const warning = completedCount > 0 ? ` This removes ${completedCount} already-completed set${completedCount === 1 ? '' : 's'}.` : ''
+    if (!window.confirm(`Remove ${ex.exerciseName}?${warning}`)) return
     setExercises((prev) => prev.filter((_, i) => i !== exIdx))
     setOpenTypeMenu(null)
   }

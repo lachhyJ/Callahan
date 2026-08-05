@@ -30,11 +30,11 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit}>
         <label>
           Username
-          <input value={username} onChange={(e) => setUsername(e.target.value)} autoFocus />
+          <input value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" autoFocus />
         </label>
         <label>
           Password
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={submitting}>
