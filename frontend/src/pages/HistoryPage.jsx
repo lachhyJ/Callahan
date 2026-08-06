@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { getRunningSessions, getWorkoutSessions } from '../api/client'
+import { CheckIcon } from '../icons'
 
 function formatDuration(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -11,6 +12,8 @@ function formatDuration(totalSeconds) {
 export default function HistoryPage() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
+  const location = useLocation()
+  const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
 
   useEffect(() => {
     Promise.all([getWorkoutSessions(), getRunningSessions()])
@@ -24,9 +27,18 @@ export default function HistoryPage() {
       .catch((err) => setError(err.message))
   }, [])
 
+  useEffect(() => {
+    if (!savedMessage) return
+    const timeout = setTimeout(() => setSavedMessage(null), 4000)
+    return () => clearTimeout(timeout)
+  }, [savedMessage])
+
   return (
     <main className="page">
       <h1>History</h1>
+      {savedMessage && (
+        <p className="save-confirmation"><CheckIcon /> {savedMessage}</p>
+      )}
       {error && <p className="error">{error}</p>}
       {items === null && !error && <p>Loading…</p>}
       {items?.length === 0 && (

@@ -6,6 +6,8 @@ Tracks gym and running sessions against a structured training program, self-host
 ## 2. Primary user
 Lachlan himself — logging sets one-handed on his phone mid-workout at the gym between reps, reviewing history later.
 
+**Voice:** Direct and terse — gym vocabulary assumed (reps, sets, kg, no glossary), no hype or exclamation marks, no coach persona. Buttons name the exact action ("Save workout", not "Submit"). Errors and empty states speak plainly, never apologetic. Every string should read like the same person wrote it, because it is.
+
 ## 3. Principles (conflict order)
 1. **Only ticked is truth.** A set saves only if explicitly ticked complete — typed-but-unconfirmed values are discarded on Finish. *Resolves:* whether draft/partial input should ever persist as logged history. It shouldn't.
 2. **Speed at the barbell, not the screen.** Secondary controls (unit toggle, rest-duration presets, per-exercise notes) stay hidden until focused, never sit as persistent chrome during an active set. *Resolves:* the kg/lb live-conversion preview getting cut twice — it moved the UI mid-input and that's worse than the info it added.

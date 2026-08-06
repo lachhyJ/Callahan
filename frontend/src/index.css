@@ -105,6 +105,12 @@
   --text-secondary: var(--text);
   --text-tertiary:  color-mix(in srgb, var(--text) 65%, var(--bg));
 
+  /* ── Semantics — border roles (new) ── */
+  /* --border stays the structural edge (cards, inputs, dropdowns).
+     --border-subtle is for dividers between related items in a list —
+     derived from --text-h so it adapts automatically per theme. */
+  --border-subtle: color-mix(in srgb, var(--text-h) 8%, transparent);
+
   /* ── Semantics — status roles (new — fixes the Critical dark-mode gap) ── */
   --error-text:   var(--red-500);
   --error-bg:     color-mix(in srgb, var(--red-500) 20%, transparent);

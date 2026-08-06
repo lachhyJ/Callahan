@@ -28,7 +28,7 @@ export default function LogRunPage() {
         durationSeconds,
         notes: notes || null,
       })
-      navigate('/history')
+      navigate('/history', { state: { savedMessage: 'Run saved' } })
     } catch (err) {
       setError(err.message)
     } finally {

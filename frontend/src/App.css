@@ -12,7 +12,7 @@ nav {
   gap: var(--space-md);
   align-items: center;
   padding: var(--space-md) var(--space-lg);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 
   a {
     color: var(--text);
@@ -197,13 +197,13 @@ th,
 td {
   text-align: left;
   padding: var(--space-2xs) var(--space-xs);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   font-size: 14px;
 }
 
 .history-item {
   padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .empty-state {
@@ -211,6 +211,18 @@ td {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-xs);
+}
+
+.save-confirmation {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--success-text);
+  background: var(--success-bg);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 14px;
+  margin: 0;
 }
 
 .notes {
@@ -272,7 +284,7 @@ td {
 
 .exercise-card {
   padding-bottom: var(--space-md);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -364,7 +376,6 @@ td {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-  font-weight: 700;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -541,7 +552,7 @@ td {
 
 .summary-exercise {
   padding-bottom: var(--space-sm);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-subtle);
 
   h2 {
     margin: 0 0 var(--space-2xs);
