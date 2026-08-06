@@ -265,13 +265,14 @@ td {
 }
 
 .mini-progress-bar {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: calc(-1 * var(--space-lg)) calc(-1 * var(--space-lg)) var(--space-md);
   padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-lg) var(--space-xs);
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
