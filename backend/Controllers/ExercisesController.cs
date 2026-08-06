@@ -72,7 +72,7 @@ public class ExercisesController : ControllerBase
                 return new ExerciseHistoryEntryDto(
                     sid,
                     sessionSets[0].WorkoutSession.Date,
-                    sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg)).ToList());
+                    sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString())).ToList());
             })
             .ToList();
 

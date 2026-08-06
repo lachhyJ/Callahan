@@ -43,7 +43,7 @@ public class FinishersController : ControllerBase
                 : await _db.ExerciseSets
                     .Where(s => s.WorkoutSessionId == lastSet && s.ExerciseId == f.ExerciseId)
                     .OrderBy(s => s.SetOrder)
-                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg))
+                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString()))
                     .ToListAsync();
 
             result.Add(new FinisherDto(f.ExerciseId, f.Exercise.Name, f.TargetSets, f.TargetReps, f.RestSeconds, previousSets));

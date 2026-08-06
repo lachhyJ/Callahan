@@ -52,7 +52,7 @@ public class WorkoutTemplatesController : ControllerBase
                 var previousSets = lastSession?.Sets
                     .Where(s => s.ExerciseId == te.ExerciseId)
                     .OrderBy(s => s.SetOrder)
-                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg))
+                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString()))
                     .ToList() ?? [];
 
                 return new WorkoutTemplateExerciseStartDto(

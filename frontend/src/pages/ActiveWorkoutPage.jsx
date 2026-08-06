@@ -768,7 +768,12 @@ export default function ActiveWorkoutPage() {
                   <ul className="history-set-list">
                     {entry.sets.map((s) => (
                       <li key={s.setOrder}>
-                        <span className="history-set-number">Set {s.setOrder + 1}</span>
+                        <span className="history-set-number">
+                          Set {s.setOrder + 1}
+                          {SET_TYPE_LABELS[s.setType] && (
+                            <span className={`history-set-type set-type-${s.setType.toLowerCase()}`}>{SET_TYPE_LABELS[s.setType]}</span>
+                          )}
+                        </span>
                         <span>{s.reps} × {s.weightKg} kg</span>
                       </li>
                     ))}
