@@ -503,12 +503,10 @@ export default function ActiveWorkoutPage() {
 
   return (
     <main className="page">
-      {showMiniBar && (
-        <div className="mini-progress-bar">
-          <span>{formatDuration(now - startedAt)}</span>
-          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
-        </div>
-      )}
+      <div className={showMiniBar ? 'mini-progress-bar visible' : 'mini-progress-bar'}>
+        <span>{formatDuration(now - startedAt)}</span>
+        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+      </div>
       <div className="active-workout-header" ref={headerRef}>
         <h1>{templateName}</h1>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>

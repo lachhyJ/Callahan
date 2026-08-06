@@ -277,10 +277,20 @@ td {
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 
   button {
     padding: var(--space-2xs) var(--space-md);
   }
+}
+
+.mini-progress-bar.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .active-workout-header {
