@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
@@ -106,6 +106,7 @@ export default function ActiveWorkoutPage() {
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const navigate = useNavigate()
+  const hasAutoScrolled = useRef(false)
 
   useEffect(() => {
     const saved = loadActiveWorkout()
@@ -125,6 +126,26 @@ export default function ActiveWorkoutPage() {
     getFinishers().then(setFinishers).catch(() => {})
     hasActiveSubscription().then(setPushEnabled).catch(() => {})
   }, [templateId])
+
+  useEffect(() => {
+    // Once only, on arrival — resuming a partially-done workout should land
+    // you where you left off, not force a manual scroll-hunt. Must NOT
+    // re-fire on every tick or it'd yank the screen away mid-workout
+    // whenever you're deliberately scrolling elsewhere (checking another
+    // exercise, adding a note).
+    if (!exercises || hasAutoScrolled.current) return
+    hasAutoScrolled.current = true
+    for (let exIdx = 0; exIdx < exercises.length; exIdx++) {
+      const setIdx = exercises[exIdx].sets.findIndex((s) => !s.completed)
+      if (setIdx === -1) continue
+      const row = document.getElementById(`set-${exIdx}-${setIdx}`)
+      if (row) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      }
+      break
+    }
+  }, [exercises])
 
   useEffect(() => {
     if (!exercises) return
@@ -468,6 +489,10 @@ export default function ActiveWorkoutPage() {
 
   return (
     <main className="page">
+      <div className="mini-progress-bar">
+        <span>{formatDuration(now - startedAt)}</span>
+        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+      </div>
       <div className="active-workout-header">
         <h1>{templateName}</h1>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
@@ -565,7 +590,7 @@ export default function ActiveWorkoutPage() {
                 return ex.sets.map((s, setIdx) => {
                   if (s.type !== 'Warmup') workingSetNumber += 1
                   return (
-                <tr key={setIdx} className={s.completed ? 'set-row completed' : 'set-row'}>
+                <tr id={`set-${exIdx}-${setIdx}`} key={setIdx} className={s.completed ? 'set-row completed' : 'set-row'}>
                   <td className="set-number-cell">
                     <button
                       type="button"
