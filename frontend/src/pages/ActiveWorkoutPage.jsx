@@ -438,7 +438,9 @@ export default function ActiveWorkoutPage() {
         </div>
       )}
 
-      {exercises.map((ex, exIdx) => (
+      {exercises.map((ex, exIdx) => {
+        const isResting = restTimer?.exerciseName === ex.exerciseName
+        return (
         <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
           <div className="exercise-card-header">
             <h2>{ex.exerciseName}</h2>
@@ -465,6 +467,7 @@ export default function ActiveWorkoutPage() {
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
             s
+            {isResting && <span className="resting-dot" aria-label="Resting" title="Resting" />}
           </p>
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">
@@ -585,7 +588,8 @@ export default function ActiveWorkoutPage() {
           </div>
           <button type="button" className="add-set-btn" onClick={() => addSet(exIdx)}>+ Add set</button>
         </div>
-      ))}
+        )
+      })}
 
       {availableFinishers.length > 0 && (
         <div className="finisher-list">
@@ -599,14 +603,22 @@ export default function ActiveWorkoutPage() {
         </div>
       )}
 
-      {restTimer && (
-        <div className="rest-bar">
-          <button type="button" onClick={() => adjustRest(-15)}>-15</button>
-          <span className="rest-countdown">{formatCountdown(restTimer.remainingSeconds)}</span>
-          <button type="button" onClick={() => adjustRest(15)}>+15</button>
-          <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
-        </div>
-      )}
+      {restTimer && (() => {
+        const progress = restTimer.totalSeconds > 0 ? restTimer.remainingSeconds / restTimer.totalSeconds : 0
+        const urgent = progress < 0.15
+        return (
+          <div className="rest-bar">
+            <div
+              className={urgent ? 'rest-progress urgent' : 'rest-progress'}
+              style={{ transform: `scaleX(${progress})` }}
+            />
+            <button type="button" onClick={() => adjustRest(-15)}>-15</button>
+            <span className="rest-countdown">{formatCountdown(restTimer.remainingSeconds)}</span>
+            <button type="button" onClick={() => adjustRest(15)}>+15</button>
+            <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
+          </div>
+        )
+      })()}
     </main>
   )
 }

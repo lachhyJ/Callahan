@@ -634,6 +634,36 @@ td {
   }
 }
 
+.rest-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  transform-origin: left;
+  transition: transform var(--duration-normal) linear, background var(--duration-fast) var(--ease-out);
+
+  &.urgent {
+    background: var(--error-text);
+  }
+}
+
+.resting-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: var(--space-2xs);
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  animation: resting-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes resting-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
 .rest-countdown {
   font-size: 28px;
   font-weight: 600;
@@ -641,4 +671,15 @@ td {
   color: var(--text-h);
   min-width: 80px;
   text-align: center;
+}
+
+/* Kept last deliberately: at equal specificity CSS resolves ties by source
+   order, so a responsive override placed earlier than the base rules it's
+   meant to beat loses silently. Everything below must stay last in the file. */
+@media (max-width: 768px) {
+  .target-reps,
+  th,
+  td {
+    font-size: 16px;
+  }
 }
