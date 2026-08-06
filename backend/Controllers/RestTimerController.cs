@@ -38,7 +38,7 @@ public class RestTimerController : ControllerBase
         var cts = new CancellationTokenSource();
         PendingTimers[timerId] = cts;
 
-        _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, cts.Token);
+        _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, cts.Token);
 
         return Ok(new RestTimerScheduleResponse(timerId));
     }
@@ -54,7 +54,7 @@ public class RestTimerController : ControllerBase
         return Ok();
     }
 
-    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, CancellationToken token)
+    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, CancellationToken token)
     {
         try
         {
@@ -77,7 +77,7 @@ public class RestTimerController : ControllerBase
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var subscriptions = await db.PushSubscriptions.ToListAsync();
 
-            await SendPushToAll(subscriptions, exerciseName);
+            await SendPushToAll(subscriptions, exerciseName, targetReps, nextSetNumber);
         }
         catch (Exception ex)
         {
@@ -87,7 +87,7 @@ public class RestTimerController : ControllerBase
         }
     }
 
-    private async Task SendPushToAll(List<Models.PushSubscription> subscriptions, string exerciseName)
+    private async Task SendPushToAll(List<Models.PushSubscription> subscriptions, string exerciseName, string targetReps, int nextSetNumber)
     {
         var publicKey = _config["Vapid:PublicKey"];
         var privateKey = _config["Vapid:PrivateKey"];
@@ -101,7 +101,9 @@ public class RestTimerController : ControllerBase
 
         var vapidDetails = new VapidDetails(subject, publicKey, privateKey);
         var client = new WebPushClient();
-        var payload = JsonSerializer.Serialize(new { title = "Rest over", body = $"Time for your next set — {exerciseName}" });
+        // Empty title so iOS's own "from Callahan" attribution line reads as the
+        // de facto title, instead of duplicating it with our own "Rest over".
+        var payload = JsonSerializer.Serialize(new { title = "", body = $"{targetReps} reps · Set {nextSetNumber} · {exerciseName}" });
 
         foreach (var sub in subscriptions)
         {
