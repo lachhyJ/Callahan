@@ -229,9 +229,10 @@ export default function ActiveWorkoutPage() {
       exerciseName: exercise.exerciseName,
       targetReps: exercise.targetReps,
       nextSetNumber,
+      totalSets: exercise.sets.length,
     })
     try {
-      const { timerId } = await scheduleRestTimer(duration, exercise.exerciseName, exercise.targetReps, nextSetNumber)
+      const { timerId } = await scheduleRestTimer(duration, exercise.exerciseName, exercise.targetReps, nextSetNumber, exercise.sets.length)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
     } catch {
       // Local countdown still works even if the backend push couldn't be scheduled.
@@ -263,7 +264,7 @@ export default function ActiveWorkoutPage() {
       const newRemaining = Math.max(0, prev.remainingSeconds + deltaSeconds)
       if (prev.timerId) {
         cancelRestTimer(prev.timerId).catch(() => {})
-        scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber)
+        scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets)
           .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
           .catch(() => {})
       }
