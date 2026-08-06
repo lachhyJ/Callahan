@@ -133,21 +133,31 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000)
-    return () => clearInterval(interval)
+    // Backgrounded/locked tabs get their setInterval throttled by the OS, so
+    // the 1s ticks alone drift. Force an immediate resync the moment the tab
+    // becomes visible again rather than waiting for the next (possibly still
+    // throttled) tick.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') setNow(new Date())
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   useEffect(() => {
     if (!restTimer) return
-    if (restTimer.remainingSeconds <= 0) {
+    // Derived from an absolute end timestamp, not decremented per tick — so
+    // whenever `now` catches up (even after a long throttled gap), the
+    // remaining time is always correct rather than having drifted.
+    const remaining = Math.round((restTimer.endAt - now.getTime()) / 1000)
+    if (remaining <= 0) {
       playBeep()
       setRestTimer(null)
-      return
     }
-    const interval = setInterval(() => {
-      setRestTimer((prev) => (prev ? { ...prev, remainingSeconds: prev.remainingSeconds - 1 } : prev))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [restTimer])
+  }, [now, restTimer])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -223,7 +233,7 @@ export default function ActiveWorkoutPage() {
     }
     const duration = exercise.restSeconds || 90
     setRestTimer({
-      remainingSeconds: duration,
+      endAt: Date.now() + duration * 1000,
       totalSeconds: duration,
       timerId: null,
       exerciseName: exercise.exerciseName,
@@ -261,14 +271,15 @@ export default function ActiveWorkoutPage() {
   function adjustRest(deltaSeconds) {
     setRestTimer((prev) => {
       if (!prev) return prev
-      const newRemaining = Math.max(0, prev.remainingSeconds + deltaSeconds)
+      const newEndAt = Math.max(Date.now(), prev.endAt + deltaSeconds * 1000)
       if (prev.timerId) {
+        const newRemaining = Math.max(0, Math.round((newEndAt - Date.now()) / 1000))
         cancelRestTimer(prev.timerId).catch(() => {})
         scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets)
           .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
           .catch(() => {})
       }
-      return { ...prev, remainingSeconds: newRemaining, timerId: null }
+      return { ...prev, endAt: newEndAt, timerId: null }
     })
   }
 
@@ -476,7 +487,12 @@ export default function ActiveWorkoutPage() {
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
             s
-            {isResting && <span className="resting-dot" aria-label="Resting" title="Resting" />}
+            {isResting && (
+              <span className="resting-badge">
+                <span className="resting-dot" />
+                Resting
+              </span>
+            )}
           </p>
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">
@@ -512,7 +528,11 @@ export default function ActiveWorkoutPage() {
               </tr>
             </thead>
             <tbody>
-              {ex.sets.map((s, setIdx) => (
+              {(() => {
+                let workingSetNumber = 0
+                return ex.sets.map((s, setIdx) => {
+                  if (s.type !== 'Warmup') workingSetNumber += 1
+                  return (
                 <tr key={setIdx} className={s.completed ? 'set-row completed' : 'set-row'}>
                   <td className="set-number-cell">
                     <button
@@ -520,7 +540,7 @@ export default function ActiveWorkoutPage() {
                       className={`set-number set-type-${s.type.toLowerCase()}`}
                       onClick={() => setOpenTypeMenu(openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx ? null : { exIdx, setIdx })}
                     >
-                      {SET_TYPE_LABELS[s.type] || s.setOrder}
+                      {SET_TYPE_LABELS[s.type] || workingSetNumber}
                     </button>
                     {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
                       <div className="set-type-menu">
@@ -559,15 +579,16 @@ export default function ActiveWorkoutPage() {
                             onBlur={() => handleWeightBlur(cellKey)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
                           />
-                          <button
-                            type="button"
-                            className={isFocused ? 'unit-toggle' : 'unit-toggle hidden'}
-                            tabIndex={isFocused ? 0 : -1}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
-                          >
-                            {isLb ? 'lb' : 'kg'}
-                          </button>
+                          {isFocused && (
+                            <button
+                              type="button"
+                              className="unit-toggle"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
+                            >
+                              {isLb ? 'lb' : 'kg'}
+                            </button>
+                          )}
                         </div>
                       )
                     })()}
@@ -591,7 +612,9 @@ export default function ActiveWorkoutPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+                  )
+                })
+              })()}
             </tbody>
           </table>
           </div>
@@ -613,7 +636,8 @@ export default function ActiveWorkoutPage() {
       )}
 
       {restTimer && (() => {
-        const progress = restTimer.totalSeconds > 0 ? restTimer.remainingSeconds / restTimer.totalSeconds : 0
+        const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now.getTime()) / 1000))
+        const progress = restTimer.totalSeconds > 0 ? remainingSeconds / restTimer.totalSeconds : 0
         const urgent = progress < 0.15
         return (
           <div className="rest-bar">
@@ -622,7 +646,7 @@ export default function ActiveWorkoutPage() {
               style={{ transform: `scaleX(${progress})` }}
             />
             <button type="button" onClick={() => adjustRest(-15)}>-15</button>
-            <span className="rest-countdown">{formatCountdown(restTimer.remainingSeconds)}</span>
+            <span className="rest-countdown">{formatCountdown(remainingSeconds)}</span>
             <button type="button" onClick={() => adjustRest(15)}>+15</button>
             <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
           </div>

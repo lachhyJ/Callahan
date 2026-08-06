@@ -196,7 +196,7 @@ thead th {
 th,
 td {
   text-align: left;
-  padding: var(--space-2xs) var(--space-xs);
+  padding: var(--space-2xs);
   border-bottom: 1px solid var(--border-subtle);
   font-size: 14px;
 }
@@ -335,8 +335,8 @@ td {
 }
 
 .set-row input {
-  width: 64px;
-  padding: var(--space-2xs) var(--space-xs);
+  width: 48px;
+  padding: var(--space-2xs);
   font-variant-numeric: tabular-nums;
 }
 
@@ -362,10 +362,6 @@ td {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-
-  &.hidden {
-    visibility: hidden;
-  }
 }
 
 .check-btn {
@@ -648,11 +644,23 @@ td {
   }
 }
 
+.resting-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  margin-left: var(--space-xs);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-full);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .resting-dot {
   display: inline-block;
   width: 6px;
   height: 6px;
-  margin-left: var(--space-2xs);
   border-radius: var(--radius-full);
   background: var(--accent);
   animation: resting-pulse 1.6s ease-in-out infinite;
