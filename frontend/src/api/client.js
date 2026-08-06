@@ -52,6 +52,10 @@ export function createExercise(name, category) {
   })
 }
 
+export function getExerciseHistory(exerciseId) {
+  return apiFetch(`/api/exercises/${exerciseId}/history`)
+}
+
 export function getWorkoutSessions() {
   return apiFetch('/api/workoutsessions')
 }

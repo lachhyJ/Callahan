@@ -44,4 +44,38 @@ public class ExercisesController : ControllerBase
 
         return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString()));
     }
+
+    [HttpGet("{id}/history")]
+    public async Task<ActionResult<List<ExerciseHistoryEntryDto>>> GetHistory(int id, [FromQuery] int limit = 10)
+    {
+        var sessionIds = await _db.ExerciseSets
+            .Where(s => s.ExerciseId == id)
+            .Select(s => s.WorkoutSessionId)
+            .Distinct()
+            .Join(_db.WorkoutSessions, sid => sid, ws => ws.Id, (sid, ws) => new { sid, ws.Date })
+            .OrderByDescending(x => x.Date)
+            .ThenByDescending(x => x.sid)
+            .Take(limit)
+            .Select(x => x.sid)
+            .ToListAsync();
+
+        var sets = await _db.ExerciseSets
+            .Where(s => s.ExerciseId == id && sessionIds.Contains(s.WorkoutSessionId))
+            .Include(s => s.WorkoutSession)
+            .OrderBy(s => s.SetOrder)
+            .ToListAsync();
+
+        var result = sessionIds
+            .Select(sid =>
+            {
+                var sessionSets = sets.Where(s => s.WorkoutSessionId == sid).ToList();
+                return new ExerciseHistoryEntryDto(
+                    sid,
+                    sessionSets[0].WorkoutSession.Date,
+                    sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg)).ToList());
+            })
+            .ToList();
+
+        return Ok(result);
+    }
 }

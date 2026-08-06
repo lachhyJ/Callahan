@@ -723,6 +723,117 @@ td {
   text-align: center;
 }
 
+.exercise-name-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-color: var(--border);
+  }
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal-backdrop);
+  background: color-mix(in srgb, black 50%, transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+}
+
+.modal {
+  z-index: var(--z-modal);
+  background: var(--surface-overlay);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  width: 100%;
+  max-width: 480px;
+  max-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@media (min-width: 480px) {
+  .modal-backdrop {
+    align-items: center;
+    padding: var(--space-md);
+  }
+
+  .modal {
+    border-radius: var(--radius-xl);
+    max-height: 80vh;
+  }
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: 1px solid var(--border-subtle);
+
+  h2 {
+    margin: 0;
+  }
+}
+
+.modal-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 24px;
+  line-height: 1;
+  padding: var(--space-2xs) var(--space-xs);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text);
+  }
+}
+
+.modal-body {
+  padding: var(--space-md) var(--space-lg);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.history-entry {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.history-set-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.history-set-list li {
+  background: var(--surface-raised);
+  border-radius: var(--radius-md);
+  padding: var(--space-2xs) var(--space-sm);
+}
+
 /* Kept last deliberately: at equal specificity CSS resolves ties by source
    order, so a responsive override placed earlier than the base rules it's
    meant to beat loses silently. Everything below must stay last in the file. */
