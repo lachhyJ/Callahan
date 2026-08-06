@@ -206,7 +206,7 @@ export default function ActiveWorkoutPage() {
     updateSet(exIdx, setIdx, 'weightKg', weightKg)
   }
 
-  function handleWeightBlur(cellKey) {
+  function handleWeightBlur(cellKey, exIdx, setIdx) {
     setTimeout(() => {
       setFocusedWeightCell((prev) => (prev === cellKey ? null : prev))
       // Revert display back to kg on blur. The kg value was already kept in
@@ -219,6 +219,26 @@ export default function ActiveWorkoutPage() {
         delete next[cellKey]
         return next
       })
+      // Fill weight into other still-blank working sets from the first
+      // working set only — never overwrites a value you've already typed,
+      // never touches Warmup, never touches an already-ticked set.
+      setExercises((prev) =>
+        prev.map((ex, i) => {
+          if (i !== exIdx) return ex
+          const firstWorkingIdx = ex.sets.findIndex((s) => s.type !== 'Warmup')
+          if (setIdx !== firstWorkingIdx) return ex
+          const value = ex.sets[setIdx].weightKg
+          if (value === '') return ex
+          return {
+            ...ex,
+            sets: ex.sets.map((s, j) =>
+              j === setIdx || s.type === 'Warmup' || s.completed || s.weightKg !== ''
+                ? s
+                : { ...s, weightKg: value }
+            ),
+          }
+        })
+      )
     }, 150)
   }
 
@@ -588,7 +608,7 @@ export default function ActiveWorkoutPage() {
                                 : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
                             }
                             onFocus={() => setFocusedWeightCell(cellKey)}
-                            onBlur={() => handleWeightBlur(cellKey)}
+                            onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
                           />
                           {isFocused && (
