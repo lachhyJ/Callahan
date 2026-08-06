@@ -457,6 +457,7 @@ export default function ActiveWorkoutPage() {
               min="0"
               step="15"
               className="rest-input"
+              style={{ width: `${Math.max(String(ex.restSeconds).length, 1) + 1}ch` }}
               value={ex.restSeconds}
               onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
               onFocus={(e) => {

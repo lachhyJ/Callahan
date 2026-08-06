@@ -416,7 +416,6 @@ td {
 }
 
 .rest-input {
-  width: 40px;
   background: transparent;
   border: none;
   border-bottom: 1px dashed var(--border);
@@ -617,7 +616,7 @@ td {
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-lg);
+  padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + env(safe-area-inset-bottom));
   background: var(--surface-raised);
   border-top: 1px solid var(--border);
   box-shadow: var(--elevation-raised), var(--shadow);
