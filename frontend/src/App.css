@@ -829,7 +829,8 @@ td {
 }
 
 .history-set-list li {
-  display: flex;
+  display: grid;
+  grid-template-columns: 3.5em 1.5em 1fr;
   align-items: center;
   gap: var(--space-sm);
   background: var(--surface-raised);
@@ -838,19 +839,15 @@ td {
 }
 
 .history-set-number {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2xs);
   color: var(--text);
-  min-width: 3.5em;
 }
 
 .history-set-type {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.25em;
-  padding: 0 var(--space-2xs);
+  width: 1.5em;
+  height: 1.5em;
   border-radius: var(--radius-sm);
   font-size: var(--text-xs);
   font-weight: 600;
