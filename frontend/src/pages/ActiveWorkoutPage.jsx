@@ -105,8 +105,22 @@ export default function ActiveWorkoutPage() {
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
+  const [showMiniBar, setShowMiniBar] = useState(false)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
+  const headerRef = useRef(null)
+
+  useEffect(() => {
+    // Mini bar only takes over once the real header has actually scrolled
+    // out of view — otherwise both show "Finish" at once right at the top.
+    function handleScroll() {
+      if (!headerRef.current) return
+      setShowMiniBar(headerRef.current.getBoundingClientRect().bottom < 0)
+    }
+    handleScroll()
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [exercises])
 
   useEffect(() => {
     const saved = loadActiveWorkout()
@@ -489,11 +503,13 @@ export default function ActiveWorkoutPage() {
 
   return (
     <main className="page">
-      <div className="mini-progress-bar">
-        <span>{formatDuration(now - startedAt)}</span>
-        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
-      </div>
-      <div className="active-workout-header">
+      {showMiniBar && (
+        <div className="mini-progress-bar">
+          <span>{formatDuration(now - startedAt)}</span>
+          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+        </div>
+      )}
+      <div className="active-workout-header" ref={headerRef}>
         <h1>{templateName}</h1>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
