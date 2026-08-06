@@ -416,6 +416,7 @@ export default function ActiveWorkoutPage() {
   }
 
   async function handleSave() {
+    if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     setError(null)
     setSaving(true)
     try {
