@@ -462,7 +462,15 @@ export default function ActiveWorkoutPage() {
         return (
         <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
           <div className="exercise-card-header">
-            <h2>{ex.exerciseName}</h2>
+            <div className="exercise-card-title">
+              <h2>{ex.exerciseName}</h2>
+              {isResting && (
+                <span className="resting-badge">
+                  <span className="resting-dot" />
+                  Resting
+                </span>
+              )}
+            </div>
             <button type="button" className="remove-exercise-btn" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>
               Remove
             </button>
@@ -487,12 +495,6 @@ export default function ActiveWorkoutPage() {
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
             s
-            {isResting && (
-              <span className="resting-badge">
-                <span className="resting-dot" />
-                Resting
-              </span>
-            )}
           </p>
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">
