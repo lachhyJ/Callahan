@@ -209,6 +209,16 @@ export default function ActiveWorkoutPage() {
   function handleWeightBlur(cellKey) {
     setTimeout(() => {
       setFocusedWeightCell((prev) => (prev === cellKey ? null : prev))
+      // Revert display back to kg on blur. The kg value was already kept in
+      // sync on every keystroke (see updateLbInput) — this only clears which
+      // unit the field *shows*, so clicking away doesn't leave the lb text
+      // sitting there unconverted-looking.
+      setLbInputs((prev) => {
+        if (!(cellKey in prev)) return prev
+        const next = { ...prev }
+        delete next[cellKey]
+        return next
+      })
     }, 150)
   }
 
