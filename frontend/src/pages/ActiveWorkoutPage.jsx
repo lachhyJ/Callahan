@@ -607,7 +607,10 @@ export default function ActiveWorkoutPage() {
                                 ? updateLbInput(exIdx, setIdx, e.target.value)
                                 : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
                             }
-                            onFocus={() => setFocusedWeightCell(cellKey)}
+                            onFocus={(e) => {
+                              setFocusedWeightCell(cellKey)
+                              e.target.select()
+                            }}
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
                           />
@@ -630,6 +633,7 @@ export default function ActiveWorkoutPage() {
                       type="number"
                       value={s.reps}
                       onChange={(e) => updateSet(exIdx, setIdx, 'reps', e.target.value)}
+                      onFocus={(e) => e.target.select()}
                       className={s.previous && !s.completed ? 'prefilled' : ''}
                     />
                   </td>
