@@ -474,6 +474,29 @@ td {
   }
 }
 
+.cue-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid transparent;
+  width: 100%;
+  padding: var(--space-2xs) 0;
+  color: var(--text);
+  font-size: 13px;
+  font-style: italic;
+  transition: border-color var(--duration-fast) var(--ease-out);
+
+  &:focus {
+    border-bottom-color: var(--border);
+    outline: none;
+  }
+
+  &::placeholder {
+    color: var(--text);
+    opacity: 0.5;
+    font-style: italic;
+  }
+}
+
 .rest-input {
   background: transparent;
   border: none;

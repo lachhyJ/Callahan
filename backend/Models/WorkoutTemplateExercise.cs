@@ -14,4 +14,10 @@ public class WorkoutTemplateExercise
     public required string TargetReps { get; set; }
     public int RestSeconds { get; set; }
     public string? Tempo { get; set; }
+
+    // A standing cue for this program slot (e.g. "Workout 2's Incline DB
+    // Press"), not tied to any single session — distinct from ExerciseNote,
+    // which is per-session. Edited in place from the active workout or the
+    // exercise detail page.
+    public string? Cue { get; set; }
 }

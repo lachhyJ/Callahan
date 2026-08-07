@@ -60,6 +60,17 @@ export function getExerciseStats(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }
 
+export function getExerciseCues(exerciseId) {
+  return apiFetch(`/api/exercises/${exerciseId}/cues`)
+}
+
+export function updateCue(workoutTemplateExerciseId, cue) {
+  return apiFetch(`/api/workouttemplates/exercises/${workoutTemplateExerciseId}/cue`, {
+    method: 'PUT',
+    body: JSON.stringify({ cue }),
+  })
+}
+
 export function getWorkoutSessions() {
   return apiFetch('/api/workoutsessions')
 }

@@ -56,10 +56,22 @@ public class WorkoutTemplatesController : ControllerBase
                     .ToList() ?? [];
 
                 return new WorkoutTemplateExerciseStartDto(
-                    te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, previousSets);
+                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, previousSets);
             })
             .ToList();
 
         return Ok(new WorkoutTemplateStartDto(template.Id, template.Name, exercises));
+    }
+
+    [HttpPut("exercises/{workoutTemplateExerciseId}/cue")]
+    public async Task<IActionResult> UpdateCue(int workoutTemplateExerciseId, UpdateCueRequest request)
+    {
+        var te = await _db.WorkoutTemplateExercises.FindAsync(workoutTemplateExerciseId);
+        if (te is null) return NotFound();
+
+        te.Cue = string.IsNullOrWhiteSpace(request.Cue) ? null : request.Cue.Trim();
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 }

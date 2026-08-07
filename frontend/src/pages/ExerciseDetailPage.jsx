@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { getExerciseHistory, getExerciseStats } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue } from '../api/client'
 import { BackIcon } from '../icons'
 import ProgressionChart from '../components/ProgressionChart'
 
@@ -20,12 +20,14 @@ export default function ExerciseDetailPage() {
   const [totalSessions, setTotalSessions] = useState(0)
   const [historyError, setHistoryError] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [cues, setCues] = useState([])
 
   useEffect(() => {
     setStats(null)
     setStatsError(null)
     setHistory([])
     setHistoryError(null)
+    setCues([])
     getExerciseStats(exerciseId).then(setStats).catch((err) => setStatsError(err.message))
     getExerciseHistory(exerciseId, PAGE_SIZE, 0)
       .then((page) => {
@@ -33,7 +35,16 @@ export default function ExerciseDetailPage() {
         setTotalSessions(page.totalSessions)
       })
       .catch((err) => setHistoryError(err.message))
+    getExerciseCues(exerciseId).then(setCues).catch(() => {})
   }, [exerciseId])
+
+  function updateCueLocal(workoutTemplateExerciseId, value) {
+    setCues((prev) => prev.map((c) => (c.workoutTemplateExerciseId !== workoutTemplateExerciseId ? c : { ...c, cue: value })))
+  }
+
+  function handleCueBlur(workoutTemplateExerciseId, value) {
+    updateCue(workoutTemplateExerciseId, value.trim() || null).catch(() => {})
+  }
 
   function loadMore() {
     setLoadingMore(true)
@@ -67,6 +78,19 @@ export default function ExerciseDetailPage() {
     <main className="page exercise-detail-page">
       <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>{stats.exerciseName}</h1>
+
+      {cues.map((c) => (
+        <input
+          key={c.workoutTemplateExerciseId}
+          type="text"
+          className="cue-input"
+          placeholder={cues.length > 1 ? `What to focus on for ${c.templateName}…` : 'What to focus on for this exercise…'}
+          value={c.cue ?? ''}
+          onChange={(e) => updateCueLocal(c.workoutTemplateExerciseId, e.target.value)}
+          onBlur={() => handleCueBlur(c.workoutTemplateExerciseId, c.cue ?? '')}
+          aria-label={cues.length > 1 ? `Focus cue for ${c.templateName}` : 'Focus cue for this exercise'}
+        />
+      ))}
 
       {!hasData && (
         <div className="empty-state">
@@ -110,6 +134,7 @@ export default function ExerciseDetailPage() {
           {history.map((entry) => (
             <div key={entry.workoutSessionId} className="history-entry">
               <strong>{entry.date}</strong>
+              {entry.notes && <p className="notes">{entry.notes}</p>}
               <ul className="history-set-list">
                 {entry.sets.map((s) => (
                   <li key={s.setOrder}>

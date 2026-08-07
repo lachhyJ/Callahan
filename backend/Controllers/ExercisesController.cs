@@ -66,6 +66,10 @@ public class ExercisesController : ControllerBase
             .OrderBy(s => s.SetOrder)
             .ToListAsync();
 
+        var notes = await _db.ExerciseNotes
+            .Where(n => n.ExerciseId == id && pageSessionIds.Contains(n.WorkoutSessionId))
+            .ToDictionaryAsync(n => n.WorkoutSessionId, n => n.Notes);
+
         var entries = pageSessionIds
             .Select(sid =>
             {
@@ -73,11 +77,24 @@ public class ExercisesController : ControllerBase
                 return new ExerciseHistoryEntryDto(
                     sid,
                     sessionSets[0].WorkoutSession.Date,
+                    notes.GetValueOrDefault(sid),
                     sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString())).ToList());
             })
             .ToList();
 
         return Ok(new ExerciseHistoryPageDto(entries, allSessionIds.Count));
+    }
+
+    [HttpGet("{id}/cues")]
+    public async Task<ActionResult<List<ExerciseCueDto>>> GetCues(int id)
+    {
+        var cues = await _db.WorkoutTemplateExercises
+            .Where(te => te.ExerciseId == id)
+            .Include(te => te.WorkoutTemplate)
+            .Select(te => new ExerciseCueDto(te.Id, te.WorkoutTemplate.Name, te.Cue))
+            .ToListAsync();
+
+        return Ok(cues);
     }
 
     [HttpGet("{id}/stats")]

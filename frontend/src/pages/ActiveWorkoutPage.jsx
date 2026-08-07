@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
+import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon } from '../icons'
@@ -80,6 +80,8 @@ function exerciseFromStart(ex) {
     targetReps: ex.targetReps,
     restSeconds: ex.restSeconds,
     tempo: ex.tempo,
+    workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
+    cue: ex.cue ?? '',
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets),
   }
@@ -280,6 +282,16 @@ export default function ActiveWorkoutPage() {
 
   function updateNotes(exIdx, value) {
     setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, notes: value })))
+  }
+
+  function updateCueLocal(exIdx, value) {
+    setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, cue: value })))
+  }
+
+  function handleCueBlur(exIdx) {
+    const ex = exercises[exIdx]
+    if (!ex.workoutTemplateExerciseId) return
+    updateCue(ex.workoutTemplateExerciseId, ex.cue.trim() || null).catch(() => {})
   }
 
   function updateExerciseRest(exIdx, value) {
@@ -550,6 +562,17 @@ export default function ActiveWorkoutPage() {
               Remove
             </button>
           </div>
+          {ex.workoutTemplateExerciseId && (
+            <input
+              type="text"
+              className="cue-input"
+              placeholder="What to focus on for this exercise…"
+              value={ex.cue}
+              onChange={(e) => updateCueLocal(exIdx, e.target.value)}
+              onBlur={() => handleCueBlur(exIdx)}
+              aria-label={`Focus cue for ${ex.exerciseName}`}
+            />
+          )}
           <p className="target-reps">
             Target: {ex.sets.length} × {ex.targetReps} · rest{' '}
             <input

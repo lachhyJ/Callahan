@@ -4,7 +4,7 @@ public record ExerciseDto(int Id, string Name, string Category);
 
 public record CreateExerciseRequestDto(string Name, string Category);
 
-public record ExerciseHistoryEntryDto(int WorkoutSessionId, DateOnly Date, List<PreviousSetDto> Sets);
+public record ExerciseHistoryEntryDto(int WorkoutSessionId, DateOnly Date, string? Notes, List<PreviousSetDto> Sets);
 
 public record ExerciseHistoryPageDto(List<ExerciseHistoryEntryDto> Entries, int TotalSessions);
 
