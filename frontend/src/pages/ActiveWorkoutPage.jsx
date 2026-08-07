@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon } from '../icons'
@@ -106,9 +106,6 @@ export default function ActiveWorkoutPage() {
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
-  const [historyExercise, setHistoryExercise] = useState(null)
-  const [historyData, setHistoryData] = useState(null)
-  const [historyError, setHistoryError] = useState(null)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
   const headerRef = useRef(null)
@@ -124,15 +121,6 @@ export default function ActiveWorkoutPage() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [exercises])
-
-  useEffect(() => {
-    if (!historyExercise) return
-    setHistoryData(null)
-    setHistoryError(null)
-    getExerciseHistory(historyExercise.exerciseId)
-      .then(setHistoryData)
-      .catch((err) => setHistoryError(err.message))
-  }, [historyExercise])
 
   useEffect(() => {
     const saved = loadActiveWorkout()
@@ -546,13 +534,9 @@ export default function ActiveWorkoutPage() {
           <div className="exercise-card-header">
             <div className="exercise-card-title">
               <h2>
-                <button
-                  type="button"
-                  className="exercise-name-btn"
-                  onClick={() => setHistoryExercise({ exerciseId: ex.exerciseId, exerciseName: ex.exerciseName })}
-                >
+                <Link to={`/exercises/${ex.exerciseId}`} className="exercise-name-btn">
                   {ex.exerciseName}
-                </button>
+                </Link>
               </h2>
               {isResting && (
                 <span className="resting-badge">
@@ -748,38 +732,6 @@ export default function ActiveWorkoutPage() {
           </div>
         )
       })()}
-
-      {historyExercise && (
-        <div className="modal-backdrop" onClick={() => setHistoryExercise(null)}>
-          <div className="modal history-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h2>{historyExercise.exerciseName}</h2>
-              <button type="button" className="modal-close-btn" onClick={() => setHistoryExercise(null)} aria-label="Close">
-                ×
-              </button>
-            </div>
-            <div className="modal-body">
-              {historyError && <p className="error">{historyError}</p>}
-              {!historyError && historyData === null && <p>Loading…</p>}
-              {!historyError && historyData?.length === 0 && <p>No previous sets logged for this exercise yet.</p>}
-              {historyData?.map((entry) => (
-                <div key={entry.workoutSessionId} className="history-entry">
-                  <strong>{entry.date}</strong>
-                  <ul className="history-set-list">
-                    {entry.sets.map((s) => (
-                      <li key={s.setOrder}>
-                        <span className="history-set-number">Set {s.setOrder + 1}</span>
-                        <span className={`history-set-type set-type-${s.setType.toLowerCase()}`}>{SET_TYPE_LABELS[s.setType]}</span>
-                        <span>{s.reps} × {s.weightKg} kg</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
     </main>
   )
 }

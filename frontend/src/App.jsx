@@ -9,6 +9,7 @@ import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
 import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
+import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -53,6 +54,7 @@ function AppRoutes() {
         <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
         <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+        <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
       </Routes>
     </>
   )

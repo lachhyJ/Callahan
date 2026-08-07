@@ -46,26 +46,27 @@ public class ExercisesController : ControllerBase
     }
 
     [HttpGet("{id}/history")]
-    public async Task<ActionResult<List<ExerciseHistoryEntryDto>>> GetHistory(int id, [FromQuery] int limit = 10)
+    public async Task<ActionResult<ExerciseHistoryPageDto>> GetHistory(int id, [FromQuery] int limit = 10, [FromQuery] int offset = 0)
     {
-        var sessionIds = await _db.ExerciseSets
+        var allSessionIds = await _db.ExerciseSets
             .Where(s => s.ExerciseId == id)
             .Select(s => s.WorkoutSessionId)
             .Distinct()
             .Join(_db.WorkoutSessions, sid => sid, ws => ws.Id, (sid, ws) => new { sid, ws.Date })
             .OrderByDescending(x => x.Date)
             .ThenByDescending(x => x.sid)
-            .Take(limit)
             .Select(x => x.sid)
             .ToListAsync();
 
+        var pageSessionIds = allSessionIds.Skip(offset).Take(limit).ToList();
+
         var sets = await _db.ExerciseSets
-            .Where(s => s.ExerciseId == id && sessionIds.Contains(s.WorkoutSessionId))
+            .Where(s => s.ExerciseId == id && pageSessionIds.Contains(s.WorkoutSessionId))
             .Include(s => s.WorkoutSession)
             .OrderBy(s => s.SetOrder)
             .ToListAsync();
 
-        var result = sessionIds
+        var entries = pageSessionIds
             .Select(sid =>
             {
                 var sessionSets = sets.Where(s => s.WorkoutSessionId == sid).ToList();
@@ -76,6 +77,42 @@ public class ExercisesController : ControllerBase
             })
             .ToList();
 
-        return Ok(result);
+        return Ok(new ExerciseHistoryPageDto(entries, allSessionIds.Count));
+    }
+
+    [HttpGet("{id}/stats")]
+    public async Task<ActionResult<ExerciseStatsDto>> GetStats(int id)
+    {
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        var sets = await _db.ExerciseSets
+            .Where(s => s.ExerciseId == id)
+            .Include(s => s.WorkoutSession)
+            .ToListAsync();
+
+        if (sets.Count == 0)
+        {
+            return Ok(new ExerciseStatsDto(exercise.Name, 0, 0, 0, 0, []));
+        }
+
+        var heaviestWeight = sets.Max(s => s.WeightKg);
+        // Epley formula: 1RM = weight * (1 + reps/30). Rounded up to the nearest whole rep.
+        var bestEstimated1Rm = sets.Max(s => s.WeightKg * (1 + s.Reps / 30m));
+        var bestSetVolume = sets.Max(s => s.WeightKg * s.Reps);
+
+        var sessionVolumes = sets
+            .GroupBy(s => s.WorkoutSessionId)
+            .Select(g => g.Sum(s => s.WeightKg * s.Reps));
+        var bestSessionVolume = sessionVolumes.Max();
+
+        var chart = sets
+            .GroupBy(s => s.WorkoutSessionId)
+            .Select(g => new { g.First().WorkoutSession.Date, MaxWeight = g.Max(s => s.WeightKg) })
+            .OrderBy(x => x.Date)
+            .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
+            .ToList();
+
+        return Ok(new ExerciseStatsDto(exercise.Name, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
     }
 }

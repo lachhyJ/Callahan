@@ -52,8 +52,12 @@ export function createExercise(name, category) {
   })
 }
 
-export function getExerciseHistory(exerciseId) {
-  return apiFetch(`/api/exercises/${exerciseId}/history`)
+export function getExerciseHistory(exerciseId, limit = 10, offset = 0) {
+  return apiFetch(`/api/exercises/${exerciseId}/history?limit=${limit}&offset=${offset}`)
+}
+
+export function getExerciseStats(exerciseId) {
+  return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }
 
 export function getWorkoutSessions() {
