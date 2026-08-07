@@ -35,3 +35,40 @@ export function BackIcon(props) {
     </svg>
   )
 }
+
+export function WorkoutIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 10h12" />
+      <path d="M3 7v6M17 7v6" />
+      <path d="M1 8.5v3M19 8.5v3" />
+    </svg>
+  )
+}
+
+export function RunIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M5 3v14" />
+      <path d="M5 4h9l-2 3 2 3H5" />
+    </svg>
+  )
+}
+
+export function HistoryIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M10 6v4l3 2" />
+    </svg>
+  )
+}
+
+export function CalendarIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="4" width="14" height="13" rx="2" />
+      <path d="M3 8h14M7 2v4M13 2v4" />
+    </svg>
+  )
+}

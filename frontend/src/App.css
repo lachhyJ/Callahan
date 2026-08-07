@@ -7,27 +7,13 @@
   }
 }
 
-nav {
+.top-bar {
   display: flex;
-  gap: var(--space-md);
+  justify-content: flex-end;
   align-items: center;
+  gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
   border-bottom: 1px solid var(--border-subtle);
-
-  a {
-    color: var(--text);
-    text-decoration: none;
-    font-size: 15px;
-
-    &.active {
-      color: var(--text-h);
-      font-weight: 500;
-    }
-  }
-
-  button {
-    margin-left: auto;
-  }
 
   .logout-btn {
     background: transparent;
@@ -56,11 +42,43 @@ nav {
     border-radius: var(--radius-md);
     font-weight: 500;
     white-space: nowrap;
-
-    &.active {
-      color: white;
-    }
+    text-decoration: none;
   }
+}
+
+.bottom-tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sticky);
+  display: flex;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.tab-link {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-xs) 0;
+  color: var(--text);
+  text-decoration: none;
+
+  span {
+    font-size: 11px;
+  }
+
+  &.active {
+    color: var(--accent);
+  }
+}
+
+.app-content.with-bottom-nav {
+  padding-bottom: 64px;
 }
 
 .page {
