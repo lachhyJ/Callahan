@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getRunningSessions, getWorkoutSessions } from '../api/client'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -160,9 +161,9 @@ export default function CalendarPage() {
             {new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </strong>
           {selectedEntry.workouts.map((w) => (
-            <p key={`w-${w.id}`}>
+            <Link key={`w-${w.id}`} to={`/sessions/${w.id}`} className="session-link">
               {w.templateName ?? 'Workout'} · {w.setCount} set{w.setCount === 1 ? '' : 's'}
-            </p>
+            </Link>
           ))}
           {selectedEntry.runs.map((r) => (
             <p key={`r-${r.id}`}>

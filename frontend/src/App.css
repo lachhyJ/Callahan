@@ -231,6 +231,12 @@ td {
   margin-top: var(--space-2xs);
 }
 
+.session-duration {
+  color: var(--text);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
 .error {
   color: var(--error-text);
   font-size: 14px;
@@ -1042,6 +1048,21 @@ td {
     margin: 0;
     color: var(--text);
     font-size: var(--text-sm);
+  }
+}
+
+.session-link {
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text-h);
+    text-decoration-color: var(--border);
   }
 }
 

@@ -11,6 +11,7 @@ import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
 import CalendarPage from './pages/CalendarPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
+import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -58,6 +59,7 @@ function AppRoutes() {
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
         <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
+        <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
       </Routes>
     </>
   )

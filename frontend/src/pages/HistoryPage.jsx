@@ -51,7 +51,9 @@ export default function HistoryPage() {
         <div key={`${item.type}-${item.id}`} className="history-item">
           <strong>{item.date}</strong>{' '}
           {item.type === 'workout' ? (
-            <span>{item.templateName ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}</span>
+            <Link to={`/sessions/${item.id}`} className="session-link">
+              {item.templateName ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}
+            </Link>
           ) : (
             <span>Run — {item.distanceKm} km in {formatDuration(item.durationSeconds)}</span>
           )}
