@@ -9,6 +9,7 @@ import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
 import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
+import CalendarPage from './pages/CalendarPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import './App.css'
 
@@ -32,6 +33,7 @@ function Nav() {
       <NavLink to="/">Workout</NavLink>
       <NavLink to="/run">Log run</NavLink>
       <NavLink to="/history">History</NavLink>
+      <NavLink to="/calendar">Calendar</NavLink>
       {activeWorkout && !onThatWorkout && (
         <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
           <PlayIcon /> Resume
@@ -54,6 +56,7 @@ function AppRoutes() {
         <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
         <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+        <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
         <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
       </Routes>
     </>
