@@ -79,6 +79,7 @@ function exerciseFromStart(ex) {
     exerciseName: ex.exerciseName,
     targetReps: ex.targetReps,
     restSeconds: ex.restSeconds,
+    tempo: ex.tempo,
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets),
   }
@@ -569,6 +570,7 @@ export default function ActiveWorkoutPage() {
               aria-label={`Rest time for ${ex.exerciseName}`}
             />
             s
+            {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">

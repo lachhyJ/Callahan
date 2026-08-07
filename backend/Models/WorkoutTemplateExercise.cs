@@ -13,4 +13,5 @@ public class WorkoutTemplateExercise
     public int TargetSets { get; set; }
     public required string TargetReps { get; set; }
     public int RestSeconds { get; set; }
+    public string? Tempo { get; set; }
 }

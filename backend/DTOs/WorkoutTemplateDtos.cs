@@ -10,6 +10,7 @@ public record WorkoutTemplateExerciseStartDto(
     int TargetSets,
     string TargetReps,
     int RestSeconds,
+    string? Tempo,
     List<PreviousSetDto> PreviousSets);
 
 public record WorkoutTemplateStartDto(

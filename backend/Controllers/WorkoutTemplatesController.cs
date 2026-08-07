@@ -56,7 +56,7 @@ public class WorkoutTemplatesController : ControllerBase
                     .ToList() ?? [];
 
                 return new WorkoutTemplateExerciseStartDto(
-                    te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, previousSets);
+                    te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, previousSets);
             })
             .ToList();
 
