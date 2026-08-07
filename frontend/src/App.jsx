@@ -29,6 +29,10 @@ function Nav() {
 
   const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
 
+  function handleLogout() {
+    if (window.confirm('Log out?')) logout()
+  }
+
   return (
     <nav>
       <NavLink to="/">Workout</NavLink>
@@ -40,7 +44,7 @@ function Nav() {
           <PlayIcon /> Resume
         </NavLink>
       )}
-      <button type="button" className="logout-btn" onClick={logout}>Log out</button>
+      <button type="button" className="logout-btn" onClick={handleLogout}>Log out</button>
     </nav>
   )
 }

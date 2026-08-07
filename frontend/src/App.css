@@ -31,16 +31,18 @@ nav {
 
   .logout-btn {
     background: transparent;
-    border: 1px solid var(--border);
-    color: var(--text);
-    padding: var(--space-2xs) var(--space-xs);
+    border: none;
+    color: var(--text-tertiary);
+    padding: var(--space-2xs) 0;
+    font-size: 13px;
     white-space: nowrap;
-    transition: border-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+    transition: color var(--duration-fast) var(--ease-out);
 
     &:hover,
     &:focus-visible {
-      border-color: var(--text);
-      color: var(--text-h);
+      background: transparent;
+      color: var(--text);
+      opacity: 1;
     }
   }
 
