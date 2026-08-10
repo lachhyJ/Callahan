@@ -391,7 +391,7 @@ td {
   border-radius: var(--radius-full);
   background: var(--surface-raised);
   color: var(--text);
-  font-size: 12px;
+  font-size: 13px;
   font-variant-numeric: tabular-nums;
 }
 
