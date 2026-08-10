@@ -33,7 +33,7 @@ public class WorkoutTemplatesController : ControllerBase
     public async Task<ActionResult<WorkoutTemplateStartDto>> Start(int id)
     {
         var template = await _db.WorkoutTemplates
-            .Include(t => t.Exercises).ThenInclude(te => te.Exercise)
+            .Include(t => t.Exercises).ThenInclude(te => te.Exercise).ThenInclude(e => e.MuscleTargets)
             .FirstOrDefaultAsync(t => t.Id == id);
 
         if (template is null) return NotFound();
@@ -55,8 +55,10 @@ public class WorkoutTemplatesController : ControllerBase
                     .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString()))
                     .ToList() ?? [];
 
+                var primaryMuscle = te.Exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
+
                 return new WorkoutTemplateExerciseStartDto(
-                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, previousSets);
+                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle, previousSets);
             })
             .ToList();
 

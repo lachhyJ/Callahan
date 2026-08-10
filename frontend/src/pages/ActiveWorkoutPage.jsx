@@ -80,6 +80,7 @@ function exerciseFromStart(ex) {
     targetReps: ex.targetReps,
     restSeconds: ex.restSeconds,
     tempo: ex.tempo,
+    primaryMuscle: ex.primaryMuscle,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     cue: ex.cue ?? '',
     notes: '',
@@ -551,6 +552,7 @@ export default function ActiveWorkoutPage() {
                   {ex.exerciseName}
                 </Link>
               </h2>
+              {ex.primaryMuscle && <span className="primary-muscle">{ex.primaryMuscle}</span>}
               {isResting && (
                 <span className="resting-badge">
                   <span className="resting-dot" />

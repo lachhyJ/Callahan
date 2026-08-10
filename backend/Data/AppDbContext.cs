@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
     public DbSet<Finisher> Finishers => Set<Finisher>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+    public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

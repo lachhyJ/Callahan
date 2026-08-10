@@ -78,6 +78,7 @@ export default function ExerciseDetailPage() {
     <main className="page exercise-detail-page">
       <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>{stats.exerciseName}</h1>
+      {stats.primaryMuscle && <p className="primary-muscle">{stats.primaryMuscle}</p>}
 
       {cues.map((c) => (
         <input

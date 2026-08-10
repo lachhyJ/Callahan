@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record ExerciseDto(int Id, string Name, string Category);
+public record ExerciseDto(int Id, string Name, string Category, string? PrimaryMuscle);
 
 public record CreateExerciseRequestDto(string Name, string Category);
 
@@ -12,6 +12,7 @@ public record ChartPointDto(DateOnly Date, decimal MaxWeightKg);
 
 public record ExerciseStatsDto(
     string ExerciseName,
+    string? PrimaryMuscle,
     decimal HeaviestWeightKg,
     decimal BestEstimated1Rm,
     decimal BestSetVolume,

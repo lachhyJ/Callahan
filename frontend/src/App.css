@@ -363,6 +363,12 @@ td {
   min-width: 0;
 }
 
+.primary-muscle {
+  color: var(--text-tertiary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .remove-exercise-btn {
   background: transparent;
   border: none;

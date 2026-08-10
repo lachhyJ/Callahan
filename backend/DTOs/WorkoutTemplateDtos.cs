@@ -13,6 +13,7 @@ public record WorkoutTemplateExerciseStartDto(
     int RestSeconds,
     string? Tempo,
     string? Cue,
+    string? PrimaryMuscle,
     List<PreviousSetDto> PreviousSets);
 
 public record WorkoutTemplateStartDto(

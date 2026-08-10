@@ -23,8 +23,13 @@ public class ExercisesController : ControllerBase
     public async Task<ActionResult<List<ExerciseDto>>> GetAll()
     {
         var exercises = await _db.Exercises
+            .Include(e => e.MuscleTargets)
             .OrderBy(e => e.Category).ThenBy(e => e.Name)
-            .Select(e => new ExerciseDto(e.Id, e.Name, e.Category.ToString()))
+            .Select(e => new ExerciseDto(
+                e.Id,
+                e.Name,
+                e.Category.ToString(),
+                e.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault()))
             .ToListAsync();
 
         return Ok(exercises);
@@ -42,7 +47,7 @@ public class ExercisesController : ControllerBase
         _db.Exercises.Add(exercise);
         await _db.SaveChangesAsync();
 
-        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString()));
+        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null));
     }
 
     [HttpGet("{id}/history")]
@@ -100,8 +105,10 @@ public class ExercisesController : ControllerBase
     [HttpGet("{id}/stats")]
     public async Task<ActionResult<ExerciseStatsDto>> GetStats(int id)
     {
-        var exercise = await _db.Exercises.FindAsync(id);
+        var exercise = await _db.Exercises.Include(e => e.MuscleTargets).FirstOrDefaultAsync(e => e.Id == id);
         if (exercise is null) return NotFound();
+
+        var primaryMuscle = exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
         var sets = await _db.ExerciseSets
             .Where(s => s.ExerciseId == id)
@@ -110,7 +117,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, 0, 0, 0, 0, []));
         }
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
@@ -130,6 +137,6 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
     }
 }

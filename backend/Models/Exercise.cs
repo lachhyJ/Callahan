@@ -7,4 +7,5 @@ public class Exercise
     public ExerciseCategory Category { get; set; }
 
     public ICollection<ExerciseSet> Sets { get; set; } = [];
+    public ICollection<ExerciseMuscleTarget> MuscleTargets { get; set; } = [];
 }
