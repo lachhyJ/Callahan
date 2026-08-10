@@ -12,6 +12,7 @@ import HistoryPage from './pages/HistoryPage'
 import CalendarPage from './pages/CalendarPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
+import MuscleBalancePage from './pages/MuscleBalancePage'
 import './App.css'
 
 const TABS = [
@@ -91,6 +92,7 @@ function AppRoutes() {
           <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
+          <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />
         </Routes>
       </div>
       {showBottomNav && <BottomTabBar />}

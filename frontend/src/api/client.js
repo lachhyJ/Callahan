@@ -75,6 +75,10 @@ export function getWorkoutSessions() {
   return apiFetch('/api/workoutsessions')
 }
 
+export function getMuscleBalance(startDate, endDate) {
+  return apiFetch(`/api/musclegroups/balance?startDate=${startDate}&endDate=${endDate}`)
+}
+
 export function getWorkoutSession(id) {
   return apiFetch(`/api/workoutsessions/${id}`)
 }

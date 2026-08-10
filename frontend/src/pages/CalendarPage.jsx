@@ -1,19 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getRunningSessions, getWorkoutSessions } from '../api/client'
+import { isoDate } from '../dateUtils'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
-
-// Deliberately avoids toISOString(): it converts through UTC, so local
-// midnight in any positive-UTC-offset timezone rolls back to the previous
-// UTC day — every cell would compute one day earlier than it actually is.
-function isoDate(d) {
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 function formatDuration(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -93,6 +84,7 @@ export default function CalendarPage() {
   return (
     <main className="page calendar-page">
       <h1>Calendar</h1>
+      <Link to="/muscle-balance" className="session-link">Muscle balance</Link>
 
       {!hasAnyHistory && (
         <div className="empty-state">
