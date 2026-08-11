@@ -88,3 +88,12 @@ export function ChevronRightIcon(props) {
     </svg>
   )
 }
+
+export function ListIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M7 5h10M7 10h10M7 15h10" />
+      <path d="M3 5h.01M3 10h.01M3 15h.01" />
+    </svg>
+  )
+}

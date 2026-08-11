@@ -11,6 +11,7 @@ import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
 import CalendarPage from './pages/CalendarPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
+import ExercisesListPage from './pages/ExercisesListPage'
 import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import MuscleBalancePage from './pages/MuscleBalancePage'
 import './App.css'
@@ -90,6 +91,7 @@ function AppRoutes() {
           <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+          <Route path="/exercises" element={<ProtectedRoute><ExercisesListPage /></ProtectedRoute>} />
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
           <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />

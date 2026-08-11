@@ -3,20 +3,22 @@ import { Link } from 'react-router-dom'
 import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/client'
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
-import { ChartIcon, ChevronRightIcon } from '../icons'
+import DayDetailSheet from '../components/DayDetailSheet'
+import { ChartIcon, ChevronRightIcon, ListIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Extensible on purpose — more cards (streak, history, …) are likely to join
-// this row later, per the "start with just this, more soon" scope.
-const QUICK_LINKS = [{ to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon }]
-
-function formatDuration(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
+// Real destinations first, "Soon" placeholders after — Lachlan asked to see
+// roughly what a fuller group could look like before committing to what
+// actually fills it in. Swap a placeholder for a real entry by giving it a
+// `to` and dropping `soon: true`.
+const QUICK_LINKS = [
+  { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
+  { to: '/exercises', label: 'Exercises', Icon: ListIcon },
+  { label: 'Streak', Icon: ChartIcon, soon: true },
+  { label: 'Trends', Icon: ChartIcon, soon: true },
+]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
 // (no number, not interactive) rather than shown faded — matches the reference
@@ -96,26 +98,7 @@ export default function CalendarPage() {
     <main className="page calendar-page">
       <h1>Calendar</h1>
 
-      <div className="quick-links-row">
-        {QUICK_LINKS.map(({ to, label, Icon }) => (
-          <Link key={to} to={to} className="quick-link-card">
-            <Icon />
-            <span>{label}</span>
-            <ChevronRightIcon />
-          </Link>
-        ))}
-      </div>
-
-      {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
-
-      {!hasAnyHistory && (
-        <div className="empty-state section-gap">
-          <p>No sessions logged yet — once you finish a workout or run, it'll show up here.</p>
-          <Link to="/" className="custom-workout-link">Start a workout</Link>
-        </div>
-      )}
-
-      <div className="calendar-nav section-gap">
+      <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
           ‹
         </button>
@@ -124,6 +107,13 @@ export default function CalendarPage() {
           ›
         </button>
       </div>
+
+      {!hasAnyHistory && (
+        <div className="empty-state section-gap">
+          <p>No sessions logged yet — once you finish a workout or run, it'll show up here.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
+        </div>
+      )}
 
       <div className="calendar-grid">
         {WEEKDAY_LABELS.map((label, i) => (
@@ -170,23 +160,27 @@ export default function CalendarPage() {
         )}
       </div>
 
-      {selectedEntry && (
-        <div className="calendar-detail section-gap">
-          <strong>
-            {new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-          </strong>
-          {selectedEntry.workouts.map((w) => (
-            <Link key={`w-${w.id}`} to={`/sessions/${w.id}`} className="session-link">
-              {w.templateName ?? 'Workout'} · {w.setCount} set{w.setCount === 1 ? '' : 's'}
+      <div className="quick-links-row section-gap">
+        {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
+          soon ? (
+            <div key={label} className="quick-link-card soon">
+              <Icon />
+              <span>{label}</span>
+              <span className="quick-link-soon-badge">Soon</span>
+            </div>
+          ) : (
+            <Link key={to} to={to} className="quick-link-card">
+              <Icon />
+              <span>{label}</span>
+              <ChevronRightIcon />
             </Link>
-          ))}
-          {selectedEntry.runs.map((r) => (
-            <p key={`r-${r.id}`}>
-              Run · {r.distanceKm} km in {formatDuration(r.durationSeconds)}
-            </p>
-          ))}
-        </div>
-      )}
+          )
+        )}
+      </div>
+
+      {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
+
+      <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
     </main>
   )
 }
