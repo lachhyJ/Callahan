@@ -60,6 +60,48 @@ public class WorkoutSessionsController : ControllerBase
         return Ok(dto);
     }
 
+    // Monday-first week start, matching the frontend's convention (dateUtils.js).
+    private static DateOnly MondayOf(DateOnly date)
+    {
+        var offsetFromMonday = ((int)date.DayOfWeek + 6) % 7; // Mon=0 ... Sun=6
+        return date.AddDays(-offsetFromMonday);
+    }
+
+    [HttpGet("weekly-volume")]
+    public async Task<ActionResult<List<WeeklyVolumeDto>>> GetWeeklyVolume([FromQuery] int weeks = 8)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentWeekStart = MondayOf(today);
+        var earliestWeekStart = currentWeekStart.AddDays(-7 * (weeks - 1));
+
+        var sets = await _db.ExerciseSets
+            .Where(s => s.WorkoutSession.Date >= earliestWeekStart)
+            .Include(s => s.WorkoutSession)
+            .ToListAsync();
+
+        var volumesByWeek = new Dictionary<DateOnly, decimal>();
+        for (var i = 0; i < weeks; i++)
+        {
+            volumesByWeek[earliestWeekStart.AddDays(7 * i)] = 0;
+        }
+
+        foreach (var s in sets)
+        {
+            var weekStart = MondayOf(s.WorkoutSession.Date);
+            if (volumesByWeek.ContainsKey(weekStart))
+            {
+                volumesByWeek[weekStart] += s.WeightKg * s.Reps;
+            }
+        }
+
+        var result = volumesByWeek
+            .OrderBy(kv => kv.Key)
+            .Select(kv => new WeeklyVolumeDto(kv.Key, kv.Value))
+            .ToList();
+
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<ActionResult<WorkoutSessionDetailDto>> Create(CreateWorkoutSessionRequest request)
     {

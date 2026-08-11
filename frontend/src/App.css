@@ -1127,6 +1127,79 @@ td {
   }
 }
 
+.quick-links-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.quick-link-card {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  color: var(--text-h);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out);
+
+  svg:first-child {
+    color: var(--text);
+  }
+
+  svg:last-child {
+    color: var(--text);
+    margin-left: var(--space-2xs);
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--accent-bg);
+  }
+}
+
+.volume-chart {
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  padding: var(--space-sm) var(--space-md);
+}
+
+.volume-chart-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-xs);
+}
+
+.volume-chart-label {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+
+.volume-chart-current {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.volume-chart-svg {
+  width: 100%;
+  height: 48px;
+  display: block;
+}
+
+.volume-bar {
+  fill: var(--border);
+}
+
+.volume-bar.current {
+  fill: var(--accent);
+}
+
 .muscle-bar-list {
   display: flex;
   flex-direction: column;
@@ -1186,7 +1259,7 @@ td {
 
 .muscle-figure {
   width: 40%;
-  max-width: 108px;
+  max-width: 128px;
   height: auto;
 }
 

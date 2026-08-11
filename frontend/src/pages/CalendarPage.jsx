@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRunningSessions, getWorkoutSessions } from '../api/client'
+import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/client'
 import { isoDate } from '../dateUtils'
+import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
+import { ChartIcon, ChevronRightIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
+
+// Extensible on purpose — more cards (streak, history, …) are likely to join
+// this row later, per the "start with just this, more soon" scope.
+const QUICK_LINKS = [{ to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon }]
 
 function formatDuration(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60)
@@ -39,6 +45,11 @@ export default function CalendarPage() {
     return { year: now.getFullYear(), month: now.getMonth() }
   })
   const [selectedDate, setSelectedDate] = useState(null)
+  const [weeklyVolume, setWeeklyVolume] = useState(null)
+
+  useEffect(() => {
+    getWeeklyVolume(8).then(setWeeklyVolume).catch(() => {})
+  }, [])
 
   useEffect(() => {
     Promise.all([getWorkoutSessions(), getRunningSessions()])
@@ -84,7 +95,18 @@ export default function CalendarPage() {
   return (
     <main className="page calendar-page">
       <h1>Calendar</h1>
-      <Link to="/muscle-balance" className="session-link">Muscle balance</Link>
+
+      <div className="quick-links-row">
+        {QUICK_LINKS.map(({ to, label, Icon }) => (
+          <Link key={to} to={to} className="quick-link-card">
+            <Icon />
+            <span>{label}</span>
+            <ChevronRightIcon />
+          </Link>
+        ))}
+      </div>
+
+      {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 
       {!hasAnyHistory && (
         <div className="empty-state section-gap">
