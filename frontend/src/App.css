@@ -1143,6 +1143,9 @@ td {
 .muscle-bar-label {
   font-size: var(--text-sm);
   color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .muscle-bar-track {
@@ -1170,14 +1173,40 @@ td {
 .muscle-heatmap {
   display: flex;
   justify-content: center;
-  gap: var(--space-lg);
+  gap: var(--space-xl);
   padding: var(--space-sm) 0;
+}
+
+.muscle-figure-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 
 .muscle-figure {
   width: 40%;
-  max-width: 140px;
+  max-width: 108px;
   height: auto;
+}
+
+.muscle-figure-label {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+
+.muscle-region {
+  transition: fill var(--duration-normal) var(--ease-out);
+}
+
+.page-subtitle {
+  color: var(--text);
+  font-size: 14px;
+  margin: 0;
+}
+
+.section-gap {
+  margin-top: var(--space-xl);
 }
 
 /* Kept last deliberately: at equal specificity CSS resolves ties by source

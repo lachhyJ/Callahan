@@ -87,12 +87,13 @@ export default function CalendarPage() {
       <Link to="/muscle-balance" className="session-link">Muscle balance</Link>
 
       {!hasAnyHistory && (
-        <div className="empty-state">
+        <div className="empty-state section-gap">
           <p>No sessions logged yet — once you finish a workout or run, it'll show up here.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
         </div>
       )}
 
-      <div className="calendar-nav">
+      <div className="calendar-nav section-gap">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
           ‹
         </button>
@@ -148,7 +149,7 @@ export default function CalendarPage() {
       </div>
 
       {selectedEntry && (
-        <div className="calendar-detail">
+        <div className="calendar-detail section-gap">
           <strong>
             {new Date(`${selectedDate}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
           </strong>

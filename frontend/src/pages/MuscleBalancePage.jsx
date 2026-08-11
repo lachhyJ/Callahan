@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getMuscleBalance } from '../api/client'
 import { BackIcon } from '../icons'
 import { endOfWeek, isoDate, startOfWeek } from '../dateUtils'
@@ -44,8 +44,11 @@ export default function MuscleBalancePage() {
     <main className="page">
       <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Muscle balance</h1>
+      <p className="page-subtitle">
+        Sets per muscle group this week — a set counts full toward its primary muscle, half toward each secondary one.
+      </p>
 
-      <div className="calendar-nav">
+      <div className="calendar-nav section-gap">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeWeek(-1)} aria-label="Previous week">
           ‹
         </button>
@@ -59,24 +62,29 @@ export default function MuscleBalancePage() {
       {!error && balance === null && <p>Loading…</p>}
 
       {balance && !hasAnySets && (
-        <div className="empty-state">
+        <div className="empty-state section-gap">
           <p>No sets logged this week.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
         </div>
       )}
 
-      {balance && hasAnySets && <MuscleHeatmap balance={balance} />}
-
       {balance && hasAnySets && (
-        <div className="muscle-bar-list">
+        <div className="muscle-bar-list section-gap">
           {balance.map((b) => (
             <div key={b.muscleGroup} className="muscle-bar-row">
-              <span className="muscle-bar-label">{b.muscleGroup}</span>
+              <span className="muscle-bar-label" title={b.muscleGroup}>{b.muscleGroup}</span>
               <div className="muscle-bar-track">
                 <div className="muscle-bar-fill" style={{ width: `${(b.setCount / maxCount) * 100}%` }} />
               </div>
               <span className="muscle-bar-value">{formatSetCount(b.setCount)}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {balance && hasAnySets && (
+        <div className="section-gap">
+          <MuscleHeatmap balance={balance} />
         </div>
       )}
     </main>

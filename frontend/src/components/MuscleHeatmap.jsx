@@ -28,35 +28,38 @@ function Seg({ x, y, w, h, fill, rTop, rBottom, label }) {
     h${-(w - 2 * rb)}
     a${rb} ${rb} 0 0 1 ${-rb} ${-rb}
     Z`
-  return <path d={d} fill={fill} stroke="var(--border)" strokeWidth="0.5" aria-label={label} />
+  return <path className="muscle-region" d={d} fill={fill} stroke="var(--border)" strokeWidth="0.5" aria-label={label} />
 }
 
 function Figure({ title, torsoTop, torsoBottom, armTop, armBottom, legTop, legBottom, calfBottom }) {
   return (
-    <svg viewBox="0 0 100 190" className="muscle-figure" role="img" aria-label={title}>
-      {/* head + neck */}
-      <circle cx="50" cy="10" r="9" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
-      <rect x="45" y="17" width="10" height="7" fill={NEUTRAL} />
+    <div className="muscle-figure-wrap">
+      <svg viewBox="0 0 100 190" className="muscle-figure" role="img" aria-label={title}>
+        {/* head + neck */}
+        <circle cx="50" cy="10" r="9" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
+        <rect x="45" y="17" width="10" height="7" fill={NEUTRAL} />
 
-      {/* arms: shoulder cap + upper-arm segment, flush at the elbow-adjacent seam */}
-      <Seg x={12} y={24} w={13} h={18} rTop={6} fill={torsoTop.shoulderFill} label="Shoulders" />
-      <Seg x={12} y={42} w={13} h={38} rBottom={6} fill={armBottom.fill} label={armBottom.label} />
-      <Seg x={75} y={24} w={13} h={18} rTop={6} fill={torsoTop.shoulderFill} label="Shoulders" />
-      <Seg x={75} y={42} w={13} h={38} rBottom={6} fill={armBottom.fill} label={armBottom.label} />
+        {/* arms: shoulder cap + upper-arm segment, flush at the elbow-adjacent seam */}
+        <Seg x={12} y={24} w={13} h={18} rTop={6} fill={torsoTop.shoulderFill} label="Shoulders" />
+        <Seg x={12} y={42} w={13} h={38} rBottom={6} fill={armBottom.fill} label={armBottom.label} />
+        <Seg x={75} y={24} w={13} h={18} rTop={6} fill={torsoTop.shoulderFill} label="Shoulders" />
+        <Seg x={75} y={42} w={13} h={38} rBottom={6} fill={armBottom.fill} label={armBottom.label} />
 
-      {/* torso: chest/back segment + core/lower-back segment, flush seam */}
-      <Seg x={30} y={24} w={40} h={torsoTop.h} rTop={7} fill={torsoTop.fill} label={torsoTop.label} />
-      <Seg x={30} y={torsoTop.bottomY} w={40} h={torsoBottom.h} fill={torsoBottom.fill} label={torsoBottom.label} />
+        {/* torso: chest/back segment + core/lower-back segment, flush seam */}
+        <Seg x={30} y={24} w={40} h={torsoTop.h} rTop={7} fill={torsoTop.fill} label={torsoTop.label} />
+        <Seg x={30} y={torsoTop.bottomY} w={40} h={torsoBottom.h} fill={torsoBottom.fill} label={torsoBottom.label} />
 
-      {/* legs: thigh segment + calf segment, flush seam */}
-      <Seg x={30} y={legTop.y} w={16} h={legTop.h} fill={legTop.fill} label={legTop.label} />
-      <Seg x={54} y={legTop.y} w={16} h={legTop.h} fill={legTop.fill} label={legTop.label} />
-      <Seg x={30} y={legBottom.y} w={16} h={legBottom.h} rBottom={5} fill={legBottom.fill} label="Calves" />
-      <Seg x={54} y={legBottom.y} w={16} h={legBottom.h} rBottom={5} fill={legBottom.fill} label="Calves" />
+        {/* legs: thigh segment + calf segment, flush seam */}
+        <Seg x={30} y={legTop.y} w={16} h={legTop.h} fill={legTop.fill} label={legTop.label} />
+        <Seg x={54} y={legTop.y} w={16} h={legTop.h} fill={legTop.fill} label={legTop.label} />
+        <Seg x={30} y={legBottom.y} w={16} h={legBottom.h} rBottom={5} fill={legBottom.fill} label="Calves" />
+        <Seg x={54} y={legBottom.y} w={16} h={legBottom.h} rBottom={5} fill={legBottom.fill} label="Calves" />
 
-      <ellipse cx="38" cy={legBottom.y + legBottom.h + 3} rx="7" ry="3.5" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
-      <ellipse cx="62" cy={legBottom.y + legBottom.h + 3} rx="7" ry="3.5" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
-    </svg>
+        <ellipse cx="38" cy={legBottom.y + legBottom.h + 3} rx="7" ry="3.5" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
+        <ellipse cx="62" cy={legBottom.y + legBottom.h + 3} rx="7" ry="3.5" fill={NEUTRAL} stroke="var(--border)" strokeWidth="0.5" />
+      </svg>
+      <span className="muscle-figure-label">{title}</span>
+    </div>
   )
 }
 
@@ -69,7 +72,7 @@ export default function MuscleHeatmap({ balance }) {
   return (
     <div className="muscle-heatmap">
       <Figure
-        title="Front view"
+        title="Front"
         torsoTop={{ shoulderFill, fill: colorFor('Chest'), label: 'Chest', h: 30, bottomY: 54 }}
         torsoBottom={{ fill: colorFor('Core'), label: 'Core', h: 38 }}
         armBottom={{ fill: colorFor('Biceps'), label: 'Biceps' }}
@@ -77,7 +80,7 @@ export default function MuscleHeatmap({ balance }) {
         legBottom={{ y: 138, h: 36, fill: colorFor('Calves') }}
       />
       <Figure
-        title="Back view"
+        title="Back"
         torsoTop={{ shoulderFill, fill: colorFor('Back'), label: 'Back', h: 46, bottomY: 70 }}
         torsoBottom={{ fill: colorFor('Glutes'), label: 'Glutes', h: 22 }}
         armBottom={{ fill: colorFor('Triceps'), label: 'Triceps' }}
