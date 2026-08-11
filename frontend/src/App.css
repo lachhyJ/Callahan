@@ -1167,6 +1167,19 @@ td {
   text-align: right;
 }
 
+.muscle-heatmap {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-lg);
+  padding: var(--space-sm) 0;
+}
+
+.muscle-figure {
+  width: 40%;
+  max-width: 140px;
+  height: auto;
+}
+
 /* Kept last deliberately: at equal specificity CSS resolves ties by source
    order, so a responsive override placed earlier than the base rules it's
    meant to beat loses silently. Everything below must stay last in the file. */

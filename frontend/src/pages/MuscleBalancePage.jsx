@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { getMuscleBalance } from '../api/client'
 import { BackIcon } from '../icons'
 import { endOfWeek, isoDate, startOfWeek } from '../dateUtils'
+import MuscleHeatmap from '../components/MuscleHeatmap'
 
 const WEEK_FORMAT = { month: 'short', day: 'numeric' }
 
@@ -62,6 +63,8 @@ export default function MuscleBalancePage() {
           <p>No sets logged this week.</p>
         </div>
       )}
+
+      {balance && hasAnySets && <MuscleHeatmap balance={balance} />}
 
       {balance && hasAnySets && (
         <div className="muscle-bar-list">
