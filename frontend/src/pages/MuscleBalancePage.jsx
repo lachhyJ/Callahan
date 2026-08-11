@@ -44,9 +44,6 @@ export default function MuscleBalancePage() {
     <main className="page">
       <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Muscle balance</h1>
-      <p className="page-subtitle">
-        Sets per muscle group this week — a set counts full toward its primary muscle, half toward each secondary one.
-      </p>
 
       <div className="calendar-nav section-gap">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeWeek(-1)} aria-label="Previous week">
@@ -69,6 +66,12 @@ export default function MuscleBalancePage() {
       )}
 
       {balance && hasAnySets && (
+        <div className="section-gap">
+          <MuscleHeatmap balance={balance} />
+        </div>
+      )}
+
+      {balance && hasAnySets && (
         <div className="muscle-bar-list section-gap">
           {balance.map((b) => (
             <div key={b.muscleGroup} className="muscle-bar-row">
@@ -83,9 +86,9 @@ export default function MuscleBalancePage() {
       )}
 
       {balance && hasAnySets && (
-        <div className="section-gap">
-          <MuscleHeatmap balance={balance} />
-        </div>
+        <p className="page-subtitle section-gap">
+          Sets per muscle group this week — a set counts full toward its primary muscle, half toward each secondary one.
+        </p>
       )}
     </main>
   )
