@@ -60,10 +60,6 @@ export function getExerciseStats(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }
 
-export function getExercisePrs() {
-  return apiFetch('/api/exercises/prs')
-}
-
 export function getExerciseCues(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/cues`)
 }
@@ -85,6 +81,34 @@ export function getMuscleBalance(startDate, endDate) {
 
 export function getWeeklyVolume(weeks = 8) {
   return apiFetch(`/api/workoutsessions/weekly-volume?weeks=${weeks}`)
+}
+
+export function getStreaks() {
+  return apiFetch('/api/streaks')
+}
+
+export function getTrends(months = 6) {
+  return apiFetch(`/api/trends?months=${months}`)
+}
+
+// Not apiFetch: that always parses JSON, and a PDF has to come back as a
+// blob so it can be handed to an <iframe> via an object URL — a plain
+// <iframe src> can't carry the Bearer token.
+export async function getProgramPdfBlob() {
+  const token = localStorage.getItem('callahan_token')
+  const res = await fetch(`${API_BASE}/api/program/pdf`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (res.status === 401) {
+    localStorage.removeItem('callahan_token')
+    window.dispatchEvent(new Event('callahan-unauthorized'))
+    throw new Error('Not authenticated')
+  }
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? `Request failed (${res.status})`)
+  }
+  return res.blob()
 }
 
 export function getWorkoutSession(id) {
