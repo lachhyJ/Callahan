@@ -98,12 +98,19 @@ export function ListIcon(props) {
   )
 }
 
-export function TrophyIcon(props) {
+export function FlameIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M6 3h8v5a4 4 0 0 1-8 0V3z" />
-      <path d="M6 4H3.5A1.5 1.5 0 0 0 2 5.5C2 7.5 3.5 9 6 9M14 4h2.5A1.5 1.5 0 0 1 18 5.5C18 7.5 16.5 9 14 9" />
-      <path d="M10 12v3M7 17h6M8 15h4v2H8z" />
+      <path d="M10 2c1 3-3 4-3 7.5a3 3 0 0 0 6 0c1 0 1.5 1 1.5 2a4.5 4.5 0 0 1-9 0C5.5 8 8 6.5 10 2z" />
+    </svg>
+  )
+}
+
+export function DocumentIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 2h6l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+      <path d="M12 2v3h3M7 10h6M7 13h6M7 16h3" />
     </svg>
   )
 }

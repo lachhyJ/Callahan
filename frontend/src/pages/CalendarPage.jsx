@@ -4,21 +4,19 @@ import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, ListIcon, TrophyIcon } from '../icons'
+import { ChartIcon, DocumentIcon, FlameIcon, ListIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Real destinations first, "Soon" placeholders after — Lachlan asked to see
-// roughly what a fuller group could look like before committing to what
-// actually fills it in. Swap a placeholder for a real entry by giving it a
-// `to` and dropping `soon: true`.
+// Six real destinations now — fills the two-row, three-column grid the
+// layout was built for.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
-  { to: '/prs', label: 'PRs', Icon: TrophyIcon },
-  { label: 'Streak', Icon: ChartIcon, soon: true },
-  { label: 'Trends', Icon: ChartIcon, soon: true },
+  { to: '/streaks', label: 'Streak', Icon: FlameIcon },
+  { to: '/trends', label: 'Trends', Icon: ChartIcon },
+  { to: '/program', label: 'Program', Icon: DocumentIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
@@ -162,20 +160,12 @@ export default function CalendarPage() {
       </div>
 
       <div className="quick-links-grid section-gap">
-        {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
-          soon ? (
-            <div key={label} className="quick-link-tile soon">
-              <span className="quick-link-soon-badge">Soon</span>
-              <Icon />
-              <span>{label}</span>
-            </div>
-          ) : (
-            <Link key={to} to={to} className="quick-link-tile">
-              <Icon />
-              <span>{label}</span>
-            </Link>
-          )
-        )}
+        {QUICK_LINKS.map(({ to, label, Icon }) => (
+          <Link key={to} to={to} className="quick-link-tile">
+            <Icon />
+            <span>{label}</span>
+          </Link>
+        ))}
       </div>
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}

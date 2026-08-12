@@ -12,9 +12,11 @@ import HistoryPage from './pages/HistoryPage'
 import CalendarPage from './pages/CalendarPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import ExercisesListPage from './pages/ExercisesListPage'
-import PrsListPage from './pages/PrsListPage'
 import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import MuscleBalancePage from './pages/MuscleBalancePage'
+import StreakPage from './pages/StreakPage'
+import TrendsPage from './pages/TrendsPage'
+import ProgramPage from './pages/ProgramPage'
 import './App.css'
 
 const TABS = [
@@ -94,9 +96,11 @@ function AppRoutes() {
           <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
           <Route path="/exercises" element={<ProtectedRoute><ExercisesListPage /></ProtectedRoute>} />
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
-          <Route path="/prs" element={<ProtectedRoute><PrsListPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
           <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />
+          <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
+          <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
+          <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
         </Routes>
       </div>
       {showBottomNav && <BottomTabBar />}
