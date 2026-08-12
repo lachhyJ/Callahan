@@ -60,6 +60,10 @@ export function getExerciseStats(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }
 
+export function getExercisePrs() {
+  return apiFetch('/api/exercises/prs')
+}
+
 export function getExerciseCues(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/cues`)
 }

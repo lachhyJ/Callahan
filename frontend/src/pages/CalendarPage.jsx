@@ -4,7 +4,7 @@ import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, ChevronRightIcon, ListIcon } from '../icons'
+import { ChartIcon, ChevronRightIcon, ListIcon, TrophyIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
@@ -16,6 +16,7 @@ const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
+  { to: '/prs', label: 'PRs', Icon: TrophyIcon },
   { label: 'Streak', Icon: ChartIcon, soon: true },
   { label: 'Trends', Icon: ChartIcon, soon: true },
 ]

@@ -102,6 +102,38 @@ public class ExercisesController : ControllerBase
         return Ok(cues);
     }
 
+    [HttpGet("prs")]
+    public async Task<ActionResult<List<ExercisePrDto>>> GetPrs()
+    {
+        var sets = await _db.ExerciseSets
+            .Include(s => s.Exercise).ThenInclude(e => e.MuscleTargets)
+            .Include(s => s.WorkoutSession)
+            .ToListAsync();
+
+        var prs = sets
+            .GroupBy(s => s.ExerciseId)
+            .Select(g =>
+            {
+                var exercise = g.First().Exercise;
+                var primaryMuscle = exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
+                var best = g.OrderByDescending(s => s.WeightKg).ThenBy(s => s.WorkoutSession.Date).First();
+                var bestEstimated1Rm = g.Max(s => s.WeightKg * (1 + s.Reps / 30m));
+
+                return new ExercisePrDto(
+                    exercise.Id,
+                    exercise.Name,
+                    exercise.Category.ToString(),
+                    primaryMuscle,
+                    best.WeightKg,
+                    best.WorkoutSession.Date,
+                    bestEstimated1Rm);
+            })
+            .OrderByDescending(p => p.HeaviestWeightDate)
+            .ToList();
+
+        return Ok(prs);
+    }
+
     [HttpGet("{id}/stats")]
     public async Task<ActionResult<ExerciseStatsDto>> GetStats(int id)
     {
