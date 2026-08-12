@@ -1108,32 +1108,31 @@ td {
   }
 }
 
-.quick-links-row {
-  display: flex;
-  flex-wrap: wrap;
+.quick-links-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--space-sm);
 }
 
-.quick-link-card {
-  display: inline-flex;
+.quick-link-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-xs);
-  padding: var(--space-xs) var(--space-sm);
-  border-radius: var(--radius-md);
+  justify-content: center;
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-2xs);
+  border-radius: var(--radius-lg);
   background: var(--surface-raised);
   color: var(--text-h);
   font-size: var(--text-sm);
   font-weight: 500;
+  text-align: center;
   text-decoration: none;
   transition: background var(--duration-fast) var(--ease-out);
 
-  svg:first-child {
+  svg {
     color: var(--text);
-  }
-
-  svg:last-child {
-    color: var(--text);
-    margin-left: var(--space-2xs);
   }
 
   &:hover,
@@ -1142,22 +1141,24 @@ td {
   }
 }
 
-.quick-link-card.soon {
+.quick-link-tile.soon {
   color: var(--text-tertiary);
 
-  svg:first-child {
+  svg {
     color: var(--text-tertiary);
   }
 }
 
 .quick-link-soon-badge {
-  font-size: 11px;
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  font-size: 10px;
   font-weight: 600;
   color: var(--text-tertiary);
   background: var(--code-bg);
   border-radius: var(--radius-full);
   padding: 2px var(--space-xs);
-  margin-left: var(--space-2xs);
 }
 
 .sheet-backdrop {
