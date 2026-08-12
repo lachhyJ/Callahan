@@ -4,7 +4,7 @@ import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, ChevronRightIcon, ListIcon, TrophyIcon } from '../icons'
+import { ChartIcon, ListIcon, TrophyIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
@@ -161,19 +161,18 @@ export default function CalendarPage() {
         )}
       </div>
 
-      <div className="quick-links-row section-gap">
+      <div className="quick-links-grid section-gap">
         {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
           soon ? (
-            <div key={label} className="quick-link-card soon">
+            <div key={label} className="quick-link-tile soon">
+              <span className="quick-link-soon-badge">Soon</span>
               <Icon />
               <span>{label}</span>
-              <span className="quick-link-soon-badge">Soon</span>
             </div>
           ) : (
-            <Link key={to} to={to} className="quick-link-card">
+            <Link key={to} to={to} className="quick-link-tile">
               <Icon />
               <span>{label}</span>
-              <ChevronRightIcon />
             </Link>
           )
         )}
