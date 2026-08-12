@@ -6,6 +6,10 @@ services:
       - backend.prod.env
     volumes:
       - /mnt/tank/callahan-data:/app/App_Data
+      # Read-only: the program PDF lives in Nextcloud, not this repo — that's
+      # the actual authoring surface (see docs/program-sync.md). Path here
+      # must match ProgramPdf__Path in backend.prod.env.
+      - "/mnt/tank/nextcloud-data/lachlan/files/FilingCabinet/Personal Archive/Fris Resources:/app/ProgramDocs:ro"
 
   frontend:
     build:
