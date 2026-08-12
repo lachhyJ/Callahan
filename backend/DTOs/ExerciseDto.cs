@@ -18,12 +18,3 @@ public record ExerciseStatsDto(
     decimal BestSetVolume,
     decimal BestSessionVolume,
     List<ChartPointDto> Chart);
-
-public record ExercisePrDto(
-    int ExerciseId,
-    string ExerciseName,
-    string Category,
-    string? PrimaryMuscle,
-    decimal HeaviestWeightKg,
-    DateOnly HeaviestWeightDate,
-    decimal BestEstimated1Rm);
