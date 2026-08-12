@@ -57,7 +57,7 @@ export default function LogWorkoutPage() {
       await createWorkoutSession({
         date,
         notes: notes || null,
-        sets: sets.map(({ exerciseId, reps, weightKg, setOrder }) => ({ exerciseId, reps, weightKg, setOrder })),
+        sets: sets.map(({ exerciseId, reps, weightKg, setOrder }) => ({ exerciseId, reps, weightKg, setOrder, setType: 'Normal' })),
       })
       navigate('/history', { state: { savedMessage: 'Workout saved' } })
     } catch (err) {
