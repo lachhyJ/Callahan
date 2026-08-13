@@ -37,7 +37,7 @@ function buildMonthGrid(year, month) {
   return weeks
 }
 
-export default function CalendarPage() {
+export default function DashboardPage() {
   const [workouts, setWorkouts] = useState(null)
   const [runs, setRuns] = useState(null)
   const [error, setError] = useState(null)
@@ -94,8 +94,8 @@ export default function CalendarPage() {
   }
 
   return (
-    <main className="page calendar-page">
-      <h1>Calendar</h1>
+    <main className="page dashboard-page">
+      <h1>Dashboard</h1>
 
       <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">

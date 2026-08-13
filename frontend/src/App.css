@@ -46,6 +46,10 @@
   }
 }
 
+.top-bar.idle {
+  padding: var(--space-xs) var(--space-lg);
+}
+
 .bottom-tab-bar {
   position: fixed;
   bottom: 0;
@@ -288,6 +292,18 @@ td {
   color: var(--text);
   font-size: 14px;
   text-align: center;
+}
+
+.log-run-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2xs);
+  margin-top: var(--space-md);
+
+  svg {
+    color: var(--text-tertiary);
+  }
 }
 
 .mini-progress-bar {
@@ -1422,6 +1438,13 @@ td {
   background: var(--surface-raised);
   border-radius: var(--radius-lg);
   padding: var(--space-md);
+  text-decoration: none;
+  transition: background var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    background: var(--accent-bg);
+  }
 }
 
 .streak-label {
@@ -1431,7 +1454,12 @@ td {
 
 .streak-numbers {
   display: flex;
+  align-items: center;
   gap: var(--space-lg);
+
+  svg {
+    color: var(--text);
+  }
 }
 
 .streak-stat {
@@ -1451,6 +1479,44 @@ td {
   font-size: 11px;
   color: var(--text-tertiary);
   white-space: nowrap;
+}
+
+.streak-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.streak-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  opacity: 0.6;
+}
+
+.streak-week.qualifies {
+  opacity: 1;
+}
+
+.streak-week-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-h);
+  font-weight: 500;
+
+  svg {
+    color: var(--accent);
+  }
+}
+
+.streak-week-empty {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  margin: 0;
 }
 
 .trend-chart {
@@ -1516,12 +1582,11 @@ td {
   font-size: 7px;
 }
 
-.trend-chart-current {
+.trend-chart-caption {
   display: block;
   margin-top: var(--space-2xs);
-  font-size: 12px;
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
+  font-size: 11px;
+  color: var(--text-tertiary);
 }
 
 .trend-bar {
@@ -1542,12 +1607,72 @@ td {
   stroke-width: 1;
 }
 
+.trend-summary {
+  margin: calc(-1 * var(--space-xs)) 0 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.lift-trends-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.lift-trend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-h);
+  text-decoration: none;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--accent);
+  }
+}
+
+.lift-trend-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lift-trend-range {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.lift-trend-delta {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.lift-trend-delta.up {
+  color: var(--success-text);
+}
+
+.lift-trend-delta.down {
+  color: var(--text-tertiary);
+}
+
+.program-page {
+  padding: 0;
+}
+
+.program-page-header {
+  padding: var(--space-sm) var(--space-lg);
+}
+
 .program-pdf-frame {
   flex: 1;
   width: 100%;
-  min-height: 70vh;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  min-height: calc(100vh - 180px);
+  border: none;
 }
 
 /* Kept last deliberately: at equal specificity CSS resolves ties by source

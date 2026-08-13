@@ -1,0 +1,77 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
+import { getStreakDetail } from '../api/client'
+import { BackIcon, CheckIcon } from '../icons'
+
+function formatDuration(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+function formatWeekLabel(iso) {
+  const start = new Date(`${iso}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  return `${start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
+}
+
+export default function StreakDetailPage() {
+  const { type } = useParams()
+  const navigate = useNavigate()
+  const [detail, setDetail] = useState(null)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setDetail(null)
+    setError(null)
+    getStreakDetail(type).then(setDetail).catch((err) => setError(err.message))
+  }, [type])
+
+  return (
+    <main className="page">
+      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
+
+      {error && <p className="error">{error}</p>}
+      {!error && !detail && <p>Loading…</p>}
+
+      {detail && (
+        <>
+          <h1>{detail.label}</h1>
+
+          {detail.weeks.length === 0 && (
+            <div className="empty-state">
+              <p>No sessions logged yet — this fills in once you start training.</p>
+            </div>
+          )}
+
+          <div className="streak-week-list">
+            {detail.weeks.map((w) => (
+              <div key={w.weekStart} className={w.qualifies ? 'streak-week qualifies' : 'streak-week'}>
+                <div className="streak-week-header">
+                  <span>{formatWeekLabel(w.weekStart)}</span>
+                  {w.qualifies && <CheckIcon />}
+                </div>
+
+                {w.workouts.length === 0 && w.runs.length === 0 && (
+                  <p className="streak-week-empty">Nothing logged</p>
+                )}
+
+                {w.workouts.map((sess) => (
+                  <Link key={`w-${sess.id}`} to={`/sessions/${sess.id}`} className="session-link">
+                    {sess.templateName ?? 'Workout'} · {sess.setCount} set{sess.setCount === 1 ? '' : 's'}
+                  </Link>
+                ))}
+                {w.runs.map((r) => (
+                  <p key={`r-${r.id}`}>
+                    Run · {r.distanceKm} km in {formatDuration(r.durationSeconds)}
+                  </p>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </main>
+  )
+}

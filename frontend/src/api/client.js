@@ -87,8 +87,16 @@ export function getStreaks() {
   return apiFetch('/api/streaks')
 }
 
+export function getStreakDetail(type) {
+  return apiFetch(`/api/streaks/${type}`)
+}
+
 export function getTrends(months = 6) {
   return apiFetch(`/api/trends?months=${months}`)
+}
+
+export function getLiftTrends(months = 6) {
+  return apiFetch(`/api/trends/exercises?months=${months}`)
 }
 
 // Not apiFetch: that always parses JSON, and a PDF has to come back as a
