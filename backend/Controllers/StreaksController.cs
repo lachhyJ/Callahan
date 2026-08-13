@@ -92,10 +92,17 @@ public class StreaksController : ControllerBase
         var definition = Definitions.FirstOrDefault(d => d.Type == type);
         if (definition.Type is null) return NotFound();
 
-        var workouts = await _db.WorkoutSessions
+        var workoutSessions = await _db.WorkoutSessions
+            .Include(s => s.Sets).ThenInclude(set => set.Exercise)
+            .Include(s => s.WorkoutTemplate)
             .OrderByDescending(s => s.Date)
-            .Select(s => new WorkoutSessionSummaryDto(s.Id, s.Date, s.Notes, s.Sets.Count, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null, s.StartedAt, s.FinishedAt))
             .ToListAsync();
+
+        var workouts = workoutSessions.Select(s => new WorkoutSessionSummaryDto(
+            s.Id, s.Date, s.Notes, s.Sets.Count,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
+            s.StartedAt, s.FinishedAt,
+            WorkoutSessionsController.ExercisePreview(s.Sets))).ToList();
 
         var runs = await _db.RunningSessions
             .OrderByDescending(s => s.Date)

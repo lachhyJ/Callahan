@@ -23,11 +23,28 @@ public class WorkoutSessionsController : ControllerBase
     public async Task<ActionResult<List<WorkoutSessionSummaryDto>>> GetAll()
     {
         var sessions = await _db.WorkoutSessions
+            .Include(s => s.Sets).ThenInclude(set => set.Exercise)
+            .Include(s => s.WorkoutTemplate)
             .OrderByDescending(s => s.Date)
-            .Select(s => new WorkoutSessionSummaryDto(s.Id, s.Date, s.Notes, s.Sets.Count, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null, s.StartedAt, s.FinishedAt))
             .ToListAsync();
 
-        return Ok(sessions);
+        var result = sessions.Select(s => new WorkoutSessionSummaryDto(
+            s.Id, s.Date, s.Notes, s.Sets.Count,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
+            s.StartedAt, s.FinishedAt,
+            ExercisePreview(s.Sets))).ToList();
+
+        return Ok(result);
+    }
+
+    // Untitled (template-less) sessions fall back to what was actually done —
+    // "Workout" alone tells you nothing when you're scanning a list of them.
+    internal static string? ExercisePreview(ICollection<ExerciseSet> sets)
+    {
+        var names = sets.OrderBy(s => s.SetOrder).Select(s => s.Exercise.Name).Distinct().ToList();
+        if (names.Count == 0) return null;
+        if (names.Count <= 2) return string.Join(", ", names);
+        return $"{names[0]}, {names[1]} & {names.Count - 2} more";
     }
 
     [HttpGet("{id}")]
