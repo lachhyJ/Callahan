@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/client'
+import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/client'
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
@@ -40,7 +40,7 @@ function buildMonthGrid(year, month) {
 
 export default function DashboardPage() {
   const [workouts, setWorkouts] = useState(null)
-  const [runs, setRuns] = useState(null)
+  const [activities, setActivities] = useState(null)
   const [error, setError] = useState(null)
   const [cursor, setCursor] = useState(() => {
     const now = new Date()
@@ -54,10 +54,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    Promise.all([getWorkoutSessions(), getRunningSessions()])
-      .then(([w, r]) => {
+    Promise.all([getWorkoutSessions(), getActivities()])
+      .then(([w, a]) => {
         setWorkouts(w)
-        setRuns(r)
+        setActivities(a)
       })
       .catch((err) => setError(err.message))
   }, [])
@@ -69,18 +69,18 @@ export default function DashboardPage() {
       entry.workouts.push(w)
       map.set(w.date, entry)
     }
-    for (const r of runs ?? []) {
-      const entry = map.get(r.date) ?? { workouts: [], runs: [] }
-      entry.runs.push(r)
-      map.set(r.date, entry)
+    for (const a of activities ?? []) {
+      const entry = map.get(a.date) ?? { workouts: [], runs: [] }
+      entry.runs.push(a)
+      map.set(a.date, entry)
     }
     return map
-  }, [workouts, runs])
+  }, [workouts, activities])
 
   if (error) return <main className="page"><p className="error">{error}</p></main>
-  if (workouts === null || runs === null) return <main className="page"><p>Loading…</p></main>
+  if (workouts === null || activities === null) return <main className="page"><p>Loading…</p></main>
 
-  const hasAnyHistory = workouts.length > 0 || runs.length > 0
+  const hasAnyHistory = workouts.length > 0 || activities.length > 0
   const weeks = buildMonthGrid(cursor.year, cursor.month)
   const todayIso = isoDate(new Date())
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(undefined, MONTH_FORMAT)
@@ -125,8 +125,9 @@ export default function DashboardPage() {
             const iso = isoDate(date)
             const entry = byDate.get(iso)
             const hasWorkout = entry?.workouts.length > 0
-            const hasRun = entry?.runs.length > 0
-            const hasData = hasWorkout || hasRun
+            const hasRunning = entry?.runs.some((r) => r.type === 'Running')
+            const hasUltimate = entry?.runs.some((r) => r.type === 'Ultimate')
+            const hasData = hasWorkout || hasRunning || hasUltimate
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
 
@@ -152,7 +153,8 @@ export default function DashboardPage() {
                 {dayNumber}
                 <span className="calendar-dots">
                   {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
-                  {hasRun && <span className="calendar-dot calendar-dot-run" />}
+                  {hasRunning && <span className="calendar-dot calendar-dot-run" />}
+                  {hasUltimate && <span className="calendar-dot calendar-dot-ultimate" />}
                 </span>
               </button>
             )

@@ -1,5 +1,6 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -31,7 +32,7 @@ public class StreaksController : ControllerBase
     public async Task<ActionResult<List<StreakDto>>> GetStreaks()
     {
         var workoutDates = await _db.WorkoutSessions.Select(s => s.Date).ToListAsync();
-        var runDates = await _db.RunningSessions.Select(s => s.Date).ToListAsync();
+        var runDates = await _db.Activities.Where(a => a.Type == ActivityType.Running).Select(a => a.Date).ToListAsync();
 
         if (workoutDates.Count == 0 && runDates.Count == 0)
         {
@@ -104,9 +105,10 @@ public class StreaksController : ControllerBase
             s.StartedAt, s.FinishedAt,
             WorkoutSessionsController.CategorySummary(s.Sets))).ToList();
 
-        var runs = await _db.RunningSessions
-            .OrderByDescending(s => s.Date)
-            .Select(s => new RunningSessionDto(s.Id, s.Date, s.DistanceKm, s.DurationSeconds, s.Notes))
+        var runs = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running)
+            .OrderByDescending(a => a.Date)
+            .Select(a => new ActivityDto(a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes))
             .ToListAsync();
 
         if (workouts.Count == 0 && runs.Count == 0)

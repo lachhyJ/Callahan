@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { activityLabel } from '../utils/activityLabel'
 
 function workoutLabel(w) {
   return w.templateName ?? w.categorySummary ?? 'Workout'
@@ -16,7 +17,7 @@ export default function SessionList({ workouts, runs, onLinkClick }) {
         </Link>
       ))}
       {runs.map((r) => (
-        <p key={`r-${r.id}`}>Run · {r.distanceKm} km</p>
+        <p key={`r-${r.id}`}>{activityLabel(r)}</p>
       ))}
     </>
   )

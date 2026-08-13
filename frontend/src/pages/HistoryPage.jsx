@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { getRunningSessions, getWorkoutSessions } from '../api/client'
+import { getActivities, getWorkoutSessions } from '../api/client'
 import { CheckIcon } from '../icons'
-
-function formatDuration(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
+import { activityLabel } from '../utils/activityLabel'
 
 export default function HistoryPage() {
   const [items, setItems] = useState(null)
@@ -16,11 +11,11 @@ export default function HistoryPage() {
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
 
   useEffect(() => {
-    Promise.all([getWorkoutSessions(), getRunningSessions()])
-      .then(([workouts, runs]) => {
+    Promise.all([getWorkoutSessions(), getActivities()])
+      .then(([workouts, activities]) => {
         const merged = [
-          ...workouts.map((w) => ({ type: 'workout', ...w })),
-          ...runs.map((r) => ({ type: 'run', ...r })),
+          ...workouts.map((w) => ({ kind: 'workout', ...w })),
+          ...activities.map((a) => ({ kind: 'activity', ...a })),
         ].sort((a, b) => b.date.localeCompare(a.date))
         setItems(merged)
       })
@@ -48,14 +43,14 @@ export default function HistoryPage() {
         </div>
       )}
       {items?.map((item) => (
-        <div key={`${item.type}-${item.id}`} className="history-item">
+        <div key={`${item.kind}-${item.id}`} className="history-item">
           <strong>{item.date}</strong>{' '}
-          {item.type === 'workout' ? (
+          {item.kind === 'workout' ? (
             <Link to={`/sessions/${item.id}`} className="session-link">
               {item.templateName ?? item.categorySummary ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}
             </Link>
           ) : (
-            <span>Run — {item.distanceKm} km in {formatDuration(item.durationSeconds)}</span>
+            <span>{activityLabel(item)}</span>
           )}
           {item.notes && <p className="notes">{item.notes}</p>}
         </div>

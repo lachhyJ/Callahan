@@ -1,5 +1,6 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -35,9 +36,9 @@ public class TrendsController : ControllerBase
             .Select(s => s.Date)
             .ToListAsync();
 
-        var runDates = await _db.RunningSessions
-            .Where(s => s.Date >= earliestMonthStart)
-            .Select(s => s.Date)
+        var runDates = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart)
+            .Select(a => a.Date)
             .ToListAsync();
 
         var volumeByMonth = new Dictionary<DateOnly, decimal>();

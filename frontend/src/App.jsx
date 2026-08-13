@@ -7,7 +7,7 @@ import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
-import LogRunPage from './pages/LogRunPage'
+import LogActivityPage from './pages/LogActivityPage'
 import HistoryPage from './pages/HistoryPage'
 import DashboardPage from './pages/DashboardPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
@@ -92,7 +92,7 @@ function AppRoutes() {
           <Route path="/" element={<ProtectedRoute><WorkoutTemplatesPage /></ProtectedRoute>} />
           <Route path="/workout/custom" element={<ProtectedRoute><LogWorkoutPage /></ProtectedRoute>} />
           <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
-          <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
+          <Route path="/run" element={<ProtectedRoute><LogActivityPage /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/exercises" element={<ProtectedRoute><ExercisesListPage /></ProtectedRoute>} />

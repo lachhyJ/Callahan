@@ -12,7 +12,7 @@ public class AppDbContext : DbContext
     public DbSet<Exercise> Exercises => Set<Exercise>();
     public DbSet<WorkoutSession> WorkoutSessions => Set<WorkoutSession>();
     public DbSet<ExerciseSet> ExerciseSets => Set<ExerciseSet>();
-    public DbSet<RunningSession> RunningSessions => Set<RunningSession>();
+    public DbSet<Activity> Activities => Set<Activity>();
     public DbSet<WorkoutTemplate> WorkoutTemplates => Set<WorkoutTemplate>();
     public DbSet<WorkoutTemplateExercise> WorkoutTemplateExercises => Set<WorkoutTemplateExercise>();
     public DbSet<ExerciseNote> ExerciseNotes => Set<ExerciseNote>();
@@ -22,6 +22,11 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<Activity>()
+            .HasIndex(a => a.GarminActivityId)
+            .IsUnique()
+            .HasFilter("[GarminActivityId] IS NOT NULL");
+
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 2, Name = "Overhead Press", Category = ExerciseCategory.Push },

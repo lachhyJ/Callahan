@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createRunningSession } from '../api/client'
+import { createActivity } from '../api/client'
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export default function LogRunPage() {
+export default function LogActivityPage() {
+  const [type, setType] = useState('Running')
   const [date, setDate] = useState(todayIso())
   const [distanceKm, setDistanceKm] = useState('')
   const [minutes, setMinutes] = useState('')
@@ -22,13 +23,14 @@ export default function LogRunPage() {
     setSaving(true)
     try {
       const durationSeconds = (Number(minutes) || 0) * 60 + (Number(seconds) || 0)
-      await createRunningSession({
+      await createActivity({
         date,
-        distanceKm: Number(distanceKm),
+        type,
+        distanceKm: type === 'Running' ? Number(distanceKm) : null,
         durationSeconds,
         notes: notes || null,
       })
-      navigate('/history', { state: { savedMessage: 'Run saved' } })
+      navigate('/history', { state: { savedMessage: 'Activity saved' } })
     } catch (err) {
       setError(err.message)
     } finally {
@@ -38,17 +40,26 @@ export default function LogRunPage() {
 
   return (
     <main className="page page-narrow">
-      <h1>Log run</h1>
+      <h1>Log activity</h1>
       {error && <p className="error">{error}</p>}
       <form onSubmit={handleSave}>
+        <label>
+          Type
+          <select value={type} onChange={(e) => setType(e.target.value)}>
+            <option value="Running">Running</option>
+            <option value="Ultimate">Ultimate</option>
+          </select>
+        </label>
         <label>
           Date
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
         </label>
-        <label>
-          Distance (km)
-          <input type="number" step="0.01" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} required />
-        </label>
+        {type === 'Running' && (
+          <label>
+            Distance (km)
+            <input type="number" step="0.01" value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} required />
+          </label>
+        )}
         <label>
           Duration
           <div className="duration-inputs">
@@ -60,7 +71,7 @@ export default function LogRunPage() {
           Notes
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
         </label>
-        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save run'}</button>
+        <button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save activity'}</button>
       </form>
     </main>
   )
