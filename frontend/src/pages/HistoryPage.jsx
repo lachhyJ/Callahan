@@ -52,7 +52,7 @@ export default function HistoryPage() {
           <strong>{item.date}</strong>{' '}
           {item.type === 'workout' ? (
             <Link to={`/sessions/${item.id}`} className="session-link">
-              {item.templateName ?? item.exercisePreview ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}
+              {item.templateName ?? item.categorySummary ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}
             </Link>
           ) : (
             <span>Run — {item.distanceKm} km in {formatDuration(item.durationSeconds)}</span>

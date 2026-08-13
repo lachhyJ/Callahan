@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom'
 
 function workoutLabel(w) {
-  return w.templateName ?? w.exercisePreview ?? 'Workout'
+  return w.templateName ?? w.categorySummary ?? 'Workout'
 }
 
 // Compact preview, deliberately lighter than History's full log entries —
