@@ -72,4 +72,53 @@ public class TrendsController : ControllerBase
 
         return Ok(result);
     }
+
+    // Movement, not bests — deliberately excludes exercises with only one
+    // month of data in the window, since a single session can't show a trend.
+    [HttpGet("exercises")]
+    public async Task<ActionResult<List<LiftTrendDto>>> GetLiftTrends([FromQuery] int months = 6)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+
+        var sets = await _db.ExerciseSets
+            .Where(s => s.WorkoutSession.Date >= earliestMonthStart)
+            .Include(s => s.WorkoutSession)
+            .Include(s => s.Exercise)
+            .ToListAsync();
+
+        var maxWeightByExerciseAndMonth = new Dictionary<int, Dictionary<DateOnly, decimal>>();
+        var exerciseNames = new Dictionary<int, string>();
+
+        foreach (var s in sets)
+        {
+            exerciseNames[s.ExerciseId] = s.Exercise.Name;
+            var monthStart = new DateOnly(s.WorkoutSession.Date.Year, s.WorkoutSession.Date.Month, 1);
+
+            if (!maxWeightByExerciseAndMonth.TryGetValue(s.ExerciseId, out var byMonth))
+            {
+                byMonth = [];
+                maxWeightByExerciseAndMonth[s.ExerciseId] = byMonth;
+            }
+
+            byMonth[monthStart] = byMonth.TryGetValue(monthStart, out var existing) ? Math.Max(existing, s.WeightKg) : s.WeightKg;
+        }
+
+        var trends = new List<LiftTrendDto>();
+        foreach (var (exerciseId, byMonth) in maxWeightByExerciseAndMonth)
+        {
+            if (byMonth.Count < 2) continue;
+
+            var months2 = byMonth.Keys.OrderBy(m => m).ToList();
+            var earliestMonth = months2[0];
+            var latestMonth = months2[^1];
+            var earliestWeight = byMonth[earliestMonth];
+            var latestWeight = byMonth[latestMonth];
+
+            trends.Add(new LiftTrendDto(exerciseId, exerciseNames[exerciseId], earliestWeight, earliestMonth, latestWeight, latestMonth, latestWeight - earliestWeight));
+        }
+
+        return Ok(trends.OrderByDescending(t => Math.Abs(t.DeltaKg)).ToList());
+    }
 }

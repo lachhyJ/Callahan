@@ -86,6 +86,44 @@ public class StreaksController : ControllerBase
         return Ok(results);
     }
 
+    [HttpGet("{type}")]
+    public async Task<ActionResult<StreakDetailDto>> GetStreakDetail(string type)
+    {
+        var definition = Definitions.FirstOrDefault(d => d.Type == type);
+        if (definition.Type is null) return NotFound();
+
+        var workouts = await _db.WorkoutSessions
+            .OrderByDescending(s => s.Date)
+            .Select(s => new WorkoutSessionSummaryDto(s.Id, s.Date, s.Notes, s.Sets.Count, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null, s.StartedAt, s.FinishedAt))
+            .ToListAsync();
+
+        var runs = await _db.RunningSessions
+            .OrderByDescending(s => s.Date)
+            .Select(s => new RunningSessionDto(s.Id, s.Date, s.DistanceKm, s.DurationSeconds, s.Notes))
+            .ToListAsync();
+
+        if (workouts.Count == 0 && runs.Count == 0)
+        {
+            return Ok(new StreakDetailDto(definition.Type, definition.Label, []));
+        }
+
+        var currentWeekStart = MondayOf(DateOnly.FromDateTime(DateTime.Now));
+        var earliestWeekStart = MondayOf(workouts.Select(w => w.Date).Concat(runs.Select(r => r.Date)).Min());
+        var weekCount = (currentWeekStart.DayNumber - earliestWeekStart.DayNumber) / 7 + 1;
+
+        var weeks = new List<StreakWeekDto>();
+        for (var i = weekCount - 1; i >= 0; i--)
+        {
+            var weekStart = earliestWeekStart.AddDays(7 * i);
+            var weekEnd = weekStart.AddDays(6);
+            var weekWorkouts = workouts.Where(w => w.Date >= weekStart && w.Date <= weekEnd).ToList();
+            var weekRuns = runs.Where(r => r.Date >= weekStart && r.Date <= weekEnd).ToList();
+            weeks.Add(new StreakWeekDto(weekStart, definition.Qualifies(weekWorkouts.Count, weekRuns.Count), weekWorkouts, weekRuns));
+        }
+
+        return Ok(new StreakDetailDto(definition.Type, definition.Label, weeks));
+    }
+
     // Monday-first week start, matching the frontend's convention (dateUtils.js).
     private static DateOnly MondayOf(DateOnly date)
     {
