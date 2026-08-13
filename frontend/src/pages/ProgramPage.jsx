@@ -3,40 +3,36 @@ import { useNavigate } from 'react-router-dom'
 import { getProgramPdfBlob } from '../api/client'
 import { BackIcon } from '../icons'
 
+// An embedded iframe only ever showed page 1 on mobile Safari — its PDF
+// viewer inside an iframe doesn't get the same multi-page scroll/zoom as a
+// real top-level PDF view. Replacing the tab's location with the blob URL
+// hands off to that real viewer instead. It's still the same tab/session
+// (no new window, no target=_blank), so the browser's own back gesture
+// returns to wherever this page was opened from — nothing to confirm.
 export default function ProgramPage() {
   const navigate = useNavigate()
-  const [pdfUrl, setPdfUrl] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    let objectUrl = null
     getProgramPdfBlob()
       .then((blob) => {
-        objectUrl = URL.createObjectURL(blob)
-        // #view=FitH asks the PDF viewer to open fit-to-width instead of its
-        // 100%-zoom default, which otherwise crops the page on mobile.
-        setPdfUrl(`${objectUrl}#view=FitH`)
+        const objectUrl = URL.createObjectURL(blob)
+        window.location.replace(`${objectUrl}#view=FitH`)
       })
       .catch((err) => setError(err.message))
-    return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl)
-    }
   }, [])
 
   return (
-    <main className="page program-page">
-      <div className="program-page-header">
-        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
-      </div>
+    <main className="page">
+      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
 
-      {error && (
+      {error ? (
         <div className="empty-state">
           <p>{error}</p>
         </div>
+      ) : (
+        <p>Opening program…</p>
       )}
-      {!error && !pdfUrl && <p>Loading…</p>}
-
-      {pdfUrl && <iframe src={pdfUrl} title="Training program" className="program-pdf-frame" />}
     </main>
   )
 }

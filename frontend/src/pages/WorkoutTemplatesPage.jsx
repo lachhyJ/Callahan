@@ -35,7 +35,7 @@ export default function WorkoutTemplatesPage() {
       <Link to="/workout/custom" className="custom-workout-link">
         Or start an empty workout
       </Link>
-      <Link to="/run" className="custom-workout-link log-run-link">
+      <Link to="/run" className="log-run-card">
         <RunIcon /> Log a run
       </Link>
     </main>

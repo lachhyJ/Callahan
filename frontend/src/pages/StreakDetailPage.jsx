@@ -1,13 +1,8 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getStreakDetail } from '../api/client'
 import { BackIcon, CheckIcon } from '../icons'
-
-function formatDuration(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
+import SessionList from '../components/SessionList'
 
 function formatWeekLabel(iso) {
   const start = new Date(`${iso}T00:00:00`)
@@ -57,16 +52,7 @@ export default function StreakDetailPage() {
                   <p className="streak-week-empty">Nothing logged</p>
                 )}
 
-                {w.workouts.map((sess) => (
-                  <Link key={`w-${sess.id}`} to={`/sessions/${sess.id}`} className="session-link">
-                    {sess.templateName ?? 'Workout'} · {sess.setCount} set{sess.setCount === 1 ? '' : 's'}
-                  </Link>
-                ))}
-                {w.runs.map((r) => (
-                  <p key={`r-${r.id}`}>
-                    Run · {r.distanceKm} km in {formatDuration(r.durationSeconds)}
-                  </p>
-                ))}
+                <SessionList workouts={w.workouts} runs={w.runs} />
               </div>
             ))}
           </div>
