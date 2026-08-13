@@ -32,19 +32,26 @@ public class WorkoutSessionsController : ControllerBase
             s.Id, s.Date, s.Notes, s.Sets.Count,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.StartedAt, s.FinishedAt,
-            ExercisePreview(s.Sets))).ToList();
+            CategorySummary(s.Sets))).ToList();
 
         return Ok(result);
     }
 
-    // Untitled (template-less) sessions fall back to what was actually done —
-    // "Workout" alone tells you nothing when you're scanning a list of them.
-    internal static string? ExercisePreview(ICollection<ExerciseSet> sets)
+    // Untitled (template-less) sessions fall back to this — and in practice
+    // that's every session, since none of the real history carries a
+    // WorkoutTemplateId (Hevy-imported, not started via the templated flow).
+    // Exercise names ran on forever for a 6-exercise session; category is
+    // short, always available, and closer to how the program names its own
+    // days ("Lower & Power") than a growing exercise list ever was.
+    internal static string? CategorySummary(ICollection<ExerciseSet> sets)
     {
-        var names = sets.OrderBy(s => s.SetOrder).Select(s => s.Exercise.Name).Distinct().ToList();
-        if (names.Count == 0) return null;
-        if (names.Count <= 2) return string.Join(", ", names);
-        return $"{names[0]}, {names[1]} & {names.Count - 2} more";
+        if (sets.Count == 0) return null;
+        var categories = sets
+            .GroupBy(s => s.Exercise.Category)
+            .OrderByDescending(g => g.Count())
+            .Select(g => g.Key.ToString())
+            .ToList();
+        return string.Join(", ", categories);
     }
 
     [HttpGet("{id}")]

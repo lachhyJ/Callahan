@@ -102,7 +102,7 @@ public class StreaksController : ControllerBase
             s.Id, s.Date, s.Notes, s.Sets.Count,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.StartedAt, s.FinishedAt,
-            WorkoutSessionsController.ExercisePreview(s.Sets))).ToList();
+            WorkoutSessionsController.CategorySummary(s.Sets))).ToList();
 
         var runs = await _db.RunningSessions
             .OrderByDescending(s => s.Date)

@@ -82,7 +82,10 @@
 }
 
 .app-content.with-bottom-nav {
-  padding-bottom: 64px;
+  /* Must match the tab bar's own height, safe-area inset included — the bar
+     is fixed, so without this the last chunk of scrollable content ends up
+     hidden behind it on any phone with a home-indicator safe area. */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
 .page {
@@ -1143,6 +1146,7 @@ td {
 }
 
 .quick-link-tile {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1166,6 +1170,26 @@ td {
   &:focus-visible {
     background: var(--accent-bg);
   }
+}
+
+.quick-link-tile.soon {
+  color: var(--text-tertiary);
+
+  svg {
+    color: var(--text-tertiary);
+  }
+}
+
+.quick-link-soon-badge {
+  position: absolute;
+  top: var(--space-xs);
+  right: var(--space-xs);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--code-bg);
+  border-radius: var(--radius-full);
+  padding: 2px var(--space-xs);
 }
 
 .sheet-backdrop {

@@ -4,19 +4,20 @@ import { getRunningSessions, getWeeklyVolume, getWorkoutSessions } from '../api/
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, DocumentIcon, FlameIcon, ListIcon } from '../icons'
+import { ChartIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Six real destinations now — fills the two-row, three-column grid the
-// layout was built for.
+// Five real destinations, one placeholder — fills the two-row,
+// three-column grid the layout was built for.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
+  { label: 'Tapering', Icon: TaperIcon, soon: true },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
@@ -160,12 +161,20 @@ export default function DashboardPage() {
       </div>
 
       <div className="quick-links-grid section-gap">
-        {QUICK_LINKS.map(({ to, label, Icon }) => (
-          <Link key={to} to={to} className="quick-link-tile">
-            <Icon />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
+          soon ? (
+            <div key={label} className="quick-link-tile soon">
+              <span className="quick-link-soon-badge">Soon</span>
+              <Icon />
+              <span>{label}</span>
+            </div>
+          ) : (
+            <Link key={to} to={to} className="quick-link-tile">
+              <Icon />
+              <span>{label}</span>
+            </Link>
+          )
+        )}
       </div>
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
