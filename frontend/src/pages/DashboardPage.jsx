@@ -14,7 +14,7 @@ const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
-  { to: '/streaks', label: 'Streak', Icon: FlameIcon },
+  { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
 ]

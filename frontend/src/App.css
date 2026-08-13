@@ -294,15 +294,27 @@ td {
   text-align: center;
 }
 
-.log-run-link {
-  display: inline-flex;
+.log-run-card {
+  display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2xs);
-  margin-top: var(--space-md);
+  gap: var(--space-xs);
+  margin-top: var(--space-lg);
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  font-weight: 500;
+  text-decoration: none;
+  transition: border-color var(--duration-fast) var(--ease-out);
 
   svg {
-    color: var(--text-tertiary);
+    color: var(--text);
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--accent);
   }
 }
 
@@ -1658,21 +1670,6 @@ td {
 
 .lift-trend-delta.down {
   color: var(--text-tertiary);
-}
-
-.program-page {
-  padding: 0;
-}
-
-.program-page-header {
-  padding: var(--space-sm) var(--space-lg);
-}
-
-.program-pdf-frame {
-  flex: 1;
-  width: 100%;
-  min-height: calc(100vh - 180px);
-  border: none;
 }
 
 /* Kept last deliberately: at equal specificity CSS resolves ties by source

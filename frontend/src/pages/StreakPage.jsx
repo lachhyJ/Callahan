@@ -15,7 +15,7 @@ export default function StreakPage() {
   return (
     <main className="page">
       <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
-      <h1>Streak</h1>
+      <h1>Streaks</h1>
 
       {error && <p className="error">{error}</p>}
       {!error && streaks === null && <p>Loading…</p>}
