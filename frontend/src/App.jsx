@@ -2,28 +2,28 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
-import { CalendarIcon, HistoryIcon, PlayIcon, RunIcon, WorkoutIcon } from './icons'
+import { DashboardIcon, HistoryIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
 import LogWorkoutPage from './pages/LogWorkoutPage'
 import LogRunPage from './pages/LogRunPage'
 import HistoryPage from './pages/HistoryPage'
-import CalendarPage from './pages/CalendarPage'
+import DashboardPage from './pages/DashboardPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import ExercisesListPage from './pages/ExercisesListPage'
 import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import MuscleBalancePage from './pages/MuscleBalancePage'
 import StreakPage from './pages/StreakPage'
+import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
 import ProgramPage from './pages/ProgramPage'
 import './App.css'
 
 const TABS = [
   { to: '/', label: 'Workout', Icon: WorkoutIcon },
-  { to: '/run', label: 'Log run', Icon: RunIcon },
   { to: '/history', label: 'History', Icon: HistoryIcon },
-  { to: '/calendar', label: 'Calendar', Icon: CalendarIcon },
+  { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon },
 ]
 
 function ProtectedRoute({ children }) {
@@ -40,14 +40,15 @@ function TopBar() {
   useEffect(() => onActiveWorkoutChange(() => setActiveWorkout(loadActiveWorkout())), [])
 
   const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
+  const showResume = activeWorkout && !onThatWorkout
 
   function handleLogout() {
     if (window.confirm('Log out?')) logout()
   }
 
   return (
-    <div className="top-bar">
-      {activeWorkout && !onThatWorkout && (
+    <div className={showResume ? 'top-bar' : 'top-bar idle'}>
+      {showResume && (
         <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
           <PlayIcon /> Resume
         </NavLink>
@@ -93,12 +94,13 @@ function AppRoutes() {
           <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
           <Route path="/run" element={<ProtectedRoute><LogRunPage /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-          <Route path="/calendar" element={<ProtectedRoute><CalendarPage /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
           <Route path="/exercises" element={<ProtectedRoute><ExercisesListPage /></ProtectedRoute>} />
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
           <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />
           <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
+          <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
         </Routes>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { getStreaks } from '../api/client'
-import { BackIcon } from '../icons'
+import { BackIcon, ChevronRightIcon } from '../icons'
 
 export default function StreakPage() {
   const navigate = useNavigate()
@@ -23,7 +23,7 @@ export default function StreakPage() {
       {streaks && (
         <div className="streak-list">
           {streaks.map((s) => (
-            <div key={s.type} className="streak-card">
+            <Link key={s.type} to={`/streaks/${s.type}`} className="streak-card">
               <span className="streak-label">{s.label}</span>
               <div className="streak-numbers">
                 <div className="streak-stat">
@@ -34,8 +34,9 @@ export default function StreakPage() {
                   <span className="streak-value">{s.bestWeeks}</span>
                   <span className="streak-stat-label">best {s.bestWeeks === 1 ? 'week' : 'weeks'}</span>
                 </div>
+                <ChevronRightIcon />
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

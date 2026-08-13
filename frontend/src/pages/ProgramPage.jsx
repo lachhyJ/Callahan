@@ -13,7 +13,9 @@ export default function ProgramPage() {
     getProgramPdfBlob()
       .then((blob) => {
         objectUrl = URL.createObjectURL(blob)
-        setPdfUrl(objectUrl)
+        // #view=FitH asks the PDF viewer to open fit-to-width instead of its
+        // 100%-zoom default, which otherwise crops the page on mobile.
+        setPdfUrl(`${objectUrl}#view=FitH`)
       })
       .catch((err) => setError(err.message))
     return () => {
@@ -23,8 +25,9 @@ export default function ProgramPage() {
 
   return (
     <main className="page program-page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
-      <h1>Program</h1>
+      <div className="program-page-header">
+        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
+      </div>
 
       {error && (
         <div className="empty-state">

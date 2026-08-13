@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { getWorkoutTemplates } from '../api/client'
 import { loadActiveWorkout } from '../activeWorkout'
+import { RunIcon } from '../icons'
 
 export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState(null)
@@ -33,6 +34,9 @@ export default function WorkoutTemplatesPage() {
       </div>
       <Link to="/workout/custom" className="custom-workout-link">
         Or start an empty workout
+      </Link>
+      <Link to="/run" className="custom-workout-link log-run-link">
+        <RunIcon /> Log a run
       </Link>
     </main>
   )
