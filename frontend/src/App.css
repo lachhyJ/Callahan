@@ -1124,6 +1124,10 @@ td {
   border: 1.5px solid var(--accent);
 }
 
+.calendar-dot-ultimate {
+  background: var(--text-tertiary);
+}
+
 .session-link {
   color: var(--text);
   font-size: var(--text-sm);

@@ -160,13 +160,13 @@ export function cancelRestTimer(timerId) {
   return apiFetch(`/api/resttimer/cancel/${timerId}`, { method: 'POST' })
 }
 
-export function getRunningSessions() {
-  return apiFetch('/api/runningsessions')
+export function getActivities() {
+  return apiFetch('/api/activities')
 }
 
-export function createRunningSession(session) {
-  return apiFetch('/api/runningsessions', {
+export function createActivity(activity) {
+  return apiFetch('/api/activities', {
     method: 'POST',
-    body: JSON.stringify(session),
+    body: JSON.stringify(activity),
   })
 }
