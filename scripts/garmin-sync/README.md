@@ -30,12 +30,42 @@ mkdir -p /mnt/tank/callahan-data/garmin-sync-state
 # otherwise) — HOME is set to this in the docker run below.
 ```
 
-Cron entry (adjust paths; find the compose network name with
-`docker network ls | grep callahan` if it's not `callahan_default`):
+## Scheduling (TrueNAS Cron Task, not a raw crontab)
 
+TrueNAS SCALE schedules cron jobs through its own middleware (`cronjob.create`
+via `midclt`, same as the existing `callahan-pdf-watch` job) rather than a
+plain crontab file — `sudo crontab -e` won't show or affect it. Create via:
+
+```bash
+sudo midclt call cronjob.create '{
+  "enabled": true,
+  "stdout": true,
+  "stderr": true,
+  "schedule": {"minute": "0", "hour": "6", "dom": "*", "month": "*", "dow": "*"},
+  "command": "(docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync >> /mnt/tank/callahan-data/garmin-sync.log 2>&1)",
+  "description": "callahan-garmin-sync",
+  "user": "root"
+}'
 ```
-0 6 * * * sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync >> /mnt/tank/callahan-data/garmin-sync.log 2>&1
-```
+
+Two non-obvious things baked into that command:
+
+- **`stdout`/`stderr` must stay `true`.** TrueNAS's naming is inverted from
+  what it sounds like — `true` means *suppress* (redirect to `/dev/null`),
+  not capture. Worse: whenever it's *not* suppressed and the cron user has
+  an email configured, TrueNAS auto-emails the full output on every run
+  ("CronTask Run"). Neither behavior is separately toggleable in this API.
+- **The command is wrapped in `( ... >> file 2>&1 )`, a subshell with its
+  own redirect.** TrueNAS appends its own `> /dev/null 2> /dev/null` *after*
+  whatever command you give it — without the subshell, that outer redirect
+  overrides a plain trailing `>> file 2>&1` and silently empties it. The
+  parens make our redirect apply inside, before TrueNAS's suppression wraps
+  the (now-empty) outside.
+
+The net effect: real output lands in `garmin-sync.log`, TrueNAS's own capture
+sees nothing, so no job-run email. Confirmed 2026-08-15 by checking
+`logs_excerpt` on a manually triggered run (`midclt call cronjob.run 5`) —
+empty, while the log file had the full run output.
 
 Daily is enough — this isn't a live feed, and the 14-day lookback (see
 `--days`) means a missed run or two doesn't lose anything; re-synced
