@@ -228,9 +228,44 @@ td {
   font-size: 14px;
 }
 
+.history-week-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.history-week {
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+}
+
+.history-week-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  color: var(--text-h);
+  font-weight: 500;
+  padding-bottom: var(--space-2xs);
+}
+
+.history-week-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 .history-item {
   padding: var(--space-sm) 0;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.history-week .history-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .empty-state {
