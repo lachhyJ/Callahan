@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom'
 import { activityLabel } from '../utils/activityLabel'
 
-function workoutLabel(w) {
-  return w.templateName ?? w.categorySummary ?? 'Workout'
+export function workoutLabel(w) {
+  if (w.templateName) return w.templateSubtitle ? `${w.templateName} — ${w.templateSubtitle}` : w.templateName
+  return w.categorySummary ?? 'Workout'
 }
 
 // Compact preview, deliberately lighter than History's full log entries —

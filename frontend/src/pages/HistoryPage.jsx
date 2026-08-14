@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { getActivities, getWorkoutSessions } from '../api/client'
 import { CheckIcon } from '../icons'
 import { activityLabel } from '../utils/activityLabel'
+import { workoutLabel } from '../components/SessionList'
 
 export default function HistoryPage() {
   const [items, setItems] = useState(null)
@@ -47,7 +48,7 @@ export default function HistoryPage() {
           <strong>{item.date}</strong>{' '}
           {item.kind === 'workout' ? (
             <Link to={`/sessions/${item.id}`} className="session-link">
-              {item.templateName ?? item.categorySummary ?? 'Workout'} — {item.setCount} set{item.setCount === 1 ? '' : 's'}
+              {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
             </Link>
           ) : (
             <span>{activityLabel(item)}</span>

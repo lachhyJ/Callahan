@@ -4,6 +4,7 @@ public class WorkoutTemplate
 {
     public int Id { get; set; }
     public required string Name { get; set; }
+    public required string Subtitle { get; set; }
     public int SortOrder { get; set; }
 
     public ICollection<WorkoutTemplateExercise> Exercises { get; set; } = [];

@@ -65,9 +65,9 @@ public class AppDbContext : DbContext
         );
 
         modelBuilder.Entity<WorkoutTemplate>().HasData(
-            new WorkoutTemplate { Id = 1, Name = "Workout 1 — Lower & Power", SortOrder = 1 },
-            new WorkoutTemplate { Id = 2, Name = "Workout 2 — Upper", SortOrder = 2 },
-            new WorkoutTemplate { Id = 3, Name = "Workout 3 — Full Body Athletic", SortOrder = 3 }
+            new WorkoutTemplate { Id = 1, Name = "Day A", Subtitle = "Lower & Power", SortOrder = 1 },
+            new WorkoutTemplate { Id = 2, Name = "Day B", Subtitle = "Upper", SortOrder = 2 },
+            new WorkoutTemplate { Id = 3, Name = "Day C", Subtitle = "Full Body Athletic", SortOrder = 3 }
         );
 
         // Rest durations per the program's Rest Guidelines table:
@@ -75,13 +75,13 @@ public class AppDbContext : DbContext
         // Isolation/light/core 60s, Jumps & plyos 105s. Exercises the table didn't
         // name explicitly are judgment calls — adjustable in the UI regardless.
         modelBuilder.Entity<WorkoutTemplateExercise>().HasData(
-            // Workout 1 — Day A: Lower & Power
+            // Day A: Lower & Power
             new WorkoutTemplateExercise { Id = 1, WorkoutTemplateId = 1, ExerciseId = 11, ExerciseOrder = 1, TargetSets = 4, TargetReps = "5-6", RestSeconds = 150 },
             new WorkoutTemplateExercise { Id = 2, WorkoutTemplateId = 1, ExerciseId = 12, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg", RestSeconds = 150 },
             new WorkoutTemplateExercise { Id = 3, WorkoutTemplateId = 1, ExerciseId = 8, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10-12", RestSeconds = 90 },
             new WorkoutTemplateExercise { Id = 4, WorkoutTemplateId = 1, ExerciseId = 13, ExerciseOrder = 4, TargetSets = 3, TargetReps = "8-10/leg", RestSeconds = 60 },
 
-            // Workout 2 — Day B: Upper
+            // Day B: Upper
             new WorkoutTemplateExercise { Id = 5, WorkoutTemplateId = 2, ExerciseId = 14, ExerciseOrder = 1, TargetSets = 4, TargetReps = "8", RestSeconds = 90 },
             new WorkoutTemplateExercise { Id = 6, WorkoutTemplateId = 2, ExerciseId = 5, ExerciseOrder = 2, TargetSets = 4, TargetReps = "6-8", RestSeconds = 90 },
             new WorkoutTemplateExercise { Id = 7, WorkoutTemplateId = 2, ExerciseId = 15, ExerciseOrder = 3, TargetSets = 3, TargetReps = "10", RestSeconds = 90 },
@@ -89,7 +89,7 @@ public class AppDbContext : DbContext
             new WorkoutTemplateExercise { Id = 9, WorkoutTemplateId = 2, ExerciseId = 17, ExerciseOrder = 5, TargetSets = 3, TargetReps = "15", RestSeconds = 60 },
             new WorkoutTemplateExercise { Id = 10, WorkoutTemplateId = 2, ExerciseId = 18, ExerciseOrder = 6, TargetSets = 3, TargetReps = "15-20/leg", RestSeconds = 60 },
 
-            // Workout 3 — Day C: Full Body Athletic
+            // Day C: Full Body Athletic
             new WorkoutTemplateExercise { Id = 11, WorkoutTemplateId = 3, ExerciseId = 19, ExerciseOrder = 1, TargetSets = 4, TargetReps = "6-8", RestSeconds = 150 },
             new WorkoutTemplateExercise { Id = 12, WorkoutTemplateId = 3, ExerciseId = 20, ExerciseOrder = 2, TargetSets = 3, TargetReps = "8/leg", RestSeconds = 90 },
             new WorkoutTemplateExercise { Id = 13, WorkoutTemplateId = 3, ExerciseId = 21, ExerciseOrder = 3, TargetSets = 3, TargetReps = "6", RestSeconds = 150 },

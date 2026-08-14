@@ -95,6 +95,7 @@ function completedSetsFor(ex) {
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
   const [templateName, setTemplateName] = useState('')
+  const [templateSubtitle, setTemplateSubtitle] = useState('')
   const [exercises, setExercises] = useState(null)
   const [finishers, setFinishers] = useState([])
   const [error, setError] = useState(null)
@@ -130,12 +131,14 @@ export default function ActiveWorkoutPage() {
     const saved = loadActiveWorkout()
     if (saved && saved.templateId === Number(templateId)) {
       setTemplateName(saved.templateName)
+      setTemplateSubtitle(saved.templateSubtitle ?? '')
       setExercises(saved.exercises)
       setStartedAt(new Date(saved.startedAt))
     } else {
       startWorkoutTemplate(templateId)
         .then((data) => {
           setTemplateName(data.templateName)
+          setTemplateSubtitle(data.templateSubtitle)
           setExercises(data.exercises.map(exerciseFromStart))
         })
         .catch((err) => setError(err.message))
@@ -167,8 +170,8 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     if (!exercises) return
-    saveActiveWorkout({ templateId: Number(templateId), templateName, exercises, startedAt: startedAt.toISOString() })
-  }, [exercises, templateName, templateId, startedAt])
+    saveActiveWorkout({ templateId: Number(templateId), templateName, templateSubtitle, exercises, startedAt: startedAt.toISOString() })
+  }, [exercises, templateName, templateSubtitle, templateId, startedAt])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000)
@@ -523,7 +526,10 @@ export default function ActiveWorkoutPage() {
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
       <div className="active-workout-header" ref={headerRef}>
-        <h1>{templateName}</h1>
+        <div>
+          <h1>{templateName}</h1>
+          {templateSubtitle && <p className="active-workout-subtitle">{templateSubtitle}</p>}
+        </div>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
       <div className="live-stats">
