@@ -13,11 +13,15 @@ Self-hosted training tracker — gym workouts and running sessions, replacing He
 - Active workout flow: tick-to-complete sets, warmup/failure/drop set types, rest timers with background push notifications, per-session exercise notes
 - Finishers (optional bonus exercises), live session duration/volume header
 - History list and a full per-session detail page
-- Calendar (month grid, workouts + runs, tap a day for detail)
+- Dashboard: month calendar grid (workouts + runs, tap a day for a bottom-sheet detail view) plus a quick-links grid to Muscle Balance, Exercises, Streaks, Trends, and Program
+- Streaks: three weekly consistency definitions (2+ gym sessions, 3+ total sessions, 3 gym + a run), each with current/best run length; drill into a week to see what was actually logged and whether it qualified
+- Trends: consistency and volume charted over 6 months (vs. the Dashboard's 8-week glance chart), plus a "Lift trends" list of the exercises with the biggest earliest-vs-latest movement in that window
+- Program: the training PDF (sourced from Nextcloud, not the repo) opened via the browser's own PDF viewer
 - Per-exercise stats page: progression chart, PRs (heaviest weight, est. 1RM, best set/session volume), paginated session history
 - Muscle-group tagging per exercise (primary + secondary) with a weekly Muscle Balance page: bar chart + front/back heatmap
-- Running session logging (distance + duration)
-- Historical data imported from a Hevy CSV export (76 sessions, notes, tempo backfilled from the program doc)
+- Running session logging (distance + duration), launched from a button on the Workout page
+- Session display names: the workout template's name where one's associated, otherwise a summary of the exercise categories actually done (Push/Pull/Legs/etc.) — most imported history predates any template association
+- Historical data imported from a Hevy CSV export (76 sessions, notes/tempo backfilled from the program doc; template association backfilled separately from Apr 28, 2026 onward, once the program had settled into its current form)
 
 ## Running locally (without Docker)
 
