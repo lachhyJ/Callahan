@@ -23,7 +23,7 @@ public class WorkoutTemplatesController : ControllerBase
     {
         var templates = await _db.WorkoutTemplates
             .OrderBy(t => t.SortOrder)
-            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name))
+            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle))
             .ToListAsync();
 
         return Ok(templates);
@@ -62,7 +62,7 @@ public class WorkoutTemplatesController : ControllerBase
             })
             .ToList();
 
-        return Ok(new WorkoutTemplateStartDto(template.Id, template.Name, exercises));
+        return Ok(new WorkoutTemplateStartDto(template.Id, template.Name, template.Subtitle, exercises));
     }
 
     [HttpPut("exercises/{workoutTemplateExerciseId}/cue")]

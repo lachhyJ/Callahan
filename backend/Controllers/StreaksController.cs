@@ -102,6 +102,7 @@ public class StreaksController : ControllerBase
         var workouts = workoutSessions.Select(s => new WorkoutSessionSummaryDto(
             s.Id, s.Date, s.Notes, s.Sets.Count,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             s.StartedAt, s.FinishedAt,
             WorkoutSessionsController.CategorySummary(s.Sets))).ToList();
 

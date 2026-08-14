@@ -291,6 +291,14 @@ td {
   }
 }
 
+.template-card-subtitle {
+  display: block;
+  margin-top: 2px;
+  color: var(--text);
+  font-weight: 400;
+  font-size: 13px;
+}
+
 .custom-workout-link {
   color: var(--text);
   font-size: 14px;
@@ -358,6 +366,12 @@ td {
   h1 {
     margin: 0;
   }
+}
+
+.active-workout-subtitle {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 13px;
 }
 
 .live-stats {

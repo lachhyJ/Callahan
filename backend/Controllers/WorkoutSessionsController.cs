@@ -31,6 +31,7 @@ public class WorkoutSessionsController : ControllerBase
         var result = sessions.Select(s => new WorkoutSessionSummaryDto(
             s.Id, s.Date, s.Notes, s.Sets.Count,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             s.StartedAt, s.FinishedAt,
             CategorySummary(s.Sets))).ToList();
 

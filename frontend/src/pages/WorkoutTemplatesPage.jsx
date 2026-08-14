@@ -29,6 +29,7 @@ export default function WorkoutTemplatesPage() {
         {templates?.map((t) => (
           <Link key={t.id} to={`/workout/${t.id}`} className="template-card">
             {t.name}
+            <span className="template-card-subtitle">{t.subtitle}</span>
           </Link>
         ))}
       </div>

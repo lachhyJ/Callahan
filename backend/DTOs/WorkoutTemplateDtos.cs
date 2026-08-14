@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record WorkoutTemplateSummaryDto(int Id, string Name);
+public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle);
 
 public record PreviousSetDto(int SetOrder, int Reps, decimal WeightKg, string SetType);
 
@@ -19,6 +19,7 @@ public record WorkoutTemplateExerciseStartDto(
 public record WorkoutTemplateStartDto(
     int TemplateId,
     string TemplateName,
+    string TemplateSubtitle,
     List<WorkoutTemplateExerciseStartDto> Exercises);
 
 public record UpdateCueRequest(string? Cue);
