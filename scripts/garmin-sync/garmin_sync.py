@@ -35,11 +35,11 @@ from garminconnect import (
 # once you've confirmed the real typeKey with --dump — don't guess, a wrong
 # guess here would silently miscategorize synced activities.
 #
-# Ultimate Frisbee is deliberately NOT mapped yet: run `garmin_sync.py --dump`
-# after logging a real Ultimate session on Garmin, find its typeKey in the
-# output, then add it here.
+# "ultimate_disc" confirmed 2026-08-14 via --dump against real logged
+# sessions ("Melbourne Ultimate Disc", typeId 213).
 TYPE_MAP = {
     "running": "Running",
+    "ultimate_disc": "Ultimate",
 }
 
 CALLAHAN_TOKEN_CACHE = Path(os.environ.get("CALLAHAN_TOKEN_CACHE", "~/.callahan_sync_token")).expanduser()
@@ -113,6 +113,12 @@ def post_activity(api_base, token, payload):
     return resp.json(), token
 
 
+def to_int(value):
+    # Garmin returns calories/heart-rate as floats (e.g. 266.0); Callahan's
+    # DTO binds them as int? and rejects a JSON float with strict errors.
+    return int(round(value)) if value is not None else None
+
+
 def to_payload(activity, activity_type):
     summary_id = activity.get("activityId")
     distance_m = activity.get("distance")
@@ -125,8 +131,8 @@ def to_payload(activity, activity_type):
         "type": activity_type,
         "durationSeconds": int(round(duration_s)) if duration_s is not None else 0,
         "distanceKm": round(distance_m / 1000, 3) if distance_m is not None else None,
-        "calories": activity.get("calories"),
-        "avgHeartRate": activity.get("averageHR"),
+        "calories": to_int(activity.get("calories")),
+        "avgHeartRate": to_int(activity.get("averageHR")),
         "notes": activity.get("activityName") or None,
         "source": "Garmin",
         "garminActivityId": str(summary_id) if summary_id is not None else None,

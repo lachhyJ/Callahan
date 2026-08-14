@@ -28,19 +28,20 @@ Daily is enough — this isn't a live feed, and the 14-day lookback (see
 `--days`) means a missed run or two doesn't lose anything; re-synced
 activities are idempotent via `GarminActivityId`.
 
-## Before turning on Ultimate
+## Mapped activity types
 
-Only `running` is mapped in `TYPE_MAP` right now. Once you've logged a
-real Ultimate Frisbee session on Garmin, run:
+`TYPE_MAP` in `garmin_sync.py` currently covers:
 
-```bash
-scripts/garmin-sync/venv/bin/python scripts/garmin-sync/garmin_sync.py --dump
-```
+- `running` → Running
+- `ultimate_disc` → Ultimate (confirmed 2026-08-14 via `--dump` against
+  real logged "Melbourne Ultimate Disc" sessions)
 
-This prints the raw `typeKey` Garmin assigned it (no Callahan calls made).
-Add that key to `TYPE_MAP` in `garmin_sync.py` mapped to `"Ultimate"`,
-then do a `--dry-run` pass to confirm the built payload looks right before
-letting it actually POST.
+Everything else Garmin reports (snowboarding, strength training, hiking,
+...) is deliberately unmapped — those activities are logged and skipped,
+never guessed at or defaulted to an existing type. To add a new sport,
+run `--dump` after logging a real session of that type on Garmin, find
+its `typeKey` in the output, and only add it to `TYPE_MAP` once you've
+confirmed it against real data — not by guessing from Garmin's UI label.
 
 ## First run / sanity check
 
@@ -48,6 +49,5 @@ letting it actually POST.
 scripts/garmin-sync/venv/bin/python scripts/garmin-sync/garmin_sync.py --dry-run
 ```
 
-Prints what would be synced without writing anything. Unmapped activity
-types (anything besides running, until Ultimate is added) are logged and
-skipped, never guessed at or defaulted.
+Prints what would be synced (built Callahan payloads) without writing
+anything.
