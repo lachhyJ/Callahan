@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRunSessionType } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
 import { isoDate, startOfWeek } from '../dateUtils'
+import { BackIcon } from '../icons'
 
 function formatWeekLabel(weekStartIso) {
   const start = new Date(`${weekStartIso}T00:00:00`)
@@ -83,6 +84,7 @@ function RunActivityRow({ activity, runSessionTypes, openPickerId, onTogglePicke
 }
 
 export default function HistoryPage() {
+  const navigate = useNavigate()
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
@@ -124,6 +126,7 @@ export default function HistoryPage() {
 
   return (
     <main className="page">
+      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>History</h1>
       {error && <p className="error">{error}</p>}
       {items === null && !error && <p>Loading…</p>}
