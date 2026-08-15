@@ -26,6 +26,7 @@ public class StreaksController : ControllerBase
         ("gym2", "2+ gym sessions", (gym, run) => gym >= 2),
         ("total3", "3+ sessions", (gym, run) => gym + run >= 3),
         ("gym3run1", "3 gym + a run", (gym, run) => gym >= 3 && run >= 1),
+        ("run1", "1+ run", (gym, run) => run >= 1),
     ];
 
     [HttpGet]
