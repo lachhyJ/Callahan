@@ -23,9 +23,14 @@ export function endOfWeek(d) {
   return end
 }
 
-// Day-of-month only, for lists already grouped under a week header that
-// carries the month/date context (e.g. History) — avoids repeating the
-// full date on every row.
-export function dayOfMonth(isoDateStr) {
-  return new Date(`${isoDateStr}T00:00:00`).getDate()
+// Short weekday + day-of-month, for lists already grouped under a week
+// header that carries the month/date context (e.g. History) — avoids
+// repeating the full date on every row while keeping the weekday, which is
+// what's actually useful for recall ("that was a Tuesday run"). Deliberately
+// skips an ordinal suffix (7th, 21st) — that's mostly visual flourish and
+// adds clutter across a dense list.
+export function shortWeekdayAndDay(isoDateStr) {
+  const d = new Date(`${isoDateStr}T00:00:00`)
+  const weekday = d.toLocaleDateString(undefined, { weekday: 'short' })
+  return `${weekday} ${d.getDate()}`
 }
