@@ -248,6 +248,10 @@ td {
   gap: var(--space-sm);
 }
 
+.history-load-btn {
+  align-self: center;
+}
+
 .history-week {
   display: flex;
   flex-direction: column;

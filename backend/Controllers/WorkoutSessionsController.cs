@@ -20,9 +20,13 @@ public class WorkoutSessionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<WorkoutSessionSummaryDto>>> GetAll()
+    public async Task<ActionResult<List<WorkoutSessionSummaryDto>>> GetAll(DateOnly? start = null, DateOnly? end = null)
     {
-        var sessions = await _db.WorkoutSessions
+        var query = _db.WorkoutSessions.AsQueryable();
+        if (start is not null) query = query.Where(s => s.Date >= start);
+        if (end is not null) query = query.Where(s => s.Date <= end);
+
+        var sessions = await query
             .Include(s => s.Sets).ThenInclude(set => set.Exercise)
             .Include(s => s.WorkoutTemplate)
             .OrderByDescending(s => s.Date)

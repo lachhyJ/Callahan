@@ -71,8 +71,12 @@ export function updateCue(workoutTemplateExerciseId, cue) {
   })
 }
 
-export function getWorkoutSessions() {
-  return apiFetch('/api/workoutsessions')
+export function getWorkoutSessions({ start, end } = {}) {
+  const params = new URLSearchParams()
+  if (start) params.set('start', start)
+  if (end) params.set('end', end)
+  const query = params.toString()
+  return apiFetch(`/api/workoutsessions${query ? `?${query}` : ''}`)
 }
 
 export function getMuscleBalance(startDate, endDate) {
@@ -164,8 +168,12 @@ export function cancelRestTimer(timerId) {
   return apiFetch(`/api/resttimer/cancel/${timerId}`, { method: 'POST' })
 }
 
-export function getActivities() {
-  return apiFetch('/api/activities')
+export function getActivities({ start, end } = {}) {
+  const params = new URLSearchParams()
+  if (start) params.set('start', start)
+  if (end) params.set('end', end)
+  const query = params.toString()
+  return apiFetch(`/api/activities${query ? `?${query}` : ''}`)
 }
 
 export function createActivity(activity) {
