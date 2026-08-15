@@ -1,4 +1,5 @@
 import { activityLabel } from '../utils/activityLabel'
+import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 
 // Runs need classifying well after the fact (mostly Garmin syncs reviewed
 // during a later browse, not right after logging). The label itself is
@@ -8,6 +9,7 @@ import { activityLabel } from '../utils/activityLabel'
 export default function RunActivityRow({ activity, runSessionTypes, openPickerId, onTogglePicker, onSelect }) {
   const pickerOpen = openPickerId === activity.id
   const needsClassification = activity.source === 'Garmin' && !activity.runSessionTypeId
+  const suggested = suggestRunSessionType(activity, runSessionTypes)
 
   return (
     <span className="run-classify">
@@ -23,8 +25,14 @@ export default function RunActivityRow({ activity, runSessionTypes, openPickerId
           <div className="picker-backdrop" onClick={() => onTogglePicker(activity.id)} />
           <div className="set-type-menu run-type-menu">
             {runSessionTypes.map((t) => (
-              <button key={t.id} type="button" onClick={() => onSelect(activity.id, t.id)}>
+              <button
+                key={t.id}
+                type="button"
+                className={suggested?.id === t.id ? 'suggested-option' : undefined}
+                onClick={() => onSelect(activity.id, t.id)}
+              >
                 {t.name}
+                {suggested?.id === t.id && <span className="suggested-tag">Suggested</span>}
               </button>
             ))}
             {activity.runSessionTypeId && (
