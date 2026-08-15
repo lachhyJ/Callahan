@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getActivities, getWorkoutSessions } from '../api/client'
+import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRunSessionType } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
 import { isoDate, startOfWeek } from '../dateUtils'
@@ -50,21 +50,56 @@ function groupByWeek(items, targetWeekStart) {
   return weeks
 }
 
+// Runs need classifying well after the fact (mostly Garmin syncs reviewed
+// during a later History browse, not right after logging), so the picker
+// lives inline here rather than on the log-run flow. Unclassified
+// Garmin-sourced runs get a badge so they don't quietly go unclassified.
+function RunActivityRow({ activity, runSessionTypes, openPickerId, onTogglePicker, onSelect }) {
+  const pickerOpen = openPickerId === activity.id
+  const needsClassification = activity.source === 'Garmin' && !activity.runSessionTypeId
+
+  return (
+    <span className="run-classify">
+      <button type="button" className="run-classify-trigger" onClick={() => onTogglePicker(activity.id)}>
+        {activityLabel(activity)}
+      </button>
+      {needsClassification && <span className="needs-classification-badge">Needs classification</span>}
+      {pickerOpen && (
+        <div className="set-type-menu run-type-menu">
+          {runSessionTypes.map((t) => (
+            <button key={t.id} type="button" onClick={() => onSelect(activity.id, t.id)}>
+              {t.name}
+            </button>
+          ))}
+          {activity.runSessionTypeId && (
+            <button type="button" className="remove-option" onClick={() => onSelect(activity.id, null)}>
+              Clear
+            </button>
+          )}
+        </div>
+      )}
+    </span>
+  )
+}
+
 export default function HistoryPage() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
   const [searchParams] = useSearchParams()
   const targetWeek = searchParams.get('week')
   const targetRef = useRef(null)
+  const [runSessionTypes, setRunSessionTypes] = useState([])
+  const [openPickerId, setOpenPickerId] = useState(null)
 
   useEffect(() => {
-    Promise.all([getWorkoutSessions(), getActivities()])
-      .then(([workouts, activities]) => {
+    Promise.all([getWorkoutSessions(), getActivities(), getRunSessionTypes()])
+      .then(([workouts, activities, types]) => {
         const merged = [
           ...workouts.map((w) => ({ kind: 'workout', ...w })),
           ...activities.map((a) => ({ kind: 'activity', ...a })),
         ].sort((a, b) => b.date.localeCompare(a.date))
         setItems(merged)
+        setRunSessionTypes(types)
       })
       .catch((err) => setError(err.message))
   }, [])
@@ -76,6 +111,16 @@ export default function HistoryPage() {
       targetRef.current.scrollIntoView({ block: 'center' })
     }
   }, [targetWeek, items])
+
+  function togglePicker(activityId) {
+    setOpenPickerId((current) => (current === activityId ? null : activityId))
+  }
+
+  async function selectRunSessionType(activityId, runSessionTypeId) {
+    setOpenPickerId(null)
+    const updated = await updateActivityRunSessionType(activityId, runSessionTypeId)
+    setItems((current) => current.map((item) => (item.kind === 'activity' && item.id === activityId ? { ...item, ...updated } : item)))
+  }
 
   return (
     <main className="page">
@@ -117,6 +162,14 @@ export default function HistoryPage() {
                       <Link to={`/sessions/${item.id}`} className="session-link">
                         {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
                       </Link>
+                    ) : item.type === 'Running' ? (
+                      <RunActivityRow
+                        activity={item}
+                        runSessionTypes={runSessionTypes}
+                        openPickerId={openPickerId}
+                        onTogglePicker={togglePicker}
+                        onSelect={selectRunSessionType}
+                      />
                     ) : (
                       <span>{activityLabel(item)}</span>
                     )}

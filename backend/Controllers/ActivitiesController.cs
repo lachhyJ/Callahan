@@ -23,8 +23,11 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<List<ActivityDto>>> GetAll()
     {
         var activities = await _db.Activities
+            .Include(a => a.RunSessionType)
             .OrderByDescending(a => a.Date)
-            .Select(a => new ActivityDto(a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes))
+            .Select(a => new ActivityDto(
+                a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
+                a.RunSessionTypeId, a.RunSessionType == null ? null : a.RunSessionType.Name))
             .ToListAsync();
 
         return Ok(activities);
@@ -46,6 +49,7 @@ public class ActivitiesController : ControllerBase
         if (request.GarminActivityId is not null)
         {
             var existing = await _db.Activities
+                .Include(a => a.RunSessionType)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
@@ -72,6 +76,27 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
+    [HttpPut("{id}/run-session-type")]
+    public async Task<ActionResult<ActivityDto>> UpdateRunSessionType(int id, UpdateActivityRunSessionTypeRequest request)
+    {
+        var activity = await _db.Activities.Include(a => a.RunSessionType).FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        if (request.RunSessionTypeId is not null && !await _db.RunSessionTypes.AnyAsync(t => t.Id == request.RunSessionTypeId))
+        {
+            return BadRequest(new { error = $"Unknown run session type '{request.RunSessionTypeId}'." });
+        }
+
+        activity.RunSessionTypeId = request.RunSessionTypeId;
+        await _db.SaveChangesAsync();
+
+        // Re-fetch the nav property now that the FK changed.
+        await _db.Entry(activity).Reference(a => a.RunSessionType).LoadAsync();
+
+        return Ok(ToDto(activity));
+    }
+
     private static ActivityDto ToDto(Activity a) => new(
-        a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes);
+        a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
+        a.RunSessionTypeId, a.RunSessionType?.Name);
 }

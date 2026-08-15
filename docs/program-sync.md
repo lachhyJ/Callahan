@@ -12,6 +12,22 @@ conversation: tell Claude what changed, Claude updates the database
 directly. This doc exists so that conversation doesn't have to start from
 scratch each time.
 
+## Where the source file lives
+
+`ultimate_athlete_program.pdf` is authored and stored in Nextcloud, not the
+repo — the app serves a synced copy (path configured via `ProgramPdf:Path`
+in the backend's prod env file, not committed). On Lachlan's Mac it's
+reachable locally at:
+
+```
+/Users/lachlanjansen/Library/CloudStorage/Nextcloud-nextcloud.ljlab.online-lachlan/FilingCabinet/Personal Archive/Fris Resources/ultimate_athlete_program.pdf
+```
+
+Useful when a conversation needs to read the actual program content (exercise
+lists, rep ranges, run session protocols) rather than just being told about a
+change — read it directly from there instead of guessing or asking Lachlan to
+transcribe it.
+
 ## The trigger
 
 A NAS-side cron job (`/mnt/tank/callahan-data/check_program_pdf.sh`,
