@@ -170,3 +170,14 @@ export function createActivity(activity) {
     body: JSON.stringify(activity),
   })
 }
+
+export function getRunSessionTypes() {
+  return apiFetch('/api/runsessiontypes')
+}
+
+export function updateActivityRunSessionType(id, runSessionTypeId) {
+  return apiFetch(`/api/activities/${id}/run-session-type`, {
+    method: 'PUT',
+    body: JSON.stringify({ runSessionTypeId }),
+  })
+}
