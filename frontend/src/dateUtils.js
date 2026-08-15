@@ -22,3 +22,10 @@ export function endOfWeek(d) {
   end.setDate(start.getDate() + 6)
   return end
 }
+
+// Day-of-month only, for lists already grouped under a week header that
+// carries the month/date context (e.g. History) — avoids repeating the
+// full date on every row.
+export function dayOfMonth(isoDateStr) {
+  return new Date(`${isoDateStr}T00:00:00`).getDate()
+}

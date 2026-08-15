@@ -15,3 +15,7 @@ backend.prod.env
 
 # OS
 .DS_Store
+
+# Claude Code — local-only settings and other threads' worktrees
+.claude/settings.local.json
+.claude/worktrees/

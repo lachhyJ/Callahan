@@ -1238,27 +1238,35 @@ td {
 
 .run-classify {
   position: relative;
+  display: inline-block;
+}
+
+.run-classify-row {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
-}
-
-.run-classify-trigger {
-  background: transparent;
-  border: none;
-  padding: 0;
+  flex-wrap: wrap;
   color: var(--text);
   font-size: var(--text-sm);
-  text-decoration: underline;
-  text-decoration-color: transparent;
-  text-underline-offset: 3px;
+}
+
+/* Deliberately a separate button from the run's label text — the label is
+   just for reading, so glancing at or tapping the row can't accidentally
+   open the picker. */
+.run-classify-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  color: var(--text-tertiary);
+  font-size: 12px;
   cursor: pointer;
-  transition: text-decoration-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
 
   &:hover,
   &:focus-visible {
     color: var(--text-h);
-    text-decoration-color: var(--border);
+    border-color: var(--text-tertiary);
   }
 }
 
@@ -1272,8 +1280,21 @@ td {
   white-space: nowrap;
 }
 
+/* Opens upward, not downward like .set-type-menu's default — this trigger
+   also appears inside the bottom-anchored day-detail sheet, where opening
+   downward would push the menu off the bottom of the viewport. */
 .run-type-menu {
-  top: calc(100% + var(--space-2xs));
+  top: auto;
+  bottom: calc(100% + var(--space-2xs));
+}
+
+/* Transparent, full-viewport — sits under the menu, closes it on any
+   outside click/tap without needing per-row blur/outside-click wiring. */
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9;
+  background: transparent;
 }
 
 .session-link {
