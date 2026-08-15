@@ -242,6 +242,18 @@ td {
   background: var(--surface-raised);
 }
 
+.history-week.empty {
+  background: transparent;
+  padding: var(--space-2xs) var(--space-md);
+}
+
+.history-week.empty .history-week-header {
+  padding-bottom: 0;
+  color: var(--text-tertiary);
+  font-weight: 400;
+  font-size: var(--text-sm);
+}
+
 .history-week-header {
   display: flex;
   align-items: baseline;

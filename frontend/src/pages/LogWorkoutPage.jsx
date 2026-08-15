@@ -59,7 +59,7 @@ export default function LogWorkoutPage() {
         notes: notes || null,
         sets: sets.map(({ exerciseId, reps, weightKg, setOrder }) => ({ exerciseId, reps, weightKg, setOrder, setType: 'Normal' })),
       })
-      navigate('/history', { state: { savedMessage: 'Workout saved' } })
+      navigate('/dashboard', { state: { savedMessage: 'Workout saved' } })
     } catch (err) {
       setError(err.message)
     } finally {

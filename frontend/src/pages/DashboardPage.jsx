@@ -1,22 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/client'
 import { isoDate } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon } from '../icons'
+import { ChartIcon, CheckIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, TaperIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Five real destinations, one placeholder — fills the two-row,
-// three-column grid the layout was built for.
+// Six real destinations, one placeholder — fills the two-row,
+// three-column grid plus a trailing single-tile row.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
+  { to: '/history', label: 'History', Icon: HistoryIcon },
   { label: 'Tapering', Icon: TaperIcon, soon: true },
 ]
 
@@ -39,6 +40,7 @@ function buildMonthGrid(year, month) {
 }
 
 export default function DashboardPage() {
+  const location = useLocation()
   const [workouts, setWorkouts] = useState(null)
   const [activities, setActivities] = useState(null)
   const [error, setError] = useState(null)
@@ -48,10 +50,17 @@ export default function DashboardPage() {
   })
   const [selectedDate, setSelectedDate] = useState(null)
   const [weeklyVolume, setWeeklyVolume] = useState(null)
+  const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
 
   useEffect(() => {
     getWeeklyVolume(8).then(setWeeklyVolume).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!savedMessage) return
+    const timeout = setTimeout(() => setSavedMessage(null), 4000)
+    return () => clearTimeout(timeout)
+  }, [savedMessage])
 
   useEffect(() => {
     Promise.all([getWorkoutSessions(), getActivities()])
@@ -97,6 +106,10 @@ export default function DashboardPage() {
   return (
     <main className="page dashboard-page">
       <h1>Dashboard</h1>
+
+      {savedMessage && (
+        <p className="save-confirmation"><CheckIcon /> {savedMessage}</p>
+      )}
 
       <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">

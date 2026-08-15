@@ -30,7 +30,7 @@ export default function LogActivityPage() {
         durationSeconds,
         notes: notes || null,
       })
-      navigate('/history', { state: { savedMessage: 'Activity saved' } })
+      navigate('/dashboard', { state: { savedMessage: 'Activity saved' } })
     } catch (err) {
       setError(err.message)
     } finally {
