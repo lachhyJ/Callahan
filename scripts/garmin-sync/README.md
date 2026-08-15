@@ -41,7 +41,7 @@ sudo midclt call cronjob.create '{
   "enabled": true,
   "stdout": true,
   "stderr": true,
-  "schedule": {"minute": "0", "hour": "6", "dom": "*", "month": "*", "dow": "*"},
+  "schedule": {"minute": "30", "hour": "23", "dom": "*", "month": "*", "dow": "*"},
   "command": "(docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync >> /mnt/tank/callahan-data/garmin-sync.log 2>&1)",
   "description": "callahan-garmin-sync",
   "user": "root"
