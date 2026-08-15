@@ -46,6 +46,7 @@ export default function ExercisesListPage() {
       {exercises && grouped.length === 0 && (
         <div className="empty-state">
           <p>No exercises match "{query}".</p>
+          <button type="button" className="custom-workout-link" onClick={() => setQuery('')}>Clear search</button>
         </div>
       )}
 

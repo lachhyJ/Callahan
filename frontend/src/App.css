@@ -27,7 +27,7 @@
     border: none;
     color: var(--text-tertiary);
     padding: var(--space-2xs) 0;
-    font-size: 13px;
+    font-size: var(--text-sm);
     white-space: nowrap;
     transition: color var(--duration-fast) var(--ease-out);
 
@@ -87,7 +87,7 @@
   text-decoration: none;
 
   span {
-    font-size: 11px;
+    font-size: var(--text-xs);
   }
 
   &.active {
@@ -107,7 +107,7 @@
   padding: var(--space-lg);
 
   h1 {
-    font-size: 28px;
+    font-size: var(--text-3xl);
     margin: 0 0 var(--space-lg);
   }
 }
@@ -128,7 +128,7 @@ label {
   display: flex;
   flex-direction: column;
   gap: var(--space-2xs);
-  font-size: 14px;
+  font-size: var(--text-sm);
   color: var(--text);
 }
 
@@ -160,7 +160,7 @@ textarea {
   input:not([type='checkbox']):not([type='radio']),
   select,
   textarea {
-    font-size: 16px;
+    font-size: var(--text-base);
   }
 }
 
@@ -239,7 +239,7 @@ td {
   text-align: left;
   padding: var(--space-2xs);
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .history-week-list {
@@ -294,7 +294,7 @@ td {
 }
 
 .history-week-count {
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 400;
   color: var(--text-tertiary);
   white-space: nowrap;
@@ -325,25 +325,25 @@ td {
   background: var(--success-bg);
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-sm);
-  font-size: 14px;
+  font-size: var(--text-sm);
   margin: 0;
 }
 
 .notes {
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   margin-top: var(--space-2xs);
 }
 
 .session-duration {
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .error {
   color: var(--error-text);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .template-list {
@@ -373,13 +373,18 @@ td {
   margin-top: 2px;
   color: var(--text);
   font-weight: 400;
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .custom-workout-link {
+  background: none;
+  border: none;
+  padding: 0;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   text-align: center;
+  text-decoration: underline;
+  cursor: pointer;
 }
 
 .log-run-card {
@@ -448,14 +453,14 @@ td {
 .active-workout-subtitle {
   margin: 2px 0 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .live-stats {
   display: flex;
   gap: var(--space-lg);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -487,7 +492,7 @@ td {
 
 .primary-muscle {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-xs);
   white-space: nowrap;
 }
 
@@ -495,7 +500,7 @@ td {
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   padding: var(--space-2xs) var(--space-xs);
   transition: color var(--duration-fast) var(--ease-out);
 
@@ -507,7 +512,7 @@ td {
 
 .target-reps {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   margin: 0;
 }
 
@@ -519,13 +524,13 @@ td {
   border-radius: var(--radius-full);
   background: var(--surface-raised);
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
 .previous-cell {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-variant-numeric: tabular-nums;
 }
 
@@ -564,7 +569,7 @@ td {
   transform: translateY(-50%);
   margin-left: var(--space-2xs);
   padding: var(--space-2xs) var(--space-xs);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 600;
   text-transform: uppercase;
   background: var(--surface-overlay);
@@ -606,7 +611,7 @@ td {
   border-bottom: 1px solid transparent;
   padding: var(--space-2xs) 0;
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   transition: border-color var(--duration-fast) var(--ease-out);
 
   &:focus {
@@ -627,7 +632,7 @@ td {
   width: 100%;
   padding: var(--space-2xs) 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font-style: italic;
   transition: border-color var(--duration-fast) var(--ease-out);
 
@@ -649,7 +654,7 @@ td {
   border-bottom: 1px dashed var(--border);
   padding: 0;
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
   font: inherit;
   transition: border-color var(--duration-fast) var(--ease-out);
 
@@ -667,7 +672,7 @@ td {
 
 .rest-preset {
   padding: var(--space-2xs) var(--space-xs);
-  font-size: 12px;
+  font-size: var(--text-xs);
   background: var(--code-bg);
   color: var(--text);
   transition: background var(--duration-fast) var(--ease-out);
@@ -728,7 +733,7 @@ td {
     border-radius: 0;
     text-align: left;
     padding: var(--space-xs) var(--space-sm);
-    font-size: 14px;
+    font-size: var(--text-sm);
 
     &:hover,
     &:focus-visible {
@@ -749,7 +754,7 @@ td {
 }
 
 .finisher-heading {
-  font-size: 15px;
+  font-size: var(--text-base);
   color: var(--text);
   margin: 0;
 }
@@ -774,7 +779,7 @@ td {
 
 .finisher-meta {
   color: var(--text);
-  font-size: 13px;
+  font-size: var(--text-sm);
 }
 
 .summary-exercise {
@@ -790,7 +795,7 @@ td {
   margin: 0;
   padding-left: var(--space-md);
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
 }
 
 .summary-actions {
@@ -820,7 +825,7 @@ td {
   padding: var(--space-xs) var(--space-sm);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--text);
 
   span {
@@ -830,7 +835,7 @@ td {
   }
 
   button {
-    font-size: 13px;
+    font-size: var(--text-sm);
     padding: var(--space-2xs) var(--space-sm);
   }
 }
@@ -885,7 +890,7 @@ td {
   border-radius: var(--radius-full);
   background: var(--accent-bg);
   color: var(--accent);
-  font-size: 12px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
@@ -904,7 +909,7 @@ td {
 }
 
 .rest-countdown {
-  font-size: 28px;
+  font-size: var(--text-3xl);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--text-h);
@@ -1045,7 +1050,7 @@ td {
 
 .chart-tick-label {
   fill: var(--text);
-  font-size: 8px;
+  font-size: var(--text-2xs);
 }
 
 .chart-area {
@@ -1075,7 +1080,7 @@ td {
 
 .chart-end-label {
   fill: var(--text-h);
-  font-size: 9px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -1274,7 +1279,7 @@ td {
   border-radius: var(--radius-sm);
   padding: 2px 8px;
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-xs);
   cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
 
@@ -1286,7 +1291,7 @@ td {
 }
 
 .needs-classification-badge {
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 500;
   color: var(--info-text);
   background: var(--info-bg);
@@ -1319,7 +1324,7 @@ td {
 
 .suggested-tag {
   margin-left: var(--space-2xs);
-  font-size: 11px;
+  font-size: var(--text-xs);
   font-weight: 400;
   color: var(--accent);
 }
@@ -1384,7 +1389,7 @@ td {
   position: absolute;
   top: var(--space-xs);
   right: var(--space-xs);
-  font-size: 10px;
+  font-size: var(--text-2xs);
   font-weight: 600;
   color: var(--text-tertiary);
   background: var(--code-bg);
@@ -1448,7 +1453,7 @@ td {
   width: 28px;
   height: 28px;
   line-height: 1;
-  font-size: 20px;
+  font-size: var(--text-xl);
   color: var(--text);
   border-radius: var(--radius-full);
 
@@ -1536,7 +1541,7 @@ td {
 
 .pr-date {
   color: var(--text-tertiary);
-  font-size: 12px;
+  font-size: var(--text-xs);
 }
 
 .volume-chart {
@@ -1607,11 +1612,12 @@ td {
 }
 
 .muscle-bar-fill {
+  width: 100%;
   height: 100%;
-  min-width: 4px;
   border-radius: var(--radius-full);
   background: var(--accent);
-  transition: width var(--duration-normal) var(--ease-out);
+  transform-origin: left;
+  transition: transform var(--duration-normal) var(--ease-out);
 }
 
 .muscle-bar-value {
@@ -1652,7 +1658,7 @@ td {
 
 .page-subtitle {
   color: var(--text);
-  font-size: 14px;
+  font-size: var(--text-sm);
   margin: 0;
 }
 
@@ -1712,7 +1718,7 @@ td {
 }
 
 .streak-stat-label {
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
   white-space: nowrap;
 }
@@ -1788,7 +1794,7 @@ td {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1815,13 +1821,13 @@ td {
 
 .trend-chart-axis-label {
   fill: var(--text-tertiary);
-  font-size: 7px;
+  font-size: var(--text-2xs);
 }
 
 .trend-chart-caption {
   display: block;
   margin-top: var(--space-2xs);
-  font-size: 11px;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1845,7 +1851,7 @@ td {
 
 .trend-summary {
   margin: calc(-1 * var(--space-xs)) 0 0;
-  font-size: 13px;
+  font-size: var(--text-sm);
   color: var(--text);
 }
 
@@ -1878,7 +1884,7 @@ td {
 }
 
 .lift-trend-range {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1919,7 +1925,7 @@ td {
 }
 
 .run-type-trend-detail {
-  font-size: 12px;
+  font-size: var(--text-xs);
   color: var(--text-tertiary);
 }
 
@@ -1937,6 +1943,6 @@ td {
   .target-reps,
   th,
   td {
-    font-size: 16px;
+    font-size: var(--text-base);
   }
 }
