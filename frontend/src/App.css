@@ -1896,6 +1896,40 @@ td {
   color: var(--text-tertiary);
 }
 
+.run-type-trend-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.run-type-trend-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--text-h);
+}
+
+.run-type-trend-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.run-type-trend-detail {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.run-type-trend-count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--text);
+}
+
 /* Kept last deliberately: at equal specificity CSS resolves ties by source
    order, so a responsive override placed earlier than the base rules it's
    meant to beat loses silently. Everything below must stay last in the file. */

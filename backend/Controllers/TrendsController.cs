@@ -122,4 +122,37 @@ public class TrendsController : ControllerBase
 
         return Ok(trends.OrderByDescending(t => Math.Abs(t.DeltaKg)).ToList());
     }
+
+    // Count per type first (what Lachlan asked to see), plus distance so
+    // e.g. "how far am I actually covering in High Speed Intervals sessions"
+    // has an answer — that's the whole-session distance, not a breakdown of
+    // just the sprint portions, since Garmin sync only pulls aggregate
+    // distance/duration per activity, not lap-level splits.
+    [HttpGet("runs")]
+    public async Task<ActionResult<List<RunTypeTrendDto>>> GetRunTypeTrends([FromQuery] int months = 6)
+    {
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+
+        var runs = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.RunSessionTypeId != null)
+            .Include(a => a.RunSessionType)
+            .ToListAsync();
+
+        var trends = runs
+            .GroupBy(a => new { a.RunSessionTypeId, Name = a.RunSessionType!.Name })
+            .Select(g =>
+            {
+                var withDistance = g.Where(a => a.DistanceKm != null).ToList();
+                var totalDistance = withDistance.Sum(a => a.DistanceKm!.Value);
+                return new RunTypeTrendDto(
+                    g.Key.RunSessionTypeId!.Value, g.Key.Name, g.Count(),
+                    totalDistance, withDistance.Count > 0 ? totalDistance / withDistance.Count : 0);
+            })
+            .OrderByDescending(t => t.SessionCount)
+            .ToList();
+
+        return Ok(trends);
+    }
 }

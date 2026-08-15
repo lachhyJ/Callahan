@@ -10,3 +10,10 @@ public record LiftTrendDto(
     decimal LatestWeightKg,
     DateOnly LatestMonth,
     decimal DeltaKg);
+
+public record RunTypeTrendDto(
+    int RunSessionTypeId,
+    string RunSessionTypeName,
+    int SessionCount,
+    decimal TotalDistanceKm,
+    decimal AvgDistanceKm);

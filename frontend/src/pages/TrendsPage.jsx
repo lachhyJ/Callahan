@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
-import { getLiftTrends, getTrends } from '../api/client'
+import { getLiftTrends, getRunTypeTrends, getTrends } from '../api/client'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
+import RunTypeTrendsList from '../components/RunTypeTrendsList'
 
 function formatVolume(v) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
@@ -28,11 +29,13 @@ function periodSummary(months) {
 export default function TrendsPage() {
   const [months, setMonths] = useState(null)
   const [liftTrends, setLiftTrends] = useState(null)
+  const [runTypeTrends, setRunTypeTrends] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     getTrends(6).then(setMonths).catch((err) => setError(err.message))
     getLiftTrends(6).then(setLiftTrends).catch(() => setLiftTrends([]))
+    getRunTypeTrends(6).then(setRunTypeTrends).catch(() => setRunTypeTrends([]))
   }, [])
 
   const hasAnyData = months?.some((m) => m.gymSessions > 0 || m.runSessions > 0)
@@ -69,6 +72,13 @@ export default function TrendsPage() {
             <div className="section-gap">
               <h2 className="trend-chart-title">Lift trends</h2>
               <LiftTrendsList trends={liftTrends} />
+            </div>
+          )}
+
+          {runTypeTrends && runTypeTrends.length > 0 && (
+            <div className="section-gap">
+              <h2 className="trend-chart-title">Run mix</h2>
+              <RunTypeTrendsList trends={runTypeTrends} />
             </div>
           )}
         </>
