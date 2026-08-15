@@ -1,0 +1,25 @@
+name: Deploy to NAS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "Commit SHA to deploy (rollback). Leave blank to deploy origin/main."
+        required: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TS_AUTH_KEY }}
+
+      - uses: appleboy/ssh-action@v1
+        with:
+          host: 100.69.5.111
+          username: truenas_admin
+          key: ${{ secrets.NAS_DEPLOY_SSH_KEY }}
+          script: ${{ github.event.inputs.sha }}

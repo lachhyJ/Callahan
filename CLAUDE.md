@@ -1,10 +1,28 @@
 # Working in this repo
 
 ## Deployment
-Deploy is manual, not CI/CD: the NAS at `/mnt/tank/callahan` is a git clone that gets
-`git pull`'d and rebuilt (Docker Compose) by hand. Live at `callahan.ljlab.online` and
-`192.168.1.150:30070`. Nothing redeploys automatically on push — a change only reaches
-the phone once it's on GitHub `main` *and* someone has manually redeployed the NAS.
+Deploy is automatic: `.github/workflows/deploy.yml` runs on every push to `main`,
+joins the NAS's Tailscale network (`tailscale/github-action`, ephemeral auth key in
+the `TS_AUTH_KEY` secret), then SSHes into the NAS as `truenas_admin` using a
+dedicated key (`NAS_DEPLOY_SSH_KEY` secret) that's restricted via a forced
+`command=` in `authorized_keys` — it can only ever run `deploy-wrapper.sh`, nothing
+else, even if the key leaked. That wrapper runs `deploy.sh`, which does
+`git fetch && git checkout main && git reset --hard <ref>` against
+`/mnt/tank/callahan`, rebuilds with `docker compose -f docker-compose.prod.yml up -d
+--build` (`docker-compose.yml` — the dev-era file — was removed; `.prod.yml` is the
+only compose file that exists now), and records the deployed commit SHA to
+`.deployed_sha` on the NAS.
+
+Because merging to `main` now means "this goes live within moments," the merge
+itself is the real gate — see the concurrent-thread notes below for what that
+implies with more than one thread active.
+
+**Rollback:** run the `Deploy to NAS` workflow manually from the Actions tab
+(`workflow_dispatch`) with a specific commit SHA in the `sha` input; leaving it
+blank deploys `origin/main`. `cat .deployed_sha` on the NAS (or `ssh truenas`) shows
+what's currently live.
+
+Live at `callahan.ljlab.online` and `192.168.1.150:30070`.
 
 ## Multiple threads / concurrent work
 If more than one Claude Code thread (or worktree) is working on this repo at once,
@@ -25,11 +43,12 @@ with that thread for real — `SendMessage` to it directly and wait for its actu
 to the other session and its guesses aren't consent. This happened once (2026-08-14)
 and required a real cross-session message afterward to untangle.
 
-When deploying, `main`'s tip isn't automatically "what should ship" if more than one
-thread has landed work on it — check what's actually ready (a half-finished migration
-from a concurrent thread's feature can sit on `main` without being deploy-ready).
-Deploying a specific commit rather than `origin/main`'s tip is fine when that's what's
-actually wanted; confirm with the user rather than assuming the tip is the target.
+Since deploy is now automatic on push (see Deployment above), merging to `main` *is*
+the deploy decision — don't merge a thread's work until it's actually meant to go
+live, even if it's otherwise finished and reviewed. If you need to ship one thread's
+work while another's is mid-flight on `main`, use the rollback workflow_dispatch to
+pin the deploy to a specific commit rather than letting the automatic push-deploy
+carry both.
 
 ## Commit conventions
 Do **not** add a `Co-Authored-By: Claude` trailer to commits in this repo — this is a
