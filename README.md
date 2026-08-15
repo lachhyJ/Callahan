@@ -49,10 +49,10 @@ docker compose up --build
 
 ## Deploying
 
-On the NAS (`/mnt/tank/callahan`):
-```bash
-sudo git pull && sudo docker compose -f docker-compose.prod.yml up -d --build
-```
+Automatic: `.github/workflows/deploy.yml` deploys to the NAS on every push to `main`
+(see `CLAUDE.md` for how it's wired up). To roll back or deploy a specific commit,
+run the `Deploy to NAS` workflow manually from the Actions tab with a commit SHA.
+
 EF Core migrations apply automatically on backend startup. Direct DB changes (data backfills, program syncs) follow the procedure in `docs/program-sync.md`.
 
 ## Docs
