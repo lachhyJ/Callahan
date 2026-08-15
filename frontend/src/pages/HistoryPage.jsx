@@ -174,9 +174,11 @@ export default function HistoryPage() {
       {items === null && !error && <p>Loading…</p>}
       {weeks.length > 0 && (
         <>
-          <button type="button" className="secondary-btn history-load-btn" onClick={loadEarlier} disabled={loadingEarlier}>
-            {loadingEarlier ? 'Loading…' : 'Load earlier weeks'}
-          </button>
+          {!caughtUpToToday && (
+            <button type="button" className="secondary-btn history-load-btn" onClick={loadLater} disabled={loadingLater}>
+              {loadingLater ? 'Loading…' : 'Load later weeks'}
+            </button>
+          )}
 
           <div className="history-week-list">
             {weeks.map((week) => {
@@ -233,11 +235,9 @@ export default function HistoryPage() {
             })}
           </div>
 
-          {!caughtUpToToday && (
-            <button type="button" className="secondary-btn history-load-btn" onClick={loadLater} disabled={loadingLater}>
-              {loadingLater ? 'Loading…' : 'Load later weeks'}
-            </button>
-          )}
+          <button type="button" className="secondary-btn history-load-btn" onClick={loadEarlier} disabled={loadingEarlier}>
+            {loadingEarlier ? 'Loading…' : 'Load earlier weeks'}
+          </button>
         </>
       )}
     </main>
