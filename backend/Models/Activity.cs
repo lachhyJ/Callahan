@@ -12,4 +12,7 @@ public class Activity
     public int? AvgHeartRate { get; set; }
     public string? Notes { get; set; }
     public string? GarminActivityId { get; set; }
+
+    public int? RunSessionTypeId { get; set; }
+    public RunSessionType? RunSessionType { get; set; }
 }

@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Finisher> Finishers => Set<Finisher>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
+    public DbSet<RunSessionType> RunSessionTypes => Set<RunSessionType>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,6 +97,15 @@ public class AppDbContext : DbContext
             new WorkoutTemplateExercise { Id = 14, WorkoutTemplateId = 3, ExerciseId = 22, ExerciseOrder = 4, TargetSets = 3, TargetReps = "AMRAP", RestSeconds = 90 },
             new WorkoutTemplateExercise { Id = 15, WorkoutTemplateId = 3, ExerciseId = 23, ExerciseOrder = 5, TargetSets = 3, TargetReps = "12/side", RestSeconds = 60 },
             new WorkoutTemplateExercise { Id = 16, WorkoutTemplateId = 3, ExerciseId = 24, ExerciseOrder = 6, TargetSets = 3, TargetReps = "5", RestSeconds = 105 }
+        );
+
+        // Ultimate Athlete Training Program's Run 1/2/3, in the program's own
+        // priority order (Run 1 highest — most frisbee-specific — if a week
+        // only fits two sessions).
+        modelBuilder.Entity<RunSessionType>().HasData(
+            new RunSessionType { Id = 1, Name = "High Speed Intervals", SortOrder = 1 },
+            new RunSessionType { Id = 2, Name = "Speed & Acceleration", SortOrder = 2 },
+            new RunSessionType { Id = 3, Name = "Easy Aerobic Run", SortOrder = 3 }
         );
 
         modelBuilder.Entity<Finisher>().HasData(
