@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { getStreakDetail } from '../api/client'
-import { BackIcon, CheckIcon } from '../icons'
+import { CheckIcon } from '../icons'
 import SessionList from '../components/SessionList'
 
 function formatWeekLabel(iso) {
@@ -13,7 +13,6 @@ function formatWeekLabel(iso) {
 
 export default function StreakDetailPage() {
   const { type } = useParams()
-  const navigate = useNavigate()
   const [detail, setDetail] = useState(null)
   const [error, setError] = useState(null)
 
@@ -25,8 +24,6 @@ export default function StreakDetailPage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
-
       {error && <p className="error">{error}</p>}
       {!error && !detail && <p>Loading…</p>}
 

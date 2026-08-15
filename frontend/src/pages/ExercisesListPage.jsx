@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getExercises } from '../api/client'
-import { BackIcon } from '../icons'
 
 export default function ExercisesListPage() {
-  const navigate = useNavigate()
   const [exercises, setExercises] = useState(null)
   const [error, setError] = useState(null)
   const [query, setQuery] = useState('')
@@ -29,7 +27,6 @@ export default function ExercisesListPage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Exercises</h1>
 
       {error && <p className="error">{error}</p>}

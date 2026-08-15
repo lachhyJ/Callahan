@@ -7,12 +7,19 @@
   }
 }
 
+/* Sticky so Back/Resume/Logout stay reachable past the top of the viewport
+   on any page long enough to scroll — previously only an in-page back-link
+   did this, leaving the two visually and behaviorally out of sync. */
 .top-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   align-items: center;
   gap: var(--space-md);
   padding: var(--space-md) var(--space-lg);
+  background: var(--bg);
   border-bottom: 1px solid var(--border-subtle);
 
   .logout-btn {
@@ -48,6 +55,13 @@
 
 .top-bar.idle {
   padding: var(--space-xs) var(--space-lg);
+}
+
+.top-bar-left,
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
 }
 
 .bottom-tab-bar {
@@ -958,29 +972,21 @@ td {
   font-weight: 600;
 }
 
-/* Sticky and full-width (stretched via the .page flex column's default
-   cross-axis alignment, not align-self: flex-start) so it stays reachable
-   — and its background masks scrolled-under content — on pages long enough
-   to scroll the top bar out of view. Otherwise the only way back is the
-   bottom tab bar, which doesn't exist for every route (e.g. History) and
-   loses page state. */
+/* Lives in the (sticky) top bar now, alongside Resume/Logout, rather than
+   as its own sticky element inside each page. */
 .back-link {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
-  position: sticky;
-  top: 0;
-  z-index: var(--z-sticky);
-  background: var(--bg);
+  background: transparent;
   border: none;
-  padding: var(--space-2xs) 0;
-  margin: calc(var(--space-2xs) * -1) 0;
+  padding: 0;
   color: var(--text);
   font-size: var(--text-sm);
 
   &:hover,
   &:focus-visible {
-    background: var(--bg);
+    background: transparent;
     color: var(--text-h);
     opacity: 1;
   }
