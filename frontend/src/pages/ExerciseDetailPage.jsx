@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue } from '../api/client'
-import { BackIcon } from '../icons'
 import ProgressionChart from '../components/ProgressionChart'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
@@ -13,7 +12,6 @@ function formatWeight(v) {
 
 export default function ExerciseDetailPage() {
   const { exerciseId } = useParams()
-  const navigate = useNavigate()
   const [stats, setStats] = useState(null)
   const [statsError, setStatsError] = useState(null)
   const [history, setHistory] = useState([])
@@ -57,7 +55,6 @@ export default function ExerciseDetailPage() {
   if (statsError) {
     return (
       <main className="page">
-        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
         <p className="error">{statsError}</p>
       </main>
     )
@@ -66,7 +63,6 @@ export default function ExerciseDetailPage() {
   if (!stats) {
     return (
       <main className="page">
-        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
         <p>Loading…</p>
       </main>
     )
@@ -76,7 +72,6 @@ export default function ExerciseDetailPage() {
 
   return (
     <main className="page exercise-detail-page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>{stats.exerciseName}</h1>
       {stats.primaryMuscle && <p className="primary-muscle">{stats.primaryMuscle}</p>}
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getMuscleBalance } from '../api/client'
-import { BackIcon } from '../icons'
 import { endOfWeek, isoDate, startOfWeek } from '../dateUtils'
 import MuscleHeatmap from '../components/MuscleHeatmap'
 
@@ -12,7 +11,6 @@ function formatSetCount(v) {
 }
 
 export default function MuscleBalancePage() {
-  const navigate = useNavigate()
   const [cursor, setCursor] = useState(() => new Date())
   const [balance, setBalance] = useState(null)
   const [error, setError] = useState(null)
@@ -42,7 +40,6 @@ export default function MuscleBalancePage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Muscle balance</h1>
 
       <div className="calendar-nav section-gap">
