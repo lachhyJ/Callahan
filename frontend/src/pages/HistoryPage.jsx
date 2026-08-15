@@ -21,6 +21,12 @@ function formatWeekLabel(weekStartIso) {
 // caller wants guaranteed to appear (e.g. jumping in from the Dashboard
 // grid to a week outside the normal range), so a dry spell shows up as a
 // run of empty weeks rather than just vanishing from the list.
+//
+// Weeks themselves stay newest-first (a normal history feed), but each
+// week's own items go Monday → Sunday — the items list inherits the
+// caller's overall newest-first sort, which would otherwise show Sunday's
+// session above Monday's inside the same box, backwards from how the week
+// header itself and the Dashboard's Monday-first grid read.
 function groupByWeek(items, targetWeekStart) {
   if (items.length === 0) return []
 
@@ -29,6 +35,9 @@ function groupByWeek(items, targetWeekStart) {
     const weekStart = isoDate(startOfWeek(new Date(`${item.date}T00:00:00`)))
     if (!byWeekStart.has(weekStart)) byWeekStart.set(weekStart, [])
     byWeekStart.get(weekStart).push(item)
+  }
+  for (const weekItems of byWeekStart.values()) {
+    weekItems.sort((a, b) => a.date.localeCompare(b.date))
   }
 
   const weekStarts = [...byWeekStart.keys()].sort()
