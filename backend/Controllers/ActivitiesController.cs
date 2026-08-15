@@ -20,9 +20,13 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ActivityDto>>> GetAll()
+    public async Task<ActionResult<List<ActivityDto>>> GetAll(DateOnly? start = null, DateOnly? end = null)
     {
-        var activities = await _db.Activities
+        var query = _db.Activities.AsQueryable();
+        if (start is not null) query = query.Where(a => a.Date >= start);
+        if (end is not null) query = query.Where(a => a.Date <= end);
+
+        var activities = await query
             .Include(a => a.RunSessionType)
             .OrderByDescending(a => a.Date)
             .Select(a => new ActivityDto(
