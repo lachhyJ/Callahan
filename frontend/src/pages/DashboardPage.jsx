@@ -1,23 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/client'
-import { isoDate } from '../dateUtils'
+import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, CheckIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, TaperIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Six real destinations, one placeholder — fills the two-row,
-// three-column grid plus a trailing single-tile row.
+// Five real destinations, one placeholder — fills the two-row,
+// three-column grid the layout was built for.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
-  { to: '/history', label: 'History', Icon: HistoryIcon },
   { label: 'Tapering', Icon: TaperIcon, soon: true },
 ]
 
@@ -41,6 +40,7 @@ function buildMonthGrid(year, month) {
 
 export default function DashboardPage() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [workouts, setWorkouts] = useState(null)
   const [activities, setActivities] = useState(null)
   const [error, setError] = useState(null)
@@ -129,11 +129,15 @@ export default function DashboardPage() {
       )}
 
       <div className="calendar-grid">
+        <div className="calendar-weekday calendar-gutter-spacer" />
         {WEEKDAY_LABELS.map((label, i) => (
           <div key={i} className="calendar-weekday">{label}</div>
         ))}
-        {weeks.flatMap((week, wi) =>
-          week.map((date, di) => {
+        {weeks.flatMap((week, wi) => {
+          const firstRealDate = week.find((d) => d)
+          const weekStartIso = firstRealDate ? isoDate(startOfWeek(firstRealDate)) : null
+
+          const dayCells = week.map((date, di) => {
             if (!date) return <div key={`${wi}-${di}`} className="calendar-cell calendar-cell-blank" />
             const iso = isoDate(date)
             const entry = byDate.get(iso)
@@ -172,7 +176,23 @@ export default function DashboardPage() {
               </button>
             )
           })
-        )}
+
+          const gutter = weekStartIso ? (
+            <button
+              key={`gutter-${wi}`}
+              type="button"
+              className="calendar-week-gutter"
+              aria-label={`View sessions for the week of ${weekStartIso}`}
+              onClick={() => navigate(`/history?week=${weekStartIso}`)}
+            >
+              <ChevronRightIcon />
+            </button>
+          ) : (
+            <div key={`gutter-${wi}`} className="calendar-week-gutter calendar-cell-blank" />
+          )
+
+          return [gutter, ...dayCells]
+        })}
       </div>
 
       <div className="quick-links-grid section-gap">
