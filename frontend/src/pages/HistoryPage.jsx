@@ -3,7 +3,8 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRunSessionType } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
-import { isoDate, startOfWeek } from '../dateUtils'
+import RunActivityRow from '../components/RunActivityRow'
+import { dayOfMonth, isoDate, startOfWeek } from '../dateUtils'
 import { BackIcon } from '../icons'
 
 function formatWeekLabel(weekStartIso) {
@@ -49,38 +50,6 @@ function groupByWeek(items, targetWeekStart) {
     weeks.push({ weekStart, items: byWeekStart.get(weekStart) ?? [] })
   }
   return weeks
-}
-
-// Runs need classifying well after the fact (mostly Garmin syncs reviewed
-// during a later History browse, not right after logging), so the picker
-// lives inline here rather than on the log-run flow. Unclassified
-// Garmin-sourced runs get a badge so they don't quietly go unclassified.
-function RunActivityRow({ activity, runSessionTypes, openPickerId, onTogglePicker, onSelect }) {
-  const pickerOpen = openPickerId === activity.id
-  const needsClassification = activity.source === 'Garmin' && !activity.runSessionTypeId
-
-  return (
-    <span className="run-classify">
-      <button type="button" className="run-classify-trigger" onClick={() => onTogglePicker(activity.id)}>
-        {activityLabel(activity)}
-      </button>
-      {needsClassification && <span className="needs-classification-badge">Needs classification</span>}
-      {pickerOpen && (
-        <div className="set-type-menu run-type-menu">
-          {runSessionTypes.map((t) => (
-            <button key={t.id} type="button" onClick={() => onSelect(activity.id, t.id)}>
-              {t.name}
-            </button>
-          ))}
-          {activity.runSessionTypeId && (
-            <button type="button" className="remove-option" onClick={() => onSelect(activity.id, null)}>
-              Clear
-            </button>
-          )}
-        </div>
-      )}
-    </span>
-  )
 }
 
 export default function HistoryPage() {
@@ -158,27 +127,35 @@ export default function HistoryPage() {
                 {week.items.length === 0 && isTarget && (
                   <p className="streak-week-empty">Nothing logged</p>
                 )}
-                {week.items.map((item) => (
-                  <div key={`${item.kind}-${item.id}`} className="history-item">
-                    <strong>{item.date}</strong>{' '}
-                    {item.kind === 'workout' ? (
-                      <Link to={`/sessions/${item.id}`} className="session-link">
-                        {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
-                      </Link>
-                    ) : item.type === 'Running' ? (
-                      <RunActivityRow
-                        activity={item}
-                        runSessionTypes={runSessionTypes}
-                        openPickerId={openPickerId}
-                        onTogglePicker={togglePicker}
-                        onSelect={selectRunSessionType}
-                      />
-                    ) : (
-                      <span>{activityLabel(item)}</span>
-                    )}
-                    {item.notes && <p className="notes">{item.notes}</p>}
-                  </div>
-                ))}
+                {week.items.map((item) => {
+                  // A classified Garmin run's notes are just the raw event name
+                  // Garmin gave it (e.g. "Melbourne - HiSpd Intervals") — once
+                  // it's tagged with our own type, showing both is redundant.
+                  const isClassifiedGarminRun = item.type === 'Running' && item.source === 'Garmin' && item.runSessionTypeId
+                  const showNotes = item.notes && !isClassifiedGarminRun
+
+                  return (
+                    <div key={`${item.kind}-${item.id}`} className="history-item">
+                      <strong>{dayOfMonth(item.date)}</strong>{' '}
+                      {item.kind === 'workout' ? (
+                        <Link to={`/sessions/${item.id}`} className="session-link">
+                          {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
+                        </Link>
+                      ) : item.type === 'Running' ? (
+                        <RunActivityRow
+                          activity={item}
+                          runSessionTypes={runSessionTypes}
+                          openPickerId={openPickerId}
+                          onTogglePicker={togglePicker}
+                          onSelect={selectRunSessionType}
+                        />
+                      ) : (
+                        <span>{activityLabel(item)}</span>
+                      )}
+                      {showNotes && <p className="notes">{item.notes}</p>}
+                    </div>
+                  )
+                })}
               </div>
             )
           })}
