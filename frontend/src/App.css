@@ -1236,6 +1236,46 @@ td {
   background: var(--text-tertiary);
 }
 
+.run-classify {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.run-classify-trigger {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    color: var(--text-h);
+    text-decoration-color: var(--border);
+  }
+}
+
+.needs-classification-badge {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--info-text);
+  background: var(--info-bg);
+  border-radius: var(--radius-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
+.run-type-menu {
+  top: calc(100% + var(--space-2xs));
+}
+
 .session-link {
   color: var(--text);
   font-size: var(--text-sm);

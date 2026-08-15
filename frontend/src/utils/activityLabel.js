@@ -9,7 +9,8 @@ export function formatDuration(totalSeconds) {
 export function activityLabel(activity) {
   const duration = formatDuration(activity.durationSeconds)
   if (activity.type === 'Running') {
-    return `Run · ${activity.distanceKm} km in ${duration}`
+    const label = activity.runSessionTypeName ?? 'Run'
+    return `${label} · ${activity.distanceKm} km in ${duration}`
   }
   if (activity.type === 'Ultimate') {
     return `Ultimate · ${duration}`

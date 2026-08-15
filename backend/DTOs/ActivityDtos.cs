@@ -9,7 +9,9 @@ public record ActivityDto(
     decimal? DistanceKm,
     int? Calories,
     int? AvgHeartRate,
-    string? Notes);
+    string? Notes,
+    int? RunSessionTypeId,
+    string? RunSessionTypeName);
 
 public record CreateActivityRequest(
     DateOnly Date,
@@ -21,3 +23,7 @@ public record CreateActivityRequest(
     string? Notes,
     string Source = "Manual",
     string? GarminActivityId = null);
+
+public record UpdateActivityRunSessionTypeRequest(int? RunSessionTypeId);
+
+public record RunSessionTypeDto(int Id, string Name);
