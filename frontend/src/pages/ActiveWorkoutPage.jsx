@@ -461,7 +461,7 @@ export default function ActiveWorkoutPage() {
         exerciseNotes,
       })
       clearActiveWorkout()
-      navigate('/history', { state: { savedMessage: 'Workout saved' } })
+      navigate('/dashboard', { state: { savedMessage: 'Workout saved' } })
     } catch (err) {
       setError(err.message)
       setSaving(false)

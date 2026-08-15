@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
-import { DashboardIcon, HistoryIcon, PlayIcon, WorkoutIcon } from './icons'
+import { DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
@@ -22,7 +22,6 @@ import './App.css'
 
 const TABS = [
   { to: '/', label: 'Workout', Icon: WorkoutIcon },
-  { to: '/history', label: 'History', Icon: HistoryIcon },
   { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon },
 ]
 
