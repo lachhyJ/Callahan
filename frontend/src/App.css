@@ -958,20 +958,29 @@ td {
   font-weight: 600;
 }
 
+/* Sticky and full-width (stretched via the .page flex column's default
+   cross-axis alignment, not align-self: flex-start) so it stays reachable
+   — and its background masks scrolled-under content — on pages long enough
+   to scroll the top bar out of view. Otherwise the only way back is the
+   bottom tab bar, which doesn't exist for every route (e.g. History) and
+   loses page state. */
 .back-link {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: var(--space-2xs);
-  background: transparent;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-sticky);
+  background: var(--bg);
   border: none;
-  padding: 0;
+  padding: var(--space-2xs) 0;
+  margin: calc(var(--space-2xs) * -1) 0;
   color: var(--text);
   font-size: var(--text-sm);
-  align-self: flex-start;
 
   &:hover,
   &:focus-visible {
-    background: transparent;
+    background: var(--bg);
     color: var(--text-h);
     opacity: 1;
   }
