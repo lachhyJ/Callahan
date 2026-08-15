@@ -1312,6 +1312,18 @@ td {
   background: transparent;
 }
 
+.run-type-menu .suggested-option {
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.suggested-tag {
+  margin-left: var(--space-2xs);
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--accent);
+}
+
 .session-link {
   color: var(--text);
   font-size: var(--text-sm);
