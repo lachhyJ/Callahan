@@ -10,6 +10,11 @@ function formatSetCount(v) {
   return Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)
 }
 
+// Keeps a sliver visible for near-zero counts, mirroring the old min-width: 4px.
+function barScale(setCount, maxCount) {
+  return Math.max(setCount / maxCount, 0.02)
+}
+
 export default function MuscleBalancePage() {
   const [cursor, setCursor] = useState(() => new Date())
   const [balance, setBalance] = useState(null)
@@ -74,7 +79,7 @@ export default function MuscleBalancePage() {
             <div key={b.muscleGroup} className="muscle-bar-row">
               <span className="muscle-bar-label" title={b.muscleGroup}>{b.muscleGroup}</span>
               <div className="muscle-bar-track">
-                <div className="muscle-bar-fill" style={{ width: `${(b.setCount / maxCount) * 100}%` }} />
+                <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(b.setCount, maxCount)})` }} />
               </div>
               <span className="muscle-bar-value">{formatSetCount(b.setCount)}</span>
             </div>

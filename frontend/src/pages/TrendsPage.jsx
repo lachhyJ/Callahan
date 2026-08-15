@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { getLiftTrends, getRunTypeTrends, getTrends } from '../api/client'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
@@ -51,6 +52,7 @@ export default function TrendsPage() {
       {months && !hasAnyData && (
         <div className="empty-state">
           <p>Not enough history yet — trends need a few months of sessions to say anything useful.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { getStreakDetail } from '../api/client'
 import { CheckIcon } from '../icons'
 import SessionList from '../components/SessionList'
@@ -34,6 +34,7 @@ export default function StreakDetailPage() {
           {detail.weeks.length === 0 && (
             <div className="empty-state">
               <p>No sessions logged yet — this fills in once you start training.</p>
+              <Link to="/" className="custom-workout-link">Start a workout</Link>
             </div>
           )}
 

@@ -469,6 +469,7 @@ export default function ActiveWorkoutPage() {
   }
 
   function handleDiscard() {
+    if (!window.confirm('Discard this workout? All logged sets will be lost.')) return
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearActiveWorkout()
     navigate('/')

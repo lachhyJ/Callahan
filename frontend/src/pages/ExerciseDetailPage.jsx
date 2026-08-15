@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { Link, useParams } from 'react-router-dom'
 import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
 
@@ -91,6 +91,7 @@ export default function ExerciseDetailPage() {
       {!hasData && (
         <div className="empty-state">
           <p>No sets logged for this exercise yet.</p>
+          <Link to="/" className="custom-workout-link">Start a workout</Link>
         </div>
       )}
 
