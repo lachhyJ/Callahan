@@ -1,0 +1,25 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    env_file:
+      - backend.env
+    environment:
+      - Cors__AllowedOrigins__0=http://localhost:8081
+    volumes:
+      - callahan-data:/app/App_Data
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://localhost:8080
+        VITE_VAPID_PUBLIC_KEY: BNdG1ygvo2x1yrr86vLjAbIlejJrQ9eN_YlILa_BEqNPAwN4JbBIIvzxQpaQAJ-WnAAQyreh4hVv4wlWyz8uNSA
+    ports:
+      - "8081:80"
+    depends_on:
+      - backend
+
+volumes:
+  callahan-data:
