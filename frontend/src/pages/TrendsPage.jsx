@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { getLiftTrends, getTrends } from '../api/client'
-import { BackIcon } from '../icons'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
@@ -28,7 +26,6 @@ function periodSummary(months) {
 }
 
 export default function TrendsPage() {
-  const navigate = useNavigate()
   const [months, setMonths] = useState(null)
   const [liftTrends, setLiftTrends] = useState(null)
   const [error, setError] = useState(null)
@@ -43,7 +40,6 @@ export default function TrendsPage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Trends</h1>
 
       {error && <p className="error">{error}</p>}

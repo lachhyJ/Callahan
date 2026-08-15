@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { getWorkoutSession } from '../api/client'
-import { BackIcon } from '../icons'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 
@@ -36,7 +35,6 @@ function groupByExercise(sets) {
 
 export default function WorkoutSessionDetailPage() {
   const { sessionId } = useParams()
-  const navigate = useNavigate()
   const [session, setSession] = useState(null)
   const [error, setError] = useState(null)
 
@@ -49,7 +47,6 @@ export default function WorkoutSessionDetailPage() {
   if (error) {
     return (
       <main className="page">
-        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
         <p className="error">{error}</p>
       </main>
     )
@@ -58,7 +55,6 @@ export default function WorkoutSessionDetailPage() {
   if (!session) {
     return (
       <main className="page">
-        <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
         <p>Loading…</p>
       </main>
     )
@@ -70,7 +66,6 @@ export default function WorkoutSessionDetailPage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>{session.date}</h1>
       {duration && <p className="session-duration">{duration} · {session.sets.length} set{session.sets.length === 1 ? '' : 's'}</p>}
       {session.notes && <p className="notes">{session.notes}</p>}

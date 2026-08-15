@@ -1,10 +1,9 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { getStreaks } from '../api/client'
-import { BackIcon, ChevronRightIcon } from '../icons'
+import { ChevronRightIcon } from '../icons'
 
 export default function StreakPage() {
-  const navigate = useNavigate()
   const [streaks, setStreaks] = useState(null)
   const [error, setError] = useState(null)
 
@@ -14,7 +13,6 @@ export default function StreakPage() {
 
   return (
     <main className="page">
-      <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
       <h1>Streaks</h1>
 
       {error && <p className="error">{error}</p>}

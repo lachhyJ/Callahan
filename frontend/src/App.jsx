@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
-import { DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
+import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
@@ -25,6 +25,19 @@ const TABS = [
   { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon },
 ]
 
+// Routes reached by drilling down from somewhere else, rather than the
+// bottom tabs or a top-level action — these get a Back button in the top
+// bar. Everything else (Workout, Dashboard, Login, an active workout, the
+// two logging forms) has its own way out already.
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program']
+
+function showsBackLink(pathname) {
+  return BACK_LINK_ROUTES.includes(pathname)
+    || pathname.startsWith('/exercises/')
+    || pathname.startsWith('/sessions/')
+    || pathname.startsWith('/streaks/')
+}
+
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
@@ -34,12 +47,14 @@ function ProtectedRoute({ children }) {
 function TopBar() {
   const { logout } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [activeWorkout, setActiveWorkout] = useState(() => loadActiveWorkout())
 
   useEffect(() => onActiveWorkoutChange(() => setActiveWorkout(loadActiveWorkout())), [])
 
   const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
   const showResume = activeWorkout && !onThatWorkout
+  const showBack = showsBackLink(location.pathname)
 
   function handleLogout() {
     if (window.confirm('Log out?')) logout()
@@ -47,12 +62,19 @@ function TopBar() {
 
   return (
     <div className={showResume ? 'top-bar' : 'top-bar idle'}>
-      {showResume && (
-        <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
-          <PlayIcon /> Resume
-        </NavLink>
-      )}
-      <button type="button" className="logout-btn" onClick={handleLogout}>Log out</button>
+      <div className="top-bar-left">
+        {showBack && (
+          <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
+        )}
+      </div>
+      <div className="top-bar-right">
+        {showResume && (
+          <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
+            <PlayIcon /> Resume
+          </NavLink>
+        )}
+        <button type="button" className="logout-btn" onClick={handleLogout}>Log out</button>
+      </div>
     </div>
   )
 }
