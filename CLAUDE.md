@@ -9,9 +9,10 @@ dedicated key (`NAS_DEPLOY_SSH_KEY` secret) that's restricted via a forced
 else, even if the key leaked. That wrapper runs `deploy.sh`, which does
 `git fetch && git checkout main && git reset --hard <ref>` against
 `/mnt/tank/callahan`, rebuilds with `docker compose -f docker-compose.prod.yml up -d
---build` (`docker-compose.yml` — the dev-era file — was removed; `.prod.yml` is the
-only compose file that exists now), and records the deployed commit SHA to
-`.deployed_sha` on the NAS.
+--build`, and records the deployed commit SHA to `.deployed_sha` on the NAS. Note:
+`docker-compose.yml` (no `.prod` suffix) also exists — that's the **local-dev**
+compose file (see README's "Running locally with Docker"), not used by the NAS at
+all; don't confuse the two or "clean up" the plain one thinking it's dead.
 
 Because merging to `main` now means "this goes live within moments," the merge
 itself is the real gate — see the concurrent-thread notes below for what that
