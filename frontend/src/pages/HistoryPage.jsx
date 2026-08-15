@@ -4,7 +4,7 @@ import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRu
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
 import RunActivityRow from '../components/RunActivityRow'
-import { dayOfMonth, isoDate, startOfWeek } from '../dateUtils'
+import { isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
 import { BackIcon } from '../icons'
 
 function formatWeekLabel(weekStartIso) {
@@ -136,7 +136,7 @@ export default function HistoryPage() {
 
                   return (
                     <div key={`${item.kind}-${item.id}`} className="history-item">
-                      <strong>{dayOfMonth(item.date)}</strong>{' '}
+                      <strong>{shortWeekdayAndDay(item.date)}</strong>{' '}
                       {item.kind === 'workout' ? (
                         <Link to={`/sessions/${item.id}`} className="session-link">
                           {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
