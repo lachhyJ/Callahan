@@ -99,6 +99,10 @@ export function getLiftTrends(months = 6) {
   return apiFetch(`/api/trends/exercises?months=${months}`)
 }
 
+export function getRunTypeTrends(months = 6) {
+  return apiFetch(`/api/trends/runs?months=${months}`)
+}
+
 // Not apiFetch: that always parses JSON, and a PDF has to come back as a
 // blob so it can be handed to an <iframe> via an object URL — a plain
 // <iframe src> can't carry the Bearer token.
