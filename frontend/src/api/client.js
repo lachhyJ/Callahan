@@ -107,6 +107,25 @@ export function getRunTypeTrends(months = 6) {
   return apiFetch(`/api/trends/runs?months=${months}`)
 }
 
+export function getTaperEvents() {
+  return apiFetch('/api/taper/events')
+}
+
+export function getTaperRecommendation() {
+  return apiFetch('/api/taper/recommendation')
+}
+
+export function createTaperEvent({ date, name, taperDays }) {
+  return apiFetch('/api/taper/events', {
+    method: 'POST',
+    body: JSON.stringify({ date, name: name || null, taperDays }),
+  })
+}
+
+export function deleteTaperEvent(id) {
+  return apiFetch(`/api/taper/events/${id}`, { method: 'DELETE' })
+}
+
 // Not apiFetch: that always parses JSON, and a PDF has to come back as a
 // blob so it can be handed to an <iframe> via an object URL — a plain
 // <iframe src> can't carry the Bearer token.
@@ -135,6 +154,13 @@ export function createWorkoutSession(session) {
   return apiFetch('/api/workoutsessions', {
     method: 'POST',
     body: JSON.stringify(session),
+  })
+}
+
+export function updateWorkoutSessionName(id, name) {
+  return apiFetch(`/api/workoutsessions/${id}/name`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
   })
 }
 

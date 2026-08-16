@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
     public DbSet<RunSessionType> RunSessionTypes => Set<RunSessionType>();
+    public DbSet<TaperEvent> TaperEvents => Set<TaperEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
