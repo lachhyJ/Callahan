@@ -33,7 +33,7 @@ public class WorkoutSessionsController : ControllerBase
             .ToListAsync();
 
         var result = sessions.Select(s => new WorkoutSessionSummaryDto(
-            s.Id, s.Date, s.Notes, s.Sets.Count,
+            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             s.StartedAt, s.FinishedAt,
@@ -64,6 +64,7 @@ public class WorkoutSessionsController : ControllerBase
     {
         var session = await _db.WorkoutSessions
             .Include(s => s.Sets).ThenInclude(set => set.Exercise)
+            .Include(s => s.WorkoutTemplate)
             .FirstOrDefaultAsync(s => s.Id == id);
 
         if (session is null) return NotFound();
@@ -77,9 +78,13 @@ public class WorkoutSessionsController : ControllerBase
         var dto = new WorkoutSessionDetailDto(
             session.Id,
             session.Date,
+            session.Name,
             session.Notes,
             session.StartedAt,
             session.FinishedAt,
+            session.WorkoutTemplate?.Name,
+            session.WorkoutTemplate?.Subtitle,
+            CategorySummary(session.Sets),
             session.Sets
                 .OrderBy(set => set.SetOrder)
                 .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString()))
@@ -142,6 +147,7 @@ public class WorkoutSessionsController : ControllerBase
         var session = new WorkoutSession
         {
             Date = request.Date,
+            Name = request.Name,
             Notes = request.Notes,
             WorkoutTemplateId = request.WorkoutTemplateId,
             StartedAt = request.StartedAt,
@@ -175,5 +181,17 @@ public class WorkoutSessionsController : ControllerBase
         }
 
         return await GetById(session.Id);
+    }
+
+    [HttpPut("{id}/name")]
+    public async Task<IActionResult> UpdateName(int id, UpdateWorkoutSessionNameRequest request)
+    {
+        var session = await _db.WorkoutSessions.FindAsync(id);
+        if (session is null) return NotFound();
+
+        session.Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim();
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 }

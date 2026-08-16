@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { getWorkoutSession } from '../api/client'
+import { getWorkoutSession, updateWorkoutSessionName } from '../api/client'
+import { workoutLabel } from '../components/SessionList'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 
@@ -44,6 +45,14 @@ export default function WorkoutSessionDetailPage() {
     getWorkoutSession(sessionId).then(setSession).catch((err) => setError(err.message))
   }, [sessionId])
 
+  function updateNameLocal(value) {
+    setSession((prev) => ({ ...prev, name: value }))
+  }
+
+  function handleNameBlur(value) {
+    updateWorkoutSessionName(sessionId, value.trim() || null).catch(() => {})
+  }
+
   if (error) {
     return (
       <main className="page">
@@ -66,7 +75,16 @@ export default function WorkoutSessionDetailPage() {
 
   return (
     <main className="page">
-      <h1>{session.date}</h1>
+      <input
+        type="text"
+        className="session-name-input"
+        placeholder={workoutLabel(session)}
+        value={session.name ?? ''}
+        onChange={(e) => updateNameLocal(e.target.value)}
+        onBlur={(e) => handleNameBlur(e.target.value)}
+        aria-label="Session name"
+      />
+      <p className="session-date">{session.date}</p>
       {duration && <p className="session-duration">{duration} · {session.sets.length} set{session.sets.length === 1 ? '' : 's'}</p>}
       {session.notes && <p className="notes">{session.notes}</p>}
 

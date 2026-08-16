@@ -4,6 +4,7 @@ public class WorkoutSession
 {
     public int Id { get; set; }
     public DateOnly Date { get; set; }
+    public string? Name { get; set; }
     public string? Notes { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? FinishedAt { get; set; }
