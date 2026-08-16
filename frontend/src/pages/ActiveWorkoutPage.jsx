@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getFinishers, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
+import { cancelRestTimer, createWorkoutSession, getFinishers, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon } from '../icons'
@@ -82,10 +82,23 @@ function exerciseFromStart(ex) {
     tempo: ex.tempo,
     primaryMuscle: ex.primaryMuscle,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
+    targetSets: ex.targetSets,
     cue: ex.cue ?? '',
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets),
   }
+}
+
+// Suggested set count during a taper phase, scaled off the exercise's real
+// program target (not the current row count, which the athlete may already
+// have edited) — informational only, doesn't change what's rendered.
+// Skipped for game day (rest/activation, not a scaled-down lifting day) and
+// for exercises with no program target (custom/finisher additions).
+function taperSetSuggestion(ex, taper) {
+  if (!ex.workoutTemplateExerciseId || !ex.targetSets) return null
+  if (!taper || taper.gymTargetPct === null || taper.gymTargetPct === undefined) return null
+  if (taper.phase === 'game_day') return null
+  return Math.max(1, Math.round(ex.targetSets * taper.gymTargetPct))
 }
 
 function completedSetsFor(ex) {
@@ -111,6 +124,7 @@ export default function ActiveWorkoutPage() {
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
+  const [taper, setTaper] = useState(null)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
   const headerRef = useRef(null)
@@ -126,6 +140,12 @@ export default function ActiveWorkoutPage() {
     window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [exercises])
+
+  // Best-effort: a taper nudge is a nice-to-have, not core to logging a
+  // workout, so a failed fetch just means no banner rather than an error.
+  useEffect(() => {
+    getTaperRecommendation().then(setTaper).catch(() => {})
+  }, [])
 
   useEffect(() => {
     const saved = loadActiveWorkout()
@@ -533,6 +553,9 @@ export default function ActiveWorkoutPage() {
         </div>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
+      {taper && taper.phase !== 'none' && taper.phase !== 'build' && (
+        <p className="taper-nudge">{taper.message}</p>
+      )}
       <div className="live-stats">
         <span>{formatDuration(now - startedAt)}</span>
         <span>{stats.volume.toLocaleString()} kg</span>
@@ -604,6 +627,9 @@ export default function ActiveWorkoutPage() {
             s
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
+          {taperSetSuggestion(ex, taper) !== null && (
+            <p className="taper-nudge taper-nudge-exercise">Taper: try ~{taperSetSuggestion(ex, taper)} sets today</p>
+          )}
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">
               {REST_PRESETS.map((preset) => (
