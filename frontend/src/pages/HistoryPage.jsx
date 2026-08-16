@@ -4,7 +4,7 @@ import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRu
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
 import RunActivityRow from '../components/RunActivityRow'
-import { isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
+import { endOfWeek, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
 
 const WEEKS_PER_PAGE = 6
 
@@ -92,7 +92,7 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const start = isoDate(range.start)
-    const end = isoDate(range.end)
+    const end = isoDate(endOfWeek(range.end))
     Promise.all([getWorkoutSessions({ start, end }), getActivities({ start, end }), getRunSessionTypes()])
       .then(([workouts, activities, types]) => {
         const merged = [
@@ -141,7 +141,7 @@ export default function HistoryPage() {
     setLoadingLater(true)
     const start = isoDate(addWeeks(range.end, 1))
     const newEnd = capToWeek(addWeeks(range.end, WEEKS_PER_PAGE), startOfWeek(new Date()))
-    const end = isoDate(newEnd)
+    const end = isoDate(endOfWeek(newEnd))
     try {
       const [workouts, activities] = await Promise.all([getWorkoutSessions({ start, end }), getActivities({ start, end })])
       const newer = [
