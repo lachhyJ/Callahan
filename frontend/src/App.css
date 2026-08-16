@@ -622,6 +622,23 @@ td {
   margin: 0;
 }
 
+.taper-nudge {
+  padding: var(--space-xs) var(--space-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
+  color: var(--text);
+  margin: var(--space-sm) 0;
+}
+
+.taper-nudge-exercise {
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin: var(--space-2xs) 0 0;
+  color: var(--accent);
+}
+
 .tempo-badge {
   display: inline-flex;
   align-items: center;
