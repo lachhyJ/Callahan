@@ -23,3 +23,10 @@ jobs:
           username: truenas_admin
           key: ${{ secrets.NAS_DEPLOY_SSH_KEY }}
           script: ${{ github.event.inputs.sha }}
+
+      - name: Notify monitor bot on failure
+        if: failure()
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${{ secrets.MONITOR_BOT_TOKEN }}/sendMessage" \
+            -d chat_id="${{ secrets.MONITOR_CHAT_ID }}" \
+            -d text="Callahan deploy failed: ${{ github.sha }} — https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
