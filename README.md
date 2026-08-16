@@ -47,6 +47,23 @@ docker compose up --build
 - Backend: http://localhost:8080
 - Frontend: http://localhost:8081
 
+`docker-compose.yml` (this local-dev file, not `docker-compose.prod.yml`) sets
+`ASPNETCORE_ENVIRONMENT=Development`, which enables `POST /api/auth/dev-login` —
+see "Verifying UI changes without a password" below.
+
+## Verifying UI changes without a password
+
+`POST /api/auth/dev-login` issues a real JWT for the app's single user with no
+password check. It only exists when `ASPNETCORE_ENVIRONMENT=Development` (true for
+local Docker/bare-metal runs, false on the NAS — the route 404s in Production, so
+it's unreachable on the live deploy regardless of how it's compiled). This lets
+tooling (Claude Code's browser preview, etc.) verify authenticated pages without
+being handed the real password:
+```bash
+curl -X POST http://localhost:8080/api/auth/dev-login
+# {"token":"..."} — set it as localStorage['callahan_token'] and reload
+```
+
 ## Deploying
 
 Automatic: `.github/workflows/deploy.yml` deploys to the NAS on every push to `main`
