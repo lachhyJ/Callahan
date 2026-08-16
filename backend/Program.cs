@@ -1,5 +1,6 @@
 using System.Text;
 using Callahan.Api.Data;
+using Callahan.Api.DTOs;
 using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -61,5 +62,27 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Dev-only login bypass for tooling (e.g. Claude Code browser checks) that needs to
+// authenticate without knowing the real password. Two independent gates, both
+// required: the route is only registered at all when IsDevelopment() (false for the
+// NAS prod deploy, which never sets ASPNETCORE_ENVIRONMENT), and even then only when
+// Auth:AllowDevLogin is explicitly true (set in docker-compose.yml's local-dev
+// service, absent from backend.prod.env). A single misconfigured env var can't
+// expose this — it takes both, in two different files, neither of which the NAS
+// deploy touches.
+if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Auth:AllowDevLogin"))
+{
+    app.MapPost("/api/auth/dev-login", (IConfiguration config, TokenService tokenService) =>
+    {
+        var username = config["Auth:Username"];
+        if (username is null)
+        {
+            return Results.StatusCode(500);
+        }
+
+        return Results.Ok(new LoginResponse(tokenService.GenerateToken(username)));
+    });
+}
 
 app.Run();
