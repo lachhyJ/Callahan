@@ -87,7 +87,7 @@ export default function DashboardPage() {
   }, [workouts, activities])
 
   if (error) return <main className="page"><p className="error">{error}</p></main>
-  if (workouts === null || activities === null) return <main className="page"><p>Loading…</p></main>
+  if (workouts === null || activities === null) return <main className="page"><p>Loading dashboard…</p></main>
 
   const hasAnyHistory = workouts.length > 0 || activities.length > 0
   const weeks = buildMonthGrid(cursor.year, cursor.month)

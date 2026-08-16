@@ -16,7 +16,7 @@ export default function StreakPage() {
       <h1>Streaks</h1>
 
       {error && <p className="error">{error}</p>}
-      {!error && streaks === null && <p>Loading…</p>}
+      {!error && streaks === null && <p>Loading streaks…</p>}
 
       {streaks && (
         <div className="streak-list">

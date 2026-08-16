@@ -58,7 +58,7 @@ export default function MuscleBalancePage() {
       </div>
 
       {error && <p className="error">{error}</p>}
-      {!error && balance === null && <p>Loading…</p>}
+      {!error && balance === null && <p>Loading muscle balance…</p>}
 
       {balance && !hasAnySets && (
         <div className="empty-state section-gap">

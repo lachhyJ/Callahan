@@ -171,7 +171,7 @@ export default function HistoryPage() {
     <main className="page">
       <h1>History</h1>
       {error && <p className="error">{error}</p>}
-      {items === null && !error && <p>Loading…</p>}
+      {items === null && !error && <p>Loading history…</p>}
       {weeks.length > 0 && (
         <>
           {!caughtUpToToday && (

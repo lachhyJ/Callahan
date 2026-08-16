@@ -55,7 +55,7 @@ export default function WorkoutSessionDetailPage() {
   if (!session) {
     return (
       <main className="page">
-        <p>Loading…</p>
+        <p>Loading session…</p>
       </main>
     )
   }

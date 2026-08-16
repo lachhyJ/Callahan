@@ -25,7 +25,7 @@ export default function StreakDetailPage() {
   return (
     <main className="page">
       {error && <p className="error">{error}</p>}
-      {!error && !detail && <p>Loading…</p>}
+      {!error && !detail && <p>Loading streak…</p>}
 
       {detail && (
         <>

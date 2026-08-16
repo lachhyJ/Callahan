@@ -63,7 +63,7 @@ export default function ExerciseDetailPage() {
   if (!stats) {
     return (
       <main className="page">
-        <p>Loading…</p>
+        <p>Loading exercise…</p>
       </main>
     )
   }
