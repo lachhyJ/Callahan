@@ -7,6 +7,7 @@ services:
       - backend.env
     environment:
       - Cors__AllowedOrigins__0=http://localhost:8081
+      - ASPNETCORE_ENVIRONMENT=Development
     volumes:
       - callahan-data:/app/App_Data
 
