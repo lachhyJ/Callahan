@@ -24,6 +24,13 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Soft delete: everywhere in the app queries through these DbSets (or
+        // through a navigation/join to them) automatically excludes anything
+        // pending its 7-day recovery window, with no per-query .Where() needed.
+        // Listing/purging deleted rows explicitly opts out via IgnoreQueryFilters().
+        modelBuilder.Entity<WorkoutSession>().HasQueryFilter(s => s.DeletedAt == null);
+        modelBuilder.Entity<Activity>().HasQueryFilter(a => a.DeletedAt == null);
+
         modelBuilder.Entity<Activity>()
             .HasIndex(a => a.GarminActivityId)
             .IsUnique()

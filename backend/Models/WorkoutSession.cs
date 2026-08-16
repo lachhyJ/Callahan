@@ -8,6 +8,7 @@ public class WorkoutSession
     public string? Notes { get; set; }
     public DateTime? StartedAt { get; set; }
     public DateTime? FinishedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 
     public int? WorkoutTemplateId { get; set; }
     public WorkoutTemplate? WorkoutTemplate { get; set; }

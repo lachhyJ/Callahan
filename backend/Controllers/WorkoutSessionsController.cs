@@ -19,9 +19,34 @@ public class WorkoutSessionsController : ControllerBase
         _db = db;
     }
 
+    private const int RecoveryWindowDays = 7;
+
+    // Runs on the two most-hit read paths (the active list and the deleted
+    // list itself) rather than on a schedule — good enough for a handful of
+    // rows nobody's in a hurry to see gone, without a NAS cron job to maintain.
+    private async Task PurgeExpiredAsync()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-RecoveryWindowDays);
+        var expiredIds = await _db.WorkoutSessions.IgnoreQueryFilters()
+            .Where(s => s.DeletedAt != null && s.DeletedAt < cutoff)
+            .Select(s => s.Id)
+            .ToListAsync();
+        if (expiredIds.Count == 0) return;
+
+        // WorkoutSession has no ExerciseNotes navigation, so the change
+        // tracker can't cascade that table on its own — clear it explicitly
+        // alongside Sets rather than leaving orphaned notes behind.
+        _db.ExerciseSets.RemoveRange(await _db.ExerciseSets.Where(s => expiredIds.Contains(s.WorkoutSessionId)).ToListAsync());
+        _db.ExerciseNotes.RemoveRange(await _db.ExerciseNotes.Where(n => expiredIds.Contains(n.WorkoutSessionId)).ToListAsync());
+        _db.WorkoutSessions.RemoveRange(await _db.WorkoutSessions.IgnoreQueryFilters().Where(s => expiredIds.Contains(s.Id)).ToListAsync());
+        await _db.SaveChangesAsync();
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<WorkoutSessionSummaryDto>>> GetAll(DateOnly? start = null, DateOnly? end = null)
     {
+        await PurgeExpiredAsync();
+
         var query = _db.WorkoutSessions.AsQueryable();
         if (start is not null) query = query.Where(s => s.Date >= start);
         if (end is not null) query = query.Where(s => s.Date <= end);
@@ -193,5 +218,58 @@ public class WorkoutSessionsController : ControllerBase
         await _db.SaveChangesAsync();
 
         return NoContent();
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var session = await _db.WorkoutSessions.FirstOrDefaultAsync(s => s.Id == id);
+        if (session is null) return NotFound();
+
+        session.DeletedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpGet("deleted")]
+    public async Task<ActionResult<List<DeletedWorkoutSessionDto>>> GetDeleted()
+    {
+        await PurgeExpiredAsync();
+
+        var sessions = await _db.WorkoutSessions.IgnoreQueryFilters()
+            .Where(s => s.DeletedAt != null)
+            .Include(s => s.Sets).ThenInclude(set => set.Exercise)
+            .Include(s => s.WorkoutTemplate)
+            .OrderByDescending(s => s.DeletedAt)
+            .ToListAsync();
+
+        var result = sessions.Select(s => new DeletedWorkoutSessionDto(
+            s.Id, s.Date, s.Name, s.Sets.Count,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
+            s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
+            CategorySummary(s.Sets),
+            s.DeletedAt!.Value)).ToList();
+
+        return Ok(result);
+    }
+
+    [HttpPost("{id}/restore")]
+    public async Task<ActionResult<WorkoutSessionSummaryDto>> Restore(int id)
+    {
+        var session = await _db.WorkoutSessions.IgnoreQueryFilters()
+            .Include(s => s.Sets).ThenInclude(set => set.Exercise)
+            .Include(s => s.WorkoutTemplate)
+            .FirstOrDefaultAsync(s => s.Id == id && s.DeletedAt != null);
+        if (session is null) return NotFound();
+
+        session.DeletedAt = null;
+        await _db.SaveChangesAsync();
+
+        return Ok(new WorkoutSessionSummaryDto(
+            session.Id, session.Date, session.Name, session.Notes, session.Sets.Count,
+            session.WorkoutTemplate?.Name, session.WorkoutTemplate?.Subtitle,
+            session.StartedAt, session.FinishedAt,
+            CategorySummary(session.Sets)));
     }
 }

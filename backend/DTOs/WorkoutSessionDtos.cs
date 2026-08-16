@@ -10,6 +10,8 @@ public record WorkoutSessionDetailDto(int Id, DateOnly Date, string? Name, strin
 
 public record UpdateWorkoutSessionNameRequest(string? Name);
 
+public record DeletedWorkoutSessionDto(int Id, DateOnly Date, string? Name, int SetCount, string? TemplateName, string? TemplateSubtitle, string? CategorySummary, DateTime DeletedAt);
+
 public record CreateExerciseSetRequest(int ExerciseId, int Reps, decimal WeightKg, int SetOrder, string SetType);
 
 public record CreateExerciseNoteRequest(int ExerciseId, string Notes);

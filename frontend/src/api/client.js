@@ -164,6 +164,18 @@ export function updateWorkoutSessionName(id, name) {
   })
 }
 
+export function deleteWorkoutSession(id) {
+  return apiFetch(`/api/workoutsessions/${id}`, { method: 'DELETE' })
+}
+
+export function restoreWorkoutSession(id) {
+  return apiFetch(`/api/workoutsessions/${id}/restore`, { method: 'POST' })
+}
+
+export function getDeletedWorkoutSessions() {
+  return apiFetch('/api/workoutsessions/deleted')
+}
+
 export function getWorkoutTemplates() {
   return apiFetch('/api/workouttemplates')
 }
@@ -211,6 +223,18 @@ export function createActivity(activity) {
 
 export function getRunSessionTypes() {
   return apiFetch('/api/runsessiontypes')
+}
+
+export function deleteActivity(id) {
+  return apiFetch(`/api/activities/${id}`, { method: 'DELETE' })
+}
+
+export function restoreActivity(id) {
+  return apiFetch(`/api/activities/${id}/restore`, { method: 'POST' })
+}
+
+export function getDeletedActivities() {
+  return apiFetch('/api/activities/deleted')
 }
 
 export function updateActivityRunSessionType(id, runSessionTypeId) {

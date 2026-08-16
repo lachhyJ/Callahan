@@ -19,6 +19,7 @@ import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
 import ProgramPage from './pages/ProgramPage'
 import TaperPage from './pages/TaperPage'
+import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
 import './App.css'
 
 const TABS = [
@@ -30,7 +31,7 @@ const TABS = [
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program', '/recently-deleted']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -126,6 +127,7 @@ function AppRoutes() {
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
           <Route path="/taper" element={<ProtectedRoute><TaperPage /></ProtectedRoute>} />
+          <Route path="/recently-deleted" element={<ProtectedRoute><RecentlyDeletedPage /></ProtectedRoute>} />
         </Routes>
       </div>
       {showBottomNav && <BottomTabBar />}

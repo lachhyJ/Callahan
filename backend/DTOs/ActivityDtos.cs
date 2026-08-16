@@ -27,3 +27,15 @@ public record CreateActivityRequest(
 public record UpdateActivityRunSessionTypeRequest(int? RunSessionTypeId);
 
 public record RunSessionTypeDto(int Id, string Name);
+
+public record DeletedActivityDto(
+    int Id,
+    DateOnly Date,
+    string Type,
+    string Source,
+    int DurationSeconds,
+    decimal? DistanceKm,
+    string? Notes,
+    int? RunSessionTypeId,
+    string? RunSessionTypeName,
+    DateTime DeletedAt);

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { getWorkoutSession, updateWorkoutSessionName } from '../api/client'
+import { useNavigate, useParams } from 'react-router-dom'
+import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
+
+const UNDO_WINDOW_MS = 6000
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 
@@ -36,14 +38,23 @@ function groupByExercise(sets) {
 
 export default function WorkoutSessionDetailPage() {
   const { sessionId } = useParams()
+  const navigate = useNavigate()
   const [session, setSession] = useState(null)
   const [error, setError] = useState(null)
+  const [deleted, setDeleted] = useState(false)
 
   useEffect(() => {
     setSession(null)
     setError(null)
+    setDeleted(false)
     getWorkoutSession(sessionId).then(setSession).catch((err) => setError(err.message))
   }, [sessionId])
+
+  useEffect(() => {
+    if (!deleted) return
+    const timeout = setTimeout(() => navigate('/history'), UNDO_WINDOW_MS)
+    return () => clearTimeout(timeout)
+  }, [deleted, navigate])
 
   function updateNameLocal(value) {
     setSession((prev) => ({ ...prev, name: value }))
@@ -51,6 +62,23 @@ export default function WorkoutSessionDetailPage() {
 
   function handleNameBlur(value) {
     updateWorkoutSessionName(sessionId, value.trim() || null).catch(() => {})
+  }
+
+  function handleDelete() {
+    if (!window.confirm('Delete this session? You can restore it from Recently Deleted within 7 days.')) return
+    deleteWorkoutSession(sessionId).then(() => setDeleted(true)).catch((err) => setError(err.message))
+  }
+
+  function handleUndo() {
+    restoreWorkoutSession(sessionId).then(() => setDeleted(false)).catch((err) => setError(err.message))
+  }
+
+  if (deleted) {
+    return (
+      <main className="page">
+        <p className="delete-toast">Session deleted. <button type="button" onClick={handleUndo}>Undo</button></p>
+      </main>
+    )
   }
 
   if (error) {
@@ -111,6 +139,8 @@ export default function WorkoutSessionDetailPage() {
           </div>
         ))}
       </div>
+
+      <button type="button" className="discard-btn" onClick={handleDelete}>Delete session</button>
     </main>
   )
 }

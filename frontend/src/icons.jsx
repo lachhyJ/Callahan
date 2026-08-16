@@ -117,6 +117,14 @@ export function DocumentIcon(props) {
   )
 }
 
+export function TrashIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M4 6h12M8 6V4h4v2M6 6l.7 10a1 1 0 0 0 1 1h4.6a1 1 0 0 0 1-1L14 6" />
+    </svg>
+  )
+}
+
 export function TaperIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

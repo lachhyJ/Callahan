@@ -15,4 +15,6 @@ public class Activity
 
     public int? RunSessionTypeId { get; set; }
     public RunSessionType? RunSessionType { get; set; }
+
+    public DateTime? DeletedAt { get; set; }
 }
