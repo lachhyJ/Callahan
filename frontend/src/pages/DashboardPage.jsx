@@ -4,7 +4,7 @@ import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/clien
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
@@ -105,7 +105,12 @@ export default function DashboardPage() {
 
   return (
     <main className="page dashboard-page">
-      <h1>Dashboard</h1>
+      <div className="dashboard-header">
+        <h1>Dashboard</h1>
+        <Link to="/recently-deleted" className="icon-link" aria-label="Recently deleted">
+          <TrashIcon />
+        </Link>
+      </div>
 
       {savedMessage && (
         <p className="save-confirmation"><CheckIcon /> {savedMessage}</p>

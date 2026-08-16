@@ -1,12 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { getActivities, getRunSessionTypes, getWorkoutSessions, updateActivityRunSessionType } from '../api/client'
+import {
+  deleteActivity,
+  deleteWorkoutSession,
+  getActivities,
+  getRunSessionTypes,
+  getWorkoutSessions,
+  restoreActivity,
+  restoreWorkoutSession,
+  updateActivityRunSessionType,
+} from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
 import RunActivityRow from '../components/RunActivityRow'
+import { TrashIcon } from '../icons'
 import { endOfWeek, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
 
 const WEEKS_PER_PAGE = 6
+const UNDO_WINDOW_MS = 6000
 
 function formatWeekLabel(weekStartIso) {
   const start = new Date(`${weekStartIso}T00:00:00`)
@@ -87,8 +98,15 @@ export default function HistoryPage() {
   const [loadingLater, setLoadingLater] = useState(false)
   const [runSessionTypes, setRunSessionTypes] = useState([])
   const [openPickerId, setOpenPickerId] = useState(null)
+  const [deletedToast, setDeletedToast] = useState(null)
   const targetRef = useRef(null)
   const hasScrolledToTarget = useRef(false)
+
+  useEffect(() => {
+    if (!deletedToast) return
+    const timeout = setTimeout(() => setDeletedToast(null), UNDO_WINDOW_MS)
+    return () => clearTimeout(timeout)
+  }, [deletedToast])
 
   useEffect(() => {
     const start = isoDate(range.start)
@@ -167,9 +185,37 @@ export default function HistoryPage() {
     setItems((current) => current.map((item) => (item.kind === 'activity' && item.id === activityId ? { ...item, ...updated } : item)))
   }
 
+  async function handleDelete(item) {
+    const noun = item.kind === 'workout' ? 'workout' : 'activity'
+    if (!window.confirm(`Delete this ${noun}? You can restore it from Recently Deleted within 7 days.`)) return
+    try {
+      if (item.kind === 'workout') await deleteWorkoutSession(item.id)
+      else await deleteActivity(item.id)
+      setItems((current) => current.filter((i) => !(i.kind === item.kind && i.id === item.id)))
+      setDeletedToast({ kind: item.kind, id: item.id })
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleUndo() {
+    if (!deletedToast) return
+    const { kind, id } = deletedToast
+    setDeletedToast(null)
+    try {
+      const restored = kind === 'workout' ? await restoreWorkoutSession(id) : await restoreActivity(id)
+      setItems((current) => [...current, { kind, ...restored }].sort((a, b) => b.date.localeCompare(a.date)))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   return (
     <main className="page">
       <h1>History</h1>
+      {deletedToast && (
+        <p className="delete-toast">Deleted. <button type="button" onClick={handleUndo}>Undo</button></p>
+      )}
       {error && <p className="error">{error}</p>}
       {items === null && !error && <p>Loading history…</p>}
       {weeks.length > 0 && (
@@ -210,22 +256,34 @@ export default function HistoryPage() {
 
                     return (
                       <div key={`${item.kind}-${item.id}`} className="history-item">
-                        <strong>{shortWeekdayAndDay(item.date)}</strong>{' '}
-                        {item.kind === 'workout' ? (
-                          <Link to={`/sessions/${item.id}`} className="session-link">
-                            {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
-                          </Link>
-                        ) : item.type === 'Running' ? (
-                          <RunActivityRow
-                            activity={item}
-                            runSessionTypes={runSessionTypes}
-                            openPickerId={openPickerId}
-                            onTogglePicker={togglePicker}
-                            onSelect={selectRunSessionType}
-                          />
-                        ) : (
-                          <span>{activityLabel(item)}</span>
-                        )}
+                        <div className="history-item-row">
+                          <span className="history-item-main">
+                            <strong>{shortWeekdayAndDay(item.date)}</strong>{' '}
+                            {item.kind === 'workout' ? (
+                              <Link to={`/sessions/${item.id}`} className="session-link">
+                                {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
+                              </Link>
+                            ) : item.type === 'Running' ? (
+                              <RunActivityRow
+                                activity={item}
+                                runSessionTypes={runSessionTypes}
+                                openPickerId={openPickerId}
+                                onTogglePicker={togglePicker}
+                                onSelect={selectRunSessionType}
+                              />
+                            ) : (
+                              <span>{activityLabel(item)}</span>
+                            )}
+                          </span>
+                          <button
+                            type="button"
+                            className="row-delete-btn"
+                            aria-label={item.kind === 'workout' ? 'Delete workout' : 'Delete activity'}
+                            onClick={() => handleDelete(item)}
+                          >
+                            <TrashIcon />
+                          </button>
+                        </div>
                         {showNotes && <p className="notes">{item.notes}</p>}
                       </div>
                     )

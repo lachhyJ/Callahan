@@ -19,9 +19,25 @@ public class ActivitiesController : ControllerBase
         _db = db;
     }
 
+    private const int RecoveryWindowDays = 7;
+
+    private async Task PurgeExpiredAsync()
+    {
+        var cutoff = DateTime.UtcNow.AddDays(-RecoveryWindowDays);
+        var expired = await _db.Activities.IgnoreQueryFilters()
+            .Where(a => a.DeletedAt != null && a.DeletedAt < cutoff)
+            .ToListAsync();
+        if (expired.Count == 0) return;
+
+        _db.Activities.RemoveRange(expired);
+        await _db.SaveChangesAsync();
+    }
+
     [HttpGet]
     public async Task<ActionResult<List<ActivityDto>>> GetAll(DateOnly? start = null, DateOnly? end = null)
     {
+        await PurgeExpiredAsync();
+
         var query = _db.Activities.AsQueryable();
         if (start is not null) query = query.Where(a => a.Date >= start);
         if (end is not null) query = query.Where(a => a.Date <= end);
@@ -96,6 +112,50 @@ public class ActivitiesController : ControllerBase
 
         // Re-fetch the nav property now that the FK changed.
         await _db.Entry(activity).Reference(a => a.RunSessionType).LoadAsync();
+
+        return Ok(ToDto(activity));
+    }
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var activity = await _db.Activities.FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        activity.DeletedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    [HttpGet("deleted")]
+    public async Task<ActionResult<List<DeletedActivityDto>>> GetDeleted()
+    {
+        await PurgeExpiredAsync();
+
+        var activities = await _db.Activities.IgnoreQueryFilters()
+            .Where(a => a.DeletedAt != null)
+            .Include(a => a.RunSessionType)
+            .OrderByDescending(a => a.DeletedAt)
+            .Select(a => new DeletedActivityDto(
+                a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Notes,
+                a.RunSessionTypeId, a.RunSessionType == null ? null : a.RunSessionType.Name,
+                a.DeletedAt!.Value))
+            .ToListAsync();
+
+        return Ok(activities);
+    }
+
+    [HttpPost("{id}/restore")]
+    public async Task<ActionResult<ActivityDto>> Restore(int id)
+    {
+        var activity = await _db.Activities.IgnoreQueryFilters()
+            .Include(a => a.RunSessionType)
+            .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt != null);
+        if (activity is null) return NotFound();
+
+        activity.DeletedAt = null;
+        await _db.SaveChangesAsync();
 
         return Ok(ToDto(activity));
     }
