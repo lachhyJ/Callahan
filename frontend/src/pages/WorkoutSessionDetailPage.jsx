@@ -42,11 +42,13 @@ export default function WorkoutSessionDetailPage() {
   const [session, setSession] = useState(null)
   const [error, setError] = useState(null)
   const [deleted, setDeleted] = useState(false)
+  const [restoring, setRestoring] = useState(false)
 
   useEffect(() => {
     setSession(null)
     setError(null)
     setDeleted(false)
+    setRestoring(false)
     getWorkoutSession(sessionId).then(setSession).catch((err) => setError(err.message))
   }, [sessionId])
 
@@ -70,13 +72,20 @@ export default function WorkoutSessionDetailPage() {
   }
 
   function handleUndo() {
-    restoreWorkoutSession(sessionId).then(() => setDeleted(false)).catch((err) => setError(err.message))
+    if (restoring) return
+    setRestoring(true)
+    restoreWorkoutSession(sessionId)
+      .then(() => setDeleted(false))
+      .catch((err) => setError(err.message))
+      .finally(() => setRestoring(false))
   }
 
   if (deleted) {
     return (
       <main className="page">
-        <p className="delete-toast">Session deleted. <button type="button" onClick={handleUndo}>Undo</button></p>
+        <p className="delete-toast">
+          Session deleted. <button type="button" disabled={restoring} onClick={handleUndo}>{restoring ? 'Undoing…' : 'Undo'}</button>
+        </p>
       </main>
     )
   }
