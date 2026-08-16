@@ -58,7 +58,8 @@ export default function TaperPage() {
     }
   }
 
-  async function handleDelete(id) {
+  async function handleDelete(id, label) {
+    if (!window.confirm(`Delete ${label}?`)) return
     try {
       await deleteTaperEvent(id)
       refresh()
@@ -150,7 +151,7 @@ export default function TaperPage() {
                     {ev.date} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
                   </div>
                 </div>
-                <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id)}>Delete</button>
+                <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id, ev.name || 'this tournament')}>Delete</button>
               </div>
             ))}
           </div>
