@@ -19,6 +19,7 @@ function daysRemaining(deletedAt) {
 export default function RecentlyDeletedPage() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
+  const [restoringKey, setRestoringKey] = useState(null)
 
   useEffect(() => {
     Promise.all([getDeletedWorkoutSessions(), getDeletedActivities()])
@@ -33,12 +34,16 @@ export default function RecentlyDeletedPage() {
   }, [])
 
   async function handleRestore(item) {
+    const key = `${item.kind}-${item.id}`
+    if (restoringKey) return
+    setRestoringKey(key)
     try {
       if (item.kind === 'workout') await restoreWorkoutSession(item.id)
       else await restoreActivity(item.id)
       setItems((current) => current.filter((i) => !(i.kind === item.kind && i.id === item.id)))
     } catch (err) {
       setError(err.message)
+      setRestoringKey(null)
     }
   }
 
@@ -68,7 +73,14 @@ export default function RecentlyDeletedPage() {
                       : `${daysRemaining(item.deletedAt)} day${daysRemaining(item.deletedAt) === 1 ? '' : 's'} left to restore`}
                   </p>
                 </span>
-                <button type="button" className="secondary-btn" onClick={() => handleRestore(item)}>Restore</button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  disabled={restoringKey === `${item.kind}-${item.id}`}
+                  onClick={() => handleRestore(item)}
+                >
+                  {restoringKey === `${item.kind}-${item.id}` ? 'Restoring…' : 'Restore'}
+                </button>
               </div>
             </div>
           ))}
