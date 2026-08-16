@@ -9,15 +9,14 @@ import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIc
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Five real destinations, one placeholder — fills the two-row,
-// three-column grid the layout was built for.
+// Fills the two-row, three-column grid the layout was built for.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
-  { label: 'Tapering', Icon: TaperIcon, soon: true },
+  { to: '/taper', label: 'Tapering', Icon: TaperIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
@@ -92,6 +91,7 @@ export default function DashboardPage() {
   const hasAnyHistory = workouts.length > 0 || activities.length > 0
   const weeks = buildMonthGrid(cursor.year, cursor.month)
   const todayIso = isoDate(new Date())
+  const currentWeekStartIso = isoDate(startOfWeek(new Date()))
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(undefined, MONTH_FORMAT)
   const selectedEntry = selectedDate ? byDate.get(selectedDate) : null
 
@@ -177,7 +177,8 @@ export default function DashboardPage() {
             )
           })
 
-          const gutter = weekStartIso ? (
+          const isFutureWeek = weekStartIso && weekStartIso > currentWeekStartIso
+          const gutter = weekStartIso && !isFutureWeek ? (
             <button
               key={`gutter-${wi}`}
               type="button"
