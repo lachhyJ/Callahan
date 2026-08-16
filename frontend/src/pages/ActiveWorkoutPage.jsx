@@ -476,7 +476,7 @@ export default function ActiveWorkoutPage() {
   }
 
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
-  if (!exercises) return <main className="page"><p>Loading…</p></main>
+  if (!exercises) return <main className="page"><p>Loading workout…</p></main>
 
   if (showSummary) {
     const exercisesWithCompletedSets = exercises

@@ -30,7 +30,7 @@ export default function ExercisesListPage() {
       <h1>Exercises</h1>
 
       {error && <p className="error">{error}</p>}
-      {!error && exercises === null && <p>Loading…</p>}
+      {!error && exercises === null && <p>Loading exercises…</p>}
 
       {exercises && (
         <input

@@ -36,7 +36,13 @@ export default function RunActivityRow({ activity, runSessionTypes, openPickerId
               </button>
             ))}
             {activity.runSessionTypeId && (
-              <button type="button" className="remove-option" onClick={() => onSelect(activity.id, null)}>
+              <button
+                type="button"
+                className="remove-option"
+                onClick={() => {
+                  if (window.confirm('Clear this run’s classification?')) onSelect(activity.id, null)
+                }}
+              >
                 Clear
               </button>
             )}

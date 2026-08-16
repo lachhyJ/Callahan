@@ -24,7 +24,7 @@ export default function WorkoutTemplatesPage() {
     <main className="page">
       <h1>Start a workout</h1>
       {error && <p className="error">{error}</p>}
-      {templates === null && !error && <p>Loading…</p>}
+      {templates === null && !error && <p>Loading workouts…</p>}
       <div className="template-list">
         {templates?.map((t) => (
           <Link key={t.id} to={`/workout/${t.id}`} className="template-card">

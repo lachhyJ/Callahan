@@ -47,7 +47,7 @@ export default function TrendsPage() {
       <h1>Trends</h1>
 
       {error && <p className="error">{error}</p>}
-      {!error && months === null && <p>Loading…</p>}
+      {!error && months === null && <p>Loading trends…</p>}
 
       {months && !hasAnyData && (
         <div className="empty-state">
