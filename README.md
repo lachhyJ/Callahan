@@ -48,15 +48,18 @@ docker compose up --build
 - Frontend: http://localhost:8081
 
 `docker-compose.yml` (this local-dev file, not `docker-compose.prod.yml`) sets
-`ASPNETCORE_ENVIRONMENT=Development`, which enables `POST /api/auth/dev-login` —
-see "Verifying UI changes without a password" below.
+`ASPNETCORE_ENVIRONMENT=Development` and `Auth__AllowDevLogin=true`, which together
+enable `POST /api/auth/dev-login` — see "Verifying UI changes without a password"
+below.
 
 ## Verifying UI changes without a password
 
 `POST /api/auth/dev-login` issues a real JWT for the app's single user with no
-password check. It only exists when `ASPNETCORE_ENVIRONMENT=Development` (true for
-local Docker/bare-metal runs, false on the NAS — the route 404s in Production, so
-it's unreachable on the live deploy regardless of how it's compiled). This lets
+password check. The route is only registered at all when **both**
+`ASPNETCORE_ENVIRONMENT=Development` and `Auth:AllowDevLogin=true` are set —
+deliberately two independent gates, in two different files (`docker-compose.yml` /
+`launchSettings.json` locally; neither is present in `backend.prod.env`), so a
+single misconfigured env var on the NAS can't accidentally expose it. This lets
 tooling (Claude Code's browser preview, etc.) verify authenticated pages without
 being handed the real password:
 ```bash
