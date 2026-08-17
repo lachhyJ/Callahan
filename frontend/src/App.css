@@ -735,14 +735,19 @@ td {
    sitting inline next to the weight field, where it used to cover the
    Reps column on narrow screens. A compact left-docked cluster rather
    than a full-width bar — the earlier full-bleed strip read as a big
-   grey slab covering the rows underneath it. */
+   grey slab covering the rows underneath it.
+   The `bottom` offset (set inline, see ActiveWorkoutPage) already accounts
+   for the safe-area inset when no keyboard is showing, so the vertical
+   padding here has to stay fixed — adding the inset again in padding on
+   top of an inset already baked into `bottom` was floating this well
+   above the keyboard whenever one was open. */
 .weight-input-toolbar {
   position: fixed;
   left: 0;
   z-index: var(--z-sticky);
   display: flex;
   align-items: stretch;
-  padding: var(--space-xs) 0 calc(var(--space-xs) + env(safe-area-inset-bottom)) calc(var(--space-md) + env(safe-area-inset-left));
+  padding: var(--space-xs) 0 var(--space-xs) calc(var(--space-md) + env(safe-area-inset-left));
 }
 
 .weight-input-toolbar-calc {
