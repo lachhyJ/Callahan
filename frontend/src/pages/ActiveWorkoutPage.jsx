@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getFinishers, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
-import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
+import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 
@@ -422,7 +422,7 @@ export default function ActiveWorkoutPage() {
   async function handleEnableAlerts() {
     setPushError(null)
     try {
-      await enablePushNotifications()
+      await enableRestAlerts()
       setPushEnabled(true)
     } catch (err) {
       setPushError(err.message)
