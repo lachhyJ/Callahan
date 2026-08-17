@@ -21,23 +21,21 @@ const DEFAULT_BAR_KG = BAR_PRESETS.kg[0].value
 // Bar sleeve + a stack of plate blocks, one side only (the other side is a
 // mirror image of loading, not a different number) — same visual idea as
 // Hevy's plate calculator, height-scaled per plate so the bigger ones read
-// as bigger at a glance. Sized generously (viewBox + render height both
-// larger than a first pass) since a small, cramped diagram defeats the
-// point of a glanceable visual.
+// as bigger at a glance.
 function BarDiagram({ breakdown, maxPlate }) {
   const plates = breakdown.flatMap(({ plate, count }) => Array(count).fill(plate))
-  const plateWidth = 30
-  const gap = 6
-  const sleeveWidth = 90
+  const plateWidth = 26
+  const gap = 5
+  const sleeveWidth = 80
   const width = sleeveWidth + plates.length * (plateWidth + gap)
-  const height = 170
+  const height = 130
   const midY = height / 2
 
   return (
-    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 50)} ${height}`} width="100%" height="150" preserveAspectRatio="xMinYMid meet">
-      <rect x="0" y={midY - 11} width={sleeveWidth} height="22" rx="4" fill="var(--border)" />
+    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 45)} ${height}`} width="100%" height="115" preserveAspectRatio="xMinYMid meet">
+      <rect x="0" y={midY - 9} width={sleeveWidth} height="18" rx="4" fill="var(--border)" />
       {plates.map((plate, i) => {
-        const plateHeight = 64 + (plate / maxPlate) * 84
+        const plateHeight = 46 + (plate / maxPlate) * 58
         const x = sleeveWidth + i * (plateWidth + gap)
         return (
           <g key={i}>
@@ -47,7 +45,7 @@ function BarDiagram({ breakdown, maxPlate }) {
               y={midY}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="13"
+              fontSize="11"
               fontWeight="700"
               fill="white"
               transform={`rotate(-90 ${x + plateWidth / 2} ${midY})`}
