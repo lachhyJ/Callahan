@@ -37,10 +37,8 @@ export default function PlateCalculatorPage() {
       <label>
         Target weight ({unit})
         <input
-          type="number"
+          type="text"
           inputMode="decimal"
-          step="0.5"
-          min="0"
           placeholder={unit === 'kg' ? 'e.g. 100' : 'e.g. 225'}
           value={targetWeight}
           onChange={(e) => setTargetWeight(e.target.value)}
@@ -61,10 +59,8 @@ export default function PlateCalculatorPage() {
         <label>
           Custom bar weight ({unit})
           <input
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.5"
-            min="0"
             value={customBarWeight}
             onChange={(e) => setCustomBarWeight(e.target.value)}
           />

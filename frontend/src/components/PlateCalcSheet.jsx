@@ -145,10 +145,8 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
               </div>
               {selectedBar === CUSTOM_BAR && (
                 <input
-                  type="number"
+                  type="text"
                   inputMode="decimal"
-                  step="0.5"
-                  min="0"
                   placeholder="Bar weight (kg)"
                   value={customBarWeight}
                   onChange={handleCustomChange}
