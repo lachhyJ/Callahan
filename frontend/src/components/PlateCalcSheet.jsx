@@ -30,20 +30,20 @@ function BarDiagram({ breakdown, maxPlate, barWeightKg }) {
   const plates = breakdown.flatMap(({ plate, count }) => Array(count).fill(plate))
   const plateWidth = 38
   const gap = 7
-  const sleeveWidth = 92
+  const sleeveWidth = 118
   const width = sleeveWidth + plates.length * (plateWidth + gap)
   const height = 150
   const midY = height / 2
 
   return (
     <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 55)} ${height}`} width="100%" height="130" preserveAspectRatio="xMidYMid meet">
-      <rect x="0" y={midY - 10} width={sleeveWidth} height="20" rx="4" fill="#9497a6" />
+      <rect x="0" y={midY - 14} width={sleeveWidth} height="28" rx="5" fill="#9497a6" />
       <text
         x={sleeveWidth / 2}
         y={midY}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="12"
+        fontSize="15"
         fontWeight="800"
         fill="#16171d"
       >
