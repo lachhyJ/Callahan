@@ -126,6 +126,24 @@ export function deleteTaperEvent(id) {
   return apiFetch(`/api/taper/events/${id}`, { method: 'DELETE' })
 }
 
+export function getTaperCheckIns(eventId) {
+  return apiFetch(`/api/taper/events/${eventId}/checkins`)
+}
+
+export function upsertTaperCheckIn(eventId, { date, energy, soreness, motivation, context }) {
+  return apiFetch(`/api/taper/events/${eventId}/checkins`, {
+    method: 'PUT',
+    body: JSON.stringify({ date, energy, soreness, motivation, context: context || null }),
+  })
+}
+
+export function getTaperConsult(eventId, question) {
+  return apiFetch(`/api/taper/events/${eventId}/consult`, {
+    method: 'POST',
+    body: JSON.stringify({ question }),
+  })
+}
+
 // Not apiFetch: that always parses JSON, and a PDF has to come back as a
 // blob so it can be handed to an <iframe> via an object URL — a plain
 // <iframe src> can't carry the Bearer token.
