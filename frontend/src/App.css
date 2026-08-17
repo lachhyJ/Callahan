@@ -758,13 +758,22 @@ td {
   white-space: nowrap;
 }
 
+/* Exercises opted out of the calculator (see plateCalc.js) still get a
+   small icon-only trigger rather than none at all — otherwise turning it
+   off would be a one-way trip with no way back in. */
+.weight-input-toolbar-calc.minimal {
+  padding: var(--space-xs);
+  background: var(--surface-overlay);
+  color: var(--text-tertiary);
+}
+
 .weight-input-toolbar-unit {
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-sm);
   font-weight: 700;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  background: transparent;
+  background: var(--surface-overlay);
   border: 1px solid var(--border);
   border-left: none;
   color: var(--text-h);
@@ -844,6 +853,37 @@ td {
   border-color: var(--accent-border);
   color: var(--accent);
   font-weight: 600;
+}
+
+.plate-calc-custom-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.plate-calc-custom-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.plate-calc-custom-remove {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--error-text);
+  font-size: var(--text-sm);
+}
+
+.plate-calc-hide-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
 }
 
 .check-btn {

@@ -6,6 +6,7 @@ import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } f
 import { playBeep } from '../beep'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
+import { isCalculatorHiddenFor } from '../plateCalc'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
@@ -813,17 +814,20 @@ export default function ActiveWorkoutPage() {
 
       {focusedWeightCell && (() => {
         const [focusedExIdx, focusedSetIdx] = focusedWeightCell.split('-').map(Number)
-        const focusedSet = exercises[focusedExIdx].sets[focusedSetIdx]
+        const focusedExercise = exercises[focusedExIdx]
+        const focusedSet = focusedExercise.sets[focusedSetIdx]
         const isLb = focusedWeightCell in lbInputs
         const isPlateCalcOpen = openPlateCalc?.exIdx === focusedExIdx && openPlateCalc?.setIdx === focusedSetIdx
+        const calcHidden = isCalculatorHiddenFor(focusedExercise.exerciseId)
         return (
           <div className="weight-input-toolbar" style={{ bottom: keyboardInset }}>
             <button
               type="button"
-              className="weight-input-toolbar-calc"
+              className={calcHidden ? 'weight-input-toolbar-calc minimal' : 'weight-input-toolbar-calc'}
+              aria-label="Plate calculator"
               onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx: focusedExIdx, setIdx: focusedSetIdx })}
             >
-              <PlateIcon width={14} height={14} /> Calculator
+              <PlateIcon width={14} height={14} /> {!calcHidden && 'Calculator'}
             </button>
             <button
               type="button"
