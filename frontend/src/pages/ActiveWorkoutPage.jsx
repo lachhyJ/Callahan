@@ -727,8 +727,8 @@ export default function ActiveWorkoutPage() {
                       const isLb = cellKey in lbInputs
                       return (
                         <input
-                          type="number"
-                          step={isLb ? '0.1' : '0.5'}
+                          type="text"
+                          inputMode="decimal"
                           placeholder="0"
                           value={isLb ? lbInputs[cellKey] : s.weightKg}
                           onChange={(e) =>
@@ -748,7 +748,9 @@ export default function ActiveWorkoutPage() {
                   </td>
                   <td>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       value={s.reps}
                       onChange={(e) => updateSet(exIdx, setIdx, 'reps', e.target.value)}
                       onFocus={(e) => e.target.select()}
