@@ -4,10 +4,12 @@ import {
   PLATE_SETS,
   calculatePlates,
   clearCustomEquipment,
+  clearVisibilityOverride,
   getCustomEquipment,
-  isCalculatorHiddenFor,
-  setCalculatorHiddenFor,
+  getVisibilityOverride,
+  looksPlateLoaded,
   setCustomEquipment,
+  setVisibilityOverride,
 } from '../plateCalc'
 
 const SAVED_BAR = 'saved'
@@ -63,7 +65,8 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const [barWeightKg, setBarWeightKg] = useState(DEFAULT_BAR_KG)
   const [customName, setCustomName] = useState('')
   const [customWeight, setCustomWeight] = useState('')
-  const [hidden, setHidden] = useState(false)
+  const [visible, setVisible] = useState(true)
+  const [hasOverride, setHasOverride] = useState(false)
   const sheetRef = useRef(null)
 
   // Re-sync to this exercise's saved bar whenever the sheet is opened for a
@@ -77,8 +80,10 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     setBarWeightKg(saved ? saved.kg : DEFAULT_BAR_KG)
     setCustomName('')
     setCustomWeight('')
-    setHidden(isCalculatorHiddenFor(exerciseId))
-  }, [open, exerciseId])
+    const override = getVisibilityOverride(exerciseId)
+    setHasOverride(override !== null)
+    setVisible(override ? override === 'shown' : looksPlateLoaded(exerciseName))
+  }, [open, exerciseId, exerciseName])
 
   useEffect(() => {
     if (!open) return
@@ -131,10 +136,17 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     setCustomWeight('')
   }
 
-  function toggleHidden() {
-    const next = !hidden
-    setCalculatorHiddenFor(exerciseId, next)
-    setHidden(next)
+  function toggleVisible() {
+    const next = !visible
+    setVisibilityOverride(exerciseId, next)
+    setVisible(next)
+    setHasOverride(true)
+  }
+
+  function resetToAutomatic() {
+    clearVisibilityOverride(exerciseId)
+    setVisible(looksPlateLoaded(exerciseName))
+    setHasOverride(false)
   }
 
   const target = Number(targetWeightKg)
@@ -235,11 +247,18 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
               )}
             </div>
 
-            <button type="button" className="plate-calc-hide-toggle" onClick={toggleHidden}>
-              {hidden
-                ? `Show the calculator button for ${exerciseName || 'this exercise'}`
-                : `Hide the calculator button for ${exerciseName || 'this exercise'}`}
-            </button>
+            <div className="plate-calc-visibility-row">
+              <button type="button" className="plate-calc-hide-toggle" onClick={toggleVisible}>
+                {visible
+                  ? `Hide the calculator button for ${exerciseName || 'this exercise'}`
+                  : `Show the calculator button for ${exerciseName || 'this exercise'}`}
+              </button>
+              {hasOverride && (
+                <button type="button" className="plate-calc-hide-toggle" onClick={resetToAutomatic}>
+                  Reset to automatic
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>

@@ -875,6 +875,12 @@ td {
   font-size: var(--text-sm);
 }
 
+.plate-calc-visibility-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
 .plate-calc-hide-toggle {
   background: transparent;
   border: none;
