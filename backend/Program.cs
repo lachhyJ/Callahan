@@ -16,6 +16,13 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddHttpClient<TaperConsultService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.anthropic.com");
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+builder.Services.AddHostedService<TaperReminderService>();
 
 var jwtSecret = builder.Configuration["Auth:JwtSecret"]
     ?? throw new InvalidOperationException("Auth:JwtSecret is not configured.");

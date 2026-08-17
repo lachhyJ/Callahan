@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -13,10 +14,12 @@ namespace Callahan.Api.Controllers;
 public class TaperController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TaperConsultService _consultService;
 
-    public TaperController(AppDbContext db)
+    public TaperController(AppDbContext db, TaperConsultService consultService)
     {
         _db = db;
+        _consultService = consultService;
     }
 
     private static DateOnly MondayOf(DateOnly date)
@@ -27,6 +30,9 @@ public class TaperController : ControllerBase
 
     private static TaperEventDto ToDto(TaperEvent e, DateOnly today) =>
         new(e.Id, e.Date, e.Name, e.TaperDays, (e.Date.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days);
+
+    private static TaperCheckInDto ToCheckInDto(TaperCheckIn c, DateOnly eventDate) =>
+        new(c.Id, c.Date, c.Energy, c.Soreness, c.Motivation, c.Context, c.Date > eventDate);
 
     [HttpGet("events")]
     public async Task<ActionResult<List<TaperEventDto>>> GetEvents()
@@ -73,13 +79,22 @@ public class TaperController : ControllerBase
             .OrderBy(e => e.Date)
             .FirstOrDefaultAsync();
 
+        var tapersCompleted = await _db.TaperEvents.CountAsync(e => e.Date < today);
+
         if (upcoming is null)
         {
-            return Ok(new TaperRecommendationDto(null, "none", "No upcoming tournament set.", null, null, null, null, null, null));
+            return Ok(new TaperRecommendationDto(null, "none", "No upcoming tournament set.", null, null, null, null, null, null, tapersCompleted));
         }
 
         var daysUntil = (upcoming.Date.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days;
         var taperDays = upcoming.TaperDays;
+        var phase = TaperPhaseCalculator.Compute(daysUntil, taperDays, upcoming.Name);
+        var eventDto = ToDto(upcoming, today);
+
+        if (phase.Phase == "build")
+        {
+            return Ok(new TaperRecommendationDto(eventDto, phase.Phase, phase.Message, null, null, null, null, null, null, tapersCompleted));
+        }
 
         // Baseline: average weekly gym volume / run distance over the 4 weeks
         // immediately before the taper window opens.
@@ -112,48 +127,87 @@ public class TaperController : ControllerBase
             .ToListAsync();
         var runThisWeekDistance = thisWeekRuns.Sum(a => a.DistanceKm ?? 0);
 
-        var eventDto = ToDto(upcoming, today);
+        return Ok(new TaperRecommendationDto(
+            eventDto, phase.Phase, phase.Message,
+            phase.TargetPct, gymBaselineVolume, gymThisWeekVolume,
+            phase.TargetPct, runBaselineDistance, runThisWeekDistance,
+            tapersCompleted));
+    }
 
-        if (daysUntil > taperDays)
+    [HttpGet("events/{eventId}/checkins")]
+    public async Task<ActionResult<List<TaperCheckInDto>>> GetCheckIns(int eventId)
+    {
+        var taperEvent = await _db.TaperEvents.FindAsync(eventId);
+        if (taperEvent is null) return NotFound();
+
+        var checkIns = await _db.TaperCheckIns
+            .Where(c => c.TaperEventId == eventId)
+            .OrderBy(c => c.Date)
+            .ToListAsync();
+
+        return Ok(checkIns.Select(c => ToCheckInDto(c, taperEvent.Date)).ToList());
+    }
+
+    [HttpPut("events/{eventId}/checkins")]
+    public async Task<ActionResult<TaperCheckInDto>> UpsertCheckIn(int eventId, UpsertTaperCheckInRequest request)
+    {
+        var taperEvent = await _db.TaperEvents.FindAsync(eventId);
+        if (taperEvent is null) return NotFound();
+
+        var (windowStart, windowEnd) = TaperPhaseCalculator.CheckInWindow(taperEvent.Date, taperEvent.TaperDays);
+        if (request.Date < windowStart || request.Date > windowEnd)
         {
-            return Ok(new TaperRecommendationDto(
-                eventDto, "build",
-                $"{daysUntil} days until {(upcoming.Name ?? "your tournament")} — normal training, taper guidance kicks in {taperDays} days out.",
-                null, null, null, null, null, null));
+            return BadRequest(new { error = $"Date must be within the taper/debrief window ({windowStart:yyyy-MM-dd} to {windowEnd:yyyy-MM-dd})." });
         }
 
-        string phase;
-        decimal targetPct;
-        string message;
+        if (request.Energy is < 1 or > 5 || request.Soreness is < 1 or > 5 || request.Motivation is < 1 or > 5)
+        {
+            return BadRequest(new { error = "Energy, soreness, and motivation must each be between 1 and 5." });
+        }
 
-        if (daysUntil == 0)
+        var existing = await _db.TaperCheckIns.FirstOrDefaultAsync(c => c.TaperEventId == eventId && c.Date == request.Date);
+        if (existing is null)
         {
-            phase = "game_day";
-            targetPct = 0m;
-            message = $"Game day — {(upcoming.Name ?? "your tournament")} is today. Rest or light activation only.";
-        }
-        else if (daysUntil <= 2)
-        {
-            phase = "sharpen";
-            targetPct = 0.25m;
-            message = $"Sharpen — {daysUntil} day{(daysUntil == 1 ? "" : "s")} out. Keep sessions short and light, aim for around 25% of your usual weekly volume.";
-        }
-        else if (daysUntil <= taperDays / 2.0)
-        {
-            phase = "peak_taper";
-            targetPct = 0.5m;
-            message = $"Peak taper — {daysUntil} days out. Aim for around 50% of your usual weekly volume, hold intensity steady.";
+            existing = new TaperCheckIn
+            {
+                TaperEventId = eventId,
+                Date = request.Date,
+                CreatedAt = DateTime.UtcNow,
+            };
+            _db.TaperCheckIns.Add(existing);
         }
         else
         {
-            phase = "early_taper";
-            targetPct = 0.75m;
-            message = $"Early taper — {daysUntil} days out. Aim for around 75% of your usual weekly volume this week.";
+            existing.UpdatedAt = DateTime.UtcNow;
         }
 
-        return Ok(new TaperRecommendationDto(
-            eventDto, phase, message,
-            targetPct, gymBaselineVolume, gymThisWeekVolume,
-            targetPct, runBaselineDistance, runThisWeekDistance));
+        existing.Energy = request.Energy;
+        existing.Soreness = request.Soreness;
+        existing.Motivation = request.Motivation;
+        existing.Context = request.Context;
+
+        await _db.SaveChangesAsync();
+        return Ok(ToCheckInDto(existing, taperEvent.Date));
+    }
+
+    [HttpPost("events/{eventId}/consult")]
+    public async Task<ActionResult<TaperConsultResponseDto>> Consult(int eventId, TaperConsultRequest request)
+    {
+        var taperEvent = await _db.TaperEvents.FindAsync(eventId);
+        if (taperEvent is null) return NotFound();
+
+        var question = string.IsNullOrWhiteSpace(request.Question)
+            ? "Anything I should know about this taper?"
+            : request.Question;
+
+        try
+        {
+            var (answer, comparedToPriorTaper) = await _consultService.AskAsync(taperEvent, question);
+            return Ok(new TaperConsultResponseDto(answer, comparedToPriorTaper));
+        }
+        catch (TaperConsultUnavailableException ex)
+        {
+            return StatusCode(503, new { error = ex.Message });
+        }
     }
 }

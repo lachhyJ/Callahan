@@ -21,6 +21,8 @@ public class AppDbContext : DbContext
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
     public DbSet<RunSessionType> RunSessionTypes => Set<RunSessionType>();
     public DbSet<TaperEvent> TaperEvents => Set<TaperEvent>();
+    public DbSet<TaperCheckIn> TaperCheckIns => Set<TaperCheckIn>();
+    public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -35,6 +37,14 @@ public class AppDbContext : DbContext
             .HasIndex(a => a.GarminActivityId)
             .IsUnique()
             .HasFilter("[GarminActivityId] IS NOT NULL");
+
+        modelBuilder.Entity<TaperCheckIn>()
+            .HasIndex(c => new { c.TaperEventId, c.Date })
+            .IsUnique();
+
+        modelBuilder.Entity<TaperReminderLog>()
+            .HasIndex(r => new { r.TaperEventId, r.Date })
+            .IsUnique();
 
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },
