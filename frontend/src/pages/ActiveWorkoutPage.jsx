@@ -820,7 +820,10 @@ export default function ActiveWorkoutPage() {
         const isPlateCalcOpen = openPlateCalc?.exIdx === focusedExIdx && openPlateCalc?.setIdx === focusedSetIdx
         const calcHidden = !isCalculatorVisibleFor(focusedExercise.exerciseId, focusedExercise.exerciseName)
         return (
-          <div className="weight-input-toolbar" style={{ bottom: keyboardInset }}>
+          <div
+            className="weight-input-toolbar"
+            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'env(safe-area-inset-bottom)' }}
+          >
             <button
               type="button"
               className={calcHidden ? 'weight-input-toolbar-calc minimal' : 'weight-input-toolbar-calc'}
