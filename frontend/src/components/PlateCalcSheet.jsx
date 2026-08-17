@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { BAR_PRESETS, PLATE_SETS, calculatePlates, getRememberedBarKg, setRememberedBarKg } from '../plateCalc'
+import {
+  BAR_PRESETS,
+  PLATE_SETS,
+  calculatePlates,
+  clearCustomEquipment,
+  getCustomEquipment,
+  isCalculatorHiddenFor,
+  setCalculatorHiddenFor,
+  setCustomEquipment,
+} from '../plateCalc'
 
+const SAVED_BAR = 'saved'
 const CUSTOM_BAR = 'custom'
 const MAX_PLATE = PLATE_SETS.kg[0]
+const DEFAULT_BAR_KG = BAR_PRESETS.kg[0].value
 
 // Bar sleeve + a stack of plate blocks, one side only (the other side is a
 // mirror image of loading, not a different number) — same visual idea as
@@ -47,18 +58,26 @@ function BarDiagram({ breakdown }) {
 
 export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined
-  const [barWeightKg, setBarWeightKg] = useState(() => getRememberedBarKg(exerciseId) ?? BAR_PRESETS.kg[0].value)
-  const [customBarWeight, setCustomBarWeight] = useState('')
+  const [savedEquipment, setSavedEquipment] = useState(null)
+  const [selection, setSelection] = useState(String(DEFAULT_BAR_KG))
+  const [barWeightKg, setBarWeightKg] = useState(DEFAULT_BAR_KG)
+  const [customName, setCustomName] = useState('')
+  const [customWeight, setCustomWeight] = useState('')
+  const [hidden, setHidden] = useState(false)
   const sheetRef = useRef(null)
 
-  // Re-sync to this exercise's remembered bar whenever the sheet is opened
-  // for a (possibly different) exercise, rather than carrying over whatever
-  // was last selected for the previous one.
+  // Re-sync to this exercise's saved bar whenever the sheet is opened for a
+  // (possibly different) exercise, rather than carrying over whatever was
+  // selected for the previous one.
   useEffect(() => {
     if (!open) return
-    const remembered = getRememberedBarKg(exerciseId) ?? BAR_PRESETS.kg[0].value
-    setBarWeightKg(remembered)
-    setCustomBarWeight(BAR_PRESETS.kg.some((p) => p.value === remembered) ? '' : String(remembered))
+    const saved = getCustomEquipment(exerciseId)
+    setSavedEquipment(saved)
+    setSelection(saved ? SAVED_BAR : String(DEFAULT_BAR_KG))
+    setBarWeightKg(saved ? saved.kg : DEFAULT_BAR_KG)
+    setCustomName('')
+    setCustomWeight('')
+    setHidden(isCalculatorHiddenFor(exerciseId))
   }, [open, exerciseId])
 
   useEffect(() => {
@@ -70,18 +89,52 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose])
 
-  const presetMatch = BAR_PRESETS.kg.find((p) => p.value === barWeightKg)
-  const selectedBar = presetMatch ? String(presetMatch.value) : CUSTOM_BAR
-
-  function applyBarWeight(kg) {
-    if (kg === '' || Number.isNaN(kg) || kg <= 0) return
-    setBarWeightKg(kg)
-    setRememberedBarKg(exerciseId, kg)
+  function selectSaved() {
+    if (!savedEquipment) return
+    setSelection(SAVED_BAR)
+    setBarWeightKg(savedEquipment.kg)
   }
 
-  function handleCustomChange(e) {
-    setCustomBarWeight(e.target.value)
-    applyBarWeight(Number(e.target.value))
+  function selectPreset(kg) {
+    setSelection(String(kg))
+    setBarWeightKg(kg)
+  }
+
+  function openCustomForm() {
+    setSelection(CUSTOM_BAR)
+    setCustomName(savedEquipment?.name ?? '')
+    setCustomWeight(savedEquipment ? String(savedEquipment.kg) : '')
+  }
+
+  function handleCustomWeightChange(e) {
+    setCustomWeight(e.target.value)
+    const kg = Number(e.target.value)
+    if (!Number.isNaN(kg) && kg > 0) setBarWeightKg(kg)
+  }
+
+  function handleSaveCustom() {
+    const kg = Number(customWeight)
+    if (Number.isNaN(kg) || kg <= 0) return
+    const entry = { name: customName.trim(), kg }
+    setCustomEquipment(exerciseId, entry)
+    setSavedEquipment(entry)
+    setSelection(SAVED_BAR)
+    setBarWeightKg(kg)
+  }
+
+  function handleRemoveSaved() {
+    clearCustomEquipment(exerciseId)
+    setSavedEquipment(null)
+    setSelection(String(DEFAULT_BAR_KG))
+    setBarWeightKg(DEFAULT_BAR_KG)
+    setCustomName('')
+    setCustomWeight('')
+  }
+
+  function toggleHidden() {
+    const next = !hidden
+    setCalculatorHiddenFor(exerciseId, next)
+    setHidden(next)
   }
 
   const target = Number(targetWeightKg)
@@ -125,35 +178,68 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
             <div className="plate-calc-sheet-bars">
               <span className="plate-calc-sheet-label">Bar / sled</span>
               <div className="plate-calc-chip-row">
+                {savedEquipment && (
+                  <button
+                    type="button"
+                    className={selection === SAVED_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                    onClick={selectSaved}
+                  >
+                    {savedEquipment.name || `This bar (${savedEquipment.kg}kg)`}
+                  </button>
+                )}
                 {BAR_PRESETS.kg.map((preset) => (
                   <button
                     key={preset.value}
                     type="button"
-                    className={selectedBar === String(preset.value) ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                    onClick={() => applyBarWeight(preset.value)}
+                    className={selection === String(preset.value) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                    onClick={() => selectPreset(preset.value)}
                   >
                     {preset.label}
                   </button>
                 ))}
                 <button
                   type="button"
-                  className={selectedBar === CUSTOM_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                  onClick={() => setCustomBarWeight(String(barWeightKg))}
+                  className={selection === CUSTOM_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                  onClick={openCustomForm}
                 >
-                  Custom
+                  {savedEquipment ? 'Edit' : 'Custom'}
                 </button>
               </div>
-              {selectedBar === CUSTOM_BAR && (
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="Bar weight (kg)"
-                  value={customBarWeight}
-                  onChange={handleCustomChange}
-                  autoFocus
-                />
+              {selection === CUSTOM_BAR && (
+                <div className="plate-calc-custom-form">
+                  <input
+                    type="text"
+                    placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} bar` : 'Trap bar'}`}
+                    value={customName}
+                    onChange={(e) => setCustomName(e.target.value)}
+                  />
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    placeholder="Weight (kg)"
+                    value={customWeight}
+                    onChange={handleCustomWeightChange}
+                    autoFocus
+                  />
+                  <div className="plate-calc-custom-actions">
+                    <button type="button" className="secondary-btn" onClick={handleSaveCustom}>
+                      Save for {exerciseName || 'this exercise'}
+                    </button>
+                    {savedEquipment && (
+                      <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
+
+            <button type="button" className="plate-calc-hide-toggle" onClick={toggleHidden}>
+              {hidden
+                ? `Show the calculator button for ${exerciseName || 'this exercise'}`
+                : `Hide the calculator button for ${exerciseName || 'this exercise'}`}
+            </button>
           </>
         )}
       </div>
