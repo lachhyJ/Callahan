@@ -5,47 +5,50 @@ import {
   calculatePlates,
   clearCustomEquipment,
   clearVisibilityOverride,
+  getAvailablePlates,
   getCustomEquipment,
   getVisibilityOverride,
   looksPlateLoaded,
+  setAvailablePlates,
   setCustomEquipment,
   setVisibilityOverride,
 } from '../plateCalc'
 
 const SAVED_BAR = 'saved'
 const CUSTOM_BAR = 'custom'
-const MAX_PLATE = PLATE_SETS.kg[0]
 const DEFAULT_BAR_KG = BAR_PRESETS.kg[0].value
 
 // Bar sleeve + a stack of plate blocks, one side only (the other side is a
 // mirror image of loading, not a different number) — same visual idea as
 // Hevy's plate calculator, height-scaled per plate so the bigger ones read
-// as bigger at a glance.
-function BarDiagram({ breakdown }) {
+// as bigger at a glance. Sized generously (viewBox + render height both
+// larger than a first pass) since a small, cramped diagram defeats the
+// point of a glanceable visual.
+function BarDiagram({ breakdown, maxPlate }) {
   const plates = breakdown.flatMap(({ plate, count }) => Array(count).fill(plate))
-  const plateWidth = 22
-  const gap = 4
-  const sleeveWidth = 70
+  const plateWidth = 30
+  const gap = 6
+  const sleeveWidth = 90
   const width = sleeveWidth + plates.length * (plateWidth + gap)
-  const height = 120
+  const height = 170
   const midY = height / 2
 
   return (
-    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 40)} ${height}`} width="100%" height="90" preserveAspectRatio="xMinYMid meet">
-      <rect x="0" y={midY - 8} width={sleeveWidth} height="16" rx="3" fill="var(--border)" />
+    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 50)} ${height}`} width="100%" height="150" preserveAspectRatio="xMinYMid meet">
+      <rect x="0" y={midY - 11} width={sleeveWidth} height="22" rx="4" fill="var(--border)" />
       {plates.map((plate, i) => {
-        const plateHeight = 34 + (plate / MAX_PLATE) * 52
+        const plateHeight = 64 + (plate / maxPlate) * 84
         const x = sleeveWidth + i * (plateWidth + gap)
         return (
           <g key={i}>
-            <rect x={x} y={midY - plateHeight / 2} width={plateWidth} height={plateHeight} rx="3" fill="var(--accent)" />
+            <rect x={x} y={midY - plateHeight / 2} width={plateWidth} height={plateHeight} rx="4" fill="var(--accent)" />
             <text
               x={x + plateWidth / 2}
               y={midY}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="9"
-              fontWeight="600"
+              fontSize="13"
+              fontWeight="700"
               fill="white"
               transform={`rotate(-90 ${x + plateWidth / 2} ${midY})`}
             >
@@ -67,11 +70,14 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const [customWeight, setCustomWeight] = useState('')
   const [visible, setVisible] = useState(true)
   const [hasOverride, setHasOverride] = useState(false)
+  const [availablePlates, setAvailablePlatesState] = useState(() => getAvailablePlates('kg'))
   const sheetRef = useRef(null)
 
   // Re-sync to this exercise's saved bar whenever the sheet is opened for a
   // (possibly different) exercise, rather than carrying over whatever was
-  // selected for the previous one.
+  // selected for the previous one. Available plates are device-wide, not
+  // per-exercise, so they only need reloading in case another tab/session
+  // changed them — cheap enough to just always refresh on open.
   useEffect(() => {
     if (!open) return
     const saved = getCustomEquipment(exerciseId)
@@ -83,6 +89,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     const override = getVisibilityOverride(exerciseId)
     setHasOverride(override !== null)
     setVisible(override ? override === 'shown' : looksPlateLoaded(exerciseName))
+    setAvailablePlatesState(getAvailablePlates('kg'))
   }, [open, exerciseId, exerciseName])
 
   useEffect(() => {
@@ -149,11 +156,20 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     setHasOverride(false)
   }
 
+  function togglePlateAvailable(plate) {
+    const next = availablePlates.includes(plate)
+      ? availablePlates.filter((p) => p !== plate)
+      : PLATE_SETS.kg.filter((p) => availablePlates.includes(p) || p === plate)
+    setAvailablePlatesState(next)
+    setAvailablePlates('kg', next)
+  }
+
   const target = Number(targetWeightKg)
   const hasTarget = targetWeightKg !== '' && targetWeightKg !== undefined && !Number.isNaN(target)
   const belowBar = hasTarget && target < barWeightKg
   const perSide = hasTarget && !belowBar ? (target - barWeightKg) / 2 : 0
-  const result = hasTarget && !belowBar ? calculatePlates(perSide, PLATE_SETS.kg) : null
+  const result = hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
+  const maxPlate = Math.max(...(availablePlates.length > 0 ? availablePlates : PLATE_SETS.kg))
 
   return (
     <>
@@ -178,11 +194,11 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
 
             {result && (
               <>
-                <BarDiagram breakdown={result.breakdown} />
+                <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} />
                 <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
                 {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
                 {result.remainder > 0 && (
-                  <p className="error">Can't hit that exactly — {result.remainder}kg short per side.</p>
+                  <p className="error">Can't hit that exactly with your available plates — {result.remainder}kg short per side.</p>
                 )}
               </>
             )}
@@ -245,6 +261,22 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                   </div>
                 </div>
               )}
+            </div>
+
+            <div className="plate-calc-sheet-bars">
+              <span className="plate-calc-sheet-label">Plates you have (kg)</span>
+              <div className="plate-calc-chip-row">
+                {PLATE_SETS.kg.map((plate) => (
+                  <button
+                    key={plate}
+                    type="button"
+                    className={availablePlates.includes(plate) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                    onClick={() => togglePlateAvailable(plate)}
+                  >
+                    {plate}
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="plate-calc-visibility-row">
