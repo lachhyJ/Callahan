@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
-import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
+import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
+import { playBeep } from './beep'
+import { BackIcon, DashboardIcon, DocumentIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
@@ -41,6 +43,12 @@ function showsBackLink(pathname) {
     || pathname.startsWith('/streaks/')
 }
 
+function formatCountdown(totalSeconds) {
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
   if (!isAuthenticated) return <Navigate to="/login" replace />
@@ -58,6 +66,11 @@ function TopBar() {
   const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
   const showResume = activeWorkout && !onThatWorkout
   const showBack = showsBackLink(location.pathname)
+  // While actually on the active workout, the bottom tab bar steps aside for
+  // its own fixed rest-timer bar (see isActiveWorkoutRoute), so these are
+  // the only way out to the dashboard/program without finishing or
+  // discarding the session — Resume (above) covers getting back in.
+  const showWorkoutExitLinks = onThatWorkout
 
   function handleLogout() {
     if (window.confirm('Log out?')) logout()
@@ -68,6 +81,12 @@ function TopBar() {
       <div className="top-bar-left">
         {showBack && (
           <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
+        )}
+        {showWorkoutExitLinks && (
+          <>
+            <NavLink to="/dashboard" className="workout-exit-link"><DashboardIcon /> Dashboard</NavLink>
+            <NavLink to="/program" className="workout-exit-link"><DocumentIcon /> Program</NavLink>
+          </>
         )}
       </div>
       <div className="top-bar-right">
@@ -92,6 +111,59 @@ function BottomTabBar() {
         </NavLink>
       ))}
     </nav>
+  )
+}
+
+// Persistent rest-timer countdown shown on every page except the matching
+// active workout page itself, which already renders its own full rest bar
+// and owns the tick/expiry/beep logic while mounted. This bar takes over
+// that responsibility the moment the athlete navigates away, so the
+// countdown (and the alert when it hits zero) still happens if they've gone
+// to check the dashboard or program mid-rest.
+function GlobalRestBar() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [restTimer, setRestTimer] = useState(() => loadRestTimer())
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => onRestTimerChange(() => setRestTimer(loadRestTimer())), [])
+
+  const onActiveWorkoutPage = restTimer && location.pathname === `/workout/${restTimer.templateId}`
+  const isTicking = restTimer && !onActiveWorkoutPage
+
+  useEffect(() => {
+    if (!isTicking) return
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') setNow(Date.now())
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(interval)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [isTicking])
+
+  useEffect(() => {
+    if (!isTicking) return
+    const remaining = Math.round((restTimer.endAt - now) / 1000)
+    if (remaining <= 0) {
+      playBeep()
+      clearRestTimer()
+      setRestTimer(null)
+    }
+  }, [now, isTicking, restTimer])
+
+  if (!isTicking) return null
+
+  const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now) / 1000))
+
+  return (
+    <button type="button" className="global-rest-bar" onClick={() => navigate(`/workout/${restTimer.templateId}`)}>
+      <span className="resting-dot" />
+      <span className="global-rest-bar-label">Resting — {restTimer.exerciseName}</span>
+      <span className="rest-countdown-mini">{formatCountdown(remainingSeconds)}</span>
+    </button>
   )
 }
 
@@ -132,6 +204,7 @@ function AppRoutes() {
           <Route path="/plate-calculator" element={<ProtectedRoute><PlateCalculatorPage /></ProtectedRoute>} />
         </Routes>
       </div>
+      {isAuthenticated && <GlobalRestBar />}
       {showBottomNav && <BottomTabBar />}
     </>
   )
