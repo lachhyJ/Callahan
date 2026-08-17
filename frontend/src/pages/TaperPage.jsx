@@ -69,6 +69,31 @@ const TABS = [
   { id: 'tournaments', label: 'Tournaments' },
 ]
 
+// Minimal, dependency-free rendering for the AI consult's answer — it comes
+// back as loose markdown (paragraphs, **bold**), not HTML, and the model
+// isn't asked to avoid that formatting since it reads naturally in a chat
+// context. No need for a full markdown library for two constructs.
+function ConsultAnswer({ text }) {
+  return (
+    <>
+      {text.split(/\n{2,}/).map((paragraph, i) => (
+        <p key={i}>
+          {paragraph.split('\n').map((line, j, lines) => (
+            <span key={j}>
+              {line.split(/(\*\*[^*]+\*\*)/g).map((part, k) =>
+                part.startsWith('**') && part.endsWith('**')
+                  ? <strong key={k}>{part.slice(2, -2)}</strong>
+                  : part
+              )}
+              {j < lines.length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+      ))}
+    </>
+  )
+}
+
 function RatingInput({ label, value, onChange }) {
   return (
     <label>
@@ -195,6 +220,9 @@ export default function TaperPage() {
   async function handleConsult(e) {
     e.preventDefault()
     if (!upcoming) return
+    // Otherwise the question textarea keeps its focus ring while the page
+    // scrolls to the answer once it lands — reads as a stray highlight.
+    e.target.querySelector('textarea')?.blur()
     setConsultError(null)
     setConsultAnswer(null)
     setConsulting(true)
@@ -384,10 +412,11 @@ export default function TaperPage() {
                 </label>
                 <button type="submit" disabled={consulting}>{consulting ? 'Asking…' : 'Ask'}</button>
               </form>
+              {consulting && <p className="page-subtitle">Thinking — this can take several seconds…</p>}
               {consultError && <p className="error">{consultError}</p>}
               {consultAnswer && (
                 <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                  <p>{consultAnswer}</p>
+                  <ConsultAnswer text={consultAnswer} />
                   {consultCompared && <p className="page-subtitle">(Compared against your last taper)</p>}
                 </div>
               )}
