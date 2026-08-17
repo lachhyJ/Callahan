@@ -72,22 +72,57 @@ export function clearCustomEquipment(exerciseId) {
   }
 }
 
-// Per-exercise opt-out — cable/machine exercises with a pin-selected stack
-// have no plates to load, so the calculator trigger is just noise there.
-const HIDDEN_PREFIX = 'callahan.plateCalc.hidden.'
+// Name-based guess at whether an exercise is loaded with plates on a bar or
+// sled at all — cable stacks are pin-selected, dumbbells aren't loaded the
+// same way, and most bodyweight moves just don't take plates. Not perfect
+// (a DB/Cable naming convention only helps for exercises tagged that way,
+// and moves like "Lunges" or "Single Leg Hamstring Curl" carry no equipment
+// hint at all) — errs toward showing the button when unsure, since a manual
+// override is one tap away either direction.
+const NO_PLATES_KEYWORDS = [
+  'cable', 'machine', 'dumbbell',
+  'push-up', 'pull-up', 'chin-up',
+  'plank', 'dead bug', 'box jump', 'ab wheel', 'pallof', 'burpee', 'wall sit',
+]
 
-export function isCalculatorHiddenFor(exerciseId) {
+export function looksPlateLoaded(exerciseName) {
+  if (!exerciseName) return true
+  const name = exerciseName.toLowerCase()
+  if (name.startsWith('db ') || name.includes(' db ') || name.includes('(db)')) return false
+  return !NO_PLATES_KEYWORDS.some((keyword) => name.includes(keyword))
+}
+
+// Per-exercise override on top of the name guess above — 'shown'/'hidden'
+// when the athlete has corrected it for a specific exercise, absent when
+// left on the automatic guess.
+const VISIBILITY_PREFIX = 'callahan.plateCalc.visibility.'
+
+export function getVisibilityOverride(exerciseId) {
   try {
-    return localStorage.getItem(HIDDEN_PREFIX + exerciseId) === '1'
+    const value = localStorage.getItem(VISIBILITY_PREFIX + exerciseId)
+    return value === 'shown' || value === 'hidden' ? value : null
   } catch {
-    return false
+    return null
   }
 }
 
-export function setCalculatorHiddenFor(exerciseId, hidden) {
+export function isCalculatorVisibleFor(exerciseId, exerciseName) {
+  const override = getVisibilityOverride(exerciseId)
+  if (override) return override === 'shown'
+  return looksPlateLoaded(exerciseName)
+}
+
+export function setVisibilityOverride(exerciseId, visible) {
   try {
-    if (hidden) localStorage.setItem(HIDDEN_PREFIX + exerciseId, '1')
-    else localStorage.removeItem(HIDDEN_PREFIX + exerciseId)
+    localStorage.setItem(VISIBILITY_PREFIX + exerciseId, visible ? 'shown' : 'hidden')
+  } catch {
+    // Best-effort.
+  }
+}
+
+export function clearVisibilityOverride(exerciseId) {
+  try {
+    localStorage.removeItem(VISIBILITY_PREFIX + exerciseId)
   } catch {
     // Best-effort.
   }
