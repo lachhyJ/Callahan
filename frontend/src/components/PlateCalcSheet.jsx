@@ -21,45 +21,48 @@ const DEFAULT_BAR_KG = BAR_PRESETS.kg[0].value
 // Bar sleeve + a stack of plate blocks, one side only (the other side is a
 // mirror image of loading, not a different number) — same visual idea as
 // Hevy's plate calculator, height-scaled per plate so the bigger ones read
-// as bigger at a glance.
+// as bigger at a glance. Numbers sit upright rather than rotated, so plates
+// are wide enough to fit them without shrinking the text down to nothing.
+// Colors are picked for this app's dark theme specifically (the only theme
+// this view is used in) rather than pulled from the general button palette,
+// which reads as too low-contrast against a near-black sheet here.
 function BarDiagram({ breakdown, maxPlate, barWeightKg }) {
   const plates = breakdown.flatMap(({ plate, count }) => Array(count).fill(plate))
-  const plateWidth = 26
-  const gap = 5
-  const sleeveWidth = 80
+  const plateWidth = 38
+  const gap = 7
+  const sleeveWidth = 92
   const width = sleeveWidth + plates.length * (plateWidth + gap)
-  const height = 130
+  const height = 150
   const midY = height / 2
 
   return (
-    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 45)} ${height}`} width="100%" height="115" preserveAspectRatio="xMidYMid meet">
-      <rect x="0" y={midY - 9} width={sleeveWidth} height="18" rx="4" fill="var(--border)" />
+    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 55)} ${height}`} width="100%" height="130" preserveAspectRatio="xMidYMid meet">
+      <rect x="0" y={midY - 10} width={sleeveWidth} height="20" rx="4" fill="#9497a6" />
       <text
         x={sleeveWidth / 2}
         y={midY}
         textAnchor="middle"
         dominantBaseline="central"
-        fontSize="10"
-        fontWeight="700"
-        fill="var(--text-h)"
+        fontSize="12"
+        fontWeight="800"
+        fill="#16171d"
       >
         {barWeightKg}
       </text>
       {plates.map((plate, i) => {
-        const plateHeight = 46 + (plate / maxPlate) * 58
+        const plateHeight = 58 + (plate / maxPlate) * 76
         const x = sleeveWidth + i * (plateWidth + gap)
         return (
           <g key={i}>
-            <rect x={x} y={midY - plateHeight / 2} width={plateWidth} height={plateHeight} rx="4" fill="var(--accent)" />
+            <rect x={x} y={midY - plateHeight / 2} width={plateWidth} height={plateHeight} rx="6" fill="#b453ff" />
             <text
               x={x + plateWidth / 2}
               y={midY}
               textAnchor="middle"
               dominantBaseline="central"
-              fontSize="11"
-              fontWeight="700"
-              fill="white"
-              transform={`rotate(-90 ${x + plateWidth / 2} ${midY})`}
+              fontSize="15"
+              fontWeight="800"
+              fill="#fbfaff"
             >
               {plate}
             </text>
