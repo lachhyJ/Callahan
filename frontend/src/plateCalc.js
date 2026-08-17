@@ -35,6 +35,34 @@ export function calculatePlates(perSideWeight, availablePlates) {
   return { breakdown, remainder: Math.max(remaining, 0) }
 }
 
+// Which plate sizes the athlete's gym actually has, per unit — device-wide
+// rather than per-exercise, since it's a property of the gym, not the
+// movement. Defaults to the full standard set until pared down.
+const AVAILABLE_PLATES_PREFIX = 'callahan.plateCalc.availablePlates.'
+
+export function getAvailablePlates(unit) {
+  try {
+    const raw = localStorage.getItem(AVAILABLE_PLATES_PREFIX + unit)
+    if (raw === null) return PLATE_SETS[unit]
+    const kept = JSON.parse(raw)
+    // Preserves PLATE_SETS' descending order (required by calculatePlates'
+    // greedy fill) regardless of the order toggles were saved in, and drops
+    // any stale sizes a future PLATE_SETS edit might remove.
+    const filtered = PLATE_SETS[unit].filter((p) => kept.includes(p))
+    return filtered.length > 0 ? filtered : PLATE_SETS[unit]
+  } catch {
+    return PLATE_SETS[unit]
+  }
+}
+
+export function setAvailablePlates(unit, plates) {
+  try {
+    localStorage.setItem(AVAILABLE_PLATES_PREFIX + unit, JSON.stringify(plates))
+  } catch {
+    // Best-effort.
+  }
+}
+
 // Per-exercise named equipment ("Trap bar" = 25kg, "Leg press sled" = 75kg
 // empty) — saved deliberately (not just remembered from last use), so it
 // shows as its own chip only on the exercise it was set for, never bleeding
