@@ -731,52 +731,40 @@ td {
   color: var(--text);
 }
 
-.weight-input-group {
-  position: relative;
+/* Docks above the on-screen keyboard (see useKeyboardInset) instead of
+   sitting inline next to the weight field, where it used to cover the
+   Reps column on narrow screens. */
+.weight-input-toolbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
-
-  input {
-    width: 48px;
-  }
+  gap: var(--space-sm);
+  padding: var(--space-xs) var(--space-md) calc(var(--space-xs) + env(safe-area-inset-bottom));
+  background: var(--surface-raised);
+  border-top: 1px solid var(--border);
+  box-shadow: var(--elevation-raised), var(--shadow);
 }
 
-.unit-toggle {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: var(--space-2xs);
-  padding: var(--space-2xs) var(--space-xs);
-  font-size: var(--text-xs);
+.weight-input-toolbar-unit {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--text-sm);
   font-weight: 600;
   text-transform: uppercase;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  color: var(--text);
-  white-space: nowrap;
+  background: var(--code-bg);
+  color: var(--text-h);
+  flex-shrink: 0;
 }
 
-.plate-calc-trigger {
-  position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
-  margin-left: calc(var(--space-2xs) + 32px);
+.weight-input-toolbar-calc {
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  background: var(--surface-overlay);
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-
-.plate-calc-trigger.active {
-  background: var(--accent-bg);
-  border-color: var(--accent-border);
+  gap: var(--space-2xs);
+  background: var(--code-bg);
   color: var(--text-h);
 }
 
