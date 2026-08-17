@@ -10,6 +10,30 @@ const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
+// Tracks how far the on-screen keyboard has pushed up from the bottom of the
+// layout viewport, so a toolbar can dock just above it instead of getting
+// covered — the layout viewport doesn't shrink when a mobile keyboard opens,
+// only the visual one does. Falls back to 0 (dock at the screen bottom) on
+// browsers without visualViewport or when no keyboard is showing.
+function useKeyboardInset() {
+  const [inset, setInset] = useState(0)
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    function update() {
+      setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+    }
+  }, [])
+  return inset
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -130,6 +154,7 @@ export default function ActiveWorkoutPage() {
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
   const headerRef = useRef(null)
+  const keyboardInset = useKeyboardInset()
 
   useEffect(() => {
     // Mini bar only takes over once the real header has actually scrolled
@@ -700,49 +725,24 @@ export default function ActiveWorkoutPage() {
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
-                      const isFocused = focusedWeightCell === cellKey
-                      const isPlateCalcOpen = openPlateCalc?.exIdx === exIdx && openPlateCalc?.setIdx === setIdx
                       return (
-                        <div className="weight-input-group">
-                          <input
-                            type="number"
-                            step={isLb ? '0.1' : '0.5'}
-                            placeholder="0"
-                            value={isLb ? lbInputs[cellKey] : s.weightKg}
-                            onChange={(e) =>
-                              isLb
-                                ? updateLbInput(exIdx, setIdx, e.target.value)
-                                : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
-                            }
-                            onFocus={(e) => {
-                              setFocusedWeightCell(cellKey)
-                              e.target.select()
-                            }}
-                            onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
-                            className={s.previous && !s.completed ? 'prefilled' : ''}
-                          />
-                          {isFocused && (
-                            <button
-                              type="button"
-                              className="unit-toggle"
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
-                            >
-                              {isLb ? 'lb' : 'kg'}
-                            </button>
-                          )}
-                          {isFocused && (
-                            <button
-                              type="button"
-                              className={isPlateCalcOpen ? 'plate-calc-trigger active' : 'plate-calc-trigger'}
-                              onMouseDown={(e) => e.preventDefault()}
-                              onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx, setIdx })}
-                              aria-label="Show plate breakdown"
-                            >
-                              <PlateIcon width={14} height={14} />
-                            </button>
-                          )}
-                        </div>
+                        <input
+                          type="number"
+                          step={isLb ? '0.1' : '0.5'}
+                          placeholder="0"
+                          value={isLb ? lbInputs[cellKey] : s.weightKg}
+                          onChange={(e) =>
+                            isLb
+                              ? updateLbInput(exIdx, setIdx, e.target.value)
+                              : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
+                          }
+                          onFocus={(e) => {
+                            setFocusedWeightCell(cellKey)
+                            e.target.select()
+                          }}
+                          onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
+                          className={s.previous && !s.completed ? 'prefilled' : ''}
+                        />
                       )
                     })()}
                   </td>
@@ -803,6 +803,32 @@ export default function ActiveWorkoutPage() {
             <span className="rest-countdown">{formatCountdown(remainingSeconds)}</span>
             <button type="button" onClick={() => adjustRest(15)}>+15</button>
             <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
+          </div>
+        )
+      })()}
+
+      {focusedWeightCell && (() => {
+        const [focusedExIdx, focusedSetIdx] = focusedWeightCell.split('-').map(Number)
+        const focusedSet = exercises[focusedExIdx].sets[focusedSetIdx]
+        const isLb = focusedWeightCell in lbInputs
+        const isPlateCalcOpen = openPlateCalc?.exIdx === focusedExIdx && openPlateCalc?.setIdx === focusedSetIdx
+        return (
+          <div className="weight-input-toolbar" style={{ bottom: keyboardInset }}>
+            <button
+              type="button"
+              className="weight-input-toolbar-unit"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => toggleLbMode(focusedExIdx, focusedSetIdx, focusedSet.weightKg)}
+            >
+              {isLb ? 'lb' : 'kg'}
+            </button>
+            <button
+              type="button"
+              className="weight-input-toolbar-calc"
+              onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx: focusedExIdx, setIdx: focusedSetIdx })}
+            >
+              <PlateIcon width={16} height={16} /> Calculator
+            </button>
           </div>
         )
       })()}
