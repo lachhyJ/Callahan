@@ -838,6 +838,16 @@ td {
   gap: var(--space-xs);
 }
 
+.plate-calc-chip-row.scroll {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+
+  .plate-calc-chip {
+    flex-shrink: 0;
+  }
+}
+
 .plate-calc-chip {
   background: var(--surface-raised);
   border: 1px solid var(--border);
