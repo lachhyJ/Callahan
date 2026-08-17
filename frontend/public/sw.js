@@ -11,6 +11,10 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: '/icon-192.png',
       badge: '/icon-192.png',
+      // Vibration is a separate iOS toggle ("Vibrate on Silent") from the
+      // mute switch's sound-muting, so this may still fire audibly-felt
+      // even when the ringer is off — unlike the notification sound itself.
+      vibrate: [200, 100, 200],
     })
   )
 })
