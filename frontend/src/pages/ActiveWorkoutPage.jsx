@@ -820,18 +820,18 @@ export default function ActiveWorkoutPage() {
           <div className="weight-input-toolbar" style={{ bottom: keyboardInset }}>
             <button
               type="button"
+              className="weight-input-toolbar-calc"
+              onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx: focusedExIdx, setIdx: focusedSetIdx })}
+            >
+              <PlateIcon width={14} height={14} /> Calculator
+            </button>
+            <button
+              type="button"
               className="weight-input-toolbar-unit"
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => toggleLbMode(focusedExIdx, focusedSetIdx, focusedSet.weightKg)}
             >
               {isLb ? 'lb' : 'kg'}
-            </button>
-            <button
-              type="button"
-              className="weight-input-toolbar-calc"
-              onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx: focusedExIdx, setIdx: focusedSetIdx })}
-            >
-              <PlateIcon width={16} height={16} /> Calculator
             </button>
           </div>
         )
