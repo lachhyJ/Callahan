@@ -15,7 +15,9 @@ export function pushSupported() {
 
 // Must be called from within a user gesture (click handler) — iOS Safari
 // silently ignores Notification.requestPermission() calls made outside one.
-export async function enableRestAlerts() {
+// Not rest-timer-specific despite the history here — one push subscription
+// receives every push type the backend sends (rest alerts, taper reminders).
+export async function enablePushNotifications() {
   if (!pushSupported()) throw new Error('Push notifications are not supported in this browser.')
 
   const permission = await Notification.requestPermission()

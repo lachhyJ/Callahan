@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getFinishers, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
-import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
+import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
+import { playBeep } from '../beep'
+import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 
@@ -60,26 +62,6 @@ function lbToKgRoundedDown(lb) {
 function kgToLbDisplay(weightKg) {
   if (weightKg === '' || weightKg === null || weightKg === undefined) return ''
   return String(Math.round((Number(weightKg) / KG_PER_LB) * 10) / 10)
-}
-
-function playBeep() {
-  const AudioContextClass = window.AudioContext || window.webkitAudioContext
-  if (!AudioContextClass) return
-  const ctx = new AudioContextClass()
-  for (const startDelay of [0, 0.3]) {
-    const oscillator = ctx.createOscillator()
-    const gain = ctx.createGain()
-    oscillator.type = 'sine'
-    oscillator.frequency.value = 880
-    const startTime = ctx.currentTime + startDelay
-    gain.gain.setValueAtTime(0.0001, startTime)
-    gain.gain.exponentialRampToValueAtTime(0.3, startTime + 0.01)
-    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.25)
-    oscillator.connect(gain)
-    gain.connect(ctx.destination)
-    oscillator.start(startTime)
-    oscillator.stop(startTime + 0.25)
-  }
 }
 
 function buildInitialSets(targetSets, previousSets) {
@@ -142,7 +124,13 @@ export default function ActiveWorkoutPage() {
   const [startedAt, setStartedAt] = useState(() => new Date())
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
-  const [restTimer, setRestTimer] = useState(null)
+  // Restored from the shared store on mount so a rest timer started here
+  // keeps counting (and stays visible via the global mini bar) if the
+  // athlete navigates away to check the dashboard/program and comes back.
+  const [restTimer, setRestTimer] = useState(() => {
+    const saved = loadRestTimer()
+    return saved && saved.templateId === Number(templateId) ? saved : null
+  })
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
@@ -247,6 +235,18 @@ export default function ActiveWorkoutPage() {
       setRestTimer(null)
     }
   }, [now, restTimer])
+
+  // Mirrors restTimer into the shared store as its own effect (not inlined
+  // into a setState updater) so the global mini bar can pick it up on other
+  // pages — a stray call here previously fired setState on GlobalRestBar
+  // synchronously mid-render of this component.
+  useEffect(() => {
+    if (restTimer) {
+      saveRestTimer({ ...restTimer, templateId: Number(templateId) })
+    } else {
+      clearRestTimerStore()
+    }
+  }, [restTimer, templateId])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -422,7 +422,7 @@ export default function ActiveWorkoutPage() {
   async function handleEnableAlerts() {
     setPushError(null)
     try {
-      await enableRestAlerts()
+      await enablePushNotifications()
       setPushEnabled(true)
     } catch (err) {
       setPushError(err.message)
@@ -481,6 +481,7 @@ export default function ActiveWorkoutPage() {
 
   async function handleSave() {
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
+    clearRestTimerStore()
     setError(null)
     setSaving(true)
     try {
@@ -518,6 +519,7 @@ export default function ActiveWorkoutPage() {
   function handleDiscard() {
     if (!window.confirm('Discard this workout? All logged sets will be lost.')) return
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
+    clearRestTimerStore()
     clearActiveWorkout()
     navigate('/')
   }
