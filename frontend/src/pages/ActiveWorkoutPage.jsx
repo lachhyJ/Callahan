@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getFinishers, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
-import { enableRestAlerts, hasActiveSubscription, pushSupported } from '../push'
-import { BellIcon, CheckIcon } from '../icons'
+import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
+import { BellIcon, CheckIcon, PlateIcon } from '../icons'
+import PlateCalcSheet from '../components/PlateCalcSheet'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
@@ -122,6 +123,7 @@ export default function ActiveWorkoutPage() {
   const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
+  const [openPlateCalc, setOpenPlateCalc] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
   const [taper, setTaper] = useState(null)
@@ -395,7 +397,7 @@ export default function ActiveWorkoutPage() {
   async function handleEnableAlerts() {
     setPushError(null)
     try {
-      await enableRestAlerts()
+      await enablePushNotifications()
       setPushEnabled(true)
     } catch (err) {
       setPushError(err.message)
@@ -699,6 +701,7 @@ export default function ActiveWorkoutPage() {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
                       const isFocused = focusedWeightCell === cellKey
+                      const isPlateCalcOpen = openPlateCalc?.exIdx === exIdx && openPlateCalc?.setIdx === setIdx
                       return (
                         <div className="weight-input-group">
                           <input
@@ -726,6 +729,17 @@ export default function ActiveWorkoutPage() {
                               onClick={() => toggleLbMode(exIdx, setIdx, s.weightKg)}
                             >
                               {isLb ? 'lb' : 'kg'}
+                            </button>
+                          )}
+                          {isFocused && (
+                            <button
+                              type="button"
+                              className={isPlateCalcOpen ? 'plate-calc-trigger active' : 'plate-calc-trigger'}
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => setOpenPlateCalc(isPlateCalcOpen ? null : { exIdx, setIdx })}
+                              aria-label="Show plate breakdown"
+                            >
+                              <PlateIcon width={14} height={14} />
                             </button>
                           )}
                         </div>
@@ -792,6 +806,13 @@ export default function ActiveWorkoutPage() {
           </div>
         )
       })()}
+
+      <PlateCalcSheet
+        exerciseId={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseId : null}
+        exerciseName={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseName : null}
+        targetWeightKg={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].weightKg : ''}
+        onClose={() => setOpenPlateCalc(null)}
+      />
     </main>
   )
 }

@@ -132,3 +132,12 @@ export function TaperIcon(props) {
     </svg>
   )
 }
+
+export function PlateIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M1 10h2M17 10h2M3.5 6.5v7M16.5 6.5v7M6 4v12M14 4v12" />
+      <path d="M9 8h2v4H9z" />
+    </svg>
+  )
+}

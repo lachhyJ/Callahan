@@ -4,12 +4,12 @@ import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/clien
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, PlateIcon, TaperIcon, TrashIcon } from '../icons'
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Fills the two-row, three-column grid the layout was built for.
+// Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
@@ -17,6 +17,7 @@ const QUICK_LINKS = [
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
+  { to: '/plate-calculator', label: 'Plate calculator', Icon: PlateIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
