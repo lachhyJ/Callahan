@@ -22,7 +22,7 @@ const DEFAULT_BAR_KG = BAR_PRESETS.kg[0].value
 // mirror image of loading, not a different number) — same visual idea as
 // Hevy's plate calculator, height-scaled per plate so the bigger ones read
 // as bigger at a glance.
-function BarDiagram({ breakdown, maxPlate }) {
+function BarDiagram({ breakdown, maxPlate, barWeightKg }) {
   const plates = breakdown.flatMap(({ plate, count }) => Array(count).fill(plate))
   const plateWidth = 26
   const gap = 5
@@ -32,8 +32,19 @@ function BarDiagram({ breakdown, maxPlate }) {
   const midY = height / 2
 
   return (
-    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 45)} ${height}`} width="100%" height="115" preserveAspectRatio="xMinYMid meet">
+    <svg viewBox={`0 0 ${Math.max(width, sleeveWidth + 45)} ${height}`} width="100%" height="115" preserveAspectRatio="xMidYMid meet">
       <rect x="0" y={midY - 9} width={sleeveWidth} height="18" rx="4" fill="var(--border)" />
+      <text
+        x={sleeveWidth / 2}
+        y={midY}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontSize="10"
+        fontWeight="700"
+        fill="var(--text-h)"
+      >
+        {barWeightKg}
+      </text>
       {plates.map((plate, i) => {
         const plateHeight = 46 + (plate / maxPlate) * 58
         const x = sleeveWidth + i * (plateWidth + gap)
@@ -192,7 +203,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
 
             {result && (
               <>
-                <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} />
+                <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} barWeightKg={barWeightKg} />
                 <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
                 {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
                 {result.remainder > 0 && (
@@ -203,7 +214,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
 
             <div className="plate-calc-sheet-bars">
               <span className="plate-calc-sheet-label">Bar / sled</span>
-              <div className="plate-calc-chip-row">
+              <div className="plate-calc-chip-row scroll">
                 {savedEquipment && (
                   <button
                     type="button"

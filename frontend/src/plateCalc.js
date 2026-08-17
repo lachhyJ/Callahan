@@ -9,13 +9,13 @@ export const PLATE_SETS = {
 
 export const BAR_PRESETS = {
   kg: [
-    { label: 'Olympic (20kg)', value: 20 },
-    { label: "Women's Olympic (15kg)", value: 15 },
+    { label: '20kg', value: 20 },
+    { label: '15kg', value: 15 },
   ],
   lb: [
-    { label: 'Olympic (45lb)', value: 45 },
-    { label: "Women's Olympic (35lb)", value: 35 },
-    { label: 'Training bar (25lb)', value: 25 },
+    { label: '45lb', value: 45 },
+    { label: '35lb', value: 35 },
+    { label: '25lb', value: 25 },
   ],
 }
 
