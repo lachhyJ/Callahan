@@ -740,17 +740,20 @@ export default function ActiveWorkoutPage() {
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
+                      const isAssisted = /assist/i.test(ex.exerciseName)
                       return (
                         <div className="weight-cell">
-                          <button
-                            type="button"
-                            className="sign-toggle-btn"
-                            tabIndex={-1}
-                            aria-label="Toggle negative (assisted)"
-                            onClick={() => toggleWeightSign(exIdx, setIdx, cellKey)}
-                          >
-                            ±
-                          </button>
+                          {isAssisted && (
+                            <button
+                              type="button"
+                              className="sign-toggle-btn"
+                              tabIndex={-1}
+                              aria-label="Toggle negative (assisted)"
+                              onClick={() => toggleWeightSign(exIdx, setIdx, cellKey)}
+                            >
+                              ±
+                            </button>
+                          )}
                           <input
                             type="text"
                             inputMode="decimal"
