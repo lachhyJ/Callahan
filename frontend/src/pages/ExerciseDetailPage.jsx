@@ -44,8 +44,8 @@ export default function ExerciseDetailPage() {
     updateCue(workoutTemplateExerciseId, value.trim() || null).catch(() => {})
   }
 
-  function handleAssistedToggle(e) {
-    const isAssisted = e.target.checked
+  function handleAssistedToggle() {
+    const isAssisted = !stats.isAssisted
     setStats((prev) => ({ ...prev, isAssisted }))
     updateExerciseAssisted(exerciseId, isAssisted).catch(() => {
       setStats((prev) => ({ ...prev, isAssisted: !isAssisted }))
@@ -81,12 +81,17 @@ export default function ExerciseDetailPage() {
   return (
     <main className="page exercise-detail-page">
       <h1>{stats.exerciseName}</h1>
-      {stats.primaryMuscle && <p className="primary-muscle">{stats.primaryMuscle}</p>}
-
-      <label className="assisted-toggle">
-        <input type="checkbox" checked={stats.isAssisted} onChange={handleAssistedToggle} />
-        Assisted (allow negative weight for machine assistance)
-      </label>
+      <p className="exercise-meta-row">
+        {stats.primaryMuscle && <span className="primary-muscle">{stats.primaryMuscle}</span>}
+        <button
+          type="button"
+          className={stats.isAssisted ? 'assisted-toggle active' : 'assisted-toggle'}
+          onClick={handleAssistedToggle}
+          title="Assisted exercises get a sign-toggle on the weight field during workouts"
+        >
+          Assisted
+        </button>
+      </p>
 
       {cues.map((c) => (
         <input

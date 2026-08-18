@@ -1020,13 +1020,43 @@ td {
   }
 }
 
-.assisted-toggle {
+.exercise-meta-row {
   display: flex;
   align-items: center;
-  gap: var(--space-2xs);
-  color: var(--text-h);
-  font-size: var(--text-sm);
-  margin: var(--space-xs) 0;
+  gap: var(--space-xs);
+}
+
+.assisted-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  transition: color var(--duration-fast) var(--ease-out);
+
+  &::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--border);
+    transition: background var(--duration-fast) var(--ease-out);
+  }
+
+  &:hover {
+    color: var(--text);
+  }
+
+  &.active {
+    color: var(--accent);
+
+    &::before {
+      background: var(--accent);
+    }
+  }
 }
 
 .cue-input {
