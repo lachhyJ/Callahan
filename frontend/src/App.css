@@ -1026,6 +1026,25 @@ td {
   gap: var(--space-xs);
 }
 
+.exercise-name-h1 {
+  cursor: pointer;
+  text-decoration: underline dashed var(--border);
+  text-underline-offset: 6px;
+}
+
+.exercise-name-edit {
+  font: inherit;
+  font-size: var(--text-3xl);
+  font-weight: inherit;
+  color: var(--text-h);
+  padding: 0;
+  border: none;
+  border-bottom: 1px solid var(--accent-border);
+  background: transparent;
+  border-radius: 0;
+  margin: 0 0 var(--space-lg);
+}
+
 .assisted-toggle {
   display: inline-flex;
   align-items: center;

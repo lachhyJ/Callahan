@@ -6,6 +6,8 @@ public record CreateExerciseRequestDto(string Name, string Category);
 
 public record UpdateExerciseAssistedRequestDto(bool IsAssisted);
 
+public record UpdateExerciseNameRequestDto(string Name);
+
 public record ExerciseHistoryEntryDto(int WorkoutSessionId, DateOnly Date, string? Notes, List<PreviousSetDto> Sets);
 
 public record ExerciseHistoryPageDto(List<ExerciseHistoryEntryDto> Entries, int TotalSessions);

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
@@ -19,6 +19,8 @@ export default function ExerciseDetailPage() {
   const [historyError, setHistoryError] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
   const [cues, setCues] = useState([])
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
 
   useEffect(() => {
     setStats(null)
@@ -26,6 +28,7 @@ export default function ExerciseDetailPage() {
     setHistory([])
     setHistoryError(null)
     setCues([])
+    setEditingName(false)
     getExerciseStats(exerciseId).then(setStats).catch((err) => setStatsError(err.message))
     getExerciseHistory(exerciseId, PAGE_SIZE, 0)
       .then((page) => {
@@ -49,6 +52,22 @@ export default function ExerciseDetailPage() {
     setStats((prev) => ({ ...prev, isAssisted }))
     updateExerciseAssisted(exerciseId, isAssisted).catch(() => {
       setStats((prev) => ({ ...prev, isAssisted: !isAssisted }))
+    })
+  }
+
+  function startEditingName() {
+    setNameDraft(stats.exerciseName)
+    setEditingName(true)
+  }
+
+  function saveName() {
+    const trimmed = nameDraft.trim()
+    setEditingName(false)
+    if (trimmed === '' || trimmed === stats.exerciseName) return
+    const previous = stats.exerciseName
+    setStats((prev) => ({ ...prev, exerciseName: trimmed }))
+    updateExerciseName(exerciseId, trimmed).catch(() => {
+      setStats((prev) => ({ ...prev, exerciseName: previous }))
     })
   }
 
@@ -80,7 +99,23 @@ export default function ExerciseDetailPage() {
 
   return (
     <main className="page exercise-detail-page">
-      <h1>{stats.exerciseName}</h1>
+      {editingName ? (
+        <input
+          type="text"
+          className="exercise-name-edit"
+          value={nameDraft}
+          onChange={(e) => setNameDraft(e.target.value)}
+          onBlur={saveName}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.target.blur()
+            if (e.key === 'Escape') setEditingName(false)
+          }}
+          autoFocus
+          aria-label="Exercise name"
+        />
+      ) : (
+        <h1 onClick={startEditingName} className="exercise-name-h1" title="Tap to rename">{stats.exerciseName}</h1>
+      )}
       <p className="exercise-meta-row">
         {stats.primaryMuscle && <span className="primary-muscle">{stats.primaryMuscle}</span>}
         <button
