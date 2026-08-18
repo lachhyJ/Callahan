@@ -506,12 +506,57 @@ td {
   border-bottom: 2px solid transparent;
   color: var(--text);
   font-size: var(--text-sm);
+  white-space: nowrap;
+  transition: color var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    background: transparent;
+    color: var(--text-h);
+    opacity: 1;
+  }
 
   &.active {
     color: var(--accent);
     border-bottom-color: var(--accent);
     font-weight: 600;
   }
+}
+
+/* Four equal-width tabs at narrow widths leave "Ask AI" too tight to fit on
+   one line at the base padding — trim it back rather than let it wrap and
+   throw the row's height off from the other three. */
+@media (max-width: 400px) {
+  .taper-tab {
+    padding: var(--space-xs) var(--space-2xs);
+    font-size: var(--text-xs);
+  }
+}
+
+.phase-stepper {
+  display: flex;
+  gap: var(--space-2xs);
+}
+
+.phase-step {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--surface-raised);
+
+  &.done {
+    background: var(--accent);
+    opacity: 0.5;
+  }
+
+  &.active {
+    background: var(--accent);
+  }
+}
+
+.save-confirm {
+  color: var(--success-text);
+  font-size: var(--text-sm);
 }
 
 .template-card {
@@ -1998,6 +2043,7 @@ td {
 }
 
 .muscle-bar-track {
+  position: relative;
   height: 20px;
   border-radius: var(--radius-full);
   background: var(--surface-raised);
@@ -2011,6 +2057,18 @@ td {
   background: var(--accent);
   transform-origin: left;
   transition: transform var(--duration-normal) var(--ease-out);
+}
+
+/* Marks where this week's target sits on the track — without it, a week
+   with nothing logged yet (the normal state early in any week) just reads
+   as an empty/broken bar instead of "target ahead." */
+.muscle-bar-target {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--text-h);
+  opacity: 0.6;
 }
 
 .muscle-bar-value {
