@@ -78,6 +78,13 @@ export function updateExerciseAssisted(exerciseId, isAssisted) {
   })
 }
 
+export function updateExerciseName(exerciseId, name) {
+  return apiFetch(`/api/exercises/${exerciseId}/name`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  })
+}
+
 export function getWorkoutSessions({ start, end } = {}) {
   const params = new URLSearchParams()
   if (start) params.set('start', start)

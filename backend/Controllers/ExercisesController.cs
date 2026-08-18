@@ -63,6 +63,21 @@ public class ExercisesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("{id}/name")]
+    public async Task<IActionResult> UpdateName(int id, UpdateExerciseNameRequestDto request)
+    {
+        var name = request.Name.Trim();
+        if (name.Length == 0) return BadRequest(new { error = "Name can't be empty." });
+
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        exercise.Name = name;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     [HttpGet("{id}/history")]
     public async Task<ActionResult<ExerciseHistoryPageDto>> GetHistory(int id, [FromQuery] int limit = 10, [FromQuery] int offset = 0)
     {
