@@ -1035,7 +1035,9 @@ td {
   padding: 0;
   color: var(--text-tertiary);
   font-size: var(--text-xs);
-  transition: color var(--duration-fast) var(--ease-out);
+  text-decoration: underline dashed var(--border);
+  text-underline-offset: 3px;
+  transition: color var(--duration-fast) var(--ease-out), text-decoration-color var(--duration-fast) var(--ease-out);
 
   &::before {
     content: '';
@@ -1048,10 +1050,13 @@ td {
 
   &:hover {
     color: var(--text);
+    text-decoration-color: var(--text-tertiary);
   }
 
   &.active {
     color: var(--accent);
+    text-decoration-style: solid;
+    text-decoration-color: var(--accent-border);
 
     &::before {
       background: var(--accent);
