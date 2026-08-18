@@ -4,8 +4,10 @@ import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 // Runs need classifying well after the fact (mostly Garmin syncs reviewed
 // during a later browse, not right after logging). The label itself is
 // plain text, not a trigger — a dedicated Classify/Change button opens the
-// picker, and a transparent backdrop closes it on an outside click, so
-// browsing a list of runs can't accidentally reclassify one.
+// picker (styled bright when classification is still needed, so the one
+// button is unambiguously the thing to press), and a transparent backdrop
+// closes it on an outside click, so browsing a list of runs can't
+// accidentally reclassify one.
 export default function RunActivityRow({ activity, runSessionTypes, openPickerId, onTogglePicker, onSelect }) {
   const pickerOpen = openPickerId === activity.id
   const needsClassification = activity.source === 'Garmin' && !activity.runSessionTypeId
@@ -15,10 +17,13 @@ export default function RunActivityRow({ activity, runSessionTypes, openPickerId
     <span className="run-classify">
       <span className="run-classify-row">
         <span>{activityLabel(activity)}</span>
-        <button type="button" className="run-classify-btn" onClick={() => onTogglePicker(activity.id)}>
+        <button
+          type="button"
+          className={needsClassification ? 'run-classify-btn run-classify-btn-needed' : 'run-classify-btn'}
+          onClick={() => onTogglePicker(activity.id)}
+        >
           {activity.runSessionTypeId ? 'Change' : 'Classify'}
         </button>
-        {needsClassification && <span className="needs-classification-badge">Needs classification</span>}
       </span>
       {pickerOpen && (
         <>

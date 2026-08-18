@@ -1677,14 +1677,20 @@ td {
   }
 }
 
-.needs-classification-badge {
-  font-size: var(--text-xs);
-  font-weight: 500;
-  color: var(--info-text);
+/* Bright/filled instead of the default outline — this is the state where
+   the button itself is the thing that needs pressing, so it should read as
+   the call to action rather than sitting next to a separate badge. */
+.run-classify-btn-needed {
   background: var(--info-bg);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-  white-space: nowrap;
+  border-color: transparent;
+  color: var(--info-text);
+  font-weight: 500;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--info-text);
+    border-color: var(--info-text);
+  }
 }
 
 /* Opens upward, not downward like .set-type-menu's default — this trigger
