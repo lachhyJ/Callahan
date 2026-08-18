@@ -288,6 +288,18 @@ export default function ActiveWorkoutPage() {
     })
   }
 
+  function toggleWeightSign(exIdx, setIdx, cellKey) {
+    const flip = (str) => {
+      if (str === '' || str === '-') return str === '' ? '-' : ''
+      return String(str).startsWith('-') ? String(str).slice(1) : `-${str}`
+    }
+    if (cellKey in lbInputs) {
+      updateLbInput(exIdx, setIdx, flip(lbInputs[cellKey]))
+    } else {
+      updateSet(exIdx, setIdx, 'weightKg', flip(exercises[exIdx].sets[setIdx].weightKg))
+    }
+  }
+
   function updateLbInput(exIdx, setIdx, value) {
     const key = `${exIdx}-${setIdx}`
     setLbInputs((prev) => ({ ...prev, [key]: value }))
@@ -729,23 +741,34 @@ export default function ActiveWorkoutPage() {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
                       return (
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0"
-                          value={isLb ? lbInputs[cellKey] : s.weightKg}
-                          onChange={(e) =>
-                            isLb
-                              ? updateLbInput(exIdx, setIdx, e.target.value)
-                              : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
-                          }
-                          onFocus={(e) => {
-                            setFocusedWeightCell(cellKey)
-                            e.target.select()
-                          }}
-                          onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
-                          className={s.previous && !s.completed ? 'prefilled' : ''}
-                        />
+                        <div className="weight-cell">
+                          <button
+                            type="button"
+                            className="sign-toggle-btn"
+                            tabIndex={-1}
+                            aria-label="Toggle negative (assisted)"
+                            onClick={() => toggleWeightSign(exIdx, setIdx, cellKey)}
+                          >
+                            ±
+                          </button>
+                          <input
+                            type="text"
+                            inputMode="decimal"
+                            placeholder="0"
+                            value={isLb ? lbInputs[cellKey] : s.weightKg}
+                            onChange={(e) =>
+                              isLb
+                                ? updateLbInput(exIdx, setIdx, e.target.value)
+                                : updateSet(exIdx, setIdx, 'weightKg', e.target.value)
+                            }
+                            onFocus={(e) => {
+                              setFocusedWeightCell(cellKey)
+                              e.target.select()
+                            }}
+                            onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
+                            className={s.previous && !s.completed ? 'prefilled' : ''}
+                          />
+                        </div>
                       )
                     })()}
                   </td>
