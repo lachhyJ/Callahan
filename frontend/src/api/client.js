@@ -71,6 +71,13 @@ export function updateCue(workoutTemplateExerciseId, cue) {
   })
 }
 
+export function updateExerciseAssisted(exerciseId, isAssisted) {
+  return apiFetch(`/api/exercises/${exerciseId}/assisted`, {
+    method: 'PUT',
+    body: JSON.stringify({ isAssisted }),
+  })
+}
+
 export function getWorkoutSessions({ start, end } = {}) {
   const params = new URLSearchParams()
   if (start) params.set('start', start)

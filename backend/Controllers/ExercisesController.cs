@@ -29,7 +29,8 @@ public class ExercisesController : ControllerBase
                 e.Id,
                 e.Name,
                 e.Category.ToString(),
-                e.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault()))
+                e.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault(),
+                e.IsAssisted))
             .ToListAsync();
 
         return Ok(exercises);
@@ -47,7 +48,19 @@ public class ExercisesController : ControllerBase
         _db.Exercises.Add(exercise);
         await _db.SaveChangesAsync();
 
-        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null));
+        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted));
+    }
+
+    [HttpPut("{id}/assisted")]
+    public async Task<IActionResult> UpdateAssisted(int id, UpdateExerciseAssistedRequestDto request)
+    {
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        exercise.IsAssisted = request.IsAssisted;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 
     [HttpGet("{id}/history")]
@@ -117,7 +130,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, 0, 0, 0, 0, []));
         }
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
@@ -137,6 +150,6 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
     }
 }

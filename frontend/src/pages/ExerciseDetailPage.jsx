@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
@@ -44,6 +44,14 @@ export default function ExerciseDetailPage() {
     updateCue(workoutTemplateExerciseId, value.trim() || null).catch(() => {})
   }
 
+  function handleAssistedToggle(e) {
+    const isAssisted = e.target.checked
+    setStats((prev) => ({ ...prev, isAssisted }))
+    updateExerciseAssisted(exerciseId, isAssisted).catch(() => {
+      setStats((prev) => ({ ...prev, isAssisted: !isAssisted }))
+    })
+  }
+
   function loadMore() {
     setLoadingMore(true)
     getExerciseHistory(exerciseId, PAGE_SIZE, history.length)
@@ -74,6 +82,11 @@ export default function ExerciseDetailPage() {
     <main className="page exercise-detail-page">
       <h1>{stats.exerciseName}</h1>
       {stats.primaryMuscle && <p className="primary-muscle">{stats.primaryMuscle}</p>}
+
+      <label className="assisted-toggle">
+        <input type="checkbox" checked={stats.isAssisted} onChange={handleAssistedToggle} />
+        Assisted (allow negative weight for machine assistance)
+      </label>
 
       {cues.map((c) => (
         <input
