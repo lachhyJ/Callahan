@@ -39,13 +39,22 @@ public class PushNotificationService
         // "from Callahan" line — iOS fills the blank with "Callahan" anyway, so
         // you get two duplicate mentions instead of one. Real title it is.
         var payload = JsonSerializer.Serialize(new { title, body });
+        // Without an explicit Urgency, Apple's web push gateway can defer delivery
+        // (worse under Low Power Mode) — observed as late/inconsistent rest-timer
+        // alerts specifically while backgrounded in another app. "high" is the
+        // signal for time-sensitive delivery per RFC 8030.
+        var options = new Dictionary<string, object>
+        {
+            ["vapidDetails"] = vapidDetails,
+            ["headers"] = new Dictionary<string, object> { ["Urgency"] = "high" },
+        };
 
         foreach (var sub in subscriptions)
         {
             try
             {
                 var pushSubscription = new WebPushSubscription(sub.Endpoint, sub.P256dh, sub.Auth);
-                await client.SendNotificationAsync(pushSubscription, payload, vapidDetails);
+                await client.SendNotificationAsync(pushSubscription, payload, options);
             }
             catch (Exception ex)
             {
