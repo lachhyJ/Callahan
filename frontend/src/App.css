@@ -885,6 +885,23 @@ td {
   color: var(--text-tertiary);
 }
 
+.plate-calc-dumbbell-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  text-align: center;
+
+  p {
+    margin: 0;
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+
+  strong {
+    color: var(--text-h);
+  }
+}
+
 .plate-calc-sheet-bars {
   display: flex;
   flex-direction: column;

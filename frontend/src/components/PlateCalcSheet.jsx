@@ -1,17 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   BAR_PRESETS,
+  DUMBBELL_STEPS_KG,
   PLATE_SETS,
   calculatePlates,
   clearCustomEquipment,
-  clearVisibilityOverride,
+  clearEquipmentTypeOverride,
+  getAvailableDumbbells,
   getAvailablePlates,
   getCustomEquipment,
-  getVisibilityOverride,
-  looksPlateLoaded,
+  getEquipmentTypeOverride,
+  guessEquipmentType,
+  nearestDumbbells,
+  setAvailableDumbbells,
   setAvailablePlates,
   setCustomEquipment,
-  setVisibilityOverride,
+  setEquipmentTypeOverride,
 } from '../plateCalc'
 
 const SAVED_BAR = 'saved'
@@ -73,35 +77,46 @@ function BarDiagram({ breakdown, maxPlate, barWeightKg }) {
   )
 }
 
+const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', hidden: 'Hide' }
+
 export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined
+
+  const [equipmentType, setEquipmentTypeState] = useState('barbell')
+  const [hasTypeOverride, setHasTypeOverride] = useState(false)
+
+  // Barbell-mode state
   const [savedEquipment, setSavedEquipment] = useState(null)
   const [selection, setSelection] = useState(String(DEFAULT_BAR_KG))
   const [barWeightKg, setBarWeightKg] = useState(DEFAULT_BAR_KG)
   const [customName, setCustomName] = useState('')
   const [customWeight, setCustomWeight] = useState('')
-  const [visible, setVisible] = useState(true)
-  const [hasOverride, setHasOverride] = useState(false)
   const [availablePlates, setAvailablePlatesState] = useState(() => getAvailablePlates('kg'))
+
+  // Dumbbell-mode state
+  const [availableDumbbells, setAvailableDumbbellsState] = useState(() => getAvailableDumbbells())
+
   const sheetRef = useRef(null)
 
-  // Re-sync to this exercise's saved bar whenever the sheet is opened for a
+  // Re-sync to this exercise's settings whenever the sheet is opened for a
   // (possibly different) exercise, rather than carrying over whatever was
-  // selected for the previous one. Available plates are device-wide, not
-  // per-exercise, so they only need reloading in case another tab/session
-  // changed them — cheap enough to just always refresh on open.
+  // selected for the previous one. Device-wide lists (plates/dumbbells) are
+  // reloaded too, in case another tab/session changed them — cheap enough
+  // to just always refresh on open.
   useEffect(() => {
     if (!open) return
+    const typeOverride = getEquipmentTypeOverride(exerciseId)
+    setHasTypeOverride(typeOverride !== null)
+    setEquipmentTypeState(typeOverride ?? guessEquipmentType(exerciseName))
+
     const saved = getCustomEquipment(exerciseId)
     setSavedEquipment(saved)
     setSelection(saved ? SAVED_BAR : String(DEFAULT_BAR_KG))
     setBarWeightKg(saved ? saved.kg : DEFAULT_BAR_KG)
     setCustomName('')
     setCustomWeight('')
-    const override = getVisibilityOverride(exerciseId)
-    setHasOverride(override !== null)
-    setVisible(override ? override === 'shown' : looksPlateLoaded(exerciseName))
     setAvailablePlatesState(getAvailablePlates('kg'))
+    setAvailableDumbbellsState(getAvailableDumbbells())
   }, [open, exerciseId, exerciseName])
 
   useEffect(() => {
@@ -155,19 +170,6 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     setCustomWeight('')
   }
 
-  function toggleVisible() {
-    const next = !visible
-    setVisibilityOverride(exerciseId, next)
-    setVisible(next)
-    setHasOverride(true)
-  }
-
-  function resetToAutomatic() {
-    clearVisibilityOverride(exerciseId)
-    setVisible(looksPlateLoaded(exerciseName))
-    setHasOverride(false)
-  }
-
   function togglePlateAvailable(plate) {
     const next = availablePlates.includes(plate)
       ? availablePlates.filter((p) => p !== plate)
@@ -176,12 +178,36 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     setAvailablePlates('kg', next)
   }
 
+  function toggleDumbbellAvailable(dumbbell) {
+    const next = availableDumbbells.includes(dumbbell)
+      ? availableDumbbells.filter((d) => d !== dumbbell)
+      : DUMBBELL_STEPS_KG.filter((d) => availableDumbbells.includes(d) || d === dumbbell)
+    setAvailableDumbbellsState(next)
+    setAvailableDumbbells(next)
+  }
+
+  function selectEquipmentType(type) {
+    setEquipmentTypeOverride(exerciseId, type)
+    setEquipmentTypeState(type)
+    setHasTypeOverride(true)
+  }
+
+  function resetEquipmentType() {
+    clearEquipmentTypeOverride(exerciseId)
+    setEquipmentTypeState(guessEquipmentType(exerciseName))
+    setHasTypeOverride(false)
+  }
+
   const target = Number(targetWeightKg)
   const hasTarget = targetWeightKg !== '' && targetWeightKg !== undefined && !Number.isNaN(target)
-  const belowBar = hasTarget && target < barWeightKg
-  const perSide = hasTarget && !belowBar ? (target - barWeightKg) / 2 : 0
-  const result = hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
+
+  const belowBar = equipmentType === 'barbell' && hasTarget && target < barWeightKg
+  const perSide = equipmentType === 'barbell' && hasTarget && !belowBar ? (target - barWeightKg) / 2 : 0
+  const result = equipmentType === 'barbell' && hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
   const maxPlate = Math.max(...(availablePlates.length > 0 ? availablePlates : PLATE_SETS.kg))
+
+  const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
+  const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
 
   return (
     <>
@@ -201,104 +227,165 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
               Target weight: {hasTarget ? `${targetWeightKg}kg` : '—'}
             </p>
 
-            {belowBar && <p className="error">Below the bar's own weight.</p>}
-            {!hasTarget && <p className="plate-calc-popover-hint">Enter a weight on the set to see plates.</p>}
-
-            {result && (
+            {equipmentType === 'barbell' && (
               <>
-                <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} barWeightKg={barWeightKg} />
-                <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
-                {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
-                {result.remainder > 0 && (
-                  <p className="error">Can't hit that exactly with your available plates — {result.remainder}kg short per side.</p>
+                {belowBar && <p className="error">Below the bar's own weight.</p>}
+                {!hasTarget && <p className="plate-calc-popover-hint">Enter a weight on the set to see plates.</p>}
+
+                {result && (
+                  <>
+                    <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} barWeightKg={barWeightKg} />
+                    <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
+                    {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
+                    {result.remainder > 0 && (
+                      <p className="error">Can't hit that exactly with your available plates — {result.remainder}kg short per side.</p>
+                    )}
+                  </>
                 )}
+
+                <div className="plate-calc-sheet-bars">
+                  <span className="plate-calc-sheet-label">Bar / sled</span>
+                  <div className="plate-calc-chip-row scroll">
+                    {savedEquipment && (
+                      <button
+                        type="button"
+                        className={selection === SAVED_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                        onClick={selectSaved}
+                      >
+                        {savedEquipment.name || `This bar (${savedEquipment.kg}kg)`}
+                      </button>
+                    )}
+                    {BAR_PRESETS.kg.map((preset) => (
+                      <button
+                        key={preset.value}
+                        type="button"
+                        className={selection === String(preset.value) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                        onClick={() => selectPreset(preset.value)}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className={selection === CUSTOM_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                      onClick={openCustomForm}
+                    >
+                      {savedEquipment ? 'Edit' : 'Custom'}
+                    </button>
+                  </div>
+                  {selection === CUSTOM_BAR && (
+                    <div className="plate-calc-custom-form">
+                      <input
+                        type="text"
+                        placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} bar` : 'Trap bar'}`}
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Weight (kg)"
+                        value={customWeight}
+                        onChange={handleCustomWeightChange}
+                        autoFocus
+                      />
+                      <div className="plate-calc-custom-actions">
+                        <button type="button" className="secondary-btn" onClick={handleSaveCustom}>
+                          Save for {exerciseName || 'this exercise'}
+                        </button>
+                        {savedEquipment && (
+                          <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="plate-calc-sheet-bars">
+                  <span className="plate-calc-sheet-label">Plates you have (kg)</span>
+                  <div className="plate-calc-chip-row">
+                    {PLATE_SETS.kg.map((plate) => (
+                      <button
+                        key={plate}
+                        type="button"
+                        className={availablePlates.includes(plate) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                        onClick={() => togglePlateAvailable(plate)}
+                      >
+                        {plate}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
 
-            <div className="plate-calc-sheet-bars">
-              <span className="plate-calc-sheet-label">Bar / sled</span>
-              <div className="plate-calc-chip-row scroll">
-                {savedEquipment && (
-                  <button
-                    type="button"
-                    className={selection === SAVED_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                    onClick={selectSaved}
-                  >
-                    {savedEquipment.name || `This bar (${savedEquipment.kg}kg)`}
-                  </button>
+            {equipmentType === 'dumbbell' && (
+              <>
+                {!hasTarget && (
+                  <p className="plate-calc-popover-hint">Enter the combined weight on the set to see the per-dumbbell split.</p>
                 )}
-                {BAR_PRESETS.kg.map((preset) => (
-                  <button
-                    key={preset.value}
-                    type="button"
-                    className={selection === String(preset.value) ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                    onClick={() => selectPreset(preset.value)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  className={selection === CUSTOM_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                  onClick={openCustomForm}
-                >
-                  {savedEquipment ? 'Edit' : 'Custom'}
-                </button>
-              </div>
-              {selection === CUSTOM_BAR && (
-                <div className="plate-calc-custom-form">
-                  <input
-                    type="text"
-                    placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} bar` : 'Trap bar'}`}
-                    value={customName}
-                    onChange={(e) => setCustomName(e.target.value)}
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="Weight (kg)"
-                    value={customWeight}
-                    onChange={handleCustomWeightChange}
-                    autoFocus
-                  />
-                  <div className="plate-calc-custom-actions">
-                    <button type="button" className="secondary-btn" onClick={handleSaveCustom}>
-                      Save for {exerciseName || 'this exercise'}
-                    </button>
-                    {savedEquipment && (
-                      <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
-                        Remove
-                      </button>
+                {perDumbbell !== null && (
+                  <>
+                    <p className="plate-calc-sheet-perside">{perDumbbell}kg per dumbbell</p>
+                    {dumbbellMatch.exact !== undefined && (
+                      <p className="plate-calc-popover-hint">That's a size you have — grab two.</p>
                     )}
+                    {dumbbellMatch.exact === undefined && (dumbbellMatch.below !== undefined || dumbbellMatch.above !== undefined) && (
+                      <div className="plate-calc-dumbbell-options">
+                        {dumbbellMatch.below !== undefined && (
+                          <p>Round down: <strong>{dumbbellMatch.below}kg</strong> each — {dumbbellMatch.below * 2}kg combined</p>
+                        )}
+                        {dumbbellMatch.above !== undefined && (
+                          <p>Round up: <strong>{dumbbellMatch.above}kg</strong> each — {dumbbellMatch.above * 2}kg combined</p>
+                        )}
+                      </div>
+                    )}
+                    {dumbbellMatch.exact === undefined && dumbbellMatch.below === undefined && dumbbellMatch.above === undefined && (
+                      <p className="plate-calc-popover-hint">No dumbbells marked as available below.</p>
+                    )}
+                  </>
+                )}
+
+                <div className="plate-calc-sheet-bars">
+                  <span className="plate-calc-sheet-label">Dumbbells you have (kg)</span>
+                  <div className="plate-calc-chip-row scroll">
+                    {DUMBBELL_STEPS_KG.map((dumbbell) => (
+                      <button
+                        key={dumbbell}
+                        type="button"
+                        className={availableDumbbells.includes(dumbbell) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                        onClick={() => toggleDumbbellAvailable(dumbbell)}
+                      >
+                        {dumbbell}
+                      </button>
+                    ))}
                   </div>
                 </div>
-              )}
-            </div>
+              </>
+            )}
+
+            {equipmentType === 'hidden' && (
+              <p className="plate-calc-popover-hint">No plate math needed for this exercise.</p>
+            )}
 
             <div className="plate-calc-sheet-bars">
-              <span className="plate-calc-sheet-label">Plates you have (kg)</span>
+              <span className="plate-calc-sheet-label">Calculator type</span>
               <div className="plate-calc-chip-row">
-                {PLATE_SETS.kg.map((plate) => (
+                {Object.entries(EQUIPMENT_TYPE_LABELS).map(([type, label]) => (
                   <button
-                    key={plate}
+                    key={type}
                     type="button"
-                    className={availablePlates.includes(plate) ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                    onClick={() => togglePlateAvailable(plate)}
+                    className={equipmentType === type ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                    onClick={() => selectEquipmentType(type)}
                   >
-                    {plate}
+                    {label}
                   </button>
                 ))}
               </div>
-            </div>
-
-            <div className="plate-calc-visibility-row">
-              <button type="button" className="plate-calc-hide-toggle" onClick={toggleVisible}>
-                {visible
-                  ? `Hide the calculator button for ${exerciseName || 'this exercise'}`
-                  : `Show the calculator button for ${exerciseName || 'this exercise'}`}
-              </button>
-              {hasOverride && (
-                <button type="button" className="plate-calc-hide-toggle" onClick={resetToAutomatic}>
+              {hasTypeOverride && (
+                <button type="button" className="plate-calc-hide-toggle" onClick={resetEquipmentType}>
                   Reset to automatic
                 </button>
               )}
