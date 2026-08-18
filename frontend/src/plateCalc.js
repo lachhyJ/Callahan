@@ -63,6 +63,47 @@ export function setAvailablePlates(unit, plates) {
   }
 }
 
+// Fixed dumbbell increments the athlete's gym actually racks — device-wide,
+// same reasoning as available plates. Standard commercial-gym spacing.
+export const DUMBBELL_STEPS_KG = [2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 40, 45, 50]
+
+const AVAILABLE_DUMBBELLS_PREFIX = 'callahan.plateCalc.availableDumbbells.'
+
+export function getAvailableDumbbells() {
+  try {
+    const raw = localStorage.getItem(AVAILABLE_DUMBBELLS_PREFIX + 'kg')
+    if (raw === null) return DUMBBELL_STEPS_KG
+    const kept = JSON.parse(raw)
+    const filtered = DUMBBELL_STEPS_KG.filter((d) => kept.includes(d))
+    return filtered.length > 0 ? filtered : DUMBBELL_STEPS_KG
+  } catch {
+    return DUMBBELL_STEPS_KG
+  }
+}
+
+export function setAvailableDumbbells(dumbbells) {
+  try {
+    localStorage.setItem(AVAILABLE_DUMBBELLS_PREFIX + 'kg', JSON.stringify(dumbbells))
+  } catch {
+    // Best-effort.
+  }
+}
+
+// Given a target per-dumbbell weight, finds the closest available size(s).
+// Returns an exact match alone when the rack has one, otherwise the
+// nearest step below and above (either can be absent at the ends of the
+// rack) so the athlete sees both directions to round rather than just
+// whichever happens to be closer.
+export function nearestDumbbells(perDumbbellKg, available) {
+  const sorted = [...available].sort((a, b) => a - b)
+  const exact = sorted.find((d) => Math.abs(d - perDumbbellKg) < 1e-9)
+  if (exact !== undefined) return { exact }
+
+  const below = [...sorted].reverse().find((d) => d < perDumbbellKg)
+  const above = sorted.find((d) => d > perDumbbellKg)
+  return { below, above }
+}
+
 // Per-exercise named equipment ("Trap bar" = 25kg, "Leg press sled" = 75kg
 // empty) — saved deliberately (not just remembered from last use), so it
 // shows as its own chip only on the exercise it was set for, never bleeding
@@ -100,57 +141,60 @@ export function clearCustomEquipment(exerciseId) {
   }
 }
 
-// Name-based guess at whether an exercise is loaded with plates on a bar or
-// sled at all — cable stacks are pin-selected, dumbbells aren't loaded the
-// same way, and most bodyweight moves just don't take plates. Not perfect
-// (a DB/Cable naming convention only helps for exercises tagged that way,
-// and moves like "Lunges" or "Single Leg Hamstring Curl" carry no equipment
-// hint at all) — errs toward showing the button when unsure, since a manual
-// override is one tap away either direction.
-const NO_PLATES_KEYWORDS = [
-  'cable', 'machine', 'dumbbell',
+// Name-based guess at what kind of equipment an exercise is loaded on —
+// 'barbell' (bar/sled + plates), 'dumbbell' (fixed-weight, logged as
+// combined weight across both hands), or 'hidden' (cable stacks, machines,
+// bodyweight — nothing to load or calculate). Not perfect (a DB/Cable
+// naming convention only helps for exercises tagged that way, and moves
+// like "Lunges" or "Single Leg Hamstring Curl" carry no equipment hint at
+// all) — those fall through to 'barbell' rather than 'hidden', since a
+// manual override is one tap away either direction and showing an unneeded
+// button is cheaper than hiding a needed one.
+const HIDDEN_KEYWORDS = [
+  'cable', 'machine',
   'push-up', 'pull-up', 'chin-up',
   'plank', 'dead bug', 'box jump', 'ab wheel', 'pallof', 'burpee', 'wall sit',
 ]
 
-export function looksPlateLoaded(exerciseName) {
-  if (!exerciseName) return true
+export function guessEquipmentType(exerciseName) {
+  if (!exerciseName) return 'barbell'
   const name = exerciseName.toLowerCase()
-  if (name.startsWith('db ') || name.includes(' db ') || name.includes('(db)')) return false
-  return !NO_PLATES_KEYWORDS.some((keyword) => name.includes(keyword))
+  if (name.startsWith('db ') || name.includes(' db ') || name.includes('(db)') || name.includes('dumbbell')) {
+    return 'dumbbell'
+  }
+  if (HIDDEN_KEYWORDS.some((keyword) => name.includes(keyword))) return 'hidden'
+  return 'barbell'
 }
 
-// Per-exercise override on top of the name guess above — 'shown'/'hidden'
-// when the athlete has corrected it for a specific exercise, absent when
-// left on the automatic guess.
-const VISIBILITY_PREFIX = 'callahan.plateCalc.visibility.'
+// Per-exercise override on top of the name guess above — 'barbell' /
+// 'dumbbell' / 'hidden' when the athlete has corrected it for a specific
+// exercise, absent when left on the automatic guess.
+const EQUIPMENT_TYPE_PREFIX = 'callahan.plateCalc.equipmentType.'
 
-export function getVisibilityOverride(exerciseId) {
+export function getEquipmentTypeOverride(exerciseId) {
   try {
-    const value = localStorage.getItem(VISIBILITY_PREFIX + exerciseId)
-    return value === 'shown' || value === 'hidden' ? value : null
+    const value = localStorage.getItem(EQUIPMENT_TYPE_PREFIX + exerciseId)
+    return value === 'barbell' || value === 'dumbbell' || value === 'hidden' ? value : null
   } catch {
     return null
   }
 }
 
-export function isCalculatorVisibleFor(exerciseId, exerciseName) {
-  const override = getVisibilityOverride(exerciseId)
-  if (override) return override === 'shown'
-  return looksPlateLoaded(exerciseName)
+export function getEquipmentType(exerciseId, exerciseName) {
+  return getEquipmentTypeOverride(exerciseId) ?? guessEquipmentType(exerciseName)
 }
 
-export function setVisibilityOverride(exerciseId, visible) {
+export function setEquipmentTypeOverride(exerciseId, type) {
   try {
-    localStorage.setItem(VISIBILITY_PREFIX + exerciseId, visible ? 'shown' : 'hidden')
+    localStorage.setItem(EQUIPMENT_TYPE_PREFIX + exerciseId, type)
   } catch {
     // Best-effort.
   }
 }
 
-export function clearVisibilityOverride(exerciseId) {
+export function clearEquipmentTypeOverride(exerciseId) {
   try {
-    localStorage.removeItem(VISIBILITY_PREFIX + exerciseId)
+    localStorage.removeItem(EQUIPMENT_TYPE_PREFIX + exerciseId)
   } catch {
     // Best-effort.
   }
