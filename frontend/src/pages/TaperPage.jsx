@@ -19,6 +19,26 @@ const PHASE_LABELS = {
   game_day: 'Game day',
 }
 
+const PHASE_ORDER = ['build', 'early_taper', 'peak_taper', 'sharpen', 'game_day']
+
+// The taper's whole shape — where "today" sits between Build and Game day —
+// otherwise only exists as a text label. One glance here should tell you
+// what a sentence currently takes to say.
+function PhaseStepper({ phase }) {
+  const currentIndex = PHASE_ORDER.indexOf(phase)
+  return (
+    <div className="phase-stepper" role="img" aria-label={`Taper phase: ${PHASE_LABELS[phase] ?? phase}`}>
+      {PHASE_ORDER.map((p, i) => (
+        <span
+          key={p}
+          className={`phase-step${i < currentIndex ? ' done' : ''}${i === currentIndex ? ' active' : ''}`}
+          title={PHASE_LABELS[p]}
+        />
+      ))}
+    </div>
+  )
+}
+
 function formatVolume(v) {
   return v === null || v === undefined ? '—' : `${Math.round(v).toLocaleString()}kg`
 }
@@ -132,6 +152,7 @@ export default function TaperPage() {
   const [context, setContext] = useState('')
   const [checkInSaving, setCheckInSaving] = useState(false)
   const [checkInError, setCheckInError] = useState(null)
+  const [checkInSaved, setCheckInSaved] = useState(false)
 
   const [question, setQuestion] = useState('')
   const [consultAnswer, setConsultAnswer] = useState(null)
@@ -210,6 +231,8 @@ export default function TaperPage() {
       setSoreness(null)
       setMotivation(null)
       setContext('')
+      setCheckInSaved(true)
+      setTimeout(() => setCheckInSaved(false), 2500)
     } catch (err) {
       setCheckInError(err.message)
     } finally {
@@ -297,6 +320,7 @@ export default function TaperPage() {
                 <p className="streak-value" style={{ fontSize: 'var(--text-lg)' }}>
                   {PHASE_LABELS[recommendation.phase] ?? recommendation.phase}
                 </p>
+                <PhaseStepper phase={recommendation.phase} />
                 <p className="page-subtitle">{recommendation.message}</p>
               </div>
 
@@ -306,6 +330,7 @@ export default function TaperPage() {
                     <span className="muscle-bar-label">Gym</span>
                     <div className="muscle-bar-track">
                       <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.gymThisWeekVolume, recommendation.gymBaselineVolume)})` }} />
+                      <div className="muscle-bar-target" style={{ left: `${(recommendation.gymTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.gymTargetPct ?? 0) * 100)}%`} />
                     </div>
                     <span className="muscle-bar-value">{formatVolume(recommendation.gymThisWeekVolume)}</span>
                   </div>
@@ -313,6 +338,7 @@ export default function TaperPage() {
                     <span className="muscle-bar-label">Running</span>
                     <div className="muscle-bar-track">
                       <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.runThisWeekDistanceKm, recommendation.runBaselineDistanceKm)})` }} />
+                      <div className="muscle-bar-target" style={{ left: `${(recommendation.runTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.runTargetPct ?? 0) * 100)}%`} />
                     </div>
                     <span className="muscle-bar-value">{formatDistance(recommendation.runThisWeekDistanceKm)}</span>
                   </div>
@@ -356,6 +382,7 @@ export default function TaperPage() {
                     <button type="submit" disabled={checkInSaving || !energy || !soreness || !motivation}>
                       {checkInSaving ? 'Saving…' : 'Save check-in'}
                     </button>
+                    {checkInSaved && <p className="save-confirm">✓ Saved</p>}
                   </form>
                 </>
               ) : (
