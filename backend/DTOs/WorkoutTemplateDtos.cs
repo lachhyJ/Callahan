@@ -14,6 +14,7 @@ public record WorkoutTemplateExerciseStartDto(
     string? Tempo,
     string? Cue,
     string? PrimaryMuscle,
+    bool IsAssisted,
     List<PreviousSetDto> PreviousSets);
 
 public record WorkoutTemplateStartDto(

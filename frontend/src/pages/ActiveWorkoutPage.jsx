@@ -89,6 +89,7 @@ function exerciseFromStart(ex) {
     restSeconds: ex.restSeconds,
     tempo: ex.tempo,
     primaryMuscle: ex.primaryMuscle,
+    isAssisted: ex.isAssisted,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     targetSets: ex.targetSets,
     cue: ex.cue ?? '',
@@ -740,7 +741,7 @@ export default function ActiveWorkoutPage() {
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
                       const isLb = cellKey in lbInputs
-                      const isAssisted = /assist/i.test(ex.exerciseName)
+                      const isAssisted = ex.isAssisted
                       return (
                         <div className="weight-cell">
                           {isAssisted && (
