@@ -65,7 +65,10 @@ public class ActivitiesController : ControllerBase
             return BadRequest(new { error = $"Unknown activity source '{request.Source}'." });
         }
 
-        // Re-syncing the same Garmin activity should be idempotent, not create duplicates.
+        // Re-syncing the same Garmin activity should be idempotent, not create duplicates -
+        // but should still pick up edits made in Garmin Connect after the first sync (e.g.
+        // a renamed title, which lands in Notes). RunSessionTypeId is Callahan's own
+        // classification and is deliberately left untouched on re-sync.
         if (request.GarminActivityId is not null)
         {
             var existing = await _db.Activities
@@ -73,6 +76,15 @@ public class ActivitiesController : ControllerBase
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
+                existing.Date = request.Date;
+                existing.Type = type;
+                existing.Source = source;
+                existing.DurationSeconds = request.DurationSeconds;
+                existing.DistanceKm = request.DistanceKm;
+                existing.Calories = request.Calories;
+                existing.AvgHeartRate = request.AvgHeartRate;
+                existing.Notes = request.Notes;
+                await _db.SaveChangesAsync();
                 return Ok(ToDto(existing));
             }
         }
