@@ -17,6 +17,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<PushNotificationService>();
+builder.Services.AddScoped<WeeklyConsistencyService>();
+builder.Services.AddScoped<MonthlyReportBuilder>();
 builder.Services.AddHttpClient<TaperConsultService>(client =>
 {
     client.BaseAddress = new Uri("https://api.anthropic.com");

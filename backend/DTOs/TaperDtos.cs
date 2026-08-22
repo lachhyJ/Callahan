@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record TaperEventDto(int Id, DateOnly Date, string? Name, int TaperDays, int DaysUntil);
+public record TaperEventDto(int Id, DateOnly Date, string? Name, int TaperDays, int DaysUntil, decimal? PlannedReductionPercent);
 
 public record CreateTaperEventRequest(DateOnly Date, string? Name, int TaperDays);
 

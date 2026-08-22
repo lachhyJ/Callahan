@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<TaperEvent> TaperEvents => Set<TaperEvent>();
     public DbSet<TaperCheckIn> TaperCheckIns => Set<TaperCheckIn>();
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
+    public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -44,6 +45,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<TaperReminderLog>()
             .HasIndex(r => new { r.TaperEventId, r.Date })
+            .IsUnique();
+
+        modelBuilder.Entity<MonthlyReport>()
+            .HasIndex(r => new { r.Year, r.Month })
             .IsUnique();
 
         modelBuilder.Entity<Exercise>().HasData(
