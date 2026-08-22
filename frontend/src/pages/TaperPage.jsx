@@ -9,7 +9,7 @@ import {
   upsertTaperCheckIn,
 } from '../api/client'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
-import { isoDate } from '../dateUtils'
+import { formatDateLong, isoDate } from '../dateUtils'
 
 const PHASE_LABELS = {
   build: 'Build',
@@ -315,7 +315,7 @@ export default function TaperPage() {
               <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
                   <span className="streak-label">{upcoming.name || 'Tournament'}</span>
-                  <span className="page-subtitle">{upcoming.date}</span>
+                  <span className="page-subtitle">{formatDateLong(upcoming.date)}</span>
                 </div>
                 <p className="streak-value" style={{ fontSize: 'var(--text-lg)' }}>
                   {PHASE_LABELS[recommendation.phase] ?? recommendation.phase}
@@ -492,7 +492,7 @@ function TournamentsTab({ date, setDate, name, setName, taperDays, setTaperDays,
                 <div>
                   <span className="streak-label">{ev.name || 'Tournament'}</span>
                   <div className="page-subtitle">
-                    {ev.date} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
+                    {formatDateLong(ev.date)} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
                   </div>
                 </div>
                 <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id, ev.name || 'this tournament')}>Delete</button>

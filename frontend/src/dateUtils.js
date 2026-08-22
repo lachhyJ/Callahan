@@ -34,3 +34,24 @@ export function shortWeekdayAndDay(isoDateStr) {
   const weekday = d.toLocaleDateString(undefined, { weekday: 'short' })
   return `${weekday} ${d.getDate()}`
 }
+
+// "30 May 2026" — for anywhere the year matters (taper events, Recently
+// Deleted). Locale is pinned to en-AU rather than left undefined, which
+// follows device settings and would silently format month-first on a
+// device set to en-US.
+export function formatDateLong(isoDateStr) {
+  const d = new Date(`${isoDateStr}T00:00:00`)
+  return d.toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+// "Sat 30 May" — for exercise-detail session-history headings, where the
+// weekday is what's actually useful for recall and the year is dropped
+// when it's already the current one. No ordinal suffix, matching
+// shortWeekdayAndDay's existing convention.
+export function formatDateMedium(isoDateStr) {
+  const d = new Date(`${isoDateStr}T00:00:00`)
+  const weekday = d.toLocaleDateString('en-AU', { weekday: 'short' })
+  const dayMonth = d.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })
+  if (d.getFullYear() === new Date().getFullYear()) return `${weekday} ${dayMonth}`
+  return `${weekday} ${dayMonth} ${d.getFullYear()}`
+}

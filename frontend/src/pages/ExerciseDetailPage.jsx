@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
+import { formatDateMedium } from '../dateUtils'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const PAGE_SIZE = 10
@@ -151,7 +152,7 @@ export default function ExerciseDetailPage() {
       {hasData && stats.chart.length >= 2 && <ProgressionChart points={stats.chart} />}
       {hasData && stats.chart.length === 1 && (
         <p className="chart-single-point-note">
-          Logged once so far — {stats.chart[0].maxWeightKg} kg on {stats.chart[0].date}. One more session and you'll see a trend here.
+          Logged once so far — {stats.chart[0].maxWeightKg} kg on {formatDateMedium(stats.chart[0].date)}. One more session and you'll see a trend here.
         </p>
       )}
 
@@ -183,7 +184,7 @@ export default function ExerciseDetailPage() {
           {history.length === 0 && !historyError && <p>Loading…</p>}
           {history.map((entry) => (
             <div key={entry.workoutSessionId} className="history-entry">
-              <strong>{entry.date}</strong>
+              <strong>{formatDateMedium(entry.date)}</strong>
               {entry.notes && <p className="notes">{entry.notes}</p>}
               <ul className="history-set-list">
                 {entry.sets.map((s) => (
