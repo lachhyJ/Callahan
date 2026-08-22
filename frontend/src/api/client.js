@@ -56,6 +56,10 @@ export function getExerciseHistory(exerciseId, limit = 10, offset = 0) {
   return apiFetch(`/api/exercises/${exerciseId}/history?limit=${limit}&offset=${offset}`)
 }
 
+export function getPickableExercises() {
+  return apiFetch('/api/exercises/pickable')
+}
+
 export function getExerciseStats(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }

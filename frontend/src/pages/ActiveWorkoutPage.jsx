@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getFinishers, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
+import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { playBeep } from '../beep'
@@ -120,6 +120,9 @@ export default function ActiveWorkoutPage() {
   const [templateSubtitle, setTemplateSubtitle] = useState('')
   const [exercises, setExercises] = useState(null)
   const [finishers, setFinishers] = useState([])
+  const [pickableExercises, setPickableExercises] = useState(null)
+  const [showExercisePicker, setShowExercisePicker] = useState(false)
+  const [exercisePickerQuery, setExercisePickerQuery] = useState('')
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
@@ -493,6 +496,39 @@ export default function ActiveWorkoutPage() {
     setExercises((prev) => [...prev, exerciseFromStart(finisher)])
   }
 
+  function openExercisePicker() {
+    setShowExercisePicker(true)
+    setExercisePickerQuery('')
+    if (pickableExercises === null) {
+      getPickableExercises().then(setPickableExercises).catch(() => setPickableExercises([]))
+    }
+  }
+
+  // Ad-hoc catalog exercises have no program-defined target set count, so
+  // default to however many sets were logged last time (falling back to a
+  // single set for one never logged before) — reps/weight still autofill
+  // from that previous session via exerciseFromStart, same as a finisher.
+  async function addAdHocExercise(exercise) {
+    setShowExercisePicker(false)
+    const previousSets = await getExerciseHistory(exercise.id, 1, 0)
+      .then((page) => page.entries[0]?.sets ?? [])
+      .catch(() => [])
+    setExercises((prev) => [
+      ...prev,
+      exerciseFromStart({
+        exerciseId: exercise.id,
+        exerciseName: exercise.name,
+        targetReps: '',
+        restSeconds: 90,
+        tempo: null,
+        primaryMuscle: null,
+        isAssisted: exercise.isAssisted,
+        targetSets: previousSets.length || 1,
+        previousSets,
+      }),
+    ])
+  }
+
   async function handleSave() {
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
@@ -820,6 +856,62 @@ export default function ActiveWorkoutPage() {
           ))}
         </div>
       )}
+
+      <button type="button" className="add-exercise-btn" onClick={openExercisePicker}>+ Add an exercise</button>
+
+      {showExercisePicker && (() => {
+        const query = exercisePickerQuery.trim().toLowerCase()
+        const options = (pickableExercises ?? []).filter(
+          (e) => !addedExerciseIds.has(e.id) && e.name.toLowerCase().includes(query)
+        )
+        const fromOtherTemplates = options.filter((e) => e.templateNames.length > 0)
+        const rest = options.filter((e) => e.templateNames.length === 0)
+
+        return (
+          <>
+            <div className="sheet-backdrop visible" onClick={() => setShowExercisePicker(false)} />
+            <div className="day-detail-sheet exercise-picker-sheet open" role="dialog" aria-modal="true" aria-label="Add an exercise">
+              <div className="day-detail-sheet-header">
+                <strong>Add an exercise</strong>
+                <button type="button" className="sheet-close-btn" onClick={() => setShowExercisePicker(false)}>×</button>
+              </div>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Search exercises…"
+                value={exercisePickerQuery}
+                onChange={(e) => setExercisePickerQuery(e.target.value)}
+                className="exercise-picker-search"
+              />
+              {pickableExercises === null && <p>Loading exercises…</p>}
+              <div className="exercise-picker-list">
+                {fromOtherTemplates.length > 0 && (
+                  <>
+                    <h3 className="exercise-picker-group-heading">From your other templates</h3>
+                    {fromOtherTemplates.map((e) => (
+                      <button key={e.id} type="button" className="exercise-picker-item" onClick={() => addAdHocExercise(e)}>
+                        <span>{e.name}</span>
+                        <span className="exercise-picker-meta">{e.templateNames.join(', ')}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {rest.length > 0 && (
+                  <>
+                    {fromOtherTemplates.length > 0 && <h3 className="exercise-picker-group-heading">All exercises</h3>}
+                    {rest.map((e) => (
+                      <button key={e.id} type="button" className="exercise-picker-item" onClick={() => addAdHocExercise(e)}>
+                        <span>{e.name}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {pickableExercises !== null && options.length === 0 && <p>No matching exercises.</p>}
+              </div>
+            </div>
+          </>
+        )
+      })()}
 
       {restTimer && (() => {
         const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now.getTime()) / 1000))
