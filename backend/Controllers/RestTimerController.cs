@@ -20,11 +20,13 @@ public class RestTimerController : ControllerBase
 
     private readonly ILogger<RestTimerController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly double _pushLeadSeconds;
 
-    public RestTimerController(ILogger<RestTimerController> logger, IServiceScopeFactory scopeFactory)
+    public RestTimerController(ILogger<RestTimerController> logger, IServiceScopeFactory scopeFactory, IConfiguration config)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _pushLeadSeconds = config.GetValue("RestTimer:PushLeadSeconds", 3.0);
     }
 
     [HttpPost("schedule")]
@@ -54,7 +56,11 @@ public class RestTimerController : ControllerBase
     {
         try
         {
-            await Task.Delay(TimeSpan.FromSeconds(durationSeconds), token);
+            // Fire the send early enough that the server → push service → APNs →
+            // device hop lands close to when the clock actually hits zero, rather
+            // than starting that hop only after the rest period has already ended.
+            var leadIn = Math.Clamp(_pushLeadSeconds, 0, durationSeconds);
+            await Task.Delay(TimeSpan.FromSeconds(durationSeconds - leadIn), token);
         }
         catch (TaskCanceledException)
         {
