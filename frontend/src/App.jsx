@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeep } from './beep'
+import { getHealth } from './api/client'
 import { BackIcon, DashboardIcon, DocumentIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
@@ -76,11 +77,26 @@ function TopBar() {
     if (window.confirm('Log out?')) logout()
   }
 
+  function handleBack() {
+    // history.state.idx is react-router's own index into the session
+    // history stack. idx === 0 means there's nothing before us in *this*
+    // session's history, so navigate(-1) (bare browser back) would walk off
+    // the top of the stack onto whatever document the webview happens to
+    // have one entry back — which after a PWA resume can be a stale
+    // bfcached page from before a deploy. Route to an explicit parent
+    // instead of popping the document in that case.
+    if (window.history.state?.idx === 0) {
+      navigate('/dashboard')
+    } else {
+      navigate(-1)
+    }
+  }
+
   return (
     <div className={showResume ? 'top-bar' : 'top-bar idle'}>
       <div className="top-bar-left">
         {showBack && (
-          <button type="button" className="back-link" onClick={() => navigate(-1)}><BackIcon /> Back</button>
+          <button type="button" className="back-link" onClick={handleBack}><BackIcon /> Back</button>
         )}
         {showWorkoutExitLinks && (
           <>
@@ -210,7 +226,26 @@ function AppRoutes() {
   )
 }
 
+// Self-heal for stale bundles (see the app-scoped back-button fix above,
+// which this complements): the backend's build version is a fresh GUID
+// per process start, so it changes on every deploy. If it doesn't match
+// what this tab last saw, the bundle it's running was built before the
+// current backend and may call routes that no longer exist — reload once
+// to pick up the current one instead of surfacing a 404 screen.
+function useStaleBundleSelfHeal() {
+  useEffect(() => {
+    getHealth()
+      .then(({ version }) => {
+        const stored = localStorage.getItem('callahan_build_version')
+        localStorage.setItem('callahan_build_version', version)
+        if (stored && stored !== version) window.location.reload()
+      })
+      .catch(() => {})
+  }, [])
+}
+
 function App() {
+  useStaleBundleSelfHeal()
   return (
     <BrowserRouter>
       <AuthProvider>
