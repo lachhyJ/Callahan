@@ -275,3 +275,7 @@ export function updateActivityRunSessionType(id, runSessionTypeId) {
     body: JSON.stringify({ runSessionTypeId }),
   })
 }
+
+export function getHealth() {
+  return apiFetch('/api/health')
+}
