@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getWeeklyVolume, getWorkoutSessions } from '../api/client'
+import { getActivities, getMonthlyReports, getWeeklyVolume, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
 import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, PlateIcon, TaperIcon, TrashIcon } from '../icons'
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
@@ -18,6 +20,7 @@ const QUICK_LINKS = [
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/plate-calculator', label: 'Plate calculator', Icon: PlateIcon },
+  { to: '/reports', label: 'Reports', Icon: DocumentIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
@@ -51,10 +54,26 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [weeklyVolume, setWeeklyVolume] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
+  const [unviewedReport, setUnviewedReport] = useState(null)
 
   useEffect(() => {
     getWeeklyVolume(8).then(setWeeklyVolume).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    getMonthlyReports().then((reports) => {
+      // Newest first from the API — the latest finalized-or-provisional
+      // report that hasn't been opened yet, if any.
+      const latestUnviewed = reports.find((r) => !r.viewed)
+      setUnviewedReport(latestUnviewed ?? null)
+    }).catch(() => {})
+  }, [])
+
+  function dismissUnviewedReport() {
+    if (!unviewedReport) return
+    markMonthlyReportViewed(unviewedReport.year, unviewedReport.month).catch(() => {})
+    setUnviewedReport(null)
+  }
 
   useEffect(() => {
     if (!savedMessage) return
@@ -90,6 +109,7 @@ export default function DashboardPage() {
   if (workouts === null || activities === null) return <main className="page"><p>Loading dashboard…</p></main>
 
   const hasAnyHistory = workouts.length > 0 || activities.length > 0
+  const hasUnviewedReport = unviewedReport != null
   const weeks = buildMonthGrid(cursor.year, cursor.month)
   const todayIso = isoDate(new Date())
   const currentWeekStartIso = isoDate(startOfWeek(new Date()))
@@ -213,11 +233,20 @@ export default function DashboardPage() {
           ) : (
             <Link key={to} to={to} className="quick-link-tile">
               <Icon />
-              <span>{label}</span>
+              <span>{label}{to === '/reports' && hasUnviewedReport && <span className="report-unviewed-dot" aria-label="New report" />}</span>
             </Link>
           )
         )}
       </div>
+
+      {unviewedReport && (
+        <div className="save-confirmation section-gap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Link to={`/reports/${unviewedReport.year}/${unviewedReport.month}`}>
+            {MONTH_NAMES[unviewedReport.month - 1]} {unviewedReport.year} report is ready — {unviewedReport.headlineVerdict}
+          </Link>
+          <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>
+        </div>
+      )}
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 

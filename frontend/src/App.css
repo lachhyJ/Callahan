@@ -2289,6 +2289,49 @@ td {
   gap: var(--space-sm);
 }
 
+.report-unviewed-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: var(--space-xs, 4px);
+  border-radius: 50%;
+  background: var(--accent, #4f8cff);
+  vertical-align: middle;
+}
+
+.report-provisional-tag {
+  color: var(--text-muted, var(--text));
+  font-weight: 400;
+  font-size: 0.85em;
+}
+
+.report-headline-preview {
+  margin: var(--space-xs, 4px) 0 0;
+  color: var(--text);
+  font-size: 0.9em;
+}
+
+.report-settling-note {
+  color: var(--text-muted, var(--text));
+  font-size: 0.9em;
+}
+
+.report-section {
+  margin-top: var(--space-lg);
+}
+
+.report-list {
+  padding-left: 1.2em;
+  margin: var(--space-xs, 4px) 0;
+}
+
+.report-taper-block {
+  background: var(--surface-raised);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  margin-top: var(--space-sm);
+}
+
 .streak-card {
   display: flex;
   align-items: center;
