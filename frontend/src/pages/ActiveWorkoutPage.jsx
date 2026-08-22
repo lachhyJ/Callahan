@@ -65,10 +65,26 @@ function kgToLbDisplay(weightKg) {
   return String(Math.round((Number(weightKg) / KG_PER_LB) * 10) / 10)
 }
 
-function buildInitialSets(targetSets, previousSets) {
+// Warmup rows are prepended before the working rows, always in addition to
+// targetSets rather than replacing part of it — setOrder runs continuously
+// across both so it lines up with how sets are actually logged and matched
+// against next time's previousSets.
+function buildInitialSets(targetSets, previousSets, warmupSets = 0) {
   const previousByOrder = new Map(previousSets.map((p) => [p.setOrder, p]))
-  return Array.from({ length: targetSets }, (_, i) => {
+  const warmupRows = Array.from({ length: warmupSets }, (_, i) => {
     const setOrder = i + 1
+    const previous = previousByOrder.get(setOrder) ?? null
+    return {
+      setOrder,
+      reps: previous ? String(previous.reps) : '',
+      weightKg: previous ? String(previous.weightKg) : '',
+      previous,
+      completed: false,
+      type: 'Warmup',
+    }
+  })
+  const workingRows = Array.from({ length: targetSets }, (_, i) => {
+    const setOrder = warmupSets + i + 1
     const previous = previousByOrder.get(setOrder) ?? null
     return {
       setOrder,
@@ -79,6 +95,7 @@ function buildInitialSets(targetSets, previousSets) {
       type: 'Normal',
     }
   })
+  return [...warmupRows, ...workingRows]
 }
 
 function exerciseFromStart(ex) {
@@ -94,7 +111,7 @@ function exerciseFromStart(ex) {
     targetSets: ex.targetSets,
     cue: ex.cue ?? '',
     notes: '',
-    sets: buildInitialSets(ex.targetSets, ex.previousSets),
+    sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0),
   }
 }
 
@@ -685,7 +702,7 @@ export default function ActiveWorkoutPage() {
             />
           )}
           <p className="target-reps">
-            Target: {ex.sets.length} × {ex.targetReps} · rest{' '}
+            Target: {ex.targetSets} × {ex.targetReps} · rest{' '}
             <input
               type="number"
               inputMode="numeric"

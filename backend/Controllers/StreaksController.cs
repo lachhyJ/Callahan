@@ -101,7 +101,7 @@ public class StreaksController : ControllerBase
             .ToListAsync();
 
         var workouts = workoutSessions.Select(s => new WorkoutSessionSummaryDto(
-            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count,
+            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count(set => set.SetType != SetType.Warmup),
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             s.StartedAt, s.FinishedAt,

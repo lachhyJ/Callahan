@@ -9,6 +9,7 @@ public record WorkoutTemplateExerciseStartDto(
     int ExerciseId,
     string ExerciseName,
     int TargetSets,
+    int WarmupSets,
     string TargetReps,
     int RestSeconds,
     string? Tempo,
