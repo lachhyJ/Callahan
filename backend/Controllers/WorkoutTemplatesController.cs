@@ -58,7 +58,7 @@ public class WorkoutTemplatesController : ControllerBase
                 var primaryMuscle = te.Exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
                 return new WorkoutTemplateExerciseStartDto(
-                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle, te.Exercise.IsAssisted, previousSets);
+                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle, te.Exercise.IsAssisted, previousSets);
             })
             .ToList();
 

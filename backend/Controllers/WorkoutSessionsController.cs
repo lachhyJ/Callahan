@@ -57,8 +57,11 @@ public class WorkoutSessionsController : ControllerBase
             .OrderByDescending(s => s.Date)
             .ToListAsync();
 
+        // SetCount is working sets only, matching MuscleGroupsController/StreaksController's
+        // volume calculations — warmups don't count toward the prescribed/working load this
+        // number is meant to reflect (decided when default program warmups were added).
         var result = sessions.Select(s => new WorkoutSessionSummaryDto(
-            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count,
+            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count(set => set.SetType != SetType.Warmup),
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             s.StartedAt, s.FinishedAt,
@@ -245,7 +248,7 @@ public class WorkoutSessionsController : ControllerBase
             .ToListAsync();
 
         var result = sessions.Select(s => new DeletedWorkoutSessionDto(
-            s.Id, s.Date, s.Name, s.Sets.Count,
+            s.Id, s.Date, s.Name, s.Sets.Count(set => set.SetType != SetType.Warmup),
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
             CategorySummary(s.Sets),
@@ -267,7 +270,7 @@ public class WorkoutSessionsController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new WorkoutSessionSummaryDto(
-            session.Id, session.Date, session.Name, session.Notes, session.Sets.Count,
+            session.Id, session.Date, session.Name, session.Notes, session.Sets.Count(set => set.SetType != SetType.Warmup),
             session.WorkoutTemplate?.Name, session.WorkoutTemplate?.Subtitle,
             session.StartedAt, session.FinishedAt,
             CategorySummary(session.Sets)));
