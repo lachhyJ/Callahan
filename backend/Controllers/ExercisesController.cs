@@ -36,6 +36,32 @@ public class ExercisesController : ControllerBase
         return Ok(exercises);
     }
 
+    [HttpGet("pickable")]
+    public async Task<ActionResult<List<PickableExerciseDto>>> GetPickable()
+    {
+        var templateMemberships = await _db.WorkoutTemplateExercises
+            .Include(wte => wte.WorkoutTemplate)
+            .Select(wte => new { wte.ExerciseId, TemplateName = wte.WorkoutTemplate.Name })
+            .Distinct()
+            .ToListAsync();
+        var templateNamesByExercise = templateMemberships
+            .GroupBy(m => m.ExerciseId)
+            .ToDictionary(g => g.Key, g => g.Select(m => m.TemplateName).ToList());
+
+        var exercises = await _db.Exercises
+            .OrderBy(e => e.Category).ThenBy(e => e.Name)
+            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted })
+            .ToListAsync();
+
+        var result = exercises
+            .Select(e => new PickableExerciseDto(
+                e.Id, e.Name, e.Category.ToString(), e.IsAssisted,
+                templateNamesByExercise.GetValueOrDefault(e.Id, [])))
+            .ToList();
+
+        return Ok(result);
+    }
+
     [HttpPost]
     public async Task<ActionResult<ExerciseDto>> Create(CreateExerciseRequestDto request)
     {

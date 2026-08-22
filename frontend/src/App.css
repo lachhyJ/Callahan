@@ -1257,6 +1257,63 @@ td {
   font-size: var(--text-sm);
 }
 
+.add-exercise-btn {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text);
+  align-self: flex-start;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--accent);
+    color: var(--text-h);
+  }
+}
+
+.exercise-picker-sheet {
+  max-height: 85vh;
+}
+
+.exercise-picker-search {
+  width: 100%;
+}
+
+.exercise-picker-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  overflow-y: auto;
+}
+
+.exercise-picker-group-heading {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  margin: var(--space-xs) 0 0;
+}
+
+.exercise-picker-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-sm);
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  text-align: left;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--accent);
+    color: var(--text-h);
+  }
+}
+
+.exercise-picker-meta {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 .summary-exercise {
   padding-bottom: var(--space-sm);
   border-bottom: 1px solid var(--border-subtle);
