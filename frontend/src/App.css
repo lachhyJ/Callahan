@@ -1549,28 +1549,36 @@ td {
 
 /* Fixed above the bottom tab bar rather than replacing it, so the athlete
    can still tap Workout/Dashboard while resting elsewhere in the app —
-   tapping the bar itself jumps straight back to the active workout. */
+   tapping the bar itself jumps straight back to the active workout. An
+   opaque raised card with an accent left-edge, rather than a translucent
+   accent wash full-bleed to both edges — the previous version read as a
+   second tab bar. Padding stays generous (not just visual weight) so this
+   remains the easiest thing on screen to tap mid-set, easier than reaching
+   the top bar's Resume link — that's a deliberate, kept behavior, not
+   something the visual cleanup should cost. */
 .global-rest-bar {
   position: fixed;
-  bottom: calc(64px + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
+  bottom: calc(64px + env(safe-area-inset-bottom) + var(--space-xs));
+  left: var(--space-md);
+  right: var(--space-md);
   z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   gap: var(--space-xs);
-  width: 100%;
-  padding: var(--space-xs) var(--space-lg);
-  background: var(--accent-bg);
-  color: var(--accent);
-  border-top: 1px solid var(--border);
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--surface-raised);
+  color: var(--text-h);
+  border: none;
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-raised), var(--shadow);
   font-size: var(--text-sm);
   font-weight: 600;
   text-align: left;
 
   &:hover,
   &:focus-visible {
-    background: var(--accent-bg);
+    background: var(--surface-raised);
     opacity: 1;
   }
 
