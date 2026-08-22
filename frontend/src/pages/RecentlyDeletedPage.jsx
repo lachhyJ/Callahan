@@ -7,6 +7,7 @@ import {
 } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
+import { formatDateLong } from '../dateUtils'
 
 const RECOVERY_WINDOW_DAYS = 7
 
@@ -65,7 +66,7 @@ export default function RecentlyDeletedPage() {
             <div key={`${item.kind}-${item.id}`} className="history-item">
               <div className="history-item-row">
                 <span className="history-item-main">
-                  <strong>{item.date}</strong>{' '}
+                  <strong>{formatDateLong(item.date)}</strong>{' '}
                   <span>{item.kind === 'workout' ? workoutLabel(item) : activityLabel(item)}</span>
                   <p className="notes">
                     {daysRemaining(item.deletedAt) === 0
