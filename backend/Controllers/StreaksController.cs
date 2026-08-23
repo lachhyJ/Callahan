@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,14 +21,10 @@ public class StreaksController : ControllerBase
     }
 
     // Weekly rules, not daily — a missed single day shouldn't reset a streak
-    // that's about training consistency, not attendance-taking.
-    private static readonly (string Type, string Label, Func<int, int, bool> Qualifies)[] Definitions =
-    [
-        ("gym2", "2+ gym sessions", (gym, run) => gym >= 2),
-        ("total3", "3+ sessions", (gym, run) => gym + run >= 3),
-        ("gym3run1", "3 gym + a run", (gym, run) => gym >= 3 && run >= 1),
-        ("run1", "1+ run", (gym, run) => run >= 1),
-    ];
+    // that's about training consistency, not attendance-taking. Definitions
+    // and week-bucketing live in WeeklyConsistencyService so MonthlyReportBuilder
+    // can reuse the exact same rules.
+    private static readonly WeeklyConsistencyDefinition[] Definitions = WeeklyConsistencyService.Definitions;
 
     [HttpGet]
     public async Task<ActionResult<List<StreakDto>>> GetStreaks()
@@ -92,7 +89,7 @@ public class StreaksController : ControllerBase
     public async Task<ActionResult<StreakDetailDto>> GetStreakDetail(string type)
     {
         var definition = Definitions.FirstOrDefault(d => d.Type == type);
-        if (definition.Type is null) return NotFound();
+        if (definition is null) return NotFound();
 
         var workoutSessions = await _db.WorkoutSessions
             .Include(s => s.Sets).ThenInclude(set => set.Exercise)
@@ -136,10 +133,5 @@ public class StreaksController : ControllerBase
         return Ok(new StreakDetailDto(definition.Type, definition.Label, weeks));
     }
 
-    // Monday-first week start, matching the frontend's convention (dateUtils.js).
-    private static DateOnly MondayOf(DateOnly date)
-    {
-        var offsetFromMonday = ((int)date.DayOfWeek + 6) % 7; // Mon=0 ... Sun=6
-        return date.AddDays(-offsetFromMonday);
-    }
+    private static DateOnly MondayOf(DateOnly date) => WeeklyConsistencyService.MondayOf(date);
 }

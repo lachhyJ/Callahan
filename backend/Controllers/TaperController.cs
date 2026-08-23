@@ -29,27 +29,38 @@ public class TaperController : ControllerBase
     }
 
     private static TaperEventDto ToDto(TaperEvent e, DateOnly today) =>
-        new(e.Id, e.Date, e.Name, e.TaperDays, (e.Date.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days);
+        new(e.Id, e.Date, e.Name, e.TaperDays, (e.Date.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days, e.PlannedReductionPercent);
 
     private static TaperCheckInDto ToCheckInDto(TaperCheckIn c, DateOnly eventDate) =>
         new(c.Id, c.Date, c.Energy, c.Soreness, c.Motivation, c.Context, c.Date > eventDate);
 
     [HttpGet("events")]
-    public async Task<ActionResult<List<TaperEventDto>>> GetEvents()
+    public async Task<ActionResult<List<TaperEventDto>>> GetEvents([FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null)
     {
         var today = DateOnly.FromDateTime(DateTime.Now);
-        var events = await _db.TaperEvents.OrderByDescending(e => e.Date).ToListAsync();
+        var query = _db.TaperEvents.AsQueryable();
+        if (from is not null) query = query.Where(e => e.Date >= from);
+        if (to is not null) query = query.Where(e => e.Date <= to);
+        var events = await query.OrderByDescending(e => e.Date).ToListAsync();
         return Ok(events.Select(e => ToDto(e, today)).ToList());
     }
 
     [HttpPost("events")]
     public async Task<ActionResult<TaperEventDto>> CreateEvent(CreateTaperEventRequest request)
     {
+        var taperDays = request.TaperDays <= 0 ? 10 : request.TaperDays;
         var taperEvent = new TaperEvent
         {
             Date = request.Date,
             Name = request.Name,
-            TaperDays = request.TaperDays <= 0 ? 10 : request.TaperDays
+            TaperDays = taperDays,
+            // Deepest planned cut (the "sharpen" phase, always reached before
+            // game day regardless of taper length) expressed as a reduction —
+            // 1 - TargetPct. Fixed at creation so a finished taper keeps a
+            // stable planned figure to compare actuals against later, rather
+            // than one that would keep changing with "days until" if
+            // recomputed live.
+            PlannedReductionPercent = 1m - (TaperPhaseCalculator.Compute(2, taperDays, request.Name).TargetPct ?? 0.25m)
         };
         _db.TaperEvents.Add(taperEvent);
         await _db.SaveChangesAsync();

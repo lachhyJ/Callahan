@@ -283,3 +283,15 @@ export function updateActivityRunSessionType(id, runSessionTypeId) {
 export function getHealth() {
   return apiFetch('/api/health')
 }
+
+export function getMonthlyReports() {
+  return apiFetch('/api/MonthlyReports')
+}
+
+export function getMonthlyReport(year, month) {
+  return apiFetch(`/api/MonthlyReports/${year}/${month}`)
+}
+
+export function markMonthlyReportViewed(year, month) {
+  return apiFetch(`/api/MonthlyReports/${year}/${month}/viewed`, { method: 'POST' })
+}

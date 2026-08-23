@@ -24,6 +24,9 @@ import ProgramPage from './pages/ProgramPage'
 import TaperPage from './pages/TaperPage'
 import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
 import PlateCalculatorPage from './pages/PlateCalculatorPage'
+import ReportsPage from './pages/ReportsPage'
+import ReportDetailPage from './pages/ReportDetailPage'
+import { getMonthlyReports } from './api/client'
 import './App.css'
 
 const TABS = [
@@ -35,13 +38,14 @@ const TABS = [
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program', '/recently-deleted', '/plate-calculator']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program', '/recently-deleted', '/plate-calculator', '/reports']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
     || pathname.startsWith('/exercises/')
     || pathname.startsWith('/sessions/')
     || pathname.startsWith('/streaks/')
+    || pathname.startsWith('/reports/')
 }
 
 function formatCountdown(totalSeconds) {
@@ -218,6 +222,8 @@ function AppRoutes() {
           <Route path="/taper" element={<ProtectedRoute><TaperPage /></ProtectedRoute>} />
           <Route path="/recently-deleted" element={<ProtectedRoute><RecentlyDeletedPage /></ProtectedRoute>} />
           <Route path="/plate-calculator" element={<ProtectedRoute><PlateCalculatorPage /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
+          <Route path="/reports/:year/:month" element={<ProtectedRoute><ReportDetailPage /></ProtectedRoute>} />
         </Routes>
       </div>
       {isAuthenticated && <GlobalRestBar />}
