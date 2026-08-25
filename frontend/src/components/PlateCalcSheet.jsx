@@ -290,7 +290,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                         autoFocus
                       />
                       <div className="plate-calc-custom-actions">
-                        <button type="button" className="secondary-btn" onClick={handleSaveCustom}>
+                        <button type="button" onClick={handleSaveCustom}>
                           Save for {exerciseName || 'this exercise'}
                         </button>
                         {savedEquipment && (
