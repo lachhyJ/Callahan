@@ -90,6 +90,30 @@ run `--dump` after logging a real session of that type on Garmin, find
 its `typeKey` in the output, and only add it to `TYPE_MAP` once you've
 confirmed it against real data — not by guessing from Garmin's UI label.
 
+## Wellness discovery (`--dump-wellness`)
+
+Before any wellness sync gets built, run this to see what Garmin's
+sleep/HRV/readiness/etc endpoints actually return for Lachlan's specific
+watch — field names inside these payloads are undocumented and
+version-dependent, and training readiness only exists on newer watch
+models, so the schema has to come from real output, not a guess.
+
+```bash
+sudo docker build -t callahan-garmin-sync scripts/garmin-sync/
+sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync --dump-wellness
+```
+
+No Callahan calls, nothing is synced. Defaults to yesterday's date (today's
+sleep/readiness haven't finished Garmin's overnight processing); pass
+`--wellness-date YYYY-MM-DD` to probe a specific day. Run it for at least
+two different dates — a normal night and one after a hard session — so you
+can tell which fields actually vary from which are constant-null for this
+watch. Each probe call is independent and wrapped in its own try/except, so
+one missing method or 404 doesn't blank the rest of the dump.
+
+_Confirmed metrics: not yet run — see this section for the result once it
+has been, in the same style as the `ultimate_disc` confirmation note below._
+
 ## First run / sanity check
 
 ```bash

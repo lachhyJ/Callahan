@@ -2,14 +2,21 @@
 """Pulls recent activities from Garmin Connect into Callahan.
 
 Run modes:
-  --dump       Print the raw activityType for recent Garmin activities and
-               exit. No Callahan calls, nothing is synced. Use this to find
-               the typeKey Garmin assigns to a sport before adding it to
-               TYPE_MAP (see the Ultimate Frisbee note below).
-  --dry-run    Fetch + map + build the Callahan payload for each activity,
-               but print instead of POSTing. Use to sanity-check a mapping
-               change before it writes anything.
-  (default)    Fetch, map, and POST each mapped activity to Callahan.
+  --dump           Print the raw activityType for recent Garmin activities
+                    and exit. No Callahan calls, nothing is synced. Use this
+                    to find the typeKey Garmin assigns to a sport before
+                    adding it to TYPE_MAP (see the Ultimate Frisbee note
+                    below).
+  --dump-wellness   Print raw sleep/HRV/readiness/etc payloads for one date
+                    and exit. No Callahan calls, nothing is synced. Use this
+                    BEFORE building any wellness sync — field names inside
+                    these payloads are undocumented and watch-model support
+                    varies, so the schema must be designed from real output,
+                    not guessed.
+  --dry-run         Fetch + map + build the Callahan payload for each
+                    activity, but print instead of POSTing. Use to
+                    sanity-check a mapping change before it writes anything.
+  (default)         Fetch, map, and POST each mapped activity to Callahan.
 
 Config comes entirely from environment variables (see .env.example) — this
 script is meant to be invoked from a NAS cron job with a gitignored env
@@ -23,6 +30,7 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
+import garminconnect
 import requests
 from garminconnect import (
     Garmin,
@@ -41,6 +49,20 @@ TYPE_MAP = {
     "running": "Running",
     "ultimate_disc": "Ultimate",
 }
+
+# Probed by --dump-wellness. Each is a per-date wellness endpoint on the
+# garminconnect client; not every method is guaranteed to exist on whatever
+# version pip resolved, and not every metric is guaranteed to be populated
+# for a given watch model (training readiness in particular is limited to
+# newer models) — that's exactly what the dump is for.
+WELLNESS_PROBES = [
+    "get_sleep_data",
+    "get_hrv_data",
+    "get_training_readiness",
+    "get_rhr_day",
+    "get_stats",
+    "get_body_battery",
+]
 
 CALLAHAN_TOKEN_CACHE = Path(os.environ.get("CALLAHAN_TOKEN_CACHE", "~/.callahan_sync_token")).expanduser()
 GARMIN_TOKENSTORE = Path(os.environ.get("GARMIN_TOKENSTORE", "~/.garminconnect")).expanduser()
@@ -161,6 +183,30 @@ def cmd_dump(client, days):
         }, indent=2))
 
 
+def cmd_dump_wellness(client, cdate):
+    # Settles what the *installed* garminconnect version actually offers,
+    # separately from whether Lachlan's watch reports a given metric — two
+    # different failure modes that otherwise look identical from outside.
+    log(f"garminconnect version: {getattr(garminconnect, '__version__', 'unknown')}")
+    log(f"available get_* methods: {sorted(m for m in dir(client) if m.startswith('get_'))}")
+    log(f"probing wellness for {cdate}\n")
+
+    for name in WELLNESS_PROBES:
+        method = getattr(client, name, None)
+        if method is None:
+            print(json.dumps({"method": name, "available": False}, indent=2))
+            continue
+        try:
+            # get_body_battery takes a date range; every other probe here
+            # takes a single cdate. Not folding this into a generic call
+            # site because a wrong shared assumption would silently break
+            # more probes than it saves lines.
+            result = method(cdate, cdate) if name == "get_body_battery" else method(cdate)
+            print(json.dumps({"method": name, "available": True, "result": result}, indent=2, default=str))
+        except Exception as e:
+            print(json.dumps({"method": name, "available": True, "error": f"{type(e).__name__}: {e}"}, indent=2))
+
+
 def cmd_sync(client, days, dry_run, api_base):
     activities = fetch_recent_activities(client, days)
     if not activities:
@@ -207,6 +253,11 @@ def main():
                          help="Lookback window in days (default 14 — re-scanning tolerates missed cron runs, "
                               "and re-synced activities are idempotent via GarminActivityId).")
     parser.add_argument("--dump", action="store_true", help="Print raw activityType info and exit, no syncing.")
+    parser.add_argument("--dump-wellness", action="store_true",
+                         help="Print raw sleep/HRV/readiness/etc payloads for one date and exit, no syncing.")
+    parser.add_argument("--wellness-date", type=str, default=None,
+                         help="Date (YYYY-MM-DD) to probe with --dump-wellness. Defaults to yesterday, since "
+                              "today's sleep/readiness haven't finished processing yet.")
     parser.add_argument("--dry-run", action="store_true", help="Build payloads but don't POST them.")
     args = parser.parse_args()
 
@@ -219,6 +270,9 @@ def main():
 
     if args.dump:
         cmd_dump(client, args.days)
+    elif args.dump_wellness:
+        cdate = args.wellness_date or (date.today() - timedelta(days=1)).isoformat()
+        cmd_dump_wellness(client, cdate)
     else:
         cmd_sync(client, args.days, args.dry_run, api_base)
 
