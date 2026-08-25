@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getMonthlyReports, getWeeklyVolume, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getMonthlyReports, getWeeklyVolume, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
+import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
 import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
 
@@ -72,11 +73,19 @@ export default function DashboardPage() {
   })
   const [selectedDate, setSelectedDate] = useState(null)
   const [weeklyVolume, setWeeklyVolume] = useState(null)
+  const [wellness, setWellness] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [unviewedReport, setUnviewedReport] = useState(null)
 
   useEffect(() => {
     getWeeklyVolume(8).then(setWeeklyVolume).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    // Own effect, own silent catch - a wellness fetch failure must never
+    // blank the whole dashboard the way the workouts/activities Promise.all
+    // below does via the page-level `error` state.
+    getLatestWellness().then(setWellness).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -267,6 +276,8 @@ export default function DashboardPage() {
           <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>
         </div>
       )}
+
+      {wellness && <WellnessCard wellness={wellness} todayIso={todayIso} />}
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 

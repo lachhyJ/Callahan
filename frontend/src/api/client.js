@@ -112,6 +112,10 @@ export function getWeeklyVolume(weeks = 8) {
   return apiFetch(`/api/workoutsessions/weekly-volume?weeks=${weeks}`)
 }
 
+export function getLatestWellness() {
+  return apiFetch('/api/wellness/latest')
+}
+
 export function getStreaks() {
   return apiFetch('/api/streaks')
 }
