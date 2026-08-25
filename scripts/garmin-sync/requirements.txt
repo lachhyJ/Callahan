@@ -1,2 +1,9 @@
-garminconnect>=0.2.24
+# Pinned exactly, not >=: the wellness sync (garmin_sync.py's fetch_wellness)
+# depends on specific undocumented response field names inside get_sleep_data
+# / get_hrv_data / get_training_readiness / get_stats, verified against this
+# exact version via --dump-wellness on 2026-08-25. A silent minor-version
+# bump on rebuild could rename a field with no error, just a quietly-null
+# column - bump deliberately, and re-run --dump-wellness to confirm field
+# names first.
+garminconnect==0.3.10
 requests>=2.31

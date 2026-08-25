@@ -111,8 +111,59 @@ can tell which fields actually vary from which are constant-null for this
 watch. Each probe call is independent and wrapped in its own try/except, so
 one missing method or 404 doesn't blank the rest of the dump.
 
-_Confirmed metrics: not yet run — see this section for the result once it
-has been, in the same style as the `ultimate_disc` confirmation note below._
+**Confirmed 2026-08-25** against Lachlan's watch (two dates): sleep
+(duration + deep/light/rem/awake splits + overall score/qualifier), HRV
+(last-night avg, weekly avg, status), and training readiness (score, level,
+feedback) are all populated — nothing came back permanently null. Training
+readiness returns *multiple* readings per day (a morning baseline, then an
+update once activity is logged); the sync takes the latest by timestamp.
+`get_stats` alone already carries resting heart rate and body-battery
+high/low, making `get_rhr_day` and `get_body_battery` redundant for our
+purposes — the sync only calls `get_sleep_data`, `get_hrv_data`,
+`get_training_readiness`, and `get_stats` (4 requests/date, not the 6
+`--dump-wellness` probes). Also confirmed: the `calendarDate` Garmin
+returns matches the date queried (the wake-up morning), so `DailyWellness.Date`
+keys consistently off the date passed to the API with no off-by-one risk.
+
+## Wellness sync (`--wellness`)
+
+```bash
+sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync --wellness
+```
+
+Syncs the last `--wellness-days` days (default 3, ending today) to
+`PUT /api/wellness`, upserting by date. 3 days is enough to tolerate two
+missed cron runs; wellness data is final within 24-48h so a wider default
+window would just cost more Garmin requests for no benefit. Add `--dry-run`
+to print payloads without writing. Rate-limit safe: 1s pause between dates,
+aborts the run (rather than retrying) on a 429.
+
+**Scheduling:** two TrueNAS cron entries, both running `--wellness` —
+noon (after Garmin's overnight sleep/HRV/readiness processing has landed)
+and appended to the existing 23:30 activities run (a second chance if the
+watch synced late or the noon run failed). Both are safely idempotent, so
+overlapping runs just rewrite the same rows. Create the noon entry the same
+way as the existing job (see Scheduling above), with `"hour": "12"` and its
+own log file (e.g. `garmin-sync-wellness.log`); for the 23:30 entry, append
+` --wellness` to the existing job's `command` (either edit it in place via
+`midclt call cronjob.update <id> '{...}'` or delete + recreate) — running
+both activities and wellness in the same invocation, rather than as two
+separate containers, avoids a third TrueNAS cron entry for something that
+already happens on the same schedule.
+
+**Backfill:**
+
+```bash
+sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync --wellness --wellness-start 2026-07-26
+```
+
+One-off, manual, watched — **never on cron**. At 4 requests/date + 1s
+sleep, 30 days is a couple of minutes; Lachlan's stated intent is to come
+back for 6+ months of history later, so start with a smaller window first
+to confirm the rate limiter tolerates it and the field mapping holds
+against older data before going wider. If Garmin rate-limits mid-run, the
+script stops and logs the exact `--wellness-start` date to resume from,
+rather than restarting the whole backfill from scratch.
 
 ## First run / sanity check
 

@@ -13,9 +13,13 @@ Run modes:
                     these payloads are undocumented and watch-model support
                     varies, so the schema must be designed from real output,
                     not guessed.
+  --wellness        Fetch + map + PUT daily sleep/HRV/readiness/etc for a
+                    date range (see --wellness-days / --wellness-start)
+                    instead of syncing activities.
   --dry-run         Fetch + map + build the Callahan payload for each
-                    activity, but print instead of POSTing. Use to
-                    sanity-check a mapping change before it writes anything.
+                    activity (or wellness date, with --wellness), but print
+                    instead of POSTing/PUTting. Use to sanity-check a
+                    mapping change before it writes anything.
   (default)         Fetch, map, and POST each mapped activity to Callahan.
 
 Config comes entirely from environment variables (see .env.example) — this
@@ -27,6 +31,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from datetime import date, timedelta
 from pathlib import Path
 
@@ -114,25 +119,29 @@ def callahan_token(api_base):
     return callahan_login(api_base)
 
 
-def post_activity(api_base, token, payload):
-    resp = requests.post(
-        f"{api_base}/api/activities",
-        json=payload,
-        headers={"Authorization": f"Bearer {token}"},
-        timeout=30,
-    )
+def callahan_request(method, api_base, path, token, payload):
+    def send(tok):
+        return requests.request(
+            method, f"{api_base}{path}", json=payload,
+            headers={"Authorization": f"Bearer {tok}"}, timeout=30,
+        )
+
+    resp = send(token)
     if resp.status_code == 401:
         # Cached token expired or was rotated server-side — log in fresh once
         # and retry, rather than failing the whole run.
         token = callahan_login(api_base)
-        resp = requests.post(
-            f"{api_base}/api/activities",
-            json=payload,
-            headers={"Authorization": f"Bearer {token}"},
-            timeout=30,
-        )
+        resp = send(token)
     resp.raise_for_status()
     return resp.json(), token
+
+
+def post_activity(api_base, token, payload):
+    return callahan_request("POST", api_base, "/api/activities", token, payload)
+
+
+def put_wellness(api_base, token, payload):
+    return callahan_request("PUT", api_base, "/api/wellness", token, payload)
 
 
 def to_int(value):
@@ -207,6 +216,108 @@ def cmd_dump_wellness(client, cdate):
             print(json.dumps({"method": name, "available": True, "error": f"{type(e).__name__}: {e}"}, indent=2))
 
 
+def fetch_wellness(client, cdate):
+    # Trimmed to the 4 calls that actually carry new information for us —
+    # get_stats already includes resting HR and body battery high/low, so
+    # get_rhr_day and get_body_battery (both probed by --dump-wellness for
+    # completeness) would just be two more requests for data we already have.
+    raw = {}
+
+    def probe(name):
+        method = getattr(client, name, None)
+        if method is None:
+            return None
+        try:
+            result = method(cdate)
+            raw[name] = result
+            return result
+        except GarminConnectTooManyRequestsError:
+            raise
+        except Exception as e:
+            log(f"  {name} failed for {cdate}: {type(e).__name__}: {e}")
+            return None
+
+    sleep = probe("get_sleep_data") or {}
+    daily_sleep = sleep.get("dailySleepDTO") or {}
+    overall_score = (daily_sleep.get("sleepScores") or {}).get("overall") or {}
+
+    hrv_summary = (probe("get_hrv_data") or {}).get("hrvSummary") or {}
+
+    # Multiple readings/day (a morning baseline, then an update once
+    # activity is logged) — latest by timestamp is the most complete
+    # picture of the day.
+    readiness_list = probe("get_training_readiness") or []
+    readiness = max(readiness_list, key=lambda r: r.get("timestamp", ""), default={})
+
+    stats = probe("get_stats") or {}
+
+    return {
+        "date": cdate,
+        "sleepSeconds": daily_sleep.get("sleepTimeSeconds"),
+        "deepSleepSeconds": daily_sleep.get("deepSleepSeconds"),
+        "lightSleepSeconds": daily_sleep.get("lightSleepSeconds"),
+        "remSleepSeconds": daily_sleep.get("remSleepSeconds"),
+        "awakeSeconds": daily_sleep.get("awakeSleepSeconds"),
+        "sleepScore": overall_score.get("value"),
+        "sleepScoreQualifier": overall_score.get("qualifierKey"),
+        "hrvLastNightAvg": hrv_summary.get("lastNightAvg"),
+        "hrvWeeklyAvg": hrv_summary.get("weeklyAvg"),
+        "hrvStatus": hrv_summary.get("status"),
+        "trainingReadinessScore": readiness.get("score"),
+        "trainingReadinessLevel": readiness.get("level"),
+        "trainingReadinessFeedback": readiness.get("feedbackShort"),
+        "restingHeartRate": to_int(stats.get("restingHeartRate")),
+        "bodyBatteryHigh": to_int(stats.get("bodyBatteryHighestValue")),
+        "bodyBatteryLow": to_int(stats.get("bodyBatteryLowestValue")),
+        "avgStressLevel": to_int(stats.get("averageStressLevel")),
+        "rawJson": json.dumps(raw, default=str),
+    }
+
+
+def wellness_date_range(days, start):
+    end_d = date.today()
+    start_d = date.fromisoformat(start) if start else end_d - timedelta(days=days - 1)
+    d = start_d
+    while d <= end_d:
+        yield d
+        d += timedelta(days=1)
+
+
+def cmd_sync_wellness(client, days, start, dry_run, api_base):
+    token = None if dry_run else callahan_token(api_base)
+    synced, skipped, last_ok_date = 0, 0, None
+
+    for d in wellness_date_range(days, start):
+        cdate = d.isoformat()
+        try:
+            payload = fetch_wellness(client, cdate)
+        except GarminConnectTooManyRequestsError as e:
+            # A backfill spanning months is the realistic way to trip this —
+            # stop rather than keep hammering a rate-limited account.
+            log(f"Garmin rate-limited wellness fetch at {cdate}: {e}. Stopping "
+                f"({'last synced date: ' + last_ok_date if last_ok_date else 'nothing synced yet'}).")
+            break
+
+        if dry_run:
+            print(json.dumps(payload, indent=2))
+            synced += 1
+        else:
+            try:
+                result, token = put_wellness(api_base, token, payload)
+                log(f"Synced wellness for {cdate}")
+                synced += 1
+                last_ok_date = cdate
+            except requests.HTTPError as e:
+                log(f"Failed to sync wellness for {cdate}: {e}")
+                skipped += 1
+
+        time.sleep(1.0)
+
+    resume_from = (date.fromisoformat(last_ok_date) + timedelta(days=1)).isoformat() if last_ok_date else None
+    log(f"Wellness done: {synced} synced, {skipped} skipped."
+        + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
+
+
 def cmd_sync(client, days, dry_run, api_base):
     activities = fetch_recent_activities(client, days)
     if not activities:
@@ -258,7 +369,19 @@ def main():
     parser.add_argument("--wellness-date", type=str, default=None,
                          help="Date (YYYY-MM-DD) to probe with --dump-wellness. Defaults to yesterday, since "
                               "today's sleep/readiness haven't finished processing yet.")
-    parser.add_argument("--dry-run", action="store_true", help="Build payloads but don't POST them.")
+    parser.add_argument("--wellness", action="store_true",
+                         help="Sync daily wellness (sleep/HRV/readiness/etc) instead of activities.")
+    parser.add_argument("--wellness-days", type=int, default=3,
+                         help="With --wellness: how many days back from today to sync (default 3 — wellness data "
+                              "is final within 24-48h, so a wider window just costs more requests for no benefit; "
+                              "3 still tolerates two missed cron runs).")
+    parser.add_argument("--wellness-start", type=str, default=None,
+                         help="With --wellness: sync every day from this date (YYYY-MM-DD) through today instead "
+                              "of --wellness-days. For a one-off manual backfill — never put this on cron. "
+                              "Resumable: if a run stops early (e.g. rate-limited), it logs the date to resume "
+                              "from.")
+    parser.add_argument("--dry-run", action="store_true",
+                         help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
 
     api_base = os.environ.get("CALLAHAN_API_BASE", "http://localhost:8080")
@@ -273,6 +396,8 @@ def main():
     elif args.dump_wellness:
         cdate = args.wellness_date or (date.today() - timedelta(days=1)).isoformat()
         cmd_dump_wellness(client, cdate)
+    elif args.wellness:
+        cmd_sync_wellness(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     else:
         cmd_sync(client, args.days, args.dry_run, api_base)
 
