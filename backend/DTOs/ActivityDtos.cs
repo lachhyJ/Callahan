@@ -13,6 +13,7 @@ public record ActivityDto(
     int? ActivitySessionTypeId,
     string? ActivitySessionTypeName,
     int LapCount,
+    int ActiveLapCount,
     decimal? HighSpeedDistanceKm,
     int? ConeDistanceM);
 

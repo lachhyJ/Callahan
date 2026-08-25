@@ -291,6 +291,13 @@ export function updateActivitySessionType(id, activitySessionTypeId) {
   })
 }
 
+export function updateConeDistance(id, coneDistanceM) {
+  return apiFetch(`/api/activities/${id}/cone-distance`, {
+    method: 'PUT',
+    body: JSON.stringify({ coneDistanceM }),
+  })
+}
+
 export function getHealth() {
   return apiFetch('/api/health')
 }

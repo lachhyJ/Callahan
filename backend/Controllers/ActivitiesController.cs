@@ -48,7 +48,8 @@ public class ActivitiesController : ControllerBase
             .Select(a => new ActivityDto(
                 a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
                 a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
-                a.Laps.Count, a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM))
+                a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
+                a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM))
             .ToListAsync();
 
         return Ok(activities);
@@ -256,5 +257,6 @@ public class ActivitiesController : ControllerBase
     private static ActivityDto ToDto(Activity a) => new(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
         a.ActivitySessionTypeId, a.ActivitySessionType?.Name,
-        a.Laps.Count, a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM);
+        a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
+        a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM);
 }
