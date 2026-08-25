@@ -27,6 +27,8 @@ Run modes:
                     instead of POSTing/PUTting. Use to sanity-check a
                     mapping change before it writes anything.
   (default)         Fetch, map, and POST each mapped activity to Callahan.
+                    Running activities without laps yet also get their laps
+                    pulled and PUT to .../laps (skip with --no-laps).
 
 Config comes entirely from environment variables (see .env.example) — this
 script is meant to be invoked from a NAS cron job with a gitignored env
@@ -150,6 +152,10 @@ def put_wellness(api_base, token, payload):
     return callahan_request("PUT", api_base, "/api/wellness", token, payload)
 
 
+def put_laps(api_base, token, callahan_activity_id, laps):
+    return callahan_request("PUT", api_base, f"/api/activities/{callahan_activity_id}/laps", token, {"laps": laps})
+
+
 def to_int(value):
     # Garmin returns calories/heart-rate as floats (e.g. 266.0); Callahan's
     # DTO binds them as int? and rejects a JSON float with strict errors.
@@ -174,6 +180,25 @@ def to_payload(activity, activity_type):
         "source": "Garmin",
         "garminActivityId": str(summary_id) if summary_id is not None else None,
     }
+
+
+def fetch_laps(client, garmin_activity_id):
+    result = client.get_activity_splits(garmin_activity_id)
+    lap_dtos = (result or {}).get("lapDTOs") or []
+    return [
+        {
+            "lapIndex": l.get("lapIndex"),
+            "intensityType": l.get("intensityType"),
+            "distanceM": l.get("distance"),
+            "durationSeconds": l.get("duration"),
+            "movingDurationSeconds": l.get("movingDuration"),
+            "avgSpeedMps": l.get("averageSpeed"),
+            "maxSpeedMps": l.get("maxSpeed"),
+            "avgHeartRate": to_int(l.get("averageHR")),
+            "maxHeartRate": to_int(l.get("maxHR")),
+        }
+        for l in lap_dtos
+    ]
 
 
 def fetch_recent_activities(client, days):
@@ -350,7 +375,7 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
         + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
 
 
-def cmd_sync(client, days, dry_run, api_base):
+def cmd_sync(client, days, dry_run, api_base, sync_laps=True):
     activities = fetch_recent_activities(client, days)
     if not activities:
         log(f"No Garmin activities in the last {days} days.")
@@ -358,6 +383,7 @@ def cmd_sync(client, days, dry_run, api_base):
 
     token = None if dry_run else callahan_token(api_base)
     synced, skipped = 0, 0
+    laps_stopped = False
 
     for a in activities:
         type_key = a.get("activityType", {}).get("typeKey")
@@ -386,6 +412,24 @@ def cmd_sync(client, days, dry_run, api_base):
         except requests.HTTPError as e:
             log(f"Failed to sync activity {payload['garminActivityId']}: {e}")
             skipped += 1
+            continue
+
+        # Laps only exist for runs, and lapCount > 0 means this activity's
+        # laps were already pulled on a previous run - only fetch for new
+        # ones, so a re-sync costs one extra Garmin request per new run, not
+        # per run in the whole --days window.
+        if sync_laps and activity_type == "Running" and not laps_stopped and result.get("lapCount", 0) == 0:
+            try:
+                laps = fetch_laps(client, a.get("activityId"))
+                if laps:
+                    _, token = put_laps(api_base, token, result["id"], laps)
+                    log(f"  Synced {len(laps)} laps for activity {payload['garminActivityId']}")
+            except GarminConnectTooManyRequestsError as e:
+                log(f"  Garmin rate-limited lap fetch at activity {payload['garminActivityId']}: {e}. "
+                    f"Skipping laps for the rest of this run.")
+                laps_stopped = True
+            except requests.HTTPError as e:
+                log(f"  Failed to sync laps for activity {payload['garminActivityId']}: {e}")
 
     log(f"Done: {synced} synced, {skipped} skipped.")
 
@@ -417,6 +461,9 @@ def main():
     parser.add_argument("--activity-id", type=str, default=None,
                          help="With --dump-laps: the Garmin activity ID to inspect (see --dump for IDs). "
                               "Defaults to the most recent Running activity in --days.")
+    parser.add_argument("--no-laps", action="store_true",
+                         help="Skip lap syncing during the normal activity sync (laps are fetched by default "
+                              "for any Running activity that doesn't have them yet).")
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
@@ -438,7 +485,7 @@ def main():
     elif args.dump_laps:
         cmd_dump_laps(client, args.activity_id, args.days)
     else:
-        cmd_sync(client, args.days, args.dry_run, api_base)
+        cmd_sync(client, args.days, args.dry_run, api_base, sync_laps=not args.no_laps)
 
 
 if __name__ == "__main__":
