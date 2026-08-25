@@ -65,7 +65,7 @@ export function setAvailablePlates(unit, plates) {
 
 // Fixed dumbbell increments the athlete's gym actually racks — device-wide,
 // same reasoning as available plates. Standard commercial-gym spacing.
-export const DUMBBELL_STEPS_KG = [2.5, 5, 7.5, 10, 12.5, 15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 40, 45, 50]
+export const DUMBBELL_STEPS_KG = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12.5, 15, 17.5, 20, 22.5, 25, 27.5, 30, 32.5, 35, 40, 45, 50]
 
 const AVAILABLE_DUMBBELLS_PREFIX = 'callahan.plateCalc.availableDumbbells.'
 

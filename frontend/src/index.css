@@ -44,6 +44,12 @@
      doesn't end up hidden behind it while a rest timer is showing. */
   --rest-bar-clearance: 56px;
 
+  /* Height of the fixed bottom tab bar, safe-area inset included — trimmed
+     6px tighter than the raw inset (see .bottom-tab-bar) since the full
+     inset read as too generous. Single source of truth for anything that
+     needs to sit or pad above the tab bar. */
+  --bottom-nav-height: calc(64px + max(0px, env(safe-area-inset-bottom) - 6px));
+
   /* ── Primitives — type ── */
   --text-2xs:  0.625rem;  /* 10px — chart axis ticks/micro badges only */
   --text-xs:   0.75rem;   /* 12px */

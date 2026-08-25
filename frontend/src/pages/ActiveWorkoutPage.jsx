@@ -131,6 +131,14 @@ function completedSetsFor(ex) {
   return ex.sets.filter((s) => s.completed && s.reps !== '')
 }
 
+// Planned sets never marked done — flagged on the finish screen so it's not
+// easy to walk away from a preset session having silently missed a set.
+function missedSetGaps(exercises) {
+  return exercises
+    .map((ex) => ({ name: ex.exerciseName, missing: ex.sets.length - completedSetsFor(ex).length }))
+    .filter((g) => g.missing > 0)
+}
+
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
   const [templateName, setTemplateName] = useState('')
@@ -568,6 +576,11 @@ export default function ActiveWorkoutPage() {
   }
 
   async function handleSave() {
+    const gaps = missedSetGaps(exercises)
+    if (gaps.length > 0) {
+      const summary = gaps.map((g) => `${g.name} ×${g.missing}`).join(', ')
+      if (!window.confirm(`Some planned sets weren't logged: ${summary}. Save anyway?`)) return
+    }
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     setError(null)
@@ -619,6 +632,7 @@ export default function ActiveWorkoutPage() {
     const exercisesWithCompletedSets = exercises
       .map((ex) => ({ ex, sets: completedSetsFor(ex) }))
       .filter(({ sets }) => sets.length > 0)
+    const gaps = missedSetGaps(exercises)
 
     return (
       <main className="page">
@@ -643,6 +657,11 @@ export default function ActiveWorkoutPage() {
             {ex.notes && <p className="notes">{ex.notes}</p>}
           </div>
         ))}
+        {gaps.length > 0 && (
+          <p className="taper-nudge">
+            Planned sets not logged: {gaps.map((g) => `${g.name} ×${g.missing}`).join(', ')}
+          </p>
+        )}
         <div className="summary-actions">
           <button type="button" className="back-btn" onClick={() => setShowSummary(false)}>← Back to workout</button>
           <button type="button" onClick={handleSave} disabled={saving || stats.setCount === 0}>
@@ -979,7 +998,7 @@ export default function ActiveWorkoutPage() {
         return (
           <div
             className="weight-input-toolbar"
-            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'calc(64px + env(safe-area-inset-bottom))' }}
+            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'var(--bottom-nav-height)' }}
           >
             <button
               type="button"

@@ -4,7 +4,7 @@ import { getActivities, getMonthlyReports, getWeeklyVolume, getWorkoutSessions, 
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, PlateIcon, TaperIcon, TrashIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -39,7 +39,6 @@ const QUICK_LINKS = [
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
-  { to: '/plate-calculator', label: 'Plate calculator', Icon: PlateIcon },
   { to: '/reports', label: 'Reports', Icon: DocumentIcon },
 ]
 

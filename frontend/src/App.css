@@ -73,7 +73,7 @@
   display: flex;
   background: var(--surface-raised);
   border-top: 1px solid var(--border);
-  padding-bottom: env(safe-area-inset-bottom);
+  padding-bottom: max(0px, env(safe-area-inset-bottom) - 6px);
 }
 
 .tab-link {
@@ -99,7 +99,7 @@
   /* Must match the tab bar's own height, safe-area inset included — the bar
      is fixed, so without this the last chunk of scrollable content ends up
      hidden behind it on any phone with a home-indicator safe area. */
-  padding-bottom: calc(64px + env(safe-area-inset-bottom));
+  padding-bottom: var(--bottom-nav-height);
 }
 
 .app-content.with-bottom-nav.with-rest-bar {
@@ -107,7 +107,7 @@
      grow the reserved space by its height too, or the last bit of
      scrollable content ends up hidden behind it while a rest timer is
      showing. */
-  padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--rest-bar-clearance));
+  padding-bottom: calc(var(--bottom-nav-height) + var(--rest-bar-clearance));
 }
 
 .page {
@@ -1390,19 +1390,22 @@ td {
 
 .rest-bar {
   position: fixed;
-  /* Stacks above the persistent bottom tab bar rather than owning the very
-     bottom of the screen, now that the tab bar stays visible during an
-     active workout too. */
-  bottom: calc(64px + env(safe-area-inset-bottom));
-  left: 0;
-  right: 0;
+  /* Floats above the persistent bottom tab bar, inset from the edges like
+     .global-rest-bar, rather than owning the very bottom of the screen or
+     double-counting the tab bar's own safe-area padding. */
+  bottom: calc(var(--bottom-nav-height) + var(--space-xs));
+  left: var(--space-md);
+  right: var(--space-md);
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-md);
-  padding: var(--space-sm) var(--space-lg) calc(var(--space-sm) + env(safe-area-inset-bottom));
+  padding: var(--space-sm) var(--space-lg);
   background: var(--surface-raised);
-  border-top: 1px solid var(--border);
+  border: none;
+  border-radius: var(--radius-md);
+  overflow: hidden;
   box-shadow: var(--elevation-raised), var(--shadow);
 
   button {
@@ -1563,7 +1566,7 @@ td {
    something the visual cleanup should cost. */
 .global-rest-bar {
   position: fixed;
-  bottom: calc(64px + env(safe-area-inset-bottom) + var(--space-xs));
+  bottom: calc(var(--bottom-nav-height) + var(--space-xs));
   left: var(--space-md);
   right: var(--space-md);
   z-index: var(--z-sticky);
