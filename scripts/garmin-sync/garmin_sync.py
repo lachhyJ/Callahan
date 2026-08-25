@@ -16,6 +16,12 @@ Run modes:
   --wellness        Fetch + map + PUT daily sleep/HRV/readiness/etc for a
                     date range (see --wellness-days / --wellness-start)
                     instead of syncing activities.
+  --dump-laps       Print raw lap/split data for one running activity and
+                    exit. No Callahan calls, nothing is synced. Use this
+                    BEFORE building lap sync — the point is to confirm the
+                    activity actually has real per-lap structure (a plain
+                    "Run" with no lap presses returns one lap for the whole
+                    session, which would make lap sync pointless for it).
   --dry-run         Fetch + map + build the Callahan payload for each
                     activity (or wellness date, with --wellness), but print
                     instead of POSTing/PUTting. Use to sanity-check a
@@ -216,6 +222,32 @@ def cmd_dump_wellness(client, cdate):
             print(json.dumps({"method": name, "available": True, "error": f"{type(e).__name__}: {e}"}, indent=2))
 
 
+def cmd_dump_laps(client, activity_id, days):
+    if activity_id is None:
+        # Most recent Running activity in the lookback window - the plan is
+        # to point this at a real High Speed Intervals session by rerunning
+        # with --activity-id once --dump has surfaced its Garmin ID.
+        activities = fetch_recent_activities(client, days)
+        running = [a for a in activities if a.get("activityType", {}).get("typeKey") == "running"]
+        if not running:
+            log(f"No running activities in the last {days} days. Pass --activity-id explicitly, "
+                f"or use --dump to find one.")
+            return
+        activity_id = running[0]["activityId"]
+        log(f"No --activity-id given, using most recent run: {activity_id} ({running[0].get('activityName')!r})")
+
+    for name in ("get_activity_splits", "get_activity_split_summaries"):
+        method = getattr(client, name, None)
+        if method is None:
+            print(json.dumps({"method": name, "available": False}, indent=2))
+            continue
+        try:
+            result = method(activity_id)
+            print(json.dumps({"method": name, "available": True, "result": result}, indent=2, default=str))
+        except Exception as e:
+            print(json.dumps({"method": name, "available": True, "error": f"{type(e).__name__}: {e}"}, indent=2))
+
+
 def fetch_wellness(client, cdate):
     # Trimmed to the 4 calls that actually carry new information for us —
     # get_stats already includes resting HR and body battery high/low, so
@@ -380,6 +412,11 @@ def main():
                               "of --wellness-days. For a one-off manual backfill — never put this on cron. "
                               "Resumable: if a run stops early (e.g. rate-limited), it logs the date to resume "
                               "from.")
+    parser.add_argument("--dump-laps", action="store_true",
+                         help="Print raw lap/split data for one running activity and exit, no syncing.")
+    parser.add_argument("--activity-id", type=str, default=None,
+                         help="With --dump-laps: the Garmin activity ID to inspect (see --dump for IDs). "
+                              "Defaults to the most recent Running activity in --days.")
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
@@ -398,6 +435,8 @@ def main():
         cmd_dump_wellness(client, cdate)
     elif args.wellness:
         cmd_sync_wellness(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
+    elif args.dump_laps:
+        cmd_dump_laps(client, args.activity_id, args.days)
     else:
         cmd_sync(client, args.days, args.dry_run, api_base)
 
