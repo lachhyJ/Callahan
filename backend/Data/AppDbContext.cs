@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
     public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
     public DbSet<DailyWellness> DailyWellness => Set<DailyWellness>();
+    public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -54,6 +55,10 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<DailyWellness>()
             .HasIndex(w => w.Date)
+            .IsUnique();
+
+        modelBuilder.Entity<ActivityLap>()
+            .HasIndex(l => new { l.ActivityId, l.LapIndex })
             .IsUnique();
 
         modelBuilder.Entity<Exercise>().HasData(
