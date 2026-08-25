@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getMonthlyReport, markMonthlyReportViewed } from '../api/client'
+import { formatDateLong, formatDateMedium } from '../dateUtils'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -56,25 +57,29 @@ export default function ReportDetailPage() {
       <section className="report-section">
         <h3>Load & progression</h3>
         <h4>PRs (best e1RM)</h4>
-        {l.prs.length === 0 ? <p>No new PRs this month.</p> : (
+        {l.prs.length === 0 ? <p className="report-empty">No new PRs this month.</p> : (
           <ul className="report-list">
-            {l.prs.map((p) => <li key={p.exerciseId}>{p.exerciseName}: {fmt(p.e1Rm)} kg e1RM ({p.date})</li>)}
+            {l.prs.map((p) => (
+              <li key={p.exerciseId}>
+                {p.exerciseName}: {fmt(p.e1Rm)} kg e1RM{p.previousE1Rm != null ? `, up from ${fmt(p.previousE1Rm)} kg` : ''} ({formatDateMedium(p.date)})
+              </li>
+            ))}
           </ul>
         )}
         <h4>Movers</h4>
-        {l.movers.length === 0 ? <p>Nothing moving meaningfully this month.</p> : (
+        {l.movers.length === 0 ? <p className="report-empty">Nothing moving meaningfully this month.</p> : (
           <ul className="report-list">
             {l.movers.map((m) => <li key={m.exerciseId}>{m.exerciseName}: {m.deltaPercent > 0 ? '+' : ''}{fmt(m.deltaPercent)}% ({fmt(m.fromE1Rm)} → {fmt(m.toE1Rm)} kg e1RM)</li>)}
           </ul>
         )}
         <h4>Stalls</h4>
-        {l.stalls.length === 0 ? <p>No stalls flagged.</p> : (
+        {l.stalls.length === 0 ? <p className="report-empty">No stalls flagged.</p> : (
           <ul className="report-list">
-            {l.stalls.map((s) => <li key={s.exerciseId}>{s.exerciseName}: flat across last {s.sessionsFlat} sessions (last: {s.lastSessionDate})</li>)}
+            {l.stalls.map((s) => <li key={s.exerciseId}>{s.exerciseName}: flat across last {s.sessionsFlat} sessions (last: {formatDateMedium(s.lastSessionDate)})</li>)}
           </ul>
         )}
         <h4>Zero-set program exercises</h4>
-        {l.zeroSetProgramExercises.length === 0 ? <p>Every program exercise got logged this month.</p> : (
+        {l.zeroSetProgramExercises.length === 0 ? <p className="report-empty">Every program exercise got logged this month.</p> : (
           <ul className="report-list">
             {l.zeroSetProgramExercises.map((name) => <li key={name}>{name}</li>)}
           </ul>
@@ -83,7 +88,7 @@ export default function ReportDetailPage() {
 
       <section className="report-section">
         <h3>Running</h3>
-        {report.running.byType.length === 0 ? <p>No runs logged this month.</p> : (
+        {report.running.byType.length === 0 ? <p className="report-empty">No runs logged this month.</p> : (
           <ul className="report-list">
             {report.running.byType.map((r) => (
               <li key={r.typeName}>{r.typeName}: {r.count} sessions, {fmt(r.totalDistanceKm)} km, {Math.round(r.totalDurationSeconds / 60)} min</li>
@@ -94,7 +99,7 @@ export default function ReportDetailPage() {
 
       <section className="report-section">
         <h3>Balance</h3>
-        <p>{report.balance.flaggedLine ?? 'No push/pull imbalance flagged this month.'}</p>
+        <p className={report.balance.flaggedLine ? undefined : 'report-empty'}>{report.balance.flaggedLine ?? 'No push/pull imbalance flagged this month.'}</p>
       </section>
 
       <section className="report-section">
@@ -103,7 +108,7 @@ export default function ReportDetailPage() {
           <p>Tournaments: {report.context.tournaments.join(', ')}</p>
         )}
         {report.context.longestGapDays != null && (
-          <p>Longest gap: {report.context.longestGapDays} days ({report.context.longestGapStart} – {report.context.longestGapEnd})</p>
+          <p>Longest gap: {report.context.longestGapDays} days ({formatDateMedium(report.context.longestGapStart)} – {formatDateMedium(report.context.longestGapEnd)})</p>
         )}
       </section>
 
@@ -112,7 +117,7 @@ export default function ReportDetailPage() {
           <h3>Taper</h3>
           {report.taperOverlaps.map((t) => (
             <div key={t.eventName + t.eventDate} className="report-taper-block">
-              <p><strong>{t.eventName}</strong> ({t.eventDate}) — {t.overlap} overlap with this month</p>
+              <p><strong>{t.eventName}</strong> ({formatDateLong(t.eventDate)}) — {t.overlap} overlap with this month</p>
               <p>Sessions/wk: {fmt(t.rawSessionsPerWeek, 2)} raw, {fmt(t.exclTaperWeeksSessionsPerWeek, 2)} excl. taper weeks</p>
               <p>Planned volume reduction: {t.plannedReductionPercent != null ? `${fmt(t.plannedReductionPercent)}%` : '—'} · Actual: {t.actualReductionPercent != null ? `${fmt(t.actualReductionPercent)}%` : '—'}</p>
               <p>Check-ins completed: {t.checkInsCompleted}/{t.checkInsExpected}</p>
@@ -123,7 +128,7 @@ export default function ReportDetailPage() {
 
       <section className="report-section">
         <h3>Questions for next month</h3>
-        {report.nextMonthQuestions.length === 0 ? <p>Nothing flagged.</p> : (
+        {report.nextMonthQuestions.length === 0 ? <p className="report-empty">Nothing flagged.</p> : (
           <ul className="report-list">
             {report.nextMonthQuestions.map((q, i) => <li key={i}>{q}</li>)}
           </ul>

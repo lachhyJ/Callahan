@@ -2312,17 +2312,31 @@ td {
 
 .report-headline-preview {
   margin: var(--space-xs, 4px) 0 0;
-  color: var(--text);
+  color: var(--text-h);
   font-size: 0.9em;
 }
 
 .report-settling-note {
-  color: var(--text-muted, var(--text));
+  color: var(--text-h);
   font-size: 0.9em;
 }
 
 .report-section {
   margin-top: var(--space-lg);
+}
+
+.report-section h3,
+.report-section h4 {
+  color: var(--text-h);
+}
+
+.report-section p,
+.report-section li {
+  color: var(--text-h);
+}
+
+.report-section .report-empty {
+  color: var(--text);
 }
 
 .report-list {

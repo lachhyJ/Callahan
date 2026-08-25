@@ -124,7 +124,8 @@ public class MonthlyReportBuilder
             var monthBestE1Rm = E1Rm(monthBest);
             if (monthBestE1Rm > beforeMax)
             {
-                prs.Add(new PrDto(monthBest.ExerciseId, monthBest.Exercise.Name, monthBestE1Rm, monthBest.WorkoutSession.Date));
+                decimal? previousE1Rm = before.Count > 0 ? beforeMax : null;
+                prs.Add(new PrDto(monthBest.ExerciseId, monthBest.Exercise.Name, monthBestE1Rm, monthBest.WorkoutSession.Date, previousE1Rm));
             }
         }
 

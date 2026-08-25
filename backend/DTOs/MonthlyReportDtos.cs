@@ -16,7 +16,7 @@ public record ConsistencySectionDto(
     int DaysInMonth
 );
 
-public record PrDto(int ExerciseId, string ExerciseName, decimal E1Rm, DateOnly Date);
+public record PrDto(int ExerciseId, string ExerciseName, decimal E1Rm, DateOnly Date, decimal? PreviousE1Rm);
 public record MoverDto(int ExerciseId, string ExerciseName, decimal FromE1Rm, decimal ToE1Rm, decimal DeltaPercent);
 public record StallDto(int ExerciseId, string ExerciseName, int SessionsFlat, DateOnly LastSessionDate);
 
