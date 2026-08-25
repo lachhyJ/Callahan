@@ -108,7 +108,8 @@ public class StreaksController : ControllerBase
             .Where(a => a.Type == ActivityType.Running)
             .OrderByDescending(a => a.Date)
             .Select(a => new ActivityDto(a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name))
+                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
+                a.Laps.Count, a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM))
             .ToListAsync();
 
         if (workouts.Count == 0 && runs.Count == 0)

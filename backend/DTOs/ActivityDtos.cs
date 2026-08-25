@@ -11,7 +11,10 @@ public record ActivityDto(
     int? AvgHeartRate,
     string? Notes,
     int? ActivitySessionTypeId,
-    string? ActivitySessionTypeName);
+    string? ActivitySessionTypeName,
+    int LapCount,
+    decimal? HighSpeedDistanceKm,
+    int? ConeDistanceM);
 
 public record CreateActivityRequest(
     DateOnly Date,
@@ -27,6 +30,34 @@ public record CreateActivityRequest(
 public record UpdateActivitySessionTypeRequest(int? ActivitySessionTypeId);
 
 public record ActivitySessionTypeDto(int Id, string Name, string ActivityType);
+
+public record ActivityLapDto(
+    int LapIndex,
+    string? IntensityType,
+    decimal? DistanceM,
+    decimal? DurationSeconds,
+    decimal? MovingDurationSeconds,
+    decimal? AvgSpeedMps,
+    decimal? MaxSpeedMps,
+    int? AvgHeartRate,
+    int? MaxHeartRate);
+
+public record UpsertActivityLapRequest(
+    int LapIndex,
+    string? IntensityType,
+    decimal? DistanceM,
+    decimal? DurationSeconds,
+    decimal? MovingDurationSeconds,
+    decimal? AvgSpeedMps,
+    decimal? MaxSpeedMps,
+    int? AvgHeartRate,
+    int? MaxHeartRate);
+
+public record UpsertActivityLapsRequest(List<UpsertActivityLapRequest> Laps);
+
+public record ActivityLapsResponse(List<ActivityLapDto> Laps, decimal? HighSpeedDistanceKm);
+
+public record UpdateConeDistanceRequest(int? ConeDistanceM);
 
 public record DeletedActivityDto(
     int Id,

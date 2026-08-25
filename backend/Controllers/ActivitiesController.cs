@@ -47,7 +47,8 @@ public class ActivitiesController : ControllerBase
             .OrderByDescending(a => a.Date)
             .Select(a => new ActivityDto(
                 a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name))
+                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
+                a.Laps.Count, a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM))
             .ToListAsync();
 
         return Ok(activities);
@@ -73,6 +74,7 @@ public class ActivitiesController : ControllerBase
         {
             var existing = await _db.Activities
                 .Include(a => a.ActivitySessionType)
+                .Include(a => a.Laps)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
@@ -111,7 +113,7 @@ public class ActivitiesController : ControllerBase
     [HttpPut("{id}/session-type")]
     public async Task<ActionResult<ActivityDto>> UpdateSessionType(int id, UpdateActivitySessionTypeRequest request)
     {
-        var activity = await _db.Activities.Include(a => a.ActivitySessionType).FirstOrDefaultAsync(a => a.Id == id);
+        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
         if (request.ActivitySessionTypeId is not null)
@@ -171,6 +173,7 @@ public class ActivitiesController : ControllerBase
     {
         var activity = await _db.Activities.IgnoreQueryFilters()
             .Include(a => a.ActivitySessionType)
+            .Include(a => a.Laps)
             .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt != null);
         if (activity is null) return NotFound();
 
@@ -180,7 +183,78 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
+    // High-speed laps are exactly what Garmin's own IntensityType already
+    // marks "ACTIVE" for a structured interval workout - no speed-threshold
+    // heuristic needed, confirmed against a real High Speed Intervals
+    // session via --dump-laps (2026-08-25).
+    private const string HighSpeedIntensityType = "ACTIVE";
+
+    [HttpPut("{id}/laps")]
+    public async Task<ActionResult<ActivityLapsResponse>> ReplaceLaps(int id, UpsertActivityLapsRequest request)
+    {
+        var activity = await _db.Activities.Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        // Laps are immutable per activity once Garmin has recorded them, so
+        // a re-sync just replaces the whole set rather than trying to diff -
+        // simpler and idempotent regardless of how many times it's called.
+        _db.ActivityLaps.RemoveRange(activity.Laps);
+
+        var laps = request.Laps.Select(l => new ActivityLap
+        {
+            ActivityId = id,
+            LapIndex = l.LapIndex,
+            IntensityType = l.IntensityType,
+            DistanceM = l.DistanceM,
+            DurationSeconds = l.DurationSeconds,
+            MovingDurationSeconds = l.MovingDurationSeconds,
+            AvgSpeedMps = l.AvgSpeedMps,
+            MaxSpeedMps = l.MaxSpeedMps,
+            AvgHeartRate = l.AvgHeartRate,
+            MaxHeartRate = l.MaxHeartRate,
+        }).ToList();
+
+        _db.ActivityLaps.AddRange(laps);
+
+        var activeLaps = laps.Where(l => l.IntensityType == HighSpeedIntensityType).ToList();
+        activity.HighSpeedDistanceM = activeLaps.Count > 0 ? activeLaps.Sum(l => l.DistanceM ?? 0) : null;
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new ActivityLapsResponse(
+            laps.OrderBy(l => l.LapIndex).Select(ToLapDto).ToList(),
+            activity.HighSpeedDistanceM == null ? null : activity.HighSpeedDistanceM / 1000));
+    }
+
+    [HttpGet("{id}/laps")]
+    public async Task<ActionResult<ActivityLapsResponse>> GetLaps(int id)
+    {
+        var activity = await _db.Activities.Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        return Ok(new ActivityLapsResponse(
+            activity.Laps.OrderBy(l => l.LapIndex).Select(ToLapDto).ToList(),
+            activity.HighSpeedDistanceM == null ? null : activity.HighSpeedDistanceM / 1000));
+    }
+
+    [HttpPut("{id}/cone-distance")]
+    public async Task<ActionResult<ActivityDto>> UpdateConeDistance(int id, UpdateConeDistanceRequest request)
+    {
+        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        activity.ConeDistanceM = request.ConeDistanceM;
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(activity));
+    }
+
+    private static ActivityLapDto ToLapDto(ActivityLap l) => new(
+        l.LapIndex, l.IntensityType, l.DistanceM, l.DurationSeconds, l.MovingDurationSeconds,
+        l.AvgSpeedMps, l.MaxSpeedMps, l.AvgHeartRate, l.MaxHeartRate);
+
     private static ActivityDto ToDto(Activity a) => new(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-        a.ActivitySessionTypeId, a.ActivitySessionType?.Name);
+        a.ActivitySessionTypeId, a.ActivitySessionType?.Name,
+        a.Laps.Count, a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM);
 }
