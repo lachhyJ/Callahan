@@ -637,7 +637,7 @@ export default function ActiveWorkoutPage() {
   const availableFinishers = finishers.filter((f) => !addedExerciseIds.has(f.exerciseId))
 
   return (
-    <main className="page">
+    <main className={restTimer ? 'page with-rest-bar' : 'page'}>
       <div className={showMiniBar ? 'mini-progress-bar visible' : 'mini-progress-bar'}>
         <span>{formatDuration(now - startedAt)}</span>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
@@ -958,7 +958,7 @@ export default function ActiveWorkoutPage() {
         return (
           <div
             className="weight-input-toolbar"
-            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'env(safe-area-inset-bottom)' }}
+            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'calc(64px + env(safe-area-inset-bottom))' }}
           >
             <button
               type="button"

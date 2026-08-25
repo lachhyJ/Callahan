@@ -32,6 +32,11 @@
   --space-2xl: 3rem;     /* 48px */
   --space-3xl: 4rem;     /* 64px */
 
+  /* Approximate rendered height of the floating rest-timer bar (.global-rest-bar
+     / .rest-bar), gap included — used to grow scroll padding so content
+     doesn't end up hidden behind it while a rest timer is showing. */
+  --rest-bar-clearance: 56px;
+
   /* ── Primitives — type ── */
   --text-2xs:  0.625rem;  /* 10px — chart axis ticks/micro badges only */
   --text-xs:   0.75rem;   /* 12px */

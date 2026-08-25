@@ -5,7 +5,7 @@ import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeep } from './beep'
 import { getHealth } from './api/client'
-import { BackIcon, DashboardIcon, DocumentIcon, PlayIcon, WorkoutIcon } from './icons'
+import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
@@ -29,10 +29,7 @@ import ReportDetailPage from './pages/ReportDetailPage'
 import { getMonthlyReports } from './api/client'
 import './App.css'
 
-const TABS = [
-  { to: '/', label: 'Workout', Icon: WorkoutIcon },
-  { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon },
-]
+const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon }
 
 // Routes reached by drilling down from somewhere else, rather than the
 // bottom tabs or a top-level action — these get a Back button in the top
@@ -71,11 +68,6 @@ function TopBar() {
   const onThatWorkout = activeWorkout && location.pathname === `/workout/${activeWorkout.templateId}`
   const showResume = activeWorkout && !onThatWorkout
   const showBack = showsBackLink(location.pathname)
-  // While actually on the active workout, the bottom tab bar steps aside for
-  // its own fixed rest-timer bar (see isActiveWorkoutRoute), so these are
-  // the only way out to the dashboard/program without finishing or
-  // discarding the session — Resume (above) covers getting back in.
-  const showWorkoutExitLinks = onThatWorkout
 
   function handleLogout() {
     if (window.confirm('Log out?')) logout()
@@ -102,12 +94,6 @@ function TopBar() {
         {showBack && (
           <button type="button" className="back-link" onClick={handleBack}><BackIcon /> Back</button>
         )}
-        {showWorkoutExitLinks && (
-          <>
-            <NavLink to="/dashboard" className="workout-exit-link"><DashboardIcon /> Dashboard</NavLink>
-            <NavLink to="/program" className="workout-exit-link"><DocumentIcon /> Program</NavLink>
-          </>
-        )}
       </div>
       <div className="top-bar-right">
         {showResume && (
@@ -122,10 +108,19 @@ function TopBar() {
 }
 
 function BottomTabBar() {
+  const [activeWorkout, setActiveWorkout] = useState(() => loadActiveWorkout())
+
+  useEffect(() => onActiveWorkoutChange(() => setActiveWorkout(loadActiveWorkout())), [])
+
+  const workoutTab = activeWorkout
+    ? { to: `/workout/${activeWorkout.templateId}`, label: 'Workout', Icon: WorkoutIcon, end: true }
+    : { to: '/', label: 'Workout', Icon: WorkoutIcon, end: true }
+  const tabs = [workoutTab, { ...DASHBOARD_TAB, end: false }]
+
   return (
     <nav className="bottom-tab-bar">
-      {TABS.map(({ to, label, Icon }) => (
-        <NavLink key={to} to={to} end={to === '/'} className="tab-link">
+      {tabs.map(({ to, label, Icon, end }) => (
+        <NavLink key={label} to={to} end={end} className="tab-link">
           <Icon />
           <span>{label}</span>
         </NavLink>
@@ -140,9 +135,8 @@ function BottomTabBar() {
 // that responsibility the moment the athlete navigates away, so the
 // countdown (and the alert when it hits zero) still happens if they've gone
 // to check the dashboard or program mid-rest.
-function GlobalRestBar() {
+function useGlobalRestTimer() {
   const location = useLocation()
-  const navigate = useNavigate()
   const [restTimer, setRestTimer] = useState(() => loadRestTimer())
   const [now, setNow] = useState(() => Date.now())
 
@@ -174,6 +168,12 @@ function GlobalRestBar() {
     }
   }, [now, isTicking, restTimer])
 
+  return { restTimer, isTicking, now }
+}
+
+function GlobalRestBar({ restTimer, isTicking, now }) {
+  const navigate = useNavigate()
+
   if (!isTicking) return null
 
   const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now) / 1000))
@@ -187,22 +187,17 @@ function GlobalRestBar() {
   )
 }
 
-// The active workout page has its own fixed-bottom rest-timer bar — a second
-// fixed-bottom tab bar would stack on top of it. Resume (in the top bar)
-// already covers getting back in, so the tab bar just steps aside here.
-function isActiveWorkoutRoute(pathname) {
-  return pathname.startsWith('/workout/') && pathname !== '/workout/custom'
-}
-
 function AppRoutes() {
   const { isAuthenticated } = useAuth()
-  const location = useLocation()
-  const showBottomNav = isAuthenticated && !isActiveWorkoutRoute(location.pathname)
+  const { restTimer, isTicking, now } = useGlobalRestTimer()
+  const showBottomNav = isAuthenticated
+  const contentClassName = ['app-content', showBottomNav && 'with-bottom-nav', isTicking && 'with-rest-bar']
+    .filter(Boolean).join(' ')
 
   return (
     <>
       {isAuthenticated && <TopBar />}
-      <div className={showBottomNav ? 'app-content with-bottom-nav' : 'app-content'}>
+      <div className={contentClassName}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<ProtectedRoute><WorkoutTemplatesPage /></ProtectedRoute>} />
@@ -226,7 +221,7 @@ function AppRoutes() {
           <Route path="/reports/:year/:month" element={<ProtectedRoute><ReportDetailPage /></ProtectedRoute>} />
         </Routes>
       </div>
-      {isAuthenticated && <GlobalRestBar />}
+      {isAuthenticated && <GlobalRestBar restTimer={restTimer} isTicking={isTicking} now={now} />}
       {showBottomNav && <BottomTabBar />}
     </>
   )

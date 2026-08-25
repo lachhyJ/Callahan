@@ -102,6 +102,14 @@
   padding-bottom: calc(64px + env(safe-area-inset-bottom));
 }
 
+.app-content.with-bottom-nav.with-rest-bar {
+  /* The GlobalRestBar floats above the tab bar (see .global-rest-bar) —
+     grow the reserved space by its height too, or the last bit of
+     scrollable content ends up hidden behind it while a rest timer is
+     showing. */
+  padding-bottom: calc(64px + env(safe-area-inset-bottom) + var(--rest-bar-clearance));
+}
+
 .page {
   text-align: left;
   padding: var(--space-lg);
@@ -115,6 +123,14 @@
 .page-narrow {
   max-width: 360px;
   margin: 0 auto;
+}
+
+.page.with-rest-bar {
+  /* The active workout page's own .rest-bar now floats above the bottom tab
+     bar (already accounted for by .app-content.with-bottom-nav) — grow this
+     page's own bottom padding by the bar's height too, or the last bit of
+     scrollable content ends up hidden behind it. */
+  padding-bottom: var(--rest-bar-clearance);
 }
 
 form,
@@ -1374,7 +1390,10 @@ td {
 
 .rest-bar {
   position: fixed;
-  bottom: 0;
+  /* Stacks above the persistent bottom tab bar rather than owning the very
+     bottom of the screen, now that the tab bar stays visible during an
+     active workout too. */
+  bottom: calc(64px + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   display: flex;
@@ -1530,20 +1549,6 @@ td {
 
   &:active {
     transform: none;
-  }
-}
-
-.workout-exit-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  color: var(--text);
-  font-size: var(--text-sm);
-  text-decoration: none;
-
-  &:hover,
-  &:focus-visible {
-    color: var(--text-h);
   }
 }
 
