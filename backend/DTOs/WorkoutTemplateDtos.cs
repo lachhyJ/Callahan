@@ -26,4 +26,6 @@ public record WorkoutTemplateStartDto(
 
 public record UpdateCueRequest(string? Cue);
 
+public record UpdateRestSecondsRequest(int RestSeconds);
+
 public record ExerciseCueDto(int WorkoutTemplateExerciseId, string TemplateName, string? Cue);

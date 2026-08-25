@@ -76,4 +76,21 @@ public class WorkoutTemplatesController : ControllerBase
 
         return NoContent();
     }
+
+    // Persists the athlete's chosen rest duration for this program slot, so
+    // it follows them into future sessions — distinct from a live rest
+    // timer's own in-the-moment +15/-15 nudges, which only ever adjust the
+    // running countdown and never reach this endpoint.
+    [HttpPut("exercises/{workoutTemplateExerciseId}/rest-seconds")]
+    public async Task<IActionResult> UpdateRestSeconds(int workoutTemplateExerciseId, UpdateRestSecondsRequest request)
+    {
+        var te = await _db.WorkoutTemplateExercises.FindAsync(workoutTemplateExerciseId);
+        if (te is null) return NotFound();
+        if (request.RestSeconds < 0) return BadRequest();
+
+        te.RestSeconds = request.RestSeconds;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue } from '../api/client'
+import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { playBeep } from '../beep'
@@ -384,7 +384,23 @@ export default function ActiveWorkoutPage() {
     setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, restSeconds })))
   }
 
+  // Persists the field/preset-chip value as this exercise's rest-time
+  // preference, so it follows the athlete into future sessions. Deliberately
+  // not called from adjustRest — the live timer's +15/-15 nudges only ever
+  // touch the running countdown's endAt, never this saved preference.
+  function persistRestSeconds(exIdx, restSeconds) {
+    const ex = exercises[exIdx]
+    if (!ex?.workoutTemplateExerciseId || restSeconds === '' || Number.isNaN(Number(restSeconds))) return
+    updateRestSeconds(ex.workoutTemplateExerciseId, Number(restSeconds)).catch(() => {})
+  }
+
+  function selectRestPreset(exIdx, preset) {
+    updateExerciseRest(exIdx, preset)
+    persistRestSeconds(exIdx, preset)
+  }
+
   function handleRestBlur(exIdx) {
+    persistRestSeconds(exIdx, exercises[exIdx]?.restSeconds)
     setTimeout(() => {
       setFocusedRestExIdx((prev) => (prev === exIdx ? null : prev))
     }, 150)
@@ -734,7 +750,7 @@ export default function ActiveWorkoutPage() {
                   type="button"
                   className={ex.restSeconds === preset ? 'rest-preset active' : 'rest-preset'}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => updateExerciseRest(exIdx, preset)}
+                  onClick={() => selectRestPreset(exIdx, preset)}
                 >
                   {preset}s
                 </button>

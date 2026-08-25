@@ -75,6 +75,13 @@ export function updateCue(workoutTemplateExerciseId, cue) {
   })
 }
 
+export function updateRestSeconds(workoutTemplateExerciseId, restSeconds) {
+  return apiFetch(`/api/workouttemplates/exercises/${workoutTemplateExerciseId}/rest-seconds`, {
+    method: 'PUT',
+    body: JSON.stringify({ restSeconds }),
+  })
+}
+
 export function updateExerciseAssisted(exerciseId, isAssisted) {
   return apiFetch(`/api/exercises/${exerciseId}/assisted`, {
     method: 'PUT',
