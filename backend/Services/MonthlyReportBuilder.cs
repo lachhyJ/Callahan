@@ -39,7 +39,7 @@ public class MonthlyReportBuilder
             .ToListAsync();
 
         var runsAndUltimate = await _db.Activities
-            .Include(a => a.RunSessionType)
+            .Include(a => a.ActivitySessionType)
             .Where(a => a.Date >= trailingStart && a.Date <= monthEnd)
             .ToListAsync();
 
@@ -79,7 +79,7 @@ public class MonthlyReportBuilder
         {
             byType.Add(new SessionTypeCountDto(g.Key, g.Count()));
         }
-        foreach (var g in monthActivities.Where(a => a.Type == ActivityType.Running).GroupBy(a => a.RunSessionType?.Name ?? "Unspecified run"))
+        foreach (var g in monthActivities.Where(a => a.Type == ActivityType.Running).GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified run"))
         {
             byType.Add(new SessionTypeCountDto(g.Key, g.Count()));
         }
@@ -207,7 +207,7 @@ public class MonthlyReportBuilder
     {
         var byType = monthActivities
             .Where(a => a.Type == ActivityType.Running)
-            .GroupBy(a => a.RunSessionType?.Name ?? "Unspecified run")
+            .GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified run")
             .Select(g => new RunTypeSummaryDto(
                 g.Key, g.Count(),
                 g.Where(a => a.DistanceKm != null).Sum(a => a.DistanceKm!.Value),

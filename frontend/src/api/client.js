@@ -264,8 +264,8 @@ export function createActivity(activity) {
   })
 }
 
-export function getRunSessionTypes() {
-  return apiFetch('/api/runsessiontypes')
+export function getActivitySessionTypes() {
+  return apiFetch('/api/activitysessiontypes')
 }
 
 export function deleteActivity(id) {
@@ -280,10 +280,10 @@ export function getDeletedActivities() {
   return apiFetch('/api/activities/deleted')
 }
 
-export function updateActivityRunSessionType(id, runSessionTypeId) {
-  return apiFetch(`/api/activities/${id}/run-session-type`, {
+export function updateActivitySessionType(id, activitySessionTypeId) {
+  return apiFetch(`/api/activities/${id}/session-type`, {
     method: 'PUT',
-    body: JSON.stringify({ runSessionTypeId }),
+    body: JSON.stringify({ activitySessionTypeId }),
   })
 }
 

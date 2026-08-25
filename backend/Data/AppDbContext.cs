@@ -19,7 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<Finisher> Finishers => Set<Finisher>();
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
-    public DbSet<RunSessionType> RunSessionTypes => Set<RunSessionType>();
+    public DbSet<ActivitySessionType> ActivitySessionTypes => Set<ActivitySessionType>();
     public DbSet<TaperEvent> TaperEvents => Set<TaperEvent>();
     public DbSet<TaperCheckIn> TaperCheckIns => Set<TaperCheckIn>();
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
@@ -122,13 +122,22 @@ public class AppDbContext : DbContext
             new WorkoutTemplateExercise { Id = 16, WorkoutTemplateId = 3, ExerciseId = 24, ExerciseOrder = 6, TargetSets = 3, TargetReps = "5", RestSeconds = 105 }
         );
 
-        // Ultimate Athlete Training Program's Run 1/2/3, in the program's own
-        // priority order (Run 1 highest — most frisbee-specific — if a week
-        // only fits two sessions).
-        modelBuilder.Entity<RunSessionType>().HasData(
-            new RunSessionType { Id = 1, Name = "High Speed Intervals", SortOrder = 1 },
-            new RunSessionType { Id = 2, Name = "Speed & Acceleration", SortOrder = 2 },
-            new RunSessionType { Id = 3, Name = "Easy Aerobic Run", SortOrder = 3 }
+        // Session classification, shared by Running and Ultimate (an
+        // ActivityType discriminator, not two parallel tables — see
+        // moxie-vault/30-projects/callahan/decisions.md for why). Running's
+        // rows are the Ultimate Athlete Training Program's Run 1/2/3, in the
+        // program's own priority order (Run 1 highest — most
+        // frisbee-specific — if a week only fits two sessions). Ultimate's
+        // rows are the kinds of session Lachlan actually plays.
+        modelBuilder.Entity<ActivitySessionType>().HasData(
+            new ActivitySessionType { Id = 1, Name = "High Speed Intervals", ActivityType = ActivityType.Running, SortOrder = 1 },
+            new ActivitySessionType { Id = 2, Name = "Speed & Acceleration", ActivityType = ActivityType.Running, SortOrder = 2 },
+            new ActivitySessionType { Id = 3, Name = "Easy Aerobic Run", ActivityType = ActivityType.Running, SortOrder = 3 },
+            new ActivitySessionType { Id = 4, Name = "Solo", ActivityType = ActivityType.Ultimate, SortOrder = 1 },
+            new ActivitySessionType { Id = 5, Name = "Throws", ActivityType = ActivityType.Ultimate, SortOrder = 2 },
+            new ActivitySessionType { Id = 6, Name = "Pod", ActivityType = ActivityType.Ultimate, SortOrder = 3 },
+            new ActivitySessionType { Id = 7, Name = "Club Training", ActivityType = ActivityType.Ultimate, SortOrder = 4 },
+            new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5 }
         );
 
         modelBuilder.Entity<Finisher>().HasData(

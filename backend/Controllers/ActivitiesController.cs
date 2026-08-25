@@ -43,11 +43,11 @@ public class ActivitiesController : ControllerBase
         if (end is not null) query = query.Where(a => a.Date <= end);
 
         var activities = await query
-            .Include(a => a.RunSessionType)
+            .Include(a => a.ActivitySessionType)
             .OrderByDescending(a => a.Date)
             .Select(a => new ActivityDto(
                 a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-                a.RunSessionTypeId, a.RunSessionType == null ? null : a.RunSessionType.Name))
+                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name))
             .ToListAsync();
 
         return Ok(activities);
@@ -67,12 +67,12 @@ public class ActivitiesController : ControllerBase
 
         // Re-syncing the same Garmin activity should be idempotent, not create duplicates -
         // but should still pick up edits made in Garmin Connect after the first sync (e.g.
-        // a renamed title, which lands in Notes). RunSessionTypeId is Callahan's own
+        // a renamed title, which lands in Notes). ActivitySessionTypeId is Callahan's own
         // classification and is deliberately left untouched on re-sync.
         if (request.GarminActivityId is not null)
         {
             var existing = await _db.Activities
-                .Include(a => a.RunSessionType)
+                .Include(a => a.ActivitySessionType)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
@@ -108,22 +108,30 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
-    [HttpPut("{id}/run-session-type")]
-    public async Task<ActionResult<ActivityDto>> UpdateRunSessionType(int id, UpdateActivityRunSessionTypeRequest request)
+    [HttpPut("{id}/session-type")]
+    public async Task<ActionResult<ActivityDto>> UpdateSessionType(int id, UpdateActivitySessionTypeRequest request)
     {
-        var activity = await _db.Activities.Include(a => a.RunSessionType).FirstOrDefaultAsync(a => a.Id == id);
+        var activity = await _db.Activities.Include(a => a.ActivitySessionType).FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
-        if (request.RunSessionTypeId is not null && !await _db.RunSessionTypes.AnyAsync(t => t.Id == request.RunSessionTypeId))
+        if (request.ActivitySessionTypeId is not null)
         {
-            return BadRequest(new { error = $"Unknown run session type '{request.RunSessionTypeId}'." });
+            var sessionType = await _db.ActivitySessionTypes.FirstOrDefaultAsync(t => t.Id == request.ActivitySessionTypeId);
+            if (sessionType is null)
+            {
+                return BadRequest(new { error = $"Unknown activity session type '{request.ActivitySessionTypeId}'." });
+            }
+            if (sessionType.ActivityType != activity.Type)
+            {
+                return BadRequest(new { error = $"'{sessionType.Name}' is a {sessionType.ActivityType} session type, not valid for a {activity.Type} activity." });
+            }
         }
 
-        activity.RunSessionTypeId = request.RunSessionTypeId;
+        activity.ActivitySessionTypeId = request.ActivitySessionTypeId;
         await _db.SaveChangesAsync();
 
         // Re-fetch the nav property now that the FK changed.
-        await _db.Entry(activity).Reference(a => a.RunSessionType).LoadAsync();
+        await _db.Entry(activity).Reference(a => a.ActivitySessionType).LoadAsync();
 
         return Ok(ToDto(activity));
     }
@@ -147,11 +155,11 @@ public class ActivitiesController : ControllerBase
 
         var activities = await _db.Activities.IgnoreQueryFilters()
             .Where(a => a.DeletedAt != null)
-            .Include(a => a.RunSessionType)
+            .Include(a => a.ActivitySessionType)
             .OrderByDescending(a => a.DeletedAt)
             .Select(a => new DeletedActivityDto(
                 a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Notes,
-                a.RunSessionTypeId, a.RunSessionType == null ? null : a.RunSessionType.Name,
+                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
                 a.DeletedAt!.Value))
             .ToListAsync();
 
@@ -162,7 +170,7 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityDto>> Restore(int id)
     {
         var activity = await _db.Activities.IgnoreQueryFilters()
-            .Include(a => a.RunSessionType)
+            .Include(a => a.ActivitySessionType)
             .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt != null);
         if (activity is null) return NotFound();
 
@@ -174,5 +182,5 @@ public class ActivitiesController : ControllerBase
 
     private static ActivityDto ToDto(Activity a) => new(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-        a.RunSessionTypeId, a.RunSessionType?.Name);
+        a.ActivitySessionTypeId, a.ActivitySessionType?.Name);
 }

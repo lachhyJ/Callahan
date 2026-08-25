@@ -10,8 +10,8 @@ public record ActivityDto(
     int? Calories,
     int? AvgHeartRate,
     string? Notes,
-    int? RunSessionTypeId,
-    string? RunSessionTypeName);
+    int? ActivitySessionTypeId,
+    string? ActivitySessionTypeName);
 
 public record CreateActivityRequest(
     DateOnly Date,
@@ -24,9 +24,9 @@ public record CreateActivityRequest(
     string Source = "Manual",
     string? GarminActivityId = null);
 
-public record UpdateActivityRunSessionTypeRequest(int? RunSessionTypeId);
+public record UpdateActivitySessionTypeRequest(int? ActivitySessionTypeId);
 
-public record RunSessionTypeDto(int Id, string Name);
+public record ActivitySessionTypeDto(int Id, string Name, string ActivityType);
 
 public record DeletedActivityDto(
     int Id,
@@ -36,6 +36,6 @@ public record DeletedActivityDto(
     int DurationSeconds,
     decimal? DistanceKm,
     string? Notes,
-    int? RunSessionTypeId,
-    string? RunSessionTypeName,
+    int? ActivitySessionTypeId,
+    string? ActivitySessionTypeName,
     DateTime DeletedAt);

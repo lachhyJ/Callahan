@@ -11,6 +11,26 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
+// Shape is the subtype signal within the Ultimate dot's colour, grouped to
+// keep the count low enough to read at the dot's 6px size (Solo+Throws /
+// Pod / Club Training+Game — 3 shapes, not 5 for the 5 classification
+// types). Unclassified Ultimate activities fall back to the plain circle,
+// same shape as the largest group, rather than a fourth visual state.
+const ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME = {
+  Solo: 'calendar-dot-ultimate-circle',
+  Throws: 'calendar-dot-ultimate-circle',
+  Pod: 'calendar-dot-ultimate-square',
+  'Club Training': 'calendar-dot-ultimate-triangle',
+  Game: 'calendar-dot-ultimate-triangle',
+}
+
+function ultimateDotShapeClass(ultimateActivities) {
+  const classified = ultimateActivities.find((a) => a.activitySessionTypeName)
+  return classified
+    ? ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME[classified.activitySessionTypeName] ?? 'calendar-dot-ultimate-circle'
+    : 'calendar-dot-ultimate-circle'
+}
+
 // Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
   { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
@@ -169,7 +189,8 @@ export default function DashboardPage() {
             const entry = byDate.get(iso)
             const hasWorkout = entry?.workouts.length > 0
             const hasRunning = entry?.runs.some((r) => r.type === 'Running')
-            const hasUltimate = entry?.runs.some((r) => r.type === 'Ultimate')
+            const ultimateActivities = entry?.runs.filter((r) => r.type === 'Ultimate') ?? []
+            const hasUltimate = ultimateActivities.length > 0
             const hasData = hasWorkout || hasRunning || hasUltimate
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
@@ -197,7 +218,7 @@ export default function DashboardPage() {
                 <span className="calendar-dots">
                   {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
                   {hasRunning && <span className="calendar-dot calendar-dot-run" />}
-                  {hasUltimate && <span className="calendar-dot calendar-dot-ultimate" />}
+                  {hasUltimate && <span className={`calendar-dot calendar-dot-ultimate ${ultimateDotShapeClass(ultimateActivities)}`} />}
                 </span>
               </button>
             )

@@ -136,18 +136,18 @@ public class TrendsController : ControllerBase
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
         var runs = await _db.Activities
-            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.RunSessionTypeId != null)
-            .Include(a => a.RunSessionType)
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.ActivitySessionTypeId != null)
+            .Include(a => a.ActivitySessionType)
             .ToListAsync();
 
         var trends = runs
-            .GroupBy(a => new { a.RunSessionTypeId, Name = a.RunSessionType!.Name })
+            .GroupBy(a => new { a.ActivitySessionTypeId, Name = a.ActivitySessionType!.Name })
             .Select(g =>
             {
                 var withDistance = g.Where(a => a.DistanceKm != null).ToList();
                 var totalDistance = withDistance.Sum(a => a.DistanceKm!.Value);
                 return new RunTypeTrendDto(
-                    g.Key.RunSessionTypeId!.Value, g.Key.Name, g.Count(),
+                    g.Key.ActivitySessionTypeId!.Value, g.Key.Name, g.Count(),
                     totalDistance, withDistance.Count > 0 ? totalDistance / withDistance.Count : 0);
             })
             .OrderByDescending(t => t.SessionCount)

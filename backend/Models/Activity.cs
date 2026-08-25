@@ -13,8 +13,8 @@ public class Activity
     public string? Notes { get; set; }
     public string? GarminActivityId { get; set; }
 
-    public int? RunSessionTypeId { get; set; }
-    public RunSessionType? RunSessionType { get; set; }
+    public int? ActivitySessionTypeId { get; set; }
+    public ActivitySessionType? ActivitySessionType { get; set; }
 
     public DateTime? DeletedAt { get; set; }
 }

@@ -1859,12 +1859,30 @@ td {
   background: var(--orange-400);
 }
 
-.run-classify {
+/* Subtype shape within the Ultimate dot's colour — Solo+Throws / Pod /
+   Club Training+Game, 3 shapes rather than one per classification type, to
+   stay legible at 6px. The triangle uses clip-path (not a rotated square)
+   so its bounding box stays exactly 6x6 and never overlaps a neighbouring
+   dot in the flex row. */
+.calendar-dot-ultimate-circle {
+  border-radius: var(--radius-full);
+}
+
+.calendar-dot-ultimate-square {
+  border-radius: 1px;
+}
+
+.calendar-dot-ultimate-triangle {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.activity-classify {
   position: relative;
   display: inline-block;
 }
 
-.run-classify-row {
+.activity-classify-row {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2xs);
@@ -1873,10 +1891,10 @@ td {
   font-size: var(--text-sm);
 }
 
-/* Deliberately a separate button from the run's label text — the label is
-   just for reading, so glancing at or tapping the row can't accidentally
+/* Deliberately a separate button from the activity's label text — the label
+   is just for reading, so glancing at or tapping the row can't accidentally
    open the picker. */
-.run-classify-btn {
+.activity-classify-btn {
   background: transparent;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -1896,7 +1914,7 @@ td {
 /* Bright/filled instead of the default outline — this is the state where
    the button itself is the thing that needs pressing, so it should read as
    the call to action rather than sitting next to a separate badge. */
-.run-classify-btn-needed {
+.activity-classify-btn-needed {
   background: var(--info-bg);
   border-color: transparent;
   color: var(--info-text);
@@ -1912,7 +1930,7 @@ td {
 /* Opens upward, not downward like .set-type-menu's default — this trigger
    also appears inside the bottom-anchored day-detail sheet, where opening
    downward would push the menu off the bottom of the viewport. */
-.run-type-menu {
+.activity-type-menu {
   top: auto;
   bottom: calc(100% + var(--space-2xs));
 }
@@ -1926,7 +1944,7 @@ td {
   background: transparent;
 }
 
-.run-type-menu .suggested-option {
+.activity-type-menu .suggested-option {
   color: var(--text-h);
   font-weight: 500;
 }

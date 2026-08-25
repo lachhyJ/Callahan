@@ -4,15 +4,13 @@ import {
   deleteActivity,
   deleteWorkoutSession,
   getActivities,
-  getRunSessionTypes,
   getWorkoutSessions,
   restoreActivity,
   restoreWorkoutSession,
-  updateActivityRunSessionType,
 } from '../api/client'
-import { activityLabel } from '../utils/activityLabel'
 import { workoutLabel } from '../components/SessionList'
-import RunActivityRow from '../components/RunActivityRow'
+import ActivitySessionRow from '../components/ActivitySessionRow'
+import { useActivityClassification } from '../hooks/useActivityClassification'
 import { TrashIcon } from '../icons'
 import { endOfWeek, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
 
@@ -96,11 +94,12 @@ export default function HistoryPage() {
   const [error, setError] = useState(null)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [loadingLater, setLoadingLater] = useState(false)
-  const [runSessionTypes, setRunSessionTypes] = useState([])
-  const [openPickerId, setOpenPickerId] = useState(null)
   const [deletedToast, setDeletedToast] = useState(null)
   const targetRef = useRef(null)
   const hasScrolledToTarget = useRef(false)
+  const { sessionTypes, openPickerId, togglePicker, selectSessionType } = useActivityClassification(
+    (updated) => setItems((current) => current.map((item) => (item.kind === 'activity' && item.id === updated.id ? { ...item, ...updated } : item)))
+  )
 
   useEffect(() => {
     if (!deletedToast) return
@@ -111,14 +110,13 @@ export default function HistoryPage() {
   useEffect(() => {
     const start = isoDate(range.start)
     const end = isoDate(endOfWeek(range.end))
-    Promise.all([getWorkoutSessions({ start, end }), getActivities({ start, end }), getRunSessionTypes()])
-      .then(([workouts, activities, types]) => {
+    Promise.all([getWorkoutSessions({ start, end }), getActivities({ start, end })])
+      .then(([workouts, activities]) => {
         const merged = [
           ...workouts.map((w) => ({ kind: 'workout', ...w })),
           ...activities.map((a) => ({ kind: 'activity', ...a })),
         ].sort((a, b) => b.date.localeCompare(a.date))
         setItems(merged)
-        setRunSessionTypes(types)
       })
       .catch((err) => setError(err.message))
     // Only the initial range — loadEarlier/loadLater fetch and merge
@@ -173,16 +171,6 @@ export default function HistoryPage() {
     } finally {
       setLoadingLater(false)
     }
-  }
-
-  function togglePicker(activityId) {
-    setOpenPickerId((current) => (current === activityId ? null : activityId))
-  }
-
-  async function selectRunSessionType(activityId, runSessionTypeId) {
-    setOpenPickerId(null)
-    const updated = await updateActivityRunSessionType(activityId, runSessionTypeId)
-    setItems((current) => current.map((item) => (item.kind === 'activity' && item.id === activityId ? { ...item, ...updated } : item)))
   }
 
   async function handleDelete(item) {
@@ -251,8 +239,12 @@ export default function HistoryPage() {
                     // A classified Garmin run's notes are just the raw event name
                     // Garmin gave it (e.g. "Melbourne - HiSpd Intervals") — once
                     // it's tagged with our own type, showing both is redundant.
-                    const isClassifiedGarminRun = item.type === 'Running' && item.source === 'Garmin' && item.runSessionTypeId
-                    const showNotes = item.notes && !isClassifiedGarminRun
+                    // Ultimate's notes are always the main label itself (see
+                    // activityLabel.js), so this second copy is always redundant
+                    // for Ultimate regardless of classification state.
+                    const isDuplicateNotes = item.type === 'Ultimate' ||
+                      (item.type === 'Running' && item.source === 'Garmin' && item.activitySessionTypeId)
+                    const showNotes = item.notes && !isDuplicateNotes
 
                     return (
                       <div key={`${item.kind}-${item.id}`} className="history-item">
@@ -263,16 +255,14 @@ export default function HistoryPage() {
                               <Link to={`/sessions/${item.id}`} className="session-link">
                                 {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
                               </Link>
-                            ) : item.type === 'Running' ? (
-                              <RunActivityRow
+                            ) : (
+                              <ActivitySessionRow
                                 activity={item}
-                                runSessionTypes={runSessionTypes}
+                                sessionTypes={sessionTypes}
                                 openPickerId={openPickerId}
                                 onTogglePicker={togglePicker}
-                                onSelect={selectRunSessionType}
+                                onSelect={selectSessionType}
                               />
-                            ) : (
-                              <span>{activityLabel(item)}</span>
                             )}
                           </span>
                           <button

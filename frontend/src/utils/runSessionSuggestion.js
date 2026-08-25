@@ -15,8 +15,8 @@
 const EASY_PACE_CUTOFF_MIN_PER_KM = 7
 const INTERVALS_MAX_DURATION_MIN = 42
 
-export function suggestRunSessionType(activity, runSessionTypes) {
-  if (activity.runSessionTypeId) return null
+export function suggestRunSessionType(activity, sessionTypes) {
+  if (activity.activitySessionTypeId) return null
   if (!activity.distanceKm || !activity.durationSeconds) return null
 
   const paceMinPerKm = activity.durationSeconds / 60 / activity.distanceKm
@@ -28,5 +28,5 @@ export function suggestRunSessionType(activity, runSessionTypes) {
       ? 'High Speed Intervals'
       : 'Speed & Acceleration'
 
-  return runSessionTypes.find((t) => t.name === suggestedName) ?? null
+  return sessionTypes.find((t) => t.name === suggestedName) ?? null
 }

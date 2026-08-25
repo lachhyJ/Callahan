@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { activityLabel } from '../utils/activityLabel'
-import { getRunSessionTypes, updateActivityRunSessionType } from '../api/client'
-import RunActivityRow from './RunActivityRow'
+import { useActivityClassification } from '../hooks/useActivityClassification'
+import ActivitySessionRow from './ActivitySessionRow'
 
 export function workoutLabel(w) {
   if (w.name) return w.name
@@ -12,27 +11,15 @@ export function workoutLabel(w) {
 
 // Compact preview, deliberately lighter than History's full log entries —
 // used anywhere someone's just checking "what did I do that day/week"
-// (the day-detail sheet, a streak's week-by-week breakdown). Runs are
-// classifiable here too, via the same picker as History, so this doesn't
-// become a second, weaker place to see a run that can't actually be tagged.
+// (the day-detail sheet, a streak's week-by-week breakdown). Runs and
+// Ultimate activities are classifiable here too, via the same picker as
+// History, so this doesn't become a second, weaker place to see an activity
+// that can't actually be tagged.
 export default function SessionList({ workouts, runs, onLinkClick }) {
-  const [runSessionTypes, setRunSessionTypes] = useState([])
-  const [openPickerId, setOpenPickerId] = useState(null)
   const [overrides, setOverrides] = useState({})
-
-  useEffect(() => {
-    getRunSessionTypes().then(setRunSessionTypes).catch(() => {})
-  }, [])
-
-  function togglePicker(activityId) {
-    setOpenPickerId((current) => (current === activityId ? null : activityId))
-  }
-
-  async function selectRunSessionType(activityId, runSessionTypeId) {
-    setOpenPickerId(null)
-    const updated = await updateActivityRunSessionType(activityId, runSessionTypeId)
-    setOverrides((current) => ({ ...current, [activityId]: updated }))
-  }
+  const { sessionTypes, openPickerId, togglePicker, selectSessionType } = useActivityClassification(
+    (updated) => setOverrides((current) => ({ ...current, [updated.id]: updated }))
+  )
 
   return (
     <>
@@ -43,17 +30,15 @@ export default function SessionList({ workouts, runs, onLinkClick }) {
       ))}
       {runs.map((r) => {
         const activity = overrides[r.id] ?? r
-        return activity.type === 'Running' ? (
-          <RunActivityRow
+        return (
+          <ActivitySessionRow
             key={`r-${r.id}`}
             activity={activity}
-            runSessionTypes={runSessionTypes}
+            sessionTypes={sessionTypes}
             openPickerId={openPickerId}
             onTogglePicker={togglePicker}
-            onSelect={selectRunSessionType}
+            onSelect={selectSessionType}
           />
-        ) : (
-          <p key={`r-${r.id}`}>{activityLabel(activity)}</p>
         )
       })}
     </>
