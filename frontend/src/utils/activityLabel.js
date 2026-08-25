@@ -13,7 +13,8 @@ export function activityLabel(activity) {
     return `${label} · ${activity.distanceKm} km in ${duration}`
   }
   if (activity.type === 'Ultimate') {
-    return `Ultimate · ${duration}`
+    const label = activity.notes?.trim() || 'Ultimate'
+    return `${label} · ${duration}`
   }
   return `${activity.type} · ${duration}`
 }
