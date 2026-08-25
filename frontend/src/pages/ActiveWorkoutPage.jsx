@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { playBeep } from '../beep'
+import { playBeep, unlockAudioContext } from '../beep'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
@@ -436,6 +436,11 @@ export default function ActiveWorkoutPage() {
       return
     }
     setError(null)
+    // A real tap that happens right before every rest timer starts, so it
+    // covers entry points the templates-page unlock doesn't (resuming an
+    // existing session, a stale-bundle reload mid-workout) without having
+    // to track every possible route back into an active workout.
+    unlockAudioContext()
     const nowCompleting = !set.completed
     setExercises((prev) =>
       prev.map((ex, i) =>

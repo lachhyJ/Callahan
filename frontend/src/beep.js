@@ -22,6 +22,13 @@ export function playBeep() {
   const AudioContextClass = getAudioContextClass()
   if (!AudioContextClass) return
   const ctx = sharedContext ?? (sharedContext = new AudioContextClass())
+  // iOS commonly suspends the shared context after any backgrounding
+  // (switching apps mid-workout, a brief screen lock) and never resumes it
+  // on its own — every beep after that schedules without error but stays
+  // silent. This call fires from a timer-driven effect, not a user gesture,
+  // so it can't rely on unlockAudioContext() having run recently; resuming
+  // here is what actually brings the context back before scheduling.
+  if (ctx.state === 'suspended') ctx.resume()
   for (const startDelay of [0, 0.3]) {
     // Two stacked frequencies (triangle, not pure sine) so the beep has more
     // harmonic content and cuts through a music track instead of blending
