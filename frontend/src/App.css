@@ -1852,11 +1852,11 @@ td {
 
 .calendar-dot-run {
   background: transparent;
-  border: 1.5px solid var(--accent);
+  border: 1.5px solid var(--teal-400);
 }
 
 .calendar-dot-ultimate {
-  background: var(--text-tertiary);
+  background: var(--orange-400);
 }
 
 .run-classify {

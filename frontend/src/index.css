@@ -22,6 +22,13 @@
   --green-500: #639922;
   --blue-400:  #7884ff;
 
+  /* ── Primitives — activity category hues (calendar dots) ──
+     Distinct from the status bases above (not reused, to avoid implying
+     "warning"/"error" on a training category) and from the purple accent
+     (~283° hue) that already carries meaning elsewhere in the UI. */
+  --teal-400:   #2dd4bf;  /* running */
+  --orange-400: #fb923c;  /* ultimate */
+
   /* ── Primitives — spacing (8pt scale) ── */
   --space-2xs: 0.25rem;  /* 4px */
   --space-xs:  0.5rem;   /* 8px */
