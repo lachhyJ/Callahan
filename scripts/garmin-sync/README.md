@@ -149,6 +149,22 @@ needed here (this mode never calls the Callahan API). Each object carries
 `sampleCount` / `medianSampleSpacingSec`, because whether Garmin honours the
 high `maxchart`/`maxpoly` request is one of the things this dump answers.
 
+`--dump-track` is the same selection but emits the *projected*
+`{startEpochMs, sampleCount, medianSpacingSec, samples:{t,lat,lon,spd}}`
+shape — exactly what the normal sync PUTs to `/api/activities/{id}/track`.
+
+## GPS tracks in the normal sync
+
+The default run also pushes the projected GPS track for any **Ultimate**
+activity that doesn't have one yet (`trackSampleCount == 0` in the POST
+response), to `PUT /api/activities/{id}/track`. That's the data geometric
+on/off-field labelling runs on — the API stores it for every Ultimate
+activity and only classifies the ones marked "Game". `--no-tracks` skips
+it; `--force-tracks` re-pulls every in-window Ultimate track (capped to
+`--days 30`, same as `--force-laps`) — use it after changing the projection
+in `fetch_track`. `get_activity_details` is heavier than the lap call, so a
+tournament weekend is fine but don't `--force-tracks` a wide window.
+
 ## Wellness sync (`--wellness`)
 
 ```bash

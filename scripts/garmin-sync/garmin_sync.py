@@ -28,18 +28,23 @@ Run modes:
                     the offline on/off-field segmentation explorer in
                     scripts/ultimate-stream-explore/ — run this first to see
                     what resolution and metric keys Garmin actually returns.
-  --force-laps      During the normal sync, re-fetch and re-PUT laps for
-                    every in-window activity even if it already has them —
-                    for after a change to the lap field mapping. Requires
-                    --days 30 or fewer so it can't hammer Garmin.
+  --dump-track      Like --dump-stream, but emits the projected
+                    {startEpochMs, samples:{t,lat,lon,spd}} shape the sync
+                    actually PUTs to Callahan (not the raw discovery dump).
+  --force-laps      During the normal sync, re-fetch and re-PUT laps (or, with
+  --force-tracks    --force-tracks, the GPS track) for every in-window
+                    activity even if it already has one — for after a mapping
+                    or projection change. Requires --days 30 or fewer.
   --dry-run         Fetch + map + build the Callahan payload for each
                     activity (or wellness date, with --wellness), but print
                     instead of POSTing/PUTting. Use to sanity-check a
                     mapping change before it writes anything.
   (default)         Fetch, map, and POST each mapped activity to Callahan.
-                    Running and Ultimate activities without laps yet also get
-                    their laps pulled and PUT to .../laps (skip with
-                    --no-laps; re-fetch existing with --force-laps).
+                    Running/Ultimate activities without laps get their laps
+                    pulled and PUT to .../laps; Ultimate activities without a
+                    GPS track get get_activity_details projected and PUT to
+                    .../track (that's what geometric on/off-field runs on).
+                    Skip with --no-laps / --no-tracks.
 
 Config comes entirely from environment variables (see .env.example) — this
 script is meant to be invoked from a NAS cron job with a gitignored env
@@ -179,6 +184,10 @@ def put_laps(api_base, token, callahan_activity_id, laps):
     return callahan_request("PUT", api_base, f"/api/activities/{callahan_activity_id}/laps", token, {"laps": laps})
 
 
+def put_track(api_base, token, callahan_activity_id, track):
+    return callahan_request("PUT", api_base, f"/api/activities/{callahan_activity_id}/track", token, track)
+
+
 def to_int(value):
     # Garmin returns calories/heart-rate as floats (e.g. 266.0); Callahan's
     # DTO binds them as int? and rejects a JSON float with strict errors.
@@ -225,9 +234,51 @@ def fetch_laps(client, garmin_activity_id):
             "maxSpeedMps": l.get("maxSpeed"),
             "avgHeartRate": to_int(l.get("averageHR")),
             "maxHeartRate": to_int(l.get("maxHR")),
+            # Absolute lap start - the join key against the GPS track for
+            # geometric on/off-field labelling.
+            "startTimeGmt": l.get("startTimeGMT"),
         }
         for l in lap_dtos
     ]
+
+
+# Callahan-side wire/storage keys for the projected track.
+_TRACK_KEYS = ("directLatitude", "directLongitude", "directSpeed", "directTimestamp")
+
+
+def fetch_track(client, garmin_activity_id):
+    """Pull the per-sample GPS stream and project it to Callahan's compact
+    storage shape: {startEpochMs, sampleCount, medianSpacingSec,
+    samples:{t,lat,lon,spd}} - t is integer seconds from startEpochMs. Returns
+    None if the activity has no usable GPS stream."""
+    details = client.get_activity_details(str(garmin_activity_id), maxchart=10000, maxpoly=10000)
+    descriptors = details.get("metricDescriptors") or []
+    rows = details.get("activityDetailMetrics") or []
+    idx = {d.get("key"): d.get("metricsIndex") for d in descriptors if d.get("key") is not None}
+    if not all(k in idx for k in _TRACK_KEYS) or len(rows) < 10:
+        return None
+
+    la_i, lo_i, sp_i, ts_i = (idx[k] for k in _TRACK_KEYS)
+    t_raw, lat, lon, spd = [], [], [], []
+    for r in rows:
+        m = r.get("metrics")
+        if not m or m[la_i] is None or m[lo_i] is None or m[ts_i] is None:
+            continue
+        t_raw.append(m[ts_i])
+        lat.append(round(m[la_i], 6))
+        lon.append(round(m[lo_i], 6))
+        spd.append(round(m[sp_i] or 0.0, 2))
+    if len(t_raw) < 10:
+        return None
+
+    t0 = int(round(t_raw[0]))
+    t = [round((x - t0) / 1000) for x in t_raw]
+    return {
+        "startEpochMs": t0,
+        "sampleCount": len(t),
+        "medianSpacingSec": _stream_sample_spacing(details),
+        "samples": {"t": t, "lat": lat, "lon": lon, "spd": spd},
+    }
 
 
 def fetch_activities_between(client, start, end):
@@ -391,6 +442,41 @@ def cmd_dump_stream(client, start, end, activity_id):
     print(json.dumps(out, default=str))
 
 
+def _stream_targets(client, start, end, activity_id):
+    if activity_id is not None:
+        return [{"activityId": activity_id, "activityName": None}]
+    activities = fetch_activities_between(client, start, end)
+    targets = [a for a in activities
+               if TYPE_MAP.get(a.get("activityType", {}).get("typeKey")) == "Ultimate"]
+    if not targets:
+        log(f"No Ultimate activities between {start} and {end}. Run --dump to see what's there.")
+    return targets
+
+
+def cmd_dump_track(client, start, end, activity_id):
+    """Emit the projected {startEpochMs, samples:{t,lat,lon,spd}} payload the
+    sync PUTs to Callahan, as one JSON array. No Callahan calls."""
+    out = []
+    for a in _stream_targets(client, start, end, activity_id):
+        aid = a["activityId"]
+        try:
+            track = fetch_track(client, aid)
+        except GarminConnectTooManyRequestsError as e:
+            log(f"  Garmin rate-limited at activity {aid}: {e}. Stopping; {len(out)} dumped.")
+            break
+        except Exception as e:
+            log(f"  fetch_track failed for {aid}: {type(e).__name__}: {e}")
+            continue
+        if track is None:
+            log(f"  {aid}: no usable GPS stream")
+            continue
+        track["activityId"] = aid
+        track["activityName"] = a.get("activityName")
+        log(f"  {aid} {a.get('activityName')!r}: {track['sampleCount']} samples")
+        out.append(track)
+    print(json.dumps(out, default=str))
+
+
 def fetch_wellness(client, cdate):
     # Trimmed to the 4 calls that actually carry new information for us —
     # get_stats already includes resting HR and body battery high/low, so
@@ -493,7 +579,8 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
         + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
 
 
-def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False):
+def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False,
+             sync_tracks=True, force_tracks=False):
     activities = fetch_recent_activities(client, days)
     if not activities:
         log(f"No Garmin activities in the last {days} days.")
@@ -502,6 +589,7 @@ def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False):
     token = None if dry_run else callahan_token(api_base)
     synced, skipped = 0, 0
     laps_stopped = False
+    tracks_stopped = False
 
     for a in activities:
         type_key = a.get("activityType", {}).get("typeKey")
@@ -553,6 +641,28 @@ def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False):
             except requests.HTTPError as e:
                 log(f"  Failed to sync laps for activity {payload['garminActivityId']}: {e}")
 
+        # The GPS track, for Ultimate only - it's what geometric on/off-field
+        # labelling runs on. Pushed for every Ultimate activity regardless of
+        # session type (the sync can't see Callahan's classification); the API
+        # stores it and only classifies Games. Same once-per-new-activity
+        # economy as laps via trackSampleCount; get_activity_details is a
+        # heavier call than get_activity_splits, so --force-tracks is capped.
+        if (sync_tracks and not tracks_stopped
+                and activity_type == "Ultimate"
+                and (force_tracks or result.get("trackSampleCount", 0) == 0)):
+            try:
+                track = fetch_track(client, a.get("activityId"))
+                if track:
+                    _, token = put_track(api_base, token, result["id"], track)
+                    log(f"  Synced track ({track['sampleCount']} samples) for "
+                        f"activity {payload['garminActivityId']}")
+            except GarminConnectTooManyRequestsError as e:
+                log(f"  Garmin rate-limited track fetch at activity {payload['garminActivityId']}: {e}. "
+                    f"Skipping tracks for the rest of this run.")
+                tracks_stopped = True
+            except requests.HTTPError as e:
+                log(f"  Failed to sync track for activity {payload['garminActivityId']}: {e}")
+
     log(f"Done: {synced} synced, {skipped} skipped.")
 
 
@@ -591,12 +701,22 @@ def main():
     parser.add_argument("--activity-id", type=str, default=None,
                          help="With --dump-laps / --dump-stream: the Garmin activity ID to inspect (see --dump "
                               "for IDs). --dump-laps defaults to the most recent lap-synced activity in --days.")
+    parser.add_argument("--dump-track", action="store_true",
+                         help="Like --dump-stream but emits the projected {startEpochMs, samples:{t,lat,lon,spd}} "
+                              "shape the sync PUTs to Callahan. Needs --activity-id or --start/--end.")
     parser.add_argument("--no-laps", action="store_true",
                          help="Skip lap syncing during the normal activity sync (laps are fetched by default "
                               "for any Running or Ultimate activity that doesn't have them yet).")
     parser.add_argument("--force-laps", action="store_true",
                          help=f"Re-fetch laps for every in-window activity, not just ones without laps. "
                               f"For after a lap-mapping change. Requires --days <= {FORCE_LAPS_MAX_DAYS}.")
+    parser.add_argument("--no-tracks", action="store_true",
+                         help="Skip GPS-track syncing (tracks are pulled by default for any Ultimate activity "
+                              "that doesn't have one yet).")
+    parser.add_argument("--force-tracks", action="store_true",
+                         help=f"Re-fetch the GPS track for every in-window Ultimate activity, not just ones "
+                              f"without one. For after a track-projection change. Requires "
+                              f"--days <= {FORCE_LAPS_MAX_DAYS}.")
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
@@ -617,23 +737,25 @@ def main():
         cmd_sync_wellness(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.dump_laps:
         cmd_dump_laps(client, args.activity_id, args.days)
-    elif args.dump_stream:
+    elif args.dump_stream or args.dump_track:
         if args.activity_id is None and not (args.start and args.end):
-            log("--dump-stream needs either --activity-id or both --start and --end (YYYY-MM-DD).")
+            log("--dump-stream/--dump-track need either --activity-id or both --start and --end (YYYY-MM-DD).")
             sys.exit(2)
-        start = end = None
-        if args.start:
-            start = date.fromisoformat(args.start)
-        if args.end:
-            end = date.fromisoformat(args.end)
-        cmd_dump_stream(client, start, end, args.activity_id)
+        start = date.fromisoformat(args.start) if args.start else None
+        end = date.fromisoformat(args.end) if args.end else None
+        if args.dump_track:
+            cmd_dump_track(client, start, end, args.activity_id)
+        else:
+            cmd_dump_stream(client, start, end, args.activity_id)
     else:
-        if args.force_laps and args.days > FORCE_LAPS_MAX_DAYS:
-            log(f"--force-laps refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch laps "
-                f"for every activity in the window and risk a Garmin rate-limit. Narrow --days.")
-            sys.exit(2)
+        for flag, val in (("--force-laps", args.force_laps), ("--force-tracks", args.force_tracks)):
+            if val and args.days > FORCE_LAPS_MAX_DAYS:
+                log(f"{flag} refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch from Garmin "
+                    f"for every activity in the window and risk a rate-limit. Narrow --days.")
+                sys.exit(2)
         cmd_sync(client, args.days, args.dry_run, api_base,
-                 sync_laps=not args.no_laps, force_laps=args.force_laps)
+                 sync_laps=not args.no_laps, force_laps=args.force_laps,
+                 sync_tracks=not args.no_tracks, force_tracks=args.force_tracks)
 
 
 if __name__ == "__main__":
