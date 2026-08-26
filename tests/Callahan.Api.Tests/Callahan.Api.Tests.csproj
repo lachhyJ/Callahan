@@ -18,6 +18,11 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Fixtures\*.json.gz" />
+    <EmbeddedResource Include="Fixtures\baselines.json" />
+  </ItemGroup>
+
   <!-- Repo root, deliberately outside ./backend: docker-compose.prod.yml builds
        `./backend` and backend/Dockerfile runs `dotnet publish` with no project
        argument, so a second csproj (or a .sln) under backend/ would change what

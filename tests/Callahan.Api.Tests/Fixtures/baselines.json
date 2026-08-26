@@ -1,0 +1,70 @@
+{
+  "games": [
+    {
+      "onFieldSeconds": 2782,
+      "durationSeconds": 5763,
+      "onFieldFraction": 0.4827,
+      "pointsPlayed": 13,
+      "fieldWidthM": 23.5,
+      "fieldLengthM": 62.6,
+      "game": 1,
+      "name": "AUC D2 vs DS"
+    },
+    {
+      "onFieldSeconds": 3262,
+      "durationSeconds": 4121,
+      "onFieldFraction": 0.7916,
+      "pointsPlayed": 19,
+      "fieldWidthM": 28.5,
+      "fieldLengthM": 76.4,
+      "game": 2,
+      "name": "AUC D2 vs Hot Mess"
+    },
+    {
+      "onFieldSeconds": 4147,
+      "durationSeconds": 5366,
+      "onFieldFraction": 0.7728,
+      "pointsPlayed": 23,
+      "fieldWidthM": 27.9,
+      "fieldLengthM": 60.3,
+      "game": 3,
+      "name": "AUC D2 vs Colossus"
+    },
+    {
+      "onFieldSeconds": 4088,
+      "durationSeconds": 5694,
+      "onFieldFraction": 0.7179,
+      "pointsPlayed": 23,
+      "fieldWidthM": 22.3,
+      "fieldLengthM": 64.2,
+      "game": 4,
+      "name": "AUC D2 vs Phat"
+    },
+    {
+      "onFieldSeconds": 3026,
+      "durationSeconds": 4825,
+      "onFieldFraction": 0.6272,
+      "pointsPlayed": 12,
+      "fieldWidthM": 38.0,
+      "fieldLengthM": 65.8,
+      "game": 5,
+      "name": "AUC D2 vs Apoc"
+    },
+    {
+      "onFieldSeconds": 3417,
+      "durationSeconds": 5208,
+      "onFieldFraction": 0.6561,
+      "pointsPlayed": 11,
+      "fieldWidthM": 31.6,
+      "fieldLengthM": 60.8,
+      "game": 6,
+      "name": "AUC D2 vs Equinox"
+    }
+  ],
+  "tournament": {
+    "onFieldSeconds": 20722,
+    "durationSeconds": 30977,
+    "onFieldFraction": 0.6689,
+    "pointsPlayed": 101
+  }
+}
