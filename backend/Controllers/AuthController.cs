@@ -1,6 +1,7 @@
 using Callahan.Api.DTOs;
 using Callahan.Api.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Callahan.Api.Controllers;
 
@@ -18,6 +19,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("login")]
     public IActionResult Login(LoginRequest request)
     {
         var expectedUsername = _config["Auth:Username"];
