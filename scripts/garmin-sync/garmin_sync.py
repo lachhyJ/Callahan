@@ -16,19 +16,24 @@ Run modes:
   --wellness        Fetch + map + PUT daily sleep/HRV/readiness/etc for a
                     date range (see --wellness-days / --wellness-start)
                     instead of syncing activities.
-  --dump-laps       Print raw lap/split data for one running activity and
-                    exit. No Callahan calls, nothing is synced. Use this
-                    BEFORE building lap sync — the point is to confirm the
-                    activity actually has real per-lap structure (a plain
-                    "Run" with no lap presses returns one lap for the whole
-                    session, which would make lap sync pointless for it).
+  --dump-laps       Print raw lap/split data for one activity (run or
+                    Ultimate) and exit. No Callahan calls, nothing is synced.
+                    Use this to confirm the activity has real per-lap
+                    structure (a session with no lap presses returns one lap
+                    for the whole thing, which makes lap classification
+                    pointless for it).
+  --force-laps      During the normal sync, re-fetch and re-PUT laps for
+                    every in-window activity even if it already has them —
+                    for after a change to the lap field mapping. Requires
+                    --days 30 or fewer so it can't hammer Garmin.
   --dry-run         Fetch + map + build the Callahan payload for each
                     activity (or wellness date, with --wellness), but print
                     instead of POSTing/PUTting. Use to sanity-check a
                     mapping change before it writes anything.
   (default)         Fetch, map, and POST each mapped activity to Callahan.
-                    Running activities without laps yet also get their laps
-                    pulled and PUT to .../laps (skip with --no-laps).
+                    Running and Ultimate activities without laps yet also get
+                    their laps pulled and PUT to .../laps (skip with
+                    --no-laps; re-fetch existing with --force-laps).
 
 Config comes entirely from environment variables (see .env.example) — this
 script is meant to be invoked from a NAS cron job with a gitignored env
@@ -62,6 +67,18 @@ TYPE_MAP = {
     "running": "Running",
     "ultimate_disc": "Ultimate",
 }
+
+# Callahan activity types whose laps we pull. Runs use Garmin's own per-lap
+# ACTIVE labelling for high-speed distance; Ultimate "Game" activities are
+# manually lap-pressed on sub on/off and Callahan classifies each lap
+# on/off-field. Other Ultimate session types have no laps of interest but a
+# lap PUT is harmless (the classifier only runs for Games).
+LAP_SYNC_TYPES = {"Running", "Ultimate"}
+
+# --force-laps re-fetches laps for every in-window activity, so cap the window
+# it's allowed with - a stray --force-laps --days 90 would fire one Garmin
+# request per activity and trip the rate limiter.
+FORCE_LAPS_MAX_DAYS = 30
 
 # Probed by --dump-wellness. Each is a per-date wellness endpoint on the
 # garminconnect client; not every method is guaranteed to exist on whatever
@@ -179,6 +196,12 @@ def to_payload(activity, activity_type):
         "notes": activity.get("activityName") or None,
         "source": "Garmin",
         "garminActivityId": str(summary_id) if summary_id is not None else None,
+        # The whole summary dict verbatim - no field selection. Garmin returns
+        # much more here than the columns above (training effect, activity
+        # training load, max HR, elevation gain, ...); Callahan stores this as
+        # a hedge so those stay recoverable without re-hitting Garmin. See
+        # Activity.RawJson.
+        "rawJson": json.dumps(activity, separators=(",", ":")),
     }
 
 
@@ -249,17 +272,18 @@ def cmd_dump_wellness(client, cdate):
 
 def cmd_dump_laps(client, activity_id, days):
     if activity_id is None:
-        # Most recent Running activity in the lookback window - the plan is
-        # to point this at a real High Speed Intervals session by rerunning
-        # with --activity-id once --dump has surfaced its Garmin ID.
+        # Most recent activity of any lap-synced type in the lookback window -
+        # rerun with --activity-id once --dump has surfaced the ID you want
+        # (e.g. a specific game or High Speed Intervals session).
         activities = fetch_recent_activities(client, days)
-        running = [a for a in activities if a.get("activityType", {}).get("typeKey") == "running"]
-        if not running:
-            log(f"No running activities in the last {days} days. Pass --activity-id explicitly, "
-                f"or use --dump to find one.")
+        lappable = [a for a in activities
+                    if TYPE_MAP.get(a.get("activityType", {}).get("typeKey")) in LAP_SYNC_TYPES]
+        if not lappable:
+            log(f"No lap-synced activities (runs or Ultimate) in the last {days} days. "
+                f"Pass --activity-id explicitly, or use --dump to find one.")
             return
-        activity_id = running[0]["activityId"]
-        log(f"No --activity-id given, using most recent run: {activity_id} ({running[0].get('activityName')!r})")
+        activity_id = lappable[0]["activityId"]
+        log(f"No --activity-id given, using most recent: {activity_id} ({lappable[0].get('activityName')!r})")
 
     for name in ("get_activity_splits", "get_activity_split_summaries"):
         method = getattr(client, name, None)
@@ -375,7 +399,7 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
         + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
 
 
-def cmd_sync(client, days, dry_run, api_base, sync_laps=True):
+def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False):
     activities = fetch_recent_activities(client, days)
     if not activities:
         log(f"No Garmin activities in the last {days} days.")
@@ -414,11 +438,15 @@ def cmd_sync(client, days, dry_run, api_base, sync_laps=True):
             skipped += 1
             continue
 
-        # Laps only exist for runs, and lapCount > 0 means this activity's
-        # laps were already pulled on a previous run - only fetch for new
-        # ones, so a re-sync costs one extra Garmin request per new run, not
-        # per run in the whole --days window.
-        if sync_laps and activity_type == "Running" and not laps_stopped and result.get("lapCount", 0) == 0:
+        # Laps are pulled for runs and Ultimate activities. lapCount > 0 means
+        # this activity's laps were already fetched on a previous run, so a
+        # normal re-sync costs one extra Garmin request per *new* activity,
+        # not per activity in the whole --days window. --force-laps overrides
+        # that to re-fetch everything in window (e.g. after changing the lap
+        # field mapping) - capped to FORCE_LAPS_MAX_DAYS, checked in main().
+        if (sync_laps and not laps_stopped
+                and activity_type in LAP_SYNC_TYPES
+                and (force_laps or result.get("lapCount", 0) == 0)):
             try:
                 laps = fetch_laps(client, a.get("activityId"))
                 if laps:
@@ -460,10 +488,13 @@ def main():
                          help="Print raw lap/split data for one running activity and exit, no syncing.")
     parser.add_argument("--activity-id", type=str, default=None,
                          help="With --dump-laps: the Garmin activity ID to inspect (see --dump for IDs). "
-                              "Defaults to the most recent Running activity in --days.")
+                              "Defaults to the most recent lap-synced activity (run or Ultimate) in --days.")
     parser.add_argument("--no-laps", action="store_true",
                          help="Skip lap syncing during the normal activity sync (laps are fetched by default "
-                              "for any Running activity that doesn't have them yet).")
+                              "for any Running or Ultimate activity that doesn't have them yet).")
+    parser.add_argument("--force-laps", action="store_true",
+                         help=f"Re-fetch laps for every in-window activity, not just ones without laps. "
+                              f"For after a lap-mapping change. Requires --days <= {FORCE_LAPS_MAX_DAYS}.")
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
@@ -485,7 +516,12 @@ def main():
     elif args.dump_laps:
         cmd_dump_laps(client, args.activity_id, args.days)
     else:
-        cmd_sync(client, args.days, args.dry_run, api_base, sync_laps=not args.no_laps)
+        if args.force_laps and args.days > FORCE_LAPS_MAX_DAYS:
+            log(f"--force-laps refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch laps "
+                f"for every activity in the window and risk a Garmin rate-limit. Narrow --days.")
+            sys.exit(2)
+        cmd_sync(client, args.days, args.dry_run, api_base,
+                 sync_laps=not args.no_laps, force_laps=args.force_laps)
 
 
 if __name__ == "__main__":
