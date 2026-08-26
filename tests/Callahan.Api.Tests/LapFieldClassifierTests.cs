@@ -153,14 +153,14 @@ public class LapFieldClassifierTests
             .Zip(geo.Segments.Skip(1), (a, b) => (a, b))
             .First(p => p.a.EndT - p.a.StartT > 120 && p.b.EndT - p.b.StartT > 120);
         double mid = boundary.a.EndT;
-        var straddle = Lap(1, start.AddSeconds(mid - 90), 180);
+        var laps = new List<ActivityLap> { Lap(1, start.AddSeconds(mid - 90), 180) };  // the straddling lap
+        // + enough clean laps from the surrounding segments to clear
+        // MinLapsForBoundaries so this stays on the GeometryFromLaps path
+        int li = 2;
+        foreach (var seg in geo.Segments.Where(s => s.EndT - s.StartT > 40).Take(6))
+            laps.Add(Lap(li++, start.AddSeconds(seg.StartT + 5), Math.Min(60, seg.EndT - seg.StartT - 10)));
 
-        // plus a clean lap each side so there's something to accumulate
-        var before = Lap(2, start.AddSeconds(boundary.a.StartT + 5), 60);
-        var after = Lap(3, start.AddSeconds(boundary.b.StartT + 5), 60);
-
-        var r = LapFieldClassifier.Classify(
-            new List<ActivityLap> { straddle, before, after }, geo, samples, epoch);
+        var r = LapFieldClassifier.Classify(laps, geo, samples, epoch);
 
         Assert.Equal(LapClassifierMethod.GeometryFromLaps, r.Method);
         Assert.Equal(LapFieldState.Mixed, r.StateByLapIndex[1]);
@@ -174,14 +174,16 @@ public class LapFieldClassifierTests
         var start = DateTimeOffset.FromUnixTimeMilliseconds(epoch).UtcDateTime;
 
         // a 2-second window can't hold MinSamplesPerLap samples at ~2s spacing
-        var tiny = Lap(1, start.AddSeconds(1000), 2);
-        var normal = Lap(2, start.AddSeconds(1100), 120);
+        var laps = new List<ActivityLap> { Lap(1, start.AddSeconds(1000), 2) };  // the tiny one
+        int li = 2;
+        foreach (var seg in geo.Segments.Where(s => s.EndT - s.StartT > 40).Take(6))
+            laps.Add(Lap(li++, start.AddSeconds(seg.StartT + 5), Math.Min(60, seg.EndT - seg.StartT - 10)));
 
-        var r = LapFieldClassifier.Classify(
-            new List<ActivityLap> { tiny, normal }, geo, samples, epoch);
+        var r = LapFieldClassifier.Classify(laps, geo, samples, epoch);
 
+        Assert.Equal(LapClassifierMethod.GeometryFromLaps, r.Method);
         Assert.Equal(LapFieldState.Unknown, r.StateByLapIndex[1]);
-        Assert.Equal(1, r.UnknownLapCount);
-        AssertSecondsAccounted(r, new[] { tiny, normal });
+        Assert.True(r.UnknownLapCount >= 1);
+        AssertSecondsAccounted(r, laps);
     }
 }

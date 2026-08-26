@@ -55,9 +55,11 @@ public sealed record LapClassifierOptions(
     decimal OnFieldFractionLow = 0.20m,
     // A lap whose window holds fewer track samples than this stays Unknown.
     int MinSamplesPerLap = 5,
-    // Fewer laps than this is Garmin's one default lap for an un-lapped
-    // session, not a sub log - fall back to GeometryNoLaps.
-    int MinLapsForBoundaries = 2)
+    // A real per-transition sub log of an Ultimate game has many laps (a
+    // player subs off several times over ~20 points). Fewer than this is
+    // Garmin's default lap or a stray auto-lap, not a sub log - fall back to
+    // GeometryNoLaps, whose segment aggregates are more reliable anyway.
+    int MinLapsForBoundaries = 4)
 {
     public static readonly LapClassifierOptions Default = new();
 }
