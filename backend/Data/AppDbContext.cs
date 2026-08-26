@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
     public DbSet<DailyWellness> DailyWellness => Set<DailyWellness>();
     public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
+    public DbSet<ActivityTrack> ActivityTracks => Set<ActivityTrack>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -60,6 +61,15 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ActivityLap>()
             .HasIndex(l => new { l.ActivityId, l.LapIndex })
             .IsUnique();
+
+        modelBuilder.Entity<ActivityTrack>()
+            .HasIndex(t => t.ActivityId)
+            .IsUnique();
+        modelBuilder.Entity<Activity>()
+            .HasOne(a => a.Track)
+            .WithOne(t => t.Activity)
+            .HasForeignKey<ActivityTrack>(t => t.ActivityId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },

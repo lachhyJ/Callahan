@@ -24,6 +24,12 @@ public class ActivityLap
     public int? AvgHeartRate { get; set; }
     public int? MaxHeartRate { get; set; }
 
+    // Absolute lap start (Garmin lapDTOs.startTimeGMT). Needed to line a lap up
+    // against the GPS track for geometric on/off-field labelling - deriving it
+    // by summing prior DurationSeconds drifts (elapsed vs moving). Null on
+    // every row synced before this column existed.
+    public DateTime? StartTimeGmt { get; set; }
+
     // On/off-field call for a lap of an Ultimate "Game" activity, from
     // LapFieldClassifier (see LapFieldState for the values). Null on runs and
     // on Ultimate sessions that aren't Games. String rather than a bool so

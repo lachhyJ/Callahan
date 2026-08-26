@@ -55,5 +55,9 @@ public class Activity
 
     public List<ActivityLap> Laps { get; set; } = new();
 
+    // The per-second GPS stream, when one has been synced (Ultimate only).
+    // Inert unless explicitly Include'd - it carries a ~100 KB blob.
+    public ActivityTrack? Track { get; set; }
+
     public DateTime? DeletedAt { get; set; }
 }
