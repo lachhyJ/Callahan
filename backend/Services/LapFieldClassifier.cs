@@ -86,7 +86,8 @@ public static class LapFieldClassifier
     // trigger a reclassify of stored activities. v2 = geometry, not speed.
     // v3 = <2 laps falls back to GeometryNoLaps (Garmin's one default lap on an
     // un-lapped game was collapsing OnFieldSeconds to 0).
-    public const int Version = 3;
+    // v4 = MinLapsForBoundaries raised to 4 (2 stray auto-laps aren't a sub log).
+    public const int Version = 4;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };
