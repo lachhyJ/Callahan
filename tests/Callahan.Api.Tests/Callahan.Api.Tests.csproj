@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <!-- Repo root, deliberately outside ./backend: docker-compose.prod.yml builds
+       `./backend` and backend/Dockerfile runs `dotnet publish` with no project
+       argument, so a second csproj (or a .sln) under backend/ would change what
+       publish resolves. This project references the API for its types only. -->
+  <ItemGroup>
+    <ProjectReference Include="../../backend/Callahan.Api.csproj" />
+  </ItemGroup>
+
+</Project>

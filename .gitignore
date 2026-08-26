@@ -2,6 +2,8 @@
 backend/bin/
 backend/obj/
 backend/App_Data/
+tests/**/bin/
+tests/**/obj/
 
 # Node
 frontend/node_modules/
