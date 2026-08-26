@@ -23,15 +23,43 @@ Nothing here touches the Callahan database, the API, or the running sync.
 2. Analyse it here:
 
    ```
-   python3 explore.py tourney-stream.json
-   python3 explore.py --self-test      # synthetic-fixture sanity check, no input needed
+   python3 segment.py tourney-stream.json      # THE working approach - geometry
+   python3 segment.py tourney-stream.json --strict   # conservative floor on points
    ```
 
-   Per game: smoothed-speed Otsu threshold, on/off minutes and on-field
-   stretch count (~ points played) from three segmenters (speed-only,
-   HR-only, speed+HR-as-confidence), and a one-char-per-minute ASCII
-   timeline to lay against memory of the game. Across the tournament:
-   threshold stability and whether on-field fraction drops game 1 -> game N.
+   Per game: on-field vs sideline minutes, points-played estimate, and a
+   one-char-per-minute ASCII timeline. Validated against 6 real games
+   (April 2026 tournament) and the athlete's own recollection.
 
-stdlib only (Python 3.11+). All tuning knobs are constants at the top of
-`explore.py` - expect to fiddle them once real data is in hand.
+## What works: geometry, not speed
+
+Two independent structures in the GPS:
+
+1. **Sideline vs field** - off a point he walks up and down the sideline, so he
+   is *pinned to one lateral offset* while moving along the field's long axis.
+   On a point he uses the full width. The feature is rolling **lateral spread**
+   plus distance from the centre line. In the real data, benched stretches show
+   |cross| ~20 m with only 5-10 m of lateral range; playing stretches show
+   |cross| ~6-10 m with 30-47 m of range. Clean separation.
+2. **Point boundaries** - between points both teams reset to opposite endzones
+   and there is a pull. That shows as a sustained slow dwell at an extreme
+   along-axis position followed by a full-field traverse at speed. Counting
+   those dwells inside on-field time counts points played (~2.8 min/point
+   across the tournament, right for ultimate).
+
+The field frame is fitted per game from samples >=4 m/s, which are
+unambiguously on-field play, so they define the long axis and the centre line.
+
+## What does NOT work: speed thresholding (`explore.py`)
+
+`explore.py` is the **failed** first attempt, kept as the record of why.
+Smoothed-speed Otsu thresholding lands at 0.6-1.1 m/s and is unstable game to
+game, because median in-game speed is only 0.5-1.0 m/s and just 16-26% of time
+is above 2 m/s - Ultimate is mostly standing *even while on the field*
+(stoppages, disc check-ins, setting up), so "am I moving" is not "am I on the
+field". Sprint-*onset* detection fails for a related reason: a deep cut from the
+stack looks identical to a pull sprint. Heart rate lags 60-120 s and disagrees
+with everything. Run `explore.py --self-test` and it passes on synthetic data,
+which is exactly how a wrong feature hides.
+
+stdlib only (Python 3.11+). Tuning knobs are constants at the top of each file.
