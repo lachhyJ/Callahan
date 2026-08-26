@@ -23,4 +23,11 @@ public class ActivityLap
     public decimal? MaxSpeedMps { get; set; }
     public int? AvgHeartRate { get; set; }
     public int? MaxHeartRate { get; set; }
+
+    // On/off-field call for a lap of an Ultimate "Game" activity, from
+    // LapFieldClassifier (see LapFieldState for the values). Null on runs and
+    // on Ultimate sessions that aren't Games. String rather than a bool so
+    // "Unknown" and "Mixed" (a lap welding a point to a sideline stint after a
+    // missed lap press) stay distinct, and so a new state needs no migration.
+    public string? FieldState { get; set; }
 }
