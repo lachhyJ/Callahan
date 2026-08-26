@@ -27,7 +27,10 @@ public record ActivityDto(
     int? AlternationViolations = null,
     string? LapClassifierMethod = null,
     decimal? OnFieldSpeedThresholdMps = null,
-    int? LapClassifierVersion = null);
+    int? LapClassifierVersion = null,
+    // Number of GPS samples in the activity's synced track (0 = no track). The
+    // sync uses this to fetch the stream only once per activity.
+    int TrackSampleCount = 0);
 
 public record CreateActivityRequest(
     DateOnly Date,
@@ -68,11 +71,36 @@ public record UpsertActivityLapRequest(
     decimal? AvgSpeedMps,
     decimal? MaxSpeedMps,
     int? AvgHeartRate,
-    int? MaxHeartRate);
+    int? MaxHeartRate,
+    // Garmin lapDTOs.startTimeGMT - absolute lap start, the join key against
+    // the GPS track. Null from the pre-track sync.
+    DateTime? StartTimeGmt = null);
 
 public record UpsertActivityLapsRequest(List<UpsertActivityLapRequest> Laps);
 
 public record ActivityLapsResponse(List<ActivityLapDto> Laps, decimal? HighSpeedDistanceKm);
+
+// PUT /api/activities/{id}/track body. Samples are four parallel arrays; T is
+// seconds from StartEpochMs. Same shape the sync builds and the test fixtures
+// carry.
+public record TrackSamplesDto(
+    List<double> T,
+    List<double> Lat,
+    List<double> Lon,
+    List<double> Spd);
+
+public record UpsertTrackRequest(
+    long StartEpochMs,
+    int SampleCount,
+    decimal? MedianSpacingSec,
+    TrackSamplesDto Samples);
+
+public record ActivityTrackResponse(
+    int SampleCount,
+    int? OnFieldSeconds,
+    int? OffFieldSeconds,
+    int? PointsPlayed,
+    string? LapClassifierMethod);
 
 public record ReclassifyChange(
     int ActivityId,

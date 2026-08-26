@@ -158,8 +158,8 @@ def main():
         rows = [r["metrics"] for r in g["activityDetailMetrics"]]
         keep = [r for r in rows if r[D["directLatitude"]] is not None
                 and r[D["directLongitude"]] is not None]
-        ts = [r[D["directTimestamp"]] for r in keep]            # epoch ms
-        t0 = ts[0]
+        ts = [r[D["directTimestamp"]] for r in keep]            # epoch ms (float)
+        t0 = int(round(ts[0]))
         t = [round((x - t0) / 1000) for x in ts]                # int seconds rel
         lat = [r[D["directLatitude"]] for r in keep]
         lon = [r[D["directLongitude"]] for r in keep]

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
@@ -25,6 +26,11 @@ public class ActivitiesController : ControllerBase
     // The one Ultimate session type that gets on/off-field lap classification -
     // it's the only one with sub rotations. Matches the seed in AppDbContext.
     private const string GameSessionTypeName = "Game";
+
+    // ActivityTrack.SamplesJson is written and read only through these, so the
+    // stored shape is fixed and inspectable ({"t":[...],"lat":[...],...}).
+    private static readonly JsonSerializerOptions TrackJson =
+        new(JsonSerializerDefaults.Web);
 
     private async Task PurgeExpiredAsync()
     {
@@ -57,7 +63,8 @@ public class ActivitiesController : ControllerBase
                 a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM,
                 a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
                 a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
-                a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion))
+                a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
+                a.Track == null ? 0 : a.Track.SampleCount))
             .ToListAsync();
 
         return Ok(activities);
@@ -84,6 +91,7 @@ public class ActivitiesController : ControllerBase
             var existing = await _db.Activities
                 .Include(a => a.ActivitySessionType)
                 .Include(a => a.Laps)
+                .Include(a => a.Track)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
@@ -126,7 +134,9 @@ public class ActivitiesController : ControllerBase
     [HttpPut("{id}/session-type")]
     public async Task<ActionResult<ActivityDto>> UpdateSessionType(int id, UpdateActivitySessionTypeRequest request)
     {
-        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track)
+            .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
         if (request.ActivitySessionTypeId is not null)
@@ -149,8 +159,9 @@ public class ActivitiesController : ControllerBase
         await _db.Entry(activity).Reference(a => a.ActivitySessionType).LoadAsync();
 
         // A manual re-classify can turn an activity into a Game (compute the
-        // on/off-field split from its laps) or back out of one (clear it).
-        ApplyLapDerivedAggregates(activity, activity.Laps.ToList());
+        // on/off-field split - this is also the path that catches a track that
+        // synced before the activity was classified) or back out of one.
+        ApplyLapDerivedAggregates(activity, activity.Laps.ToList(), activity.Track);
 
         await _db.SaveChangesAsync();
 
@@ -214,6 +225,7 @@ public class ActivitiesController : ControllerBase
         var activity = await _db.Activities
             .Include(a => a.ActivitySessionType)
             .Include(a => a.Laps)
+            .Include(a => a.Track)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
@@ -234,11 +246,12 @@ public class ActivitiesController : ControllerBase
             MaxSpeedMps = l.MaxSpeedMps,
             AvgHeartRate = l.AvgHeartRate,
             MaxHeartRate = l.MaxHeartRate,
+            StartTimeGmt = l.StartTimeGmt,
         }).ToList();
 
         _db.ActivityLaps.AddRange(laps);
 
-        ApplyLapDerivedAggregates(activity, laps);
+        ApplyLapDerivedAggregates(activity, laps, activity.Track);
 
         await _db.SaveChangesAsync();
 
@@ -258,12 +271,12 @@ public class ActivitiesController : ControllerBase
             activity.HighSpeedDistanceM == null ? null : activity.HighSpeedDistanceM / 1000));
     }
 
-    // Re-run LapFieldClassifier over every Ultimate Game activity that has
-    // laps, in place, with no Garmin traffic - raw laps are already stored.
-    // This is what makes shipping provisional v1 thresholds safe: retuning is
-    // a constant change in LapClassifierOptions, a Version bump, and one POST.
-    // force=true reclassifies every Game; otherwise only those on an older
-    // classifier version (or never classified).
+    // Re-run the geometry classifier over every Ultimate Game activity with
+    // laps or a track, in place, with no Garmin traffic - the raw track is
+    // stored. This is what makes shipping provisional thresholds safe: retuning
+    // is a constant change in FieldGeometryOptions/LapClassifierOptions, a
+    // Version bump, and one POST. force=true does every Game; otherwise only
+    // those on an older classifier version (or never classified).
     [HttpPost("laps/reclassify")]
     public async Task<ActionResult<ReclassifyResponse>> ReclassifyLaps(bool force = false)
     {
@@ -273,7 +286,7 @@ public class ActivitiesController : ControllerBase
             .Where(a => a.Type == ActivityType.Ultimate
                 && a.ActivitySessionType != null
                 && a.ActivitySessionType.Name == GameSessionTypeName
-                && a.Laps.Any()
+                && (a.Laps.Any() || a.Track != null)
                 && (force
                     || a.LapClassifierVersion == null
                     || a.LapClassifierVersion < LapFieldClassifier.Version))
@@ -284,7 +297,10 @@ public class ActivitiesController : ControllerBase
         foreach (var activity in candidates)
         {
             var before = activity.LapClassifierMethod;
-            ApplyLapDerivedAggregates(activity, activity.Laps.ToList());
+            // Load the track one at a time - never hold N ~100 KB blobs.
+            var track = await _db.ActivityTracks.AsNoTracking()
+                .FirstOrDefaultAsync(t => t.ActivityId == activity.Id);
+            ApplyLapDerivedAggregates(activity, activity.Laps.ToList(), track);
             changes.Add(new ReclassifyChange(
                 activity.Id, activity.Date, before, activity.LapClassifierMethod,
                 activity.PointsPlayed, activity.AlternationViolations));
@@ -293,6 +309,42 @@ public class ActivitiesController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new ReclassifyResponse(LapFieldClassifier.Version, changes.Count, changes));
+    }
+
+    // The GPS stream for one Ultimate activity. Deletes-and-reinserts the
+    // single row (idempotent), then re-runs classification so a track arriving
+    // after laps / session-type still lands.
+    [HttpPut("{id}/track")]
+    public async Task<ActionResult<ActivityTrackResponse>> ReplaceTrack(int id, UpsertTrackRequest request)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.Laps)
+            .Include(a => a.Track)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+        if (activity.Type != ActivityType.Ultimate)
+            return BadRequest(new { error = "Tracks are only stored for Ultimate activities." });
+
+        if (activity.Track is not null) _db.ActivityTracks.Remove(activity.Track);
+
+        var s = request.Samples;
+        activity.Track = new ActivityTrack
+        {
+            ActivityId = id,
+            StartEpochMs = request.StartEpochMs,
+            SampleCount = request.SampleCount,
+            MedianSpacingSec = request.MedianSpacingSec,
+            SamplesJson = JsonSerializer.Serialize(s, TrackJson),
+        };
+
+        ApplyLapDerivedAggregates(activity, activity.Laps.ToList(), activity.Track);
+
+        await _db.SaveChangesAsync();
+
+        return Ok(new ActivityTrackResponse(
+            activity.Track.SampleCount, activity.OnFieldSeconds, activity.OffFieldSeconds,
+            activity.PointsPlayed, activity.LapClassifierMethod));
     }
 
     [HttpPut("{id}/cone-distance")]
@@ -307,13 +359,13 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
-    // Recompute an activity's lap-derived columns from its laps. Shared by
-    // ReplaceLaps (new laps), UpdateSessionType (a manual re-classify can move
-    // an activity into or out of "Game"), and ReclassifyLaps (bulk) so the
-    // three can't drift. Mutates the passed laps' FieldState and the activity's
-    // cached columns; the caller saves. Requires activity.ActivitySessionType
-    // to be loaded.
-    private static void ApplyLapDerivedAggregates(Activity activity, List<ActivityLap> laps)
+    // Recompute an activity's lap/track-derived columns. Shared by ReplaceLaps
+    // (new laps), the track PUT, UpdateSessionType (a manual re-classify can
+    // move an activity into or out of "Game"), and ReclassifyLaps (bulk) so
+    // they can't drift. Pure function of (activity, laps, track) - stays static,
+    // no _db. Mutates each lap's FieldState and the activity's cached columns;
+    // the caller saves. Requires activity.ActivitySessionType to be loaded.
+    private static void ApplyLapDerivedAggregates(Activity activity, List<ActivityLap> laps, ActivityTrack? track)
     {
         // Running: high-speed distance is Garmin's own ACTIVE labelling. The
         // field-state columns don't apply.
@@ -324,11 +376,17 @@ public class ActivitiesController : ControllerBase
             return;
         }
 
-        // Ultimate "Game": classify each lap on/off-field.
+        // Ultimate "Game": on/off-field from GPS geometry. Speed alone is
+        // proven useless for real ultimate, so a Game with no track just
+        // records NoTrack until one arrives.
         if (activity.Type == ActivityType.Ultimate
             && activity.ActivitySessionType?.Name == GameSessionTypeName)
         {
-            var summary = LapFieldClassifier.Classify(laps);
+            var samples = track is null ? null : TryDecodeTrack(track.SamplesJson);
+            var geometry = samples is null ? null : FieldGeometry.Analyse(samples);
+            var summary = LapFieldClassifier.Classify(
+                laps, geometry, samples, track?.StartEpochMs ?? 0);
+
             foreach (var lap in laps)
             {
                 lap.FieldState = summary.StateByLapIndex.TryGetValue(lap.LapIndex, out var s)
@@ -341,7 +399,7 @@ public class ActivitiesController : ControllerBase
             activity.OnFieldDistanceM = summary.OnFieldDistanceM;
             activity.AlternationViolations = summary.AlternationViolations;
             activity.LapClassifierMethod = summary.Method;
-            activity.OnFieldSpeedThresholdMps = summary.ThresholdMps;
+            activity.OnFieldSpeedThresholdMps = summary.ThresholdMps;   // null now; kept for old rows
             activity.LapClassifierVersion = LapFieldClassifier.Version;
             return;
         }
@@ -361,6 +419,25 @@ public class ActivitiesController : ControllerBase
         activity.LapClassifierVersion = null;
     }
 
+    // A malformed or partial blob must degrade to NoTrack, never 500 the sync.
+    private static List<TrackSample>? TryDecodeTrack(string json)
+    {
+        try
+        {
+            var s = JsonSerializer.Deserialize<TrackSamplesDto>(json, TrackJson);
+            if (s?.T is null || s.Lat is null || s.Lon is null || s.Spd is null) return null;
+            int n = s.T.Count;
+            if (n == 0 || s.Lat.Count != n || s.Lon.Count != n || s.Spd.Count != n) return null;
+            var outv = new List<TrackSample>(n);
+            for (int i = 0; i < n; i++) outv.Add(new TrackSample(s.T[i], s.Lat[i], s.Lon[i], s.Spd[i]));
+            return outv;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
+
     private static ActivityLapDto ToLapDto(ActivityLap l) => new(
         l.LapIndex, l.IntensityType, l.DistanceM, l.DurationSeconds, l.MovingDurationSeconds,
         l.AvgSpeedMps, l.MaxSpeedMps, l.AvgHeartRate, l.MaxHeartRate, l.FieldState);
@@ -372,5 +449,6 @@ public class ActivitiesController : ControllerBase
         a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM,
         a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
-        a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion);
+        a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
+        a.Track?.SampleCount ?? 0);
 }
