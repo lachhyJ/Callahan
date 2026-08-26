@@ -580,10 +580,15 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
 
 
 def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False,
-             sync_tracks=True, force_tracks=False):
-    activities = fetch_recent_activities(client, days)
+             sync_tracks=True, force_tracks=False, start=None, end=None):
+    if start and end:
+        activities = fetch_activities_between(client, start, end)
+        window = f"{start}..{end}"
+    else:
+        activities = fetch_recent_activities(client, days)
+        window = f"the last {days} days"
     if not activities:
-        log(f"No Garmin activities in the last {days} days.")
+        log(f"No Garmin activities in {window}.")
         return
 
     token = None if dry_run else callahan_token(api_base)
@@ -695,9 +700,11 @@ def main():
                               "window as one JSON array and exit, no syncing. Feeds the offline segmentation "
                               "explorer in scripts/ultimate-stream-explore/.")
     parser.add_argument("--start", type=str, default=None,
-                         help="With --dump-stream: window start date (YYYY-MM-DD), inclusive.")
+                         help="Window start date (YYYY-MM-DD, inclusive). With --dump-stream/--dump-track, "
+                              "or on the normal sync to backfill a fixed range instead of --days from today. "
+                              "Must be given with --end.")
     parser.add_argument("--end", type=str, default=None,
-                         help="With --dump-stream: window end date (YYYY-MM-DD), inclusive.")
+                         help="Window end date (YYYY-MM-DD, inclusive). See --start.")
     parser.add_argument("--activity-id", type=str, default=None,
                          help="With --dump-laps / --dump-stream: the Garmin activity ID to inspect (see --dump "
                               "for IDs). --dump-laps defaults to the most recent lap-synced activity in --days.")
@@ -748,14 +755,24 @@ def main():
         else:
             cmd_dump_stream(client, start, end, args.activity_id)
     else:
-        for flag, val in (("--force-laps", args.force_laps), ("--force-tracks", args.force_tracks)):
-            if val and args.days > FORCE_LAPS_MAX_DAYS:
-                log(f"{flag} refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch from Garmin "
-                    f"for every activity in the window and risk a rate-limit. Narrow --days.")
-                sys.exit(2)
+        if bool(args.start) != bool(args.end):
+            log("--start and --end must be given together (YYYY-MM-DD).")
+            sys.exit(2)
+        start = date.fromisoformat(args.start) if args.start else None
+        end = date.fromisoformat(args.end) if args.end else None
+        # The --force-* window cap is on --days only; an explicit --start/--end
+        # window is deliberate, so it isn't capped - but keep the guard for the
+        # default lookback path.
+        if start is None:
+            for flag, val in (("--force-laps", args.force_laps), ("--force-tracks", args.force_tracks)):
+                if val and args.days > FORCE_LAPS_MAX_DAYS:
+                    log(f"{flag} refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch from "
+                        f"Garmin for every activity in the window and risk a rate-limit. Narrow --days.")
+                    sys.exit(2)
         cmd_sync(client, args.days, args.dry_run, api_base,
                  sync_laps=not args.no_laps, force_laps=args.force_laps,
-                 sync_tracks=not args.no_tracks, force_tracks=args.force_tracks)
+                 sync_tracks=not args.no_tracks, force_tracks=args.force_tracks,
+                 start=start, end=end)
 
 
 if __name__ == "__main__":

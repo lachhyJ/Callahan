@@ -165,6 +165,26 @@ it; `--force-tracks` re-pulls every in-window Ultimate track (capped to
 in `fetch_track`. `get_activity_details` is heavier than the lap call, so a
 tournament weekend is fine but don't `--force-tracks` a wide window.
 
+### Backfilling a past date range
+
+The normal sync counts back `--days` from today. To pull a fixed historical
+window instead — e.g. a past tournament — pass `--start`/`--end`
+(`YYYY-MM-DD`, inclusive, both required). New activities in the window get
+their laps and (for Ultimate) tracks fetched automatically; `--force-*`
+isn't needed for a first backfill. Keep each run to one weekend so a
+`get_activity_details`-per-game rate-limit stops cheaply (the run is
+resumable — just re-run it).
+
+```bash
+sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env \
+  -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data \
+  callahan-garmin-sync --start 2026-04-10 --end 2026-04-12
+```
+
+The activities land unclassified; set each to session type "Game" in the
+app (or `POST /api/activities/laps/reclassify?force=true` once they're all
+classified) to compute the on/off-field split.
+
 ## Wellness sync (`--wellness`)
 
 ```bash
