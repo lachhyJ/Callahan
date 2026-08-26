@@ -1894,6 +1894,23 @@ td {
   font-size: var(--text-sm);
 }
 
+.activity-classify-link {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: text-decoration-color var(--duration-fast) var(--ease-out);
+
+  &:hover,
+  &:focus-visible {
+    text-decoration-color: var(--border);
+  }
+}
+
+.activity-classify-teaser {
+  color: var(--text-tertiary);
+}
+
 /* Deliberately a separate button from the activity's label text — the label
    is just for reading, so glancing at or tapping the row can't accidentally
    open the picker. */
@@ -2731,6 +2748,133 @@ td {
 .plate-calc-plate {
   font-weight: 600;
   color: var(--text-h);
+}
+
+.game-title {
+  color: var(--text-h);
+  font-size: var(--text-2xl);
+  margin: var(--space-2xs) 0 var(--space-md);
+}
+
+.field-split-bar {
+  display: flex;
+  height: 20px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+.field-split-segment {
+  height: 100%;
+}
+
+.field-split-on,
+.field-timeline-band-on,
+.field-timeline-swatch-on {
+  background: var(--orange-400);
+}
+
+.field-split-mixed,
+.field-timeline-swatch-mixed {
+  background: var(--amber-300);
+}
+
+.field-split-off,
+.field-timeline-band-off,
+.field-timeline-swatch-off {
+  background: var(--border);
+}
+
+.field-split-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.field-split-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.field-timeline-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.game-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-md);
+}
+
+.game-stat-row .stat-card {
+  flex: 1 1 8rem;
+}
+
+.field-timeline {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+}
+
+.field-timeline-label {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+
+.field-timeline-strip {
+  position: relative;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  overflow: hidden;
+}
+
+.field-timeline-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.field-timeline-ticks {
+  position: relative;
+  height: 1rem;
+}
+
+.field-timeline-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.field-timeline-legend {
+  display: flex;
+  gap: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--text);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2xs);
+  }
+}
+
+.game-method-note {
+  margin-top: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
 }
 
 /* Kept last deliberately: at equal specificity CSS resolves ties by source

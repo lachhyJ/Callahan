@@ -117,6 +117,18 @@ public record ReclassifyResponse(
 
 public record UpdateConeDistanceRequest(int? ConeDistanceM);
 
+// GET /api/activities/{id}/field-timeline - the on/off segments FieldGeometry
+// computes but ApplyLapDerivedAggregates discards after aggregating. Recomputed
+// on every read from the stored raw track rather than persisted, so it always
+// reflects the current FieldGeometryOptions tuning. StartSec/EndSec are
+// relative to the track's start, not absolute epochs.
+public record FieldSegmentDto(bool OnField, int StartSec, int EndSec);
+
+public record FieldTimelineDto(
+    int TotalSeconds,
+    List<FieldSegmentDto> Segments,
+    int GeometryVersion);
+
 public record DeletedActivityDto(
     int Id,
     DateOnly Date,

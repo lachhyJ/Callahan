@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { activityLabel } from '../utils/activityLabel'
 import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 import { suggestUltimateSessionType } from '../utils/ultimateSessionSuggestion'
@@ -48,6 +49,18 @@ function ConeDistanceInput({ activity, onConeDistanceChange }) {
   )
 }
 
+// A one-glance teaser for the on/off-field data behind the game-detail link
+// - cheap enough to compute here that the feature doesn't stay hidden behind
+// a tap. Undefined (not just null) whenever the fields aren't there, so it
+// never renders "0 pts" for pre-backfill or unclassified games.
+function onFieldTeaser(activity) {
+  if (activity.type !== 'Ultimate' || activity.pointsPlayed == null) return null
+  const total = activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
+  if (!total) return null
+  const onPct = Math.round((activity.onFieldSeconds / total) * 100)
+  return `${activity.pointsPlayed} pt${activity.pointsPlayed === 1 ? '' : 's'} · ${onPct}% on`
+}
+
 // Runs and Ultimate activities both need classifying well after the fact
 // (mostly Garmin syncs reviewed during a later browse, not right after
 // logging) — this row is shared by both rather than cloned per activity
@@ -62,11 +75,19 @@ export default function ActivitySessionRow({ activity, sessionTypes, openPickerI
   const typesForActivity = sessionTypes.filter((t) => t.activityType === activity.type)
   const suggested = suggestSessionType(activity, typesForActivity)
   const isHighSpeedIntervals = activity.activitySessionTypeName === HIGH_SPEED_INTERVALS_TYPE_NAME
+  const teaser = onFieldTeaser(activity)
 
   return (
     <span className="activity-classify">
       <span className="activity-classify-row">
-        <span>{activityLabel(activity)}</span>
+        {activity.type === 'Ultimate' ? (
+          <Link to={`/activities/${activity.id}`} className="activity-classify-link">
+            {activityLabel(activity)}
+            {teaser && <span className="activity-classify-teaser"> · {teaser}</span>}
+          </Link>
+        ) : (
+          <span>{activityLabel(activity)}</span>
+        )}
         <button
           type="button"
           className={needsClassification ? 'activity-classify-btn activity-classify-btn-needed' : 'activity-classify-btn'}

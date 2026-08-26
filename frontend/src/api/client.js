@@ -298,6 +298,17 @@ export function updateConeDistance(id, coneDistanceM) {
   })
 }
 
+export function getActivity(id) {
+  return apiFetch(`/api/activities/${id}`)
+}
+
+// Returns null (204) for anything that isn't a classified Ultimate Game with
+// a decodable GPS track — never throws for that case, only for a real
+// network/auth failure.
+export function getActivityFieldTimeline(id) {
+  return apiFetch(`/api/activities/${id}/field-timeline`)
+}
+
 export function getHealth() {
   return apiFetch('/api/health')
 }

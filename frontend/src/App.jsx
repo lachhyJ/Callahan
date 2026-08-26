@@ -16,6 +16,7 @@ import DashboardPage from './pages/DashboardPage'
 import ExerciseDetailPage from './pages/ExerciseDetailPage'
 import ExercisesListPage from './pages/ExercisesListPage'
 import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
+import UltimateGameDetailPage from './pages/UltimateGameDetailPage'
 import MuscleBalancePage from './pages/MuscleBalancePage'
 import StreakPage from './pages/StreakPage'
 import StreakDetailPage from './pages/StreakDetailPage'
@@ -43,6 +44,7 @@ function showsBackLink(pathname) {
     || pathname.startsWith('/sessions/')
     || pathname.startsWith('/streaks/')
     || pathname.startsWith('/reports/')
+    || pathname.startsWith('/activities/')
 }
 
 function formatCountdown(totalSeconds) {
@@ -209,6 +211,7 @@ function AppRoutes() {
           <Route path="/exercises" element={<ProtectedRoute><ExercisesListPage /></ProtectedRoute>} />
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
+          <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />
           <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
           <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />

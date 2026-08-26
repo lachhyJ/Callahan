@@ -70,6 +70,53 @@ public class ActivitiesController : ControllerBase
         return Ok(activities);
     }
 
+    [HttpGet("{id}")]
+    public async Task<ActionResult<ActivityDto>> GetById(int id)
+    {
+        await PurgeExpiredAsync();
+
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.Laps)
+            .Include(a => a.Track)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        return Ok(ToDto(activity));
+    }
+
+    // The on/off segments for one Ultimate game's timeline. Recomputed from the
+    // stored raw track on every call - never persisted - so it can't go stale
+    // against a FieldGeometryOptions retune the way a cached table would.
+    // Degrades to 204 (never 500) for anything that isn't a classified Game
+    // with a decodable track, same contract TryDecodeTrack already guarantees
+    // in ApplyLapDerivedAggregates.
+    [HttpGet("{id}/field-timeline")]
+    public async Task<ActionResult<FieldTimelineDto>> GetFieldTimeline(int id)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        if (activity.Type != ActivityType.Ultimate || activity.ActivitySessionType?.Name != GameSessionTypeName)
+            return NoContent();
+
+        var track = await _db.ActivityTracks.AsNoTracking().FirstOrDefaultAsync(t => t.ActivityId == id);
+        if (track is null) return NoContent();
+
+        var samples = TryDecodeTrack(track.SamplesJson);
+        if (samples is null || samples.Count == 0) return NoContent();
+
+        var geometry = FieldGeometry.Analyse(samples);
+        var totalSeconds = (int)Math.Round(samples[^1].T);
+        var segments = geometry.Segments
+            .Select(s => new FieldSegmentDto(s.OnField, (int)Math.Round(s.StartT), (int)Math.Round(s.EndT)))
+            .ToList();
+
+        return Ok(new FieldTimelineDto(totalSeconds, segments, FieldGeometry.Version));
+    }
+
     [HttpPost]
     public async Task<ActionResult<ActivityDto>> Create(CreateActivityRequest request)
     {
