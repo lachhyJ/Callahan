@@ -41,11 +41,16 @@ Two independent structures in the GPS:
    plus distance from the centre line. In the real data, benched stretches show
    |cross| ~20 m with only 5-10 m of lateral range; playing stretches show
    |cross| ~6-10 m with 30-47 m of range. Clean separation.
-2. **Point boundaries** - between points both teams reset to opposite endzones
-   and there is a pull. That shows as a sustained slow dwell at an extreme
-   along-axis position followed by a full-field traverse at speed. Counting
-   those dwells inside on-field time counts points played (~2.8 min/point
-   across the tournament, right for ultimate).
+2. **Point boundaries** - between points both teams reset to opposite endzones.
+   That shows as a sustained slow dwell at an extreme along-axis position. A
+   dwell counts as a point he PLAYED only if the following ~90s is mostly
+   on-field. Two athlete-supplied caveats drove that rule:
+   - He does not always accelerate hard off an endzone (playing deep in a zone
+     D, or handler on an offence start), so requiring a pull sprint/traverse
+     under-counts badly - that is what `--strict` does, kept only as a floor.
+   - He sometimes sits on the line for coach instructions *without* playing the
+     point, then scurries back to the sideline. The follow-on on-field test
+     removes those (122 raw dwells -> 101 played points).
 
 The field frame is fitted per game from samples >=4 m/s, which are
 unambiguously on-field play, so they define the long axis and the centre line.

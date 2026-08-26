@@ -23,6 +23,8 @@ MIN_DWELL = 75.0
 EZ_FRAC = 0.55        # |along| beyond this fraction of half-length = endzone
 EZ_MIN_S = 25.0       # a dwell must last this long to count as a reset
 EZ_MAX_SPD = 2.5      # and be this slow on average
+FOLLOW_S = 90.0       # after a dwell, look this far ahead...
+FOLLOW_FRAC = 0.6     # ...and require this much of it to be on-field
 # STRICT additionally requires a full-field pull traverse after the dwell. It
 # under-counts badly (5.7 min/point vs a real ~2-4), so it is off by default -
 # kept because it is the conservative floor on points played.
@@ -130,17 +132,24 @@ for g in d:
             continue
         if sum(onfield[i0:i1 + 1]) < (i1 - i0 + 1) / 2:
             continue   # dwell happened while benched
-        # look forward up to 90s for the pull: a big along-axis traverse
+        # Did he actually PLAY the point that followed? Look forward and
+        # require the next stretch to be on-field. This is what separates a
+        # real point start from sitting on the line for coach instructions and
+        # then scurrying back to the sideline - and unlike a sprint test, it
+        # still catches points started stationary (deep in a zone D, or as a
+        # handler on offence), which is why the pull-traverse test under-counts.
         j = i1
-        while j < len(t) - 1 and t[j] - t[i1] < 90:
+        while j < len(t) - 1 and t[j] - t[i1] < FOLLOW_S:
             j += 1
-        seg_along = along[i1:j + 1]
-        seg_spd = spd[i1:j + 1]
-        if not seg_along:
+        follow = onfield[i1:j + 1]
+        if not follow or sum(follow) < len(follow) * FOLLOW_FRAC:
             continue
-        traverse = max(seg_along) - min(seg_along)
-        if STRICT and (traverse < halfl * 1.0 or max(seg_spd, default=0) < 4.0):
-            continue
+
+        if STRICT:
+            seg_along = along[i1:j + 1]
+            seg_spd = spd[i1:j + 1]
+            if (max(seg_along) - min(seg_along)) < halfl or max(seg_spd, default=0) < 4.0:
+                continue
         pts += 1
         starts.append(t[i1])
 
