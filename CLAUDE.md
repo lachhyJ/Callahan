@@ -76,3 +76,10 @@ right one — don't let everything collapse back into one doc:
 Do **not** write Callahan project memory into this Claude Code session's own memory
 files — the vault is the durable, cross-session home for this, not
 `~/.claude/projects/.../memory/`.
+
+**Ordering:** push finished code to `main` (and confirm the deploy landed, per
+Deployment above) *before* writing the vault entry for that session, not after —
+otherwise the doc ends up describing work as "shipped" while it's still sitting
+uncommitted or unpushed locally. This happened once (2026-08-26: security-hardening
+work was written up in the vault as shipped while three files were still
+uncommitted on the working tree).
