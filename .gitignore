@@ -9,6 +9,10 @@ tests/**/obj/
 frontend/node_modules/
 frontend/dist/
 
+# Python
+__pycache__/
+*.pyc
+
 # Secrets
 backend.env
 backend.prod.env

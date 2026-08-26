@@ -125,6 +125,30 @@ purposes — the sync only calls `get_sleep_data`, `get_hrv_data`,
 returns matches the date queried (the wake-up morning), so `DailyWellness.Date`
 keys consistently off the date passed to the API with no off-by-one risk.
 
+## Stream discovery (`--dump-stream`)
+
+Pulls the per-second GPS-speed / heart-rate stream (`get_activity_details`)
+for every Ultimate activity in a date window and prints it as one JSON array
+to stdout — the raw material for the offline on/off-field segmentation
+explorer in `scripts/ultimate-stream-explore/`. No Callahan calls, nothing
+is synced.
+
+```bash
+sudo docker build -t callahan-garmin-sync scripts/garmin-sync/   # only if the script changed
+sudo docker run --rm --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data \
+  -v /mnt/tank/callahan-data/garmin-sync-state:/data \
+  callahan-garmin-sync --dump-stream --start 2026-04-10 --end 2026-04-12 > tourney-stream.json
+```
+
+`--start` / `--end` (both `YYYY-MM-DD`, inclusive) are required, or
+`--activity-id` for a single one. Per-activity progress — sample count and
+median spacing — goes to stderr; the JSON payload is the only thing on
+stdout, so redirecting it to a file is clean. The `--network` flag isn't
+needed here (this mode never calls the Callahan API). Each object carries
+`metricDescriptors` + `activityDetailMetrics` verbatim plus a best-effort
+`sampleCount` / `medianSampleSpacingSec`, because whether Garmin honours the
+high `maxchart`/`maxpoly` request is one of the things this dump answers.
+
 ## Wellness sync (`--wellness`)
 
 ```bash

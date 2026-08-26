@@ -22,6 +22,12 @@ Run modes:
                     structure (a session with no lap presses returns one lap
                     for the whole thing, which makes lap classification
                     pointless for it).
+  --dump-stream     Print per-second GPS/HR streams (get_activity_details)
+                    for Ultimate activities in a --start/--end window, as one
+                    JSON array to stdout, and exit. No Callahan calls. Feeds
+                    the offline on/off-field segmentation explorer in
+                    scripts/ultimate-stream-explore/ — run this first to see
+                    what resolution and metric keys Garmin actually returns.
   --force-laps      During the normal sync, re-fetch and re-PUT laps for
                     every in-window activity even if it already has them —
                     for after a change to the lap field mapping. Requires
@@ -224,10 +230,14 @@ def fetch_laps(client, garmin_activity_id):
     ]
 
 
+def fetch_activities_between(client, start, end):
+    """start/end are datetime.date. Inclusive range."""
+    return client.get_activities_by_date(start.isoformat(), end.isoformat())
+
+
 def fetch_recent_activities(client, days):
     end = date.today()
-    start = end - timedelta(days=days)
-    return client.get_activities_by_date(start.isoformat(), end.isoformat())
+    return fetch_activities_between(client, end - timedelta(days=days), end)
 
 
 def cmd_dump(client, days):
@@ -295,6 +305,90 @@ def cmd_dump_laps(client, activity_id, days):
             print(json.dumps({"method": name, "available": True, "result": result}, indent=2, default=str))
         except Exception as e:
             print(json.dumps({"method": name, "available": True, "error": f"{type(e).__name__}: {e}"}, indent=2))
+
+
+# Descriptor keys get_activity_details uses for the per-sample clock, in
+# preference order. directTimestamp is epoch ms; sumElapsedDuration /
+# sumDuration are seconds from activity start. Best-effort only - this is a
+# discovery mode, so an unrecognised shape reports null spacing, never crashes.
+_STREAM_TIME_KEYS = ("directTimestamp", "sumElapsedDuration", "sumDuration", "sumMovingDuration")
+
+
+def _stream_sample_spacing(details):
+    """Median seconds between consecutive samples, or None if undeterminable."""
+    descriptors = details.get("metricDescriptors") or []
+    metrics = details.get("activityDetailMetrics") or []
+    if len(metrics) < 2:
+        return None
+    key_to_index = {d.get("key"): d.get("metricsIndex") for d in descriptors if d.get("key") is not None}
+    idx = next((key_to_index[k] for k in _STREAM_TIME_KEYS if k in key_to_index), None)
+    if idx is None:
+        return None
+    try:
+        col = [row["metrics"][idx] for row in metrics if row.get("metrics") and row["metrics"][idx] is not None]
+    except (IndexError, KeyError, TypeError):
+        return None
+    if len(col) < 2:
+        return None
+    # directTimestamp is ms; the sum* keys are already seconds.
+    scale = 1000.0 if key_to_index.get("directTimestamp") == idx else 1.0
+    diffs = sorted((col[i + 1] - col[i]) / scale for i in range(len(col) - 1))
+    mid = len(diffs) // 2
+    return diffs[mid] if len(diffs) % 2 else (diffs[mid - 1] + diffs[mid]) / 2
+
+
+def cmd_dump_stream(client, start, end, activity_id):
+    """Pull per-second GPS/HR streams for Ultimate activities in a date window
+    and print them as one JSON array to stdout. No Callahan calls, nothing is
+    synced. Feeds the offline segmentation explorer
+    (scripts/ultimate-stream-explore/) - the point is to see what
+    get_activity_details actually returns (resolution, metric keys) before any
+    on/off-field inference is built on it."""
+    if activity_id is not None:
+        targets = [{"activityId": activity_id, "activityName": None, "startTimeLocal": None, "duration": None}]
+    else:
+        activities = fetch_activities_between(client, start, end)
+        targets = [a for a in activities
+                   if TYPE_MAP.get(a.get("activityType", {}).get("typeKey")) == "Ultimate"]
+        if not targets:
+            log(f"No Ultimate activities between {start} and {end}. "
+                f"Check the date window, or run --dump to see what's there.")
+            print("[]")
+            return
+        log(f"Found {len(targets)} Ultimate activit{'y' if len(targets) == 1 else 'ies'} "
+            f"between {start} and {end}.")
+
+    out = []
+    for a in targets:
+        aid = a["activityId"]
+        name = a.get("activityName")
+        try:
+            # maxchart/maxpoly well above a 90-min 1 Hz stream (~5400 samples);
+            # whether Garmin honours it is one of the things this dump answers.
+            details = client.get_activity_details(str(aid), maxchart=10000, maxpoly=10000)
+        except GarminConnectTooManyRequestsError as e:
+            log(f"  Garmin rate-limited at activity {aid}: {e}. Stopping; {len(out)} dumped so far.")
+            break
+        except Exception as e:
+            log(f"  get_activity_details failed for {aid} ({name!r}): {type(e).__name__}: {e}")
+            continue
+
+        metrics = details.get("activityDetailMetrics") or []
+        spacing = _stream_sample_spacing(details)
+        spacing_note = f"~{spacing:.1f}s spacing" if spacing else "spacing unknown"
+        log(f"  {aid} {name!r}: {len(metrics)} samples, {spacing_note}")
+        out.append({
+            "activityId": aid,
+            "activityName": name,
+            "startTimeLocal": a.get("startTimeLocal"),
+            "durationSeconds": a.get("duration"),
+            "sampleCount": len(metrics),
+            "medianSampleSpacingSec": spacing,
+            "metricDescriptors": details.get("metricDescriptors"),
+            "activityDetailMetrics": metrics,
+        })
+
+    print(json.dumps(out, default=str))
 
 
 def fetch_wellness(client, cdate):
@@ -486,9 +580,17 @@ def main():
                               "from.")
     parser.add_argument("--dump-laps", action="store_true",
                          help="Print raw lap/split data for one running activity and exit, no syncing.")
+    parser.add_argument("--dump-stream", action="store_true",
+                         help="Print per-second GPS/HR streams for Ultimate activities in a --start/--end "
+                              "window as one JSON array and exit, no syncing. Feeds the offline segmentation "
+                              "explorer in scripts/ultimate-stream-explore/.")
+    parser.add_argument("--start", type=str, default=None,
+                         help="With --dump-stream: window start date (YYYY-MM-DD), inclusive.")
+    parser.add_argument("--end", type=str, default=None,
+                         help="With --dump-stream: window end date (YYYY-MM-DD), inclusive.")
     parser.add_argument("--activity-id", type=str, default=None,
-                         help="With --dump-laps: the Garmin activity ID to inspect (see --dump for IDs). "
-                              "Defaults to the most recent lap-synced activity (run or Ultimate) in --days.")
+                         help="With --dump-laps / --dump-stream: the Garmin activity ID to inspect (see --dump "
+                              "for IDs). --dump-laps defaults to the most recent lap-synced activity in --days.")
     parser.add_argument("--no-laps", action="store_true",
                          help="Skip lap syncing during the normal activity sync (laps are fetched by default "
                               "for any Running or Ultimate activity that doesn't have them yet).")
@@ -515,6 +617,16 @@ def main():
         cmd_sync_wellness(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.dump_laps:
         cmd_dump_laps(client, args.activity_id, args.days)
+    elif args.dump_stream:
+        if args.activity_id is None and not (args.start and args.end):
+            log("--dump-stream needs either --activity-id or both --start and --end (YYYY-MM-DD).")
+            sys.exit(2)
+        start = end = None
+        if args.start:
+            start = date.fromisoformat(args.start)
+        if args.end:
+            end = date.fromisoformat(args.end)
+        cmd_dump_stream(client, start, end, args.activity_id)
     else:
         if args.force_laps and args.days > FORCE_LAPS_MAX_DAYS:
             log(f"--force-laps refuses --days {args.days} (> {FORCE_LAPS_MAX_DAYS}): it would fetch laps "
