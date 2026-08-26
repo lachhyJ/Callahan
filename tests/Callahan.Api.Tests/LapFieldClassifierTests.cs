@@ -100,6 +100,26 @@ public class LapFieldClassifierTests
     }
 
     [Fact]
+    public void SingleWholeGameLap_FallsBackToGeometryNoLaps()
+    {
+        // Garmin returns one lap for the whole session when it was never
+        // lap-pressed. That lap's window is the entire track, so its on-field
+        // fraction is ~0.5 -> it would become one Mixed lap and collapse
+        // OnFieldSeconds to 0. Must fall back to the segments instead.
+        var (epoch, samples) = TestFixtures.LoadTrack(1);
+        var geo = FieldGeometry.Analyse(samples);
+        var start = DateTimeOffset.FromUnixTimeMilliseconds(epoch).UtcDateTime;
+        var oneLap = new List<ActivityLap> { Lap(1, start, samples[^1].T) };
+
+        var r = LapFieldClassifier.Classify(oneLap, geo, samples, epoch);
+
+        Assert.Equal(LapClassifierMethod.GeometryNoLaps, r.Method);
+        Assert.Equal(geo.OnFieldSeconds, r.OnFieldSeconds);
+        Assert.Equal(geo.PointsPlayed, r.PointsPlayed);
+        Assert.True(r.OnFieldSeconds > 0);
+    }
+
+    [Fact]
     public void GeometryFromLaps_CleanSegmentsLabelPurely_NoViolations()
     {
         var (laps, geo, samples, epoch) = LapsFromSegments(3);

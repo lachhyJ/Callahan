@@ -54,7 +54,10 @@ public sealed record LapClassifierOptions(
     decimal OnFieldFractionHigh = 0.80m,
     decimal OnFieldFractionLow = 0.20m,
     // A lap whose window holds fewer track samples than this stays Unknown.
-    int MinSamplesPerLap = 5)
+    int MinSamplesPerLap = 5,
+    // Fewer laps than this is Garmin's one default lap for an un-lapped
+    // session, not a sub log - fall back to GeometryNoLaps.
+    int MinLapsForBoundaries = 2)
 {
     public static readonly LapClassifierOptions Default = new();
 }
@@ -79,7 +82,9 @@ public static class LapFieldClassifier
 {
     // Bump when the algorithm or option defaults change in a way that should
     // trigger a reclassify of stored activities. v2 = geometry, not speed.
-    public const int Version = 2;
+    // v3 = <2 laps falls back to GeometryNoLaps (Garmin's one default lap on an
+    // un-lapped game was collapsing OnFieldSeconds to 0).
+    public const int Version = 3;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };
@@ -147,8 +152,11 @@ public static class LapFieldClassifier
             .Where(l => l.StartGmt is not null && l.Duration > 0)
             .ToList();
 
-        // --- 3. No lap boundaries: aggregates come straight from the segments. ---
-        if (withWindow.Count == 0)
+        // --- 3. Not enough lap boundaries to be a real sub log - fewer than two
+        // laps is just Garmin's one default lap for an un-lapped session, which
+        // over the whole game reads as a single Mixed lap. Take the aggregates
+        // straight from the geometry segments instead. ---
+        if (withWindow.Count < opts.MinLapsForBoundaries)
         {
             return new LapFieldSummary(
                 EmptyStates, LapClassifierMethod.GeometryNoLaps, null,
