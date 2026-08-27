@@ -158,6 +158,10 @@ export default function UltimateGameDetailPage() {
               Off field {formatHoursMinutes(activity.offFieldSeconds)} · {offPct}%
             </span>
           </div>
+          <p className="field-split-note">
+            Time spent physically on the field — includes waiting on the line
+            between points, stall counts and subbing on, not only live play.
+          </p>
 
           <div className="game-stat-row">
             {activity.pointsPlayed != null && (

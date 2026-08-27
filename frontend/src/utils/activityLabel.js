@@ -24,11 +24,14 @@ export function activityLabel(activity) {
 // behind a tap. Undefined (not just null) whenever the fields aren't there,
 // so it never renders "0 pts" for pre-backfill or unclassified games. Shared
 // by ActivitySessionRow (History/Dashboard) and GamesListPage - one
-// definition for the "13 pts · 48% on" string.
+// definition for the "13 pts · 48% on field" string. "on field" not "on":
+// this is field-occupancy time (includes between-point standing), not time
+// actively playing - see backend/decisions "on-field time measures field
+// occupancy".
 export function onFieldTeaser(activity) {
   if (activity.type !== 'Ultimate' || activity.pointsPlayed == null) return null
   const total = activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
   if (!total) return null
   const onPct = Math.round((activity.onFieldSeconds / total) * 100)
-  return `${activity.pointsPlayed} pt${activity.pointsPlayed === 1 ? '' : 's'} · ${onPct}% on`
+  return `${activity.pointsPlayed} pt${activity.pointsPlayed === 1 ? '' : 's'} · ${onPct}% on field`
 }

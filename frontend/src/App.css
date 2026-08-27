@@ -2831,6 +2831,12 @@ td {
   border-radius: var(--radius-sm);
 }
 
+.field-split-note {
+  margin-top: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 .game-stat-row {
   display: flex;
   flex-wrap: wrap;
