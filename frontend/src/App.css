@@ -2798,6 +2798,18 @@ td {
   background: var(--orange-400);
 }
 
+/* Live play vs on-field-but-between-points: same hue, the idle portion faded
+   so the split bar reads as one "on field" band divided into active / not. */
+.field-split-live,
+.field-timeline-swatch-live {
+  background: var(--orange-400);
+}
+
+.field-split-on-idle,
+.field-timeline-swatch-on-idle {
+  background: color-mix(in srgb, var(--orange-400) 30%, transparent);
+}
+
 .field-split-mixed,
 .field-timeline-swatch-mixed {
   background: var(--amber-300);

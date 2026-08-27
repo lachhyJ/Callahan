@@ -42,6 +42,10 @@ public class Activity
     public int? MixedSeconds { get; set; }
     public int? PointsPlayed { get; set; }
     public decimal? OnFieldDistanceM { get; set; }
+    // On-field seconds spent inside a detected point ("live play"), as opposed
+    // to OnFieldSeconds which also counts waiting on the line between points.
+    // Always <= OnFieldSeconds. See GeometryResult.LivePlaySeconds.
+    public int? LivePlaySeconds { get; set; }
     // Count of adjacent lap pairs that shared an on/off state - i.e. missed
     // lap presses. 0 means a clean capture. Doubles as feedback on lapping.
     public int? AlternationViolations { get; set; }

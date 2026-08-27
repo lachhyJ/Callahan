@@ -99,7 +99,7 @@ def runs(t, lab):
 
 d = json.load(open(PATH))
 tot_pts = 0
-tot_on = tot_dur = 0.0
+tot_on = tot_dur = tot_live = 0.0
 print(f"{'game':22} {'dur':>6} {'on-field':>9} {'%':>4} {'pts':>4} {'s/pt':>6}  timeline")
 print("-" * 104)
 detail = []
@@ -127,6 +127,7 @@ for g in d:
     inez = [abs(a) > halfl * EZ_FRAC for a in along]
     pts = 0
     starts = []
+    dwells = []          # (i0, i1) of every accepted reset dwell
     for state, i0, i1 in runs(t, inez):
         if not state:
             continue
@@ -156,10 +157,18 @@ for g in d:
                 continue
         pts += 1
         starts.append(t[i1])
+        dwells.append((i0, i1))
 
     on = sum(t[i] - t[i - 1] for i in range(1, len(t)) if onfield[i - 1])
+    # Live play: on-field time between the end of one accepted dwell and the
+    # start of the next (the tail after the last dwell is excluded). This is
+    # what the C# port stores as GeometryResult.LivePlaySeconds.
+    live = sum(t[i] - t[i - 1]
+               for k in range(len(dwells) - 1)
+               for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
+               if onfield[i - 1])
     dur = t[-1] - t[0]
-    tot_pts += pts; tot_on += on; tot_dur += dur
+    tot_pts += pts; tot_on += on; tot_dur += dur; tot_live += live
     tl = ''
     for m in range(int(dur // 60) + 1):
         seg = [onfield[i] for i in range(len(t)) if m * 60 <= t[i] < (m + 1) * 60]
@@ -171,6 +180,8 @@ for g in d:
 
 print("-" * 104)
 print(f"{'TOURNAMENT':22} {tot_dur/60:>5.0f}m {tot_on/60:>8.0f}m {tot_on/tot_dur:>4.0%} {tot_pts:>4}")
+print(f"{'  live play':22} {tot_live/60:>5.0f}m of on-field  "
+      f"({tot_live/tot_on:.0%} of on-field, {tot_live/tot_dur:.0%} of game, {tot_live/tot_pts/60:.1f} min/pt)")
 print()
 for name, tl, halfw, halfl, pts, on, dur, gaps in detail:
     print(f"\n{name}  — field fitted {2*halfw:.0f}m wide x {2*halfl:.0f}m long | "

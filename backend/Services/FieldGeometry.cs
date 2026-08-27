@@ -21,7 +21,14 @@ public sealed record GeometryResult(
     int OnFieldSeconds,
     int OffFieldSeconds,
     int PointsPlayed,
-    double OnFieldDistanceM);
+    double OnFieldDistanceM,
+    // On-field seconds that fall inside a detected point - i.e. between the end
+    // of one accepted endzone-reset dwell and the start of the next. This is
+    // "live play" as opposed to OnFieldSeconds, which also counts waiting on
+    // the line between points. Always <= OnFieldSeconds. Inherits the point
+    // detector's softness: a missed point's time lands in the between-points
+    // remainder, so this slightly under-counts.
+    int LivePlaySeconds);
 
 // Every magic number from scripts/ultimate-stream-explore/segment.py, one
 // constant each. Retuning geometry is a change here + a FieldGeometry.Version
@@ -53,7 +60,9 @@ public static class FieldGeometry
     // so short D points where the opposition scores fast and he subs off stop
     // being deleted. Held-out validated on the 11 Feb/Mar games. The reclassify
     // gate keys on LapFieldClassifier.Version, bumped in lockstep.
-    public const int Version = 2;
+    // v3 = GeometryResult also carries LivePlaySeconds (on-field time inside a
+    // detected point). Additive - no change to on/off or point numbers.
+    public const int Version = 3;
 
     public static GeometryResult Analyse(IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null)
     {
@@ -93,7 +102,7 @@ public static class FieldGeometry
             onRaw[i] = latSpread[i] > halfW * o.SpreadFactor || medAbsCross[i] < halfW * o.CentreFactor;
         var onField = MergeShort(t, onRaw, o.MinDwellSec);
 
-        int points = CountPoints(t, along, spd, onField, halfL, o);
+        var (points, liveSec) = CountPoints(t, along, spd, onField, halfL, o);
 
         double onSec = 0, offSec = 0, onDist = 0;
         for (int i = 1; i < n; i++)
@@ -116,7 +125,8 @@ public static class FieldGeometry
 
         var fit = new FieldFit(fit0.ThetaRad, fit0.CentreCrossM, halfW, halfL);
         return new GeometryResult(fit, onField, segments,
-            (int)Math.Round(onSec), (int)Math.Round(offSec), points, onDist);
+            (int)Math.Round(onSec), (int)Math.Round(offSec), points, onDist,
+            (int)Math.Round(liveSec));
     }
 
     // Fraction of the time window [t0, t1) that was on-field, weighted by the
@@ -204,14 +214,18 @@ public static class FieldGeometry
     }
 
     // --- port of segment.py point counter (non-strict variant) ---
-    private static int CountPoints(
+    // Returns the accepted-dwell count and the on-field seconds that fall in
+    // the live-play windows between consecutive accepted dwells (segment.py's
+    // b2 / "in-point on-field time").
+    private static (int Points, double LiveSeconds) CountPoints(
         double[] t, double[] along, double[] spd, bool[] onField, double halfL, FieldGeometryOptions o)
     {
         int n = t.Length;
         var inEz = new bool[n];
         for (int i = 0; i < n; i++) inEz[i] = Math.Abs(along[i]) > halfL * o.EndzoneFrac;
 
-        int pts = 0;
+        // (i0, i1) of every accepted reset dwell, in order.
+        var accepted = new List<(int I0, int I1)>();
         foreach (var (state, i0, i1) in Runs(inEz))
         {
             if (!state) continue;
@@ -238,9 +252,21 @@ public static class FieldGeometry
             for (int i = i1; i <= j; i++) if (onField[i]) followOn++;
             if (followLen == 0 || followOn < followLen * o.FollowFrac) continue;
 
-            pts++;
+            accepted.Add((i0, i1));
         }
-        return pts;
+
+        // Live play = on-field time from the end of one accepted dwell to the
+        // start of the next. The tail after the last dwell (handshake, cooldown)
+        // is deliberately excluded.
+        double live = 0;
+        for (int k = 0; k < accepted.Count - 1; k++)
+        {
+            int ia = accepted[k].I1, ib = accepted[k + 1].I0;
+            for (int i = ia + 1; i <= ib; i++)
+                if (onField[i - 1]) live += t[i] - t[i - 1];
+        }
+
+        return (accepted.Count, live);
     }
 
     // --- primitives, ported to match Python semantics exactly ---

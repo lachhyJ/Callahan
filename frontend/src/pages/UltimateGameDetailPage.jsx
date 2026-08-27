@@ -83,11 +83,19 @@ export default function UltimateGameDetailPage() {
   const totalTracked = hasFieldData
     ? activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
     : 0
-  const onPct = hasFieldData ? formatPercent(activity.onFieldSeconds, totalTracked) : null
+  // "Live play" = on-field time inside a detected point. The rest of on-field
+  // time (waiting on the line between points, subbing on) is shown separately.
+  const liveSeconds = hasFieldData ? (activity.livePlaySeconds ?? 0) : 0
+  const onIdleSeconds = hasFieldData ? Math.max(0, activity.onFieldSeconds - liveSeconds) : 0
+  const livePct = hasFieldData ? formatPercent(liveSeconds, totalTracked) : null
+  const onIdlePct = hasFieldData ? formatPercent(onIdleSeconds, totalTracked) : null
   const offPct = hasFieldData ? formatPercent(activity.offFieldSeconds, totalTracked) : null
   const mixedPct = hasFieldData && activity.mixedSeconds > 0 ? formatPercent(activity.mixedSeconds, totalTracked) : null
-  const minPerPoint = hasFieldData && activity.pointsPlayed
-    ? (activity.onFieldSeconds / 60 / activity.pointsPlayed).toFixed(1)
+  const liveOfOnPct = hasFieldData && activity.onFieldSeconds
+    ? formatPercent(liveSeconds, activity.onFieldSeconds)
+    : null
+  const livePerPoint = hasFieldData && activity.pointsPlayed && liveSeconds
+    ? (liveSeconds / 60 / activity.pointsPlayed).toFixed(1)
     : null
 
   return (
@@ -138,14 +146,19 @@ export default function UltimateGameDetailPage() {
       {hasFieldData && (
         <>
           <div className="field-split-bar">
-            <div className="field-split-segment field-split-on" style={{ width: `${onPct}%` }} />
+            <div className="field-split-segment field-split-live" style={{ width: `${livePct}%` }} />
+            <div className="field-split-segment field-split-on-idle" style={{ width: `${onIdlePct}%` }} />
             {mixedPct != null && <div className="field-split-segment field-split-mixed" style={{ width: `${mixedPct}%` }} />}
             <div className="field-split-segment field-split-off" style={{ width: `${offPct}%` }} />
           </div>
           <div className="field-split-legend">
             <span className="field-split-legend-item">
-              <i className="field-timeline-swatch field-timeline-swatch-on" />
-              On field {formatHoursMinutes(activity.onFieldSeconds)} · {onPct}%
+              <i className="field-timeline-swatch field-timeline-swatch-live" />
+              Live play {formatHoursMinutes(liveSeconds)} · {livePct}%
+            </span>
+            <span className="field-split-legend-item">
+              <i className="field-timeline-swatch field-timeline-swatch-on-idle" />
+              On field, between points {formatHoursMinutes(onIdleSeconds)} · {onIdlePct}%
             </span>
             {mixedPct != null && (
               <span className="field-split-legend-item">
@@ -159,8 +172,11 @@ export default function UltimateGameDetailPage() {
             </span>
           </div>
           <p className="field-split-note">
-            Time spent physically on the field — includes waiting on the line
-            between points, stall counts and subbing on, not only live play.
+            <strong>Live play</strong> is time inside a detected point —{' '}
+            {liveOfOnPct}% of your {formatHoursMinutes(activity.onFieldSeconds)} on
+            the field here. The rest is waiting on the line between points, stall
+            counts and subbing on. Live play misses points the detector drops, so
+            read it as a slight under-count.
           </p>
 
           <div className="game-stat-row">
@@ -170,10 +186,10 @@ export default function UltimateGameDetailPage() {
                 <span className="stat-value">{activity.pointsPlayed}</span>
               </div>
             )}
-            {minPerPoint != null && (
+            {livePerPoint != null && (
               <div className="stat-card">
-                <span className="stat-label">Min / point</span>
-                <span className="stat-value">{minPerPoint}</span>
+                <span className="stat-label">Live min / point</span>
+                <span className="stat-value">{livePerPoint}</span>
               </div>
             )}
             {activity.onFieldDistanceKm != null && (

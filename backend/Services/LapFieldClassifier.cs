@@ -75,7 +75,10 @@ public sealed record LapFieldSummary(
     int PointsPlayed,
     decimal OnFieldDistanceM,
     int UnknownLapCount,
-    int AlternationViolations);
+    int AlternationViolations,
+    // On-field seconds inside a detected point (see GeometryResult.LivePlaySeconds).
+    // 0 when there's no geometry (NoTrack) or it doesn't apply (LabelledFromGarmin).
+    int LivePlaySeconds = 0);
 
 // Pure. No DbContext, no I/O. Callable on any (laps, geometry) pair so it can
 // be unit-tested in isolation and reused from lap-sync, track-sync,
@@ -89,7 +92,8 @@ public static class LapFieldClassifier
     // v4 = MinLapsForBoundaries raised to 4 (2 stray auto-laps aren't a sub log).
     // v5 = FieldGeometry v2 - point-counter follow-on filter relaxed so short
     // points aren't deleted. PointsPlayed rises ~4-13% (see FieldGeometry.cs).
-    public const int Version = 5;
+    // v6 = LivePlaySeconds threaded through from FieldGeometry v3. Additive.
+    public const int Version = 6;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };
@@ -167,7 +171,8 @@ public static class LapFieldClassifier
                 EmptyStates, LapClassifierMethod.GeometryNoLaps, null,
                 geometry.OnFieldSeconds, geometry.OffFieldSeconds, 0,
                 geometry.PointsPlayed, (decimal)geometry.OnFieldDistanceM,
-                UnknownLapCount: all.Count, AlternationViolations: 0);
+                UnknownLapCount: all.Count, AlternationViolations: 0,
+                LivePlaySeconds: geometry.LivePlaySeconds);
         }
 
         // --- 4. Label each lap by the on-field fraction of its window. ---
@@ -197,7 +202,8 @@ public static class LapFieldClassifier
         // count - he laps on sub on/off, so one on-field lap can span several
         // points.
         return Summarise(all, LapClassifierMethod.GeometryFromLaps, violations,
-            pointsOverride: geometry.PointsPlayed, distanceFromLaps: true);
+            pointsOverride: geometry.PointsPlayed, distanceFromLaps: true,
+            livePlaySeconds: geometry.LivePlaySeconds);
     }
 
     private static readonly IReadOnlyDictionary<int, string> EmptyStates =
@@ -205,7 +211,7 @@ public static class LapFieldClassifier
 
     private static LapFieldSummary Summarise(
         List<Lap> all, string method, int alternationViolations,
-        int? pointsOverride, bool distanceFromLaps)
+        int? pointsOverride, bool distanceFromLaps, int livePlaySeconds = 0)
     {
         int onSec = 0, offSec = 0, mixSec = 0, onLapCount = 0, unknown = 0;
         decimal onDist = 0m;
@@ -235,6 +241,7 @@ public static class LapFieldClassifier
             all.ToDictionary(l => l.Index, l => l.State),
             method, null,
             onSec, offSec, mixSec,
-            pointsOverride ?? onLapCount, onDist, unknown, alternationViolations);
+            pointsOverride ?? onLapCount, onDist, unknown, alternationViolations,
+            livePlaySeconds);
     }
 }
