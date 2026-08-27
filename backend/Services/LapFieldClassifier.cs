@@ -87,7 +87,9 @@ public static class LapFieldClassifier
     // v3 = <2 laps falls back to GeometryNoLaps (Garmin's one default lap on an
     // un-lapped game was collapsing OnFieldSeconds to 0).
     // v4 = MinLapsForBoundaries raised to 4 (2 stray auto-laps aren't a sub log).
-    public const int Version = 4;
+    // v5 = FieldGeometry v2 - point-counter follow-on filter relaxed so short
+    // points aren't deleted. PointsPlayed rises ~4-13% (see FieldGeometry.cs).
+    public const int Version = 5;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };

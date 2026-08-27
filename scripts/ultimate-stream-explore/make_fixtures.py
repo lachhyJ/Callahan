@@ -31,8 +31,8 @@ MIN_DWELL = 75.0
 EZ_FRAC = 0.55
 EZ_MIN_S = 25.0
 EZ_MAX_SPD = 2.5
-FOLLOW_S = 90.0
-FOLLOW_FRAC = 0.6
+FOLLOW_S = 60.0
+FOLLOW_FRAC = 0.5
 
 
 def project(t, lat, lon, spd):

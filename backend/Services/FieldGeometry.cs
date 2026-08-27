@@ -36,8 +36,8 @@ public sealed record FieldGeometryOptions(
     double EndzoneFrac = 0.55,      // |along| beyond HalfLength * this = an endzone
     double EndzoneMinSec = 25.0,    // an endzone dwell must last this long ...
     double EndzoneMaxSpd = 2.5,     // ... and be this slow on average to be a reset
-    double FollowSec = 90.0,        // after a reset, look this far ahead ...
-    double FollowFrac = 0.6)        // ... and require this much of it to be on-field
+    double FollowSec = 60.0,        // after a reset, look this far ahead ...
+    double FollowFrac = 0.5)        // ... and require this much of it to be on-field
 {
     public static readonly FieldGeometryOptions Default = new();
 }
@@ -49,7 +49,11 @@ public static class FieldGeometry
 {
     // Bump when the algorithm or the option defaults change in a way that
     // should trigger a reclassify of stored activities.
-    public const int Version = 1;
+    // v2 = the follow-on filter relaxed (FollowSec 90->60, FollowFrac 0.6->0.5)
+    // so short D points where the opposition scores fast and he subs off stop
+    // being deleted. Held-out validated on the 11 Feb/Mar games. The reclassify
+    // gate keys on LapFieldClassifier.Version, bumped in lockstep.
+    public const int Version = 2;
 
     public static GeometryResult Analyse(IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null)
     {

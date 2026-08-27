@@ -23,8 +23,12 @@ MIN_DWELL = 75.0
 EZ_FRAC = 0.55        # |along| beyond this fraction of half-length = endzone
 EZ_MIN_S = 25.0       # a dwell must last this long to count as a reset
 EZ_MAX_SPD = 2.5      # and be this slow on average
-FOLLOW_S = 90.0       # after a dwell, look this far ahead...
-FOLLOW_FRAC = 0.6     # ...and require this much of it to be on-field
+FOLLOW_S = 60.0       # after a dwell, look this far ahead...
+FOLLOW_FRAC = 0.5     # ...and require this much of it to be on-field
+# Relaxed from 90 / 0.6 (2026-08-27): the tighter filter structurally deleted
+# short points started on D where the opposition scores fast and he subs off -
+# the following stretch is then mostly off-field. Held-out validated on the 11
+# Feb/Mar games. The C# port (FieldGeometry.cs) carries the same values.
 # STRICT additionally requires a full-field pull traverse after the dwell. It
 # under-counts badly (5.7 min/point vs a real ~2-4), so it is off by default -
 # kept because it is the conservative floor on points played.
