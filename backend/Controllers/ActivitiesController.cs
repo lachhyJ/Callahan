@@ -45,16 +45,32 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<List<ActivityDto>>> GetAll(DateOnly? start = null, DateOnly? end = null)
+    public async Task<ActionResult<List<ActivityDto>>> GetAll(
+        DateOnly? start = null, DateOnly? end = null, string? type = null, string? sessionType = null)
     {
         await PurgeExpiredAsync();
 
         var query = _db.Activities.AsQueryable();
         if (start is not null) query = query.Where(a => a.Date >= start);
         if (end is not null) query = query.Where(a => a.Date <= end);
+        if (type is not null)
+        {
+            if (!Enum.TryParse<ActivityType>(type, ignoreCase: true, out var activityType))
+            {
+                return BadRequest(new { error = $"Unknown activity type '{type}'." });
+            }
+            query = query.Where(a => a.Type == activityType);
+        }
+        // By name, not id - callers (the games list) know "Game" the way the
+        // rest of the app does, not the seeded ActivitySessionType.Id.
+        if (sessionType is not null)
+        {
+            query = query.Where(a => a.ActivitySessionType != null && a.ActivitySessionType.Name == sessionType);
+        }
 
         var activities = await query
             .Include(a => a.ActivitySessionType)
+            .Include(a => a.Tournament)
             .OrderByDescending(a => a.Date)
             .Select(a => new ActivityDto(
                 a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
@@ -64,7 +80,8 @@ public class ActivitiesController : ControllerBase
                 a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
                 a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
                 a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
-                a.Track == null ? 0 : a.Track.SampleCount))
+                a.Track == null ? 0 : a.Track.SampleCount,
+                a.TournamentId, a.Tournament == null ? null : a.Tournament.Name))
             .ToListAsync();
 
         return Ok(activities);
@@ -79,6 +96,7 @@ public class ActivitiesController : ControllerBase
             .Include(a => a.ActivitySessionType)
             .Include(a => a.Laps)
             .Include(a => a.Track)
+            .Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
@@ -139,6 +157,7 @@ public class ActivitiesController : ControllerBase
                 .Include(a => a.ActivitySessionType)
                 .Include(a => a.Laps)
                 .Include(a => a.Track)
+                .Include(a => a.Tournament)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
             {
@@ -172,6 +191,21 @@ public class ActivitiesController : ControllerBase
             RawJson = request.RawJson,
         };
 
+        // Auto-attach to a tournament whose date range contains this game, so
+        // creating the tournament (even in advance) is enough - the weekend's
+        // games group themselves as they sync with no further action. Keyed on
+        // Ultimate + date, deliberately NOT on the "Game" session type: at sync
+        // time the activity isn't classified yet (that's UpdateSessionType,
+        // which runs later), so requiring Game here would silently attach
+        // nothing. Matches the backfill sweep's own Ultimate-only semantics.
+        // New-activity branch only - a Garmin re-sync (above) never touches an
+        // existing manual/auto assignment.
+        if (type == ActivityType.Ultimate)
+        {
+            activity.Tournament = await _db.Tournaments
+                .FirstOrDefaultAsync(t => t.StartDate <= activity.Date && activity.Date <= t.EndDate);
+        }
+
         _db.Activities.Add(activity);
         await _db.SaveChangesAsync();
 
@@ -182,7 +216,7 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityDto>> UpdateSessionType(int id, UpdateActivitySessionTypeRequest request)
     {
         var activity = await _db.Activities
-            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track)
+            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
@@ -251,6 +285,7 @@ public class ActivitiesController : ControllerBase
         var activity = await _db.Activities.IgnoreQueryFilters()
             .Include(a => a.ActivitySessionType)
             .Include(a => a.Laps)
+            .Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt != null);
         if (activity is null) return NotFound();
 
@@ -397,10 +432,42 @@ public class ActivitiesController : ControllerBase
     [HttpPut("{id}/cone-distance")]
     public async Task<ActionResult<ActivityDto>> UpdateConeDistance(int id, UpdateConeDistanceRequest request)
     {
-        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
+        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Tournament).FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
         activity.ConeDistanceM = request.ConeDistanceM;
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(activity));
+    }
+
+    // Manual override for the auto-attach sweep - sets or clears (null) which
+    // tournament this game belongs to. Not restricted to Ultimate at the DB
+    // level (see Activity.TournamentId), so no type check here either; a
+    // stray assignment on a non-Ultimate row is harmless and the frontend
+    // never offers the picker for one.
+    [HttpPut("{id}/tournament")]
+    public async Task<ActionResult<ActivityDto>> UpdateTournament(int id, UpdateActivityTournamentRequest request)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        if (request.TournamentId is not null)
+        {
+            var tournament = await _db.Tournaments.FirstOrDefaultAsync(t => t.Id == request.TournamentId);
+            if (tournament is null)
+            {
+                return BadRequest(new { error = $"Unknown tournament '{request.TournamentId}'." });
+            }
+            activity.Tournament = tournament;
+        }
+        else
+        {
+            activity.Tournament = null;
+        }
+
         await _db.SaveChangesAsync();
 
         return Ok(ToDto(activity));
@@ -497,5 +564,6 @@ public class ActivitiesController : ControllerBase
         a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
-        a.Track?.SampleCount ?? 0);
+        a.Track?.SampleCount ?? 0,
+        a.TournamentId, a.Tournament?.Name);
 }

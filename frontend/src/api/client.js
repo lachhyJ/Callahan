@@ -253,10 +253,12 @@ export function cancelRestTimer(timerId) {
   return apiFetch(`/api/resttimer/cancel/${timerId}`, { method: 'POST' })
 }
 
-export function getActivities({ start, end } = {}) {
+export function getActivities({ start, end, type, sessionType } = {}) {
   const params = new URLSearchParams()
   if (start) params.set('start', start)
   if (end) params.set('end', end)
+  if (type) params.set('type', type)
+  if (sessionType) params.set('sessionType', sessionType)
   const query = params.toString()
   return apiFetch(`/api/activities${query ? `?${query}` : ''}`)
 }
@@ -307,6 +309,39 @@ export function getActivity(id) {
 // network/auth failure.
 export function getActivityFieldTimeline(id) {
   return apiFetch(`/api/activities/${id}/field-timeline`)
+}
+
+export function updateActivityTournament(id, tournamentId) {
+  return apiFetch(`/api/activities/${id}/tournament`, {
+    method: 'PUT',
+    body: JSON.stringify({ tournamentId }),
+  })
+}
+
+export function getTournaments() {
+  return apiFetch('/api/tournaments')
+}
+
+export function createTournament({ name, startDate, endDate }) {
+  return apiFetch('/api/tournaments', {
+    method: 'POST',
+    body: JSON.stringify({ name, startDate, endDate }),
+  })
+}
+
+export function updateTournament(id, { name, startDate, endDate }) {
+  return apiFetch(`/api/tournaments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, startDate, endDate }),
+  })
+}
+
+export function deleteTournament(id) {
+  return apiFetch(`/api/tournaments/${id}`, { method: 'DELETE' })
+}
+
+export function attachTournamentGames(id) {
+  return apiFetch(`/api/tournaments/${id}/attach-games`, { method: 'POST' })
 }
 
 export function getHealth() {

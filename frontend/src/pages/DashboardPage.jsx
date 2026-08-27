@@ -5,7 +5,7 @@ import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -41,6 +41,7 @@ const QUICK_LINKS = [
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/reports', label: 'Reports', Icon: DocumentIcon },
+  { to: '/games', label: 'Games', Icon: HistoryIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank

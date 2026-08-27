@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<DailyWellness> DailyWellness => Set<DailyWellness>();
     public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
     public DbSet<ActivityTrack> ActivityTracks => Set<ActivityTrack>();
+    public DbSet<Tournament> Tournaments => Set<Tournament>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -70,6 +71,17 @@ public class AppDbContext : DbContext
             .WithOne(t => t.Activity)
             .HasForeignKey<ActivityTrack>(t => t.ActivityId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Tournament>()
+            .HasIndex(t => t.StartDate);
+        modelBuilder.Entity<Activity>()
+            .HasOne(a => a.Tournament)
+            .WithMany(t => t.Activities)
+            .HasForeignKey(a => a.TournamentId)
+            // Deleting a tournament detaches its games rather than deleting
+            // them - a Tournament is a grouping label, not the owner of the
+            // Activity rows it groups.
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },

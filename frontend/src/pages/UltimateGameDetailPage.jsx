@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
-import { getActivity, getActivityFieldTimeline } from '../api/client'
+import { Link, useParams } from 'react-router-dom'
+import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityTournament } from '../api/client'
 import { activityLabel, formatDuration } from '../utils/activityLabel'
 import { formatDateLong } from '../dateUtils'
 import FieldTimeline from '../components/FieldTimeline'
@@ -32,6 +32,8 @@ export default function UltimateGameDetailPage() {
   const [activity, setActivity] = useState(null)
   const [timeline, setTimeline] = useState(null)
   const [error, setError] = useState(null)
+  const [tournaments, setTournaments] = useState(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
 
   useEffect(() => {
     setActivity(null)
@@ -46,6 +48,20 @@ export default function UltimateGameDetailPage() {
     if (!activity || activity.onFieldSeconds == null) return
     getActivityFieldTimeline(activityId).then(setTimeline).catch(() => {})
   }, [activity, activityId])
+
+  // Only fetched when the picker is opened, not on every page load - the
+  // tournament list is small but there's no reason to pull it for a page
+  // view that never touches it.
+  function openPicker() {
+    setPickerOpen(true)
+    if (!tournaments) getTournaments().then(setTournaments).catch(() => {})
+  }
+
+  async function handleSelectTournament(tournamentId) {
+    setPickerOpen(false)
+    const updated = await updateActivityTournament(activityId, tournamentId)
+    setActivity(updated)
+  }
 
   if (error) {
     return (
@@ -78,6 +94,38 @@ export default function UltimateGameDetailPage() {
     <main className="page">
       <p className="session-date">{formatDateLong(activity.date)}</p>
       <h1 className="game-title">{activityLabel(activity)}</h1>
+
+      {activity.type === 'Ultimate' && (
+        <span className="activity-classify">
+          {activity.tournamentId ? (
+            <Link to="/games" className="activity-classify-link">{activity.tournamentName}</Link>
+          ) : (
+            <span className="activity-classify-teaser">No tournament</span>
+          )}
+          <button type="button" className="activity-classify-btn" onClick={openPicker}>
+            {activity.tournamentId ? 'Change' : 'Set tournament'}
+          </button>
+          {pickerOpen && (
+            <>
+              <div className="picker-backdrop" onClick={() => setPickerOpen(false)} />
+              <div className="set-type-menu">
+                {tournaments === null && <span className="picker-menu-note">Loading…</span>}
+                {tournaments?.length === 0 && <span className="picker-menu-note">No tournaments yet</span>}
+                {tournaments?.map((t) => (
+                  <button key={t.id} type="button" onClick={() => handleSelectTournament(t.id)}>
+                    {t.name}
+                  </button>
+                ))}
+                {activity.tournamentId && (
+                  <button type="button" className="remove-option" onClick={() => handleSelectTournament(null)}>
+                    Clear
+                  </button>
+                )}
+              </div>
+            </>
+          )}
+        </span>
+      )}
 
       {!hasFieldData && (
         <p className="notes">

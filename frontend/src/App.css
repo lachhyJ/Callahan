@@ -364,6 +364,20 @@ td {
   gap: var(--space-xs);
 }
 
+/* GamesListPage rows reuse .history-item's spacing/border but the element
+   is a Link, not a div - restore block layout and strip the anchor's
+   default text styling so it reads identically to History's own rows. */
+.games-list-row {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+
+  &:hover .history-item-main,
+  &:focus-visible .history-item-main {
+    color: var(--text-h);
+  }
+}
+
 .dashboard-header {
   display: flex;
   align-items: center;
@@ -1992,6 +2006,16 @@ td {
   inset: 0;
   z-index: 9;
   background: transparent;
+}
+
+/* Non-interactive placeholder text inside a .set-type-menu (loading / empty)
+   - the menu's own `button` selector supplies padding, but a plain span
+   needs its own since it isn't one. */
+.picker-menu-note {
+  display: block;
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
 }
 
 .activity-type-menu .suggested-option {

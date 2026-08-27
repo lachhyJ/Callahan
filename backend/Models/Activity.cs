@@ -16,6 +16,13 @@ public class Activity
     public int? ActivitySessionTypeId { get; set; }
     public ActivitySessionType? ActivitySessionType { get; set; }
 
+    // Which tournament this game belongs to, if any. Ultimate-only in
+    // practice (set by the date-range attach sweep or the manual picker) but
+    // not type-constrained at the DB level - a stray non-Ultimate row here is
+    // harmless, not worth a check constraint for.
+    public int? TournamentId { get; set; }
+    public Tournament? Tournament { get; set; }
+
     // Cached sum of ActivityLap.DistanceM where IntensityType == "ACTIVE",
     // recomputed whenever laps are (re)synced - so reading it never needs to
     // touch the Laps table.

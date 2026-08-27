@@ -30,7 +30,11 @@ public record ActivityDto(
     int? LapClassifierVersion = null,
     // Number of GPS samples in the activity's synced track (0 = no track). The
     // sync uses this to fetch the stream only once per activity.
-    int TrackSampleCount = 0);
+    int TrackSampleCount = 0,
+    // Which tournament this game belongs to, if any - set by the date-range
+    // attach sweep or the manual picker on the game detail page.
+    int? TournamentId = null,
+    string? TournamentName = null);
 
 public record CreateActivityRequest(
     DateOnly Date,
@@ -116,6 +120,18 @@ public record ReclassifyResponse(
     List<ReclassifyChange> Changes);
 
 public record UpdateConeDistanceRequest(int? ConeDistanceM);
+
+public record UpdateActivityTournamentRequest(int? TournamentId);
+
+public record TournamentDto(int Id, string Name, DateOnly StartDate, DateOnly EndDate, int GameCount);
+
+public record CreateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate);
+
+public record UpdateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate);
+
+// Response from the date-range attach sweep - how many previously-unlinked
+// Ultimate activities in [StartDate, EndDate] got linked to this tournament.
+public record AttachGamesResponse(int Attached);
 
 // GET /api/activities/{id}/field-timeline - the on/off segments FieldGeometry
 // computes but ApplyLapDerivedAggregates discards after aggregating. Recomputed

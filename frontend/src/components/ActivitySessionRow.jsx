@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { activityLabel } from '../utils/activityLabel'
+import { activityLabel, onFieldTeaser } from '../utils/activityLabel'
 import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 import { suggestUltimateSessionType } from '../utils/ultimateSessionSuggestion'
 
@@ -47,18 +47,6 @@ function ConeDistanceInput({ activity, onConeDistanceChange }) {
       </label>
     </span>
   )
-}
-
-// A one-glance teaser for the on/off-field data behind the game-detail link
-// - cheap enough to compute here that the feature doesn't stay hidden behind
-// a tap. Undefined (not just null) whenever the fields aren't there, so it
-// never renders "0 pts" for pre-backfill or unclassified games.
-function onFieldTeaser(activity) {
-  if (activity.type !== 'Ultimate' || activity.pointsPlayed == null) return null
-  const total = activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
-  if (!total) return null
-  const onPct = Math.round((activity.onFieldSeconds / total) * 100)
-  return `${activity.pointsPlayed} pt${activity.pointsPlayed === 1 ? '' : 's'} · ${onPct}% on`
 }
 
 // Runs and Ultimate activities both need classifying well after the fact
