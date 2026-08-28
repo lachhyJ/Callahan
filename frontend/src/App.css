@@ -1698,6 +1698,12 @@ td {
   stroke-width: 2;
 }
 
+.chart-baseline {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
 .chart-end-label {
   fill: var(--text-h);
   font-size: var(--text-2xs);
@@ -2442,6 +2448,26 @@ td {
   flex-direction: column;
   gap: var(--space-2xs);
   margin-top: var(--space-sm);
+}
+
+.wellness-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-lg);
+}
+
+.wellness-timeline > h2 {
+  margin: 0;
+}
+
+.wellness-timeline-chart {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.wellness-timeline-chart h3 {
+  margin: 0;
 }
 
 .muscle-bar-list {

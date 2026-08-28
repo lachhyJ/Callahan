@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { getWellness, getWellnessInsight } from '../api/client'
-import { buildDailySeries, DIRECTION_CLASS, formatMetricValue, wellnessRange } from '../wellnessMetrics'
+import { buildDailySeries, DIRECTION_CLASS, formatMetricValue, WELLNESS_METRICS, wellnessRange } from '../wellnessMetrics'
 import WellnessSparkline from '../components/WellnessSparkline'
+import MetricTrendChart from '../components/MetricTrendChart'
 
-// Days of history the per-metric sparklines cover.
-const SPARK_DAYS = 35
+// One fetch covers both surfaces: the timeline plots the full window, the
+// row sparklines show the last few weeks of it.
+const HISTORY_DAYS = 84
+const SPARK_DAYS = 28
+// A metric needs at least this many real readings in the window before its
+// 12-week chart is worth drawing.
+const MIN_TIMELINE_POINTS = 10
 
 export default function WellnessPage() {
   const [insight, setInsight] = useState(null)
@@ -22,12 +28,14 @@ export default function WellnessPage() {
   }, [])
 
   useEffect(() => {
-    // Additive — a sparkline fetch failure just leaves the numbers as they are.
-    const { start, end } = wellnessRange(SPARK_DAYS)
+    // Additive — a history fetch failure just leaves the numbers as they are.
+    const { start, end } = wellnessRange(HISTORY_DAYS)
     getWellness(start, end)
-      .then((rows) => setSeries(buildDailySeries(rows, SPARK_DAYS)))
+      .then((rows) => setSeries(buildDailySeries(rows, HISTORY_DAYS)))
       .catch(() => {})
   }, [])
+
+  const baselineFor = (key) => insight?.metrics.find((m) => m.key === key)?.baselineAvg ?? null
 
   return (
     <main className="page">
@@ -70,11 +78,40 @@ export default function WellnessPage() {
                   </div>
                 </div>
                 {series && m.direction !== 'insufficient' && (
-                  <WellnessSparkline values={series[m.key]} baselineAvg={m.baselineAvg} />
+                  <WellnessSparkline values={series.byKey[m.key].slice(-SPARK_DAYS)} baselineAvg={m.baselineAvg} />
                 )}
               </div>
             ))}
           </div>
+
+          {series && (
+            <section className="wellness-timeline section-gap">
+              <h2>Last 12 weeks</h2>
+              {WELLNESS_METRICS.map((meta) => {
+                const scale = meta.chartScale ?? 1
+                const points = series.dates.map((date, i) => {
+                  const raw = series.byKey[meta.key][i]
+                  return { date, value: raw == null ? null : raw * scale }
+                })
+                const realCount = points.filter((p) => p.value != null).length
+                const baseline = baselineFor(meta.key)
+                return (
+                  <div key={meta.key} className="wellness-timeline-chart">
+                    <h3 className="trend-chart-title">{meta.label}</h3>
+                    {realCount < MIN_TIMELINE_POINTS ? (
+                      <p className="page-subtitle">Not enough history yet.</p>
+                    ) : (
+                      <MetricTrendChart
+                        points={points}
+                        baselineAvg={baseline == null ? null : baseline * scale}
+                        caption={`${meta.unit} — dashed line is your 28-day average`}
+                      />
+                    )}
+                  </div>
+                )
+              })}
+            </section>
+          )}
 
           <p className="page-subtitle wellness-disclaimer">
             A read on how today compares to your recent normal — not training advice.
