@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
@@ -28,12 +29,21 @@ public class WellnessController : ControllerBase
     // Trailing window the readiness insight compares the latest day against.
     private const int BaselineWindowDays = 28;
 
+    // Garmin creates today's row before the overnight sync has computed sleep /
+    // readiness / HRV, so the newest row is often all-null. Skip those when
+    // picking "latest" (and when anchoring the baseline) so the card falls back
+    // to the last day that actually has numbers instead of rendering nothing.
+    private static readonly Expression<Func<DailyWellness, bool>> HasReadableMetric =
+        w => w.SleepSeconds != null || w.SleepScore != null
+          || w.HrvLastNightAvg != null || w.TrainingReadinessScore != null;
+
     [HttpGet("latest")]
     public async Task<ActionResult<DailyWellnessDto>> GetLatest()
     {
         var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-LatestWindowDays));
         var wellness = await _db.DailyWellness
             .Where(w => w.Date >= cutoff)
+            .Where(HasReadableMetric)
             .OrderByDescending(w => w.Date)
             .FirstOrDefaultAsync();
 
@@ -61,6 +71,7 @@ public class WellnessController : ControllerBase
         var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-LatestWindowDays));
         var latest = await _db.DailyWellness
             .Where(w => w.Date >= cutoff)
+            .Where(HasReadableMetric)
             .OrderByDescending(w => w.Date)
             .FirstOrDefaultAsync();
 
