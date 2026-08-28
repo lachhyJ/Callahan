@@ -21,10 +21,18 @@ public static class ReadinessInsightCalculator
     // HRV bands, |delta| as a percentage of the baseline average.
     private const double HrvPctInLine = 8;
     private const double HrvPctStrong = 15;
+    // Resting-HR bands, |delta| as a percentage of the baseline average - tighter
+    // than HRV because night-to-night resting HR barely moves (a few bpm is a lot).
+    private const double RhrPctInLine = 4;
+    private const double RhrPctStrong = 8;
 
-    private enum Scale { Point, SleepMinutes, HrvPercent }
+    private enum Scale { Point, SleepMinutes, HrvPercent, RhrPercent }
 
-    private record MetricSpec(string Key, string Label, string HeadlineNoun, Scale Scale, Func<DailyWellnessDto, double?> Value);
+    // LowerIsBetter flips which numeric direction counts as the fatigue signal:
+    // for resting HR an *elevated* reading is the "more tired than usual" case.
+    private record MetricSpec(
+        string Key, string Label, string HeadlineNoun, Scale Scale,
+        Func<DailyWellnessDto, double?> Value, bool LowerIsBetter = false);
 
     private static readonly MetricSpec[] Specs =
     {
@@ -32,6 +40,7 @@ public static class ReadinessInsightCalculator
         new("sleepScore", "Sleep score", "sleep", Scale.Point, w => w.SleepScore),
         new("sleepDuration", "Sleep duration", "sleep", Scale.SleepMinutes, w => w.SleepSeconds),
         new("hrv", "HRV", "HRV", Scale.HrvPercent, w => w.HrvLastNightAvg),
+        new("restingHeartRate", "Resting HR", "resting HR", Scale.RhrPercent, w => w.RestingHeartRate, LowerIsBetter: true),
     };
 
     // baselineRows: wellness rows strictly before today.Date, window already
@@ -40,7 +49,9 @@ public static class ReadinessInsightCalculator
     public static ReadinessInsightDto Compute(DailyWellnessDto today, IReadOnlyList<DailyWellnessDto> baselineRows)
     {
         var metrics = new List<MetricInsightDto>();
-        var notable = new List<(string Noun, string Direction, int Strength)>();
+        // Recovery is the fatigue-oriented reading: "bad" = worse than baseline
+        // (low readiness/sleep/HRV, or high resting HR), "good" = the opposite.
+        var notable = new List<(string Noun, string Recovery, int Strength)>();
 
         foreach (var spec in Specs)
         {
@@ -64,32 +75,44 @@ public static class ReadinessInsightCalculator
             }
 
             double avg = baselineValues.Average();
-            var (direction, strength, phrase) = Band(spec.Scale, todayValue.Value, avg);
+            var (numericDir, strength, phrase) = Band(spec.Scale, todayValue.Value, avg);
+
+            string recovery = numericDir switch
+            {
+                "in_line" => "in_line",
+                "below" => spec.LowerIsBetter ? "good" : "bad",
+                _ => spec.LowerIsBetter ? "bad" : "good",   // "above"
+            };
+            // DTO direction carries recovery semantics so the client tints an
+            // elevated resting HR as a negative, not a positive.
+            string dtoDirection = recovery switch { "bad" => "below", "good" => "above", _ => "in_line" };
+
             metrics.Add(new MetricInsightDto(
                 spec.Key, spec.Label,
                 Math.Round(todayValue.Value), Math.Round(avg),
-                count, direction, phrase));
+                count, dtoDirection, phrase));
 
-            if (direction is "below" or "above")
-                notable.Add((spec.HeadlineNoun, direction, strength));
+            if (recovery is "good" or "bad")
+                notable.Add((spec.HeadlineNoun, recovery, strength));
         }
 
         bool hasEnoughHistory = metrics.Any(m => m.Direction != "insufficient");
         return new ReadinessInsightDto(today.Date, hasEnoughHistory, BuildHeadline(hasEnoughHistory, notable), metrics);
     }
 
-    private static (string Direction, int Strength, string Phrase) Band(Scale scale, double today, double avg)
+    private static (string NumericDir, int Strength, string Phrase) Band(Scale scale, double today, double avg)
     {
         double delta = scale switch
         {
-            Scale.SleepMinutes => (today - avg) / 60.0,                    // seconds -> minutes
-            Scale.HrvPercent => avg == 0 ? 0 : (today - avg) / avg * 100.0, // percent of baseline
-            _ => today - avg,                                              // raw points
+            Scale.SleepMinutes => (today - avg) / 60.0,                       // seconds -> minutes
+            Scale.HrvPercent or Scale.RhrPercent => avg == 0 ? 0 : (today - avg) / avg * 100.0,
+            _ => today - avg,                                                 // raw points
         };
         var (inLine, strong) = scale switch
         {
             Scale.SleepMinutes => (SleepMinInLine, SleepMinStrong),
             Scale.HrvPercent => (HrvPctInLine, HrvPctStrong),
+            Scale.RhrPercent => (RhrPctInLine, RhrPctStrong),
             _ => (PointInLine, PointStrong),
         };
 
@@ -113,33 +136,33 @@ public static class ReadinessInsightCalculator
         return (below ? "below" : "above", strength, phrase);
     }
 
-    private static string BuildHeadline(bool hasEnoughHistory, List<(string Noun, string Direction, int Strength)> notable)
+    private static string BuildHeadline(bool hasEnoughHistory, List<(string Noun, string Recovery, int Strength)> notable)
     {
         if (!hasEnoughHistory) return "Not enough wellness history yet.";
-        if (notable.Count == 0) return "You're tracking in line with your recent average.";
+        if (notable.Count == 0) return "You're tracking close to your recent baseline.";
 
-        var belows = notable.Where(n => n.Direction == "below").OrderByDescending(n => n.Strength).ToList();
-        var aboves = notable.Where(n => n.Direction == "above").OrderByDescending(n => n.Strength).ToList();
+        var bad = notable.Where(n => n.Recovery == "bad").OrderByDescending(n => n.Strength).ToList();
+        var good = notable.Where(n => n.Recovery == "good").OrderByDescending(n => n.Strength).ToList();
 
-        var belowNouns = DistinctNouns(belows);
-        var aboveNouns = DistinctNouns(aboves);
+        var badNouns = DistinctNouns(bad);
+        var goodNouns = DistinctNouns(good);
 
-        if (belows.Count > 0 && aboves.Count > 0)
-            return Capitalize($"{JoinNouns(belowNouns)} down, {JoinNouns(aboveNouns)} up — a mixed picture.");
+        if (bad.Count > 0 && good.Count > 0)
+            return Capitalize($"{JoinNouns(badNouns)} lagging, {JoinNouns(goodNouns)} ahead — a mixed picture.");
 
-        if (belows.Count > 0)
+        if (bad.Count > 0)
         {
-            string verb = belowNouns.Count == 1 ? "is" : "are";
-            string tail = belows.Any(b => b.Strength == 2) ? " — more tired than usual." : ".";
-            return Capitalize($"{JoinNouns(belowNouns)} {verb} below your recent average{tail}");
+            string verb = badNouns.Count == 1 ? "is" : "are";
+            string tail = bad.Any(b => b.Strength == 2) ? " — more tired than usual." : ".";
+            return Capitalize($"{JoinNouns(badNouns)} {verb} lagging your recent baseline{tail}");
         }
 
-        string verbA = aboveNouns.Count == 1 ? "is" : "are";
-        string tailA = aboves.Any(a => a.Strength == 2) ? " — fresher than usual." : ".";
-        return Capitalize($"{JoinNouns(aboveNouns)} {verbA} above your recent average{tailA}");
+        string verbG = goodNouns.Count == 1 ? "is" : "are";
+        string tailG = good.Any(g => g.Strength == 2) ? " — fresher than usual." : ".";
+        return Capitalize($"{JoinNouns(goodNouns)} {verbG} ahead of your recent baseline{tailG}");
     }
 
-    private static List<string> DistinctNouns(List<(string Noun, string Direction, int Strength)> items)
+    private static List<string> DistinctNouns(List<(string Noun, string Recovery, int Strength)> items)
     {
         var seen = new HashSet<string>();
         var result = new List<string>();
