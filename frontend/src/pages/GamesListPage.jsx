@@ -75,9 +75,10 @@ export default function GamesListPage() {
     )
   }
 
-  // Group by tournament, in the same reverse-chronological order the games
-  // themselves already come back in (GetAll orders by Date desc) - a
-  // tournament's position in the list is decided by its most recent game.
+  // One date-ordered list mixing tournament sections with standalone games,
+  // rather than a separate bucket for the loose ones. GetAll returns games
+  // Date desc, so gs[0] is a tournament's most recent game and its date
+  // decides where the section sits relative to a standalone game.
   const byTournament = new Map()
   const loose = []
   for (const game of games) {
@@ -89,10 +90,13 @@ export default function GamesListPage() {
     byTournament.get(game.tournamentId).push(game)
   }
   const tournamentsById = new Map(tournaments.map((t) => [t.id, t]))
-  const sections = [...byTournament.entries()]
-    .map(([id, gs]) => ({ tournament: tournamentsById.get(id), games: gs }))
-    .filter((s) => s.tournament)
-    .sort((a, b) => (a.tournament.startDate < b.tournament.startDate ? 1 : -1))
+  const entries = [
+    ...[...byTournament.entries()]
+      .map(([id, gs]) => ({ kind: 'tournament', tournament: tournamentsById.get(id), games: gs }))
+      .filter((e) => e.tournament)
+      .map((e) => ({ ...e, sortDate: e.games[0].date })),
+    ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
+  ].sort((a, b) => (a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0))
 
   return (
     <main className="page">
@@ -137,10 +141,18 @@ export default function GamesListPage() {
       )}
 
       <div className="history-week-list section-gap">
-        {sections.map(({ tournament, games: gs }) => {
+        {entries.map((entry) => {
+          if (entry.kind === 'game') {
+            return (
+              <div key={`g-${entry.game.id}`} className="history-week">
+                <GameRow game={entry.game} />
+              </div>
+            )
+          }
+          const { tournament, games: gs } = entry
           const summaryLine = tournamentSummaryLine(gs)
           return (
-            <div key={tournament.id} className="history-week">
+            <div key={`t-${tournament.id}`} className="history-week">
               <Link to={`/tournaments/${tournament.id}`} className="tournament-section-link">
                 <div className="history-week-header">
                   <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
@@ -152,16 +164,6 @@ export default function GamesListPage() {
             </div>
           )
         })}
-
-        {loose.length > 0 && (
-          <div className="history-week">
-            <div className="history-week-header">
-              <span>Other games</span>
-              <span className="history-week-count">{loose.length} game{loose.length === 1 ? '' : 's'}</span>
-            </div>
-            {loose.map((g) => <GameRow key={g.id} game={g} />)}
-          </div>
-        )}
       </div>
     </main>
   )

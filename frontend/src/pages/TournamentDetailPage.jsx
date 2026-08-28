@@ -73,6 +73,10 @@ export default function TournamentDetailPage() {
           : g.livePlaySeconds / 60 / g.pointsPlayed,
     }))
   const chartUnit = chartMode === 'totals' ? 'min live' : 'min/pt'
+  const chartCaption =
+    chartMode === 'totals'
+      ? 'live-play minutes per game — in the order played'
+      : 'live-play minutes per point played — in the order played'
 
   return (
     <main className="page">
@@ -173,7 +177,7 @@ export default function TournamentDetailPage() {
                 className={`secondary-btn${chartMode === 'totals' ? ' active' : ''}`}
                 onClick={() => setChartMode('totals')}
               >
-                Totals
+                Per game
               </button>
               <button
                 type="button"
@@ -183,7 +187,7 @@ export default function TournamentDetailPage() {
                 Per point
               </button>
             </div>
-            <TournamentGameChart points={chartPoints} unitLabel={chartUnit} />
+            <TournamentGameChart points={chartPoints} unitLabel={chartUnit} caption={chartCaption} />
           </>
         )}
         <div className="history-week-list section-gap">

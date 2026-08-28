@@ -15,8 +15,9 @@ function formatDay(iso) {
 // Per-game value across a tournament, in chronological order — a line + area +
 // crosshair chart modelled on ProgressionChart. Deliberately one series: the
 // totals/rates switch lives in the parent, which rebuilds `points` and passes
-// a matching `unitLabel`. Expects points.length >= 2 (parent guards).
-export default function TournamentGameChart({ points, unitLabel }) {
+// a matching `unitLabel` plus a `caption` naming what the line plots.
+// Expects points.length >= 2 (parent guards).
+export default function TournamentGameChart({ points, unitLabel, caption }) {
   const svgRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(points.length - 1)
 
@@ -104,6 +105,8 @@ export default function TournamentGameChart({ points, unitLabel }) {
         <line x1={activeX} x2={activeX} y1={PAD_TOP} y2={PAD_TOP + plotHeight} className="chart-crosshair" />
         <circle cx={activeX} cy={activeY} r="4" className="chart-marker" />
       </svg>
+
+      {caption && <span className="trend-chart-caption">{caption}</span>}
 
       <div
         className="chart-tooltip"
