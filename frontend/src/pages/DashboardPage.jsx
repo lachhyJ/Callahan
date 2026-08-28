@@ -92,7 +92,7 @@ export default function DashboardPage() {
     getWellnessInsight().then(setWellnessInsight).catch(() => {})
     const { start, end } = wellnessRange(30)
     getWellness(start, end)
-      .then((rows) => setReadinessSeries(buildDailySeries(rows, 30).readiness))
+      .then((rows) => setReadinessSeries(buildDailySeries(rows, 30).byKey.readiness))
       .catch(() => {})
   }, [])
 
