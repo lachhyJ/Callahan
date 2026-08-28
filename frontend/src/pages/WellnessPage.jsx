@@ -9,6 +9,7 @@ function formatValue(key, value) {
     return `${h}h ${m}m`
   }
   if (key === 'hrv') return `${Math.round(value)} ms`
+  if (key === 'restingHeartRate') return `${Math.round(value)} bpm`
   return Math.round(value)
 }
 
