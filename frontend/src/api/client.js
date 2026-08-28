@@ -116,6 +116,10 @@ export function getLatestWellness() {
   return apiFetch('/api/wellness/latest')
 }
 
+export function getWellness(start, end) {
+  return apiFetch(`/api/wellness?start=${start}&end=${end}`)
+}
+
 export function getWellnessInsight() {
   return apiFetch('/api/wellness/insight')
 }
