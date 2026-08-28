@@ -5,6 +5,7 @@ import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
 import RunTypeTrendsList from '../components/RunTypeTrendsList'
+import MuscleBalanceSection from '../components/MuscleBalanceSection'
 
 function formatVolume(v) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
@@ -85,6 +86,8 @@ export default function TrendsPage() {
           )}
         </>
       )}
+
+      <MuscleBalanceSection />
     </main>
   )
 }
