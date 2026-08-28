@@ -4,6 +4,7 @@ import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityTo
 import { activityLabel, formatDuration } from '../utils/activityLabel'
 import { formatDateLong } from '../dateUtils'
 import FieldTimeline from '../components/FieldTimeline'
+import FieldSplitBar from '../components/FieldSplitBar'
 
 // How each LapFieldClassifier.Method value should read to someone who isn't
 // the one who built it — the honesty line under the stats, since
@@ -13,18 +14,6 @@ const METHOD_LABELS = {
   GeometryNoLaps: 'from GPS geometry',
   GeometryFromLaps: 'from lap presses + GPS geometry',
   NoTrack: 'no GPS track synced yet',
-}
-
-function formatHoursMinutes(totalSeconds) {
-  const minutes = Math.round(totalSeconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
-}
-
-function formatPercent(part, whole) {
-  if (!whole) return null
-  return Math.round((part / whole) * 100)
 }
 
 export default function UltimateGameDetailPage() {
@@ -80,20 +69,10 @@ export default function UltimateGameDetailPage() {
   }
 
   const hasFieldData = activity.onFieldSeconds != null
-  const totalTracked = hasFieldData
-    ? activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
-    : 0
   // "Live play" = on-field time inside a detected point. The rest of on-field
-  // time (waiting on the line between points, subbing on) is shown separately.
+  // time (waiting on the line between points, subbing on) is shown separately
+  // by FieldSplitBar.
   const liveSeconds = hasFieldData ? (activity.livePlaySeconds ?? 0) : 0
-  const onIdleSeconds = hasFieldData ? Math.max(0, activity.onFieldSeconds - liveSeconds) : 0
-  const livePct = hasFieldData ? formatPercent(liveSeconds, totalTracked) : null
-  const onIdlePct = hasFieldData ? formatPercent(onIdleSeconds, totalTracked) : null
-  const offPct = hasFieldData ? formatPercent(activity.offFieldSeconds, totalTracked) : null
-  const mixedPct = hasFieldData && activity.mixedSeconds > 0 ? formatPercent(activity.mixedSeconds, totalTracked) : null
-  const liveOfOnPct = hasFieldData && activity.onFieldSeconds
-    ? formatPercent(liveSeconds, activity.onFieldSeconds)
-    : null
   const livePerPoint = hasFieldData && activity.pointsPlayed && liveSeconds
     ? (liveSeconds / 60 / activity.pointsPlayed).toFixed(1)
     : null
@@ -106,7 +85,7 @@ export default function UltimateGameDetailPage() {
       {activity.type === 'Ultimate' && (
         <span className="activity-classify">
           {activity.tournamentId ? (
-            <Link to="/games" className="activity-classify-link">{activity.tournamentName}</Link>
+            <Link to={`/tournaments/${activity.tournamentId}`} className="activity-classify-link">{activity.tournamentName}</Link>
           ) : (
             <span className="activity-classify-teaser">No tournament</span>
           )}
@@ -145,39 +124,12 @@ export default function UltimateGameDetailPage() {
 
       {hasFieldData && (
         <>
-          <div className="field-split-bar">
-            <div className="field-split-segment field-split-live" style={{ width: `${livePct}%` }} />
-            <div className="field-split-segment field-split-on-idle" style={{ width: `${onIdlePct}%` }} />
-            {mixedPct != null && <div className="field-split-segment field-split-mixed" style={{ width: `${mixedPct}%` }} />}
-            <div className="field-split-segment field-split-off" style={{ width: `${offPct}%` }} />
-          </div>
-          <div className="field-split-legend">
-            <span className="field-split-legend-item">
-              <i className="field-timeline-swatch field-timeline-swatch-live" />
-              Live play {formatHoursMinutes(liveSeconds)} · {livePct}%
-            </span>
-            <span className="field-split-legend-item">
-              <i className="field-timeline-swatch field-timeline-swatch-on-idle" />
-              On field, between points {formatHoursMinutes(onIdleSeconds)} · {onIdlePct}%
-            </span>
-            {mixedPct != null && (
-              <span className="field-split-legend-item">
-                <i className="field-timeline-swatch field-timeline-swatch-mixed" />
-                Mixed {formatHoursMinutes(activity.mixedSeconds)} · {mixedPct}%
-              </span>
-            )}
-            <span className="field-split-legend-item">
-              <i className="field-timeline-swatch field-timeline-swatch-off" />
-              Off field {formatHoursMinutes(activity.offFieldSeconds)} · {offPct}%
-            </span>
-          </div>
-          <p className="field-split-note">
-            <strong>Live play</strong> is time inside a detected point —{' '}
-            {liveOfOnPct}% of your {formatHoursMinutes(activity.onFieldSeconds)} on
-            the field here. The rest is waiting on the line between points, stall
-            counts and subbing on. Live play misses points the detector drops, so
-            read it as a slight under-count.
-          </p>
+          <FieldSplitBar
+            liveSeconds={liveSeconds}
+            onFieldSeconds={activity.onFieldSeconds}
+            offFieldSeconds={activity.offFieldSeconds}
+            mixedSeconds={activity.mixedSeconds ?? 0}
+          />
 
           <div className="game-stat-row">
             {activity.pointsPlayed != null && (

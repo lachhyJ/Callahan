@@ -1,26 +1,17 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getActivities, getTournaments, createTournament, attachTournamentGames } from '../api/client'
-import { activityLabel, onFieldTeaser } from '../utils/activityLabel'
-import { formatDateMedium, isoDate } from '../dateUtils'
+import { formatDateRange, isoDate } from '../dateUtils'
+import { formatHoursMinutes } from '../utils/activityLabel'
+import { summariseGames } from '../utils/tournamentStats'
+import GameRow from '../components/GameRow'
 
-function formatDateRange(startIso, endIso) {
-  if (startIso === endIso) return formatDateMedium(startIso)
-  return `${formatDateMedium(startIso)} – ${formatDateMedium(endIso)}`
-}
-
-function GameRow({ game }) {
-  const teaser = onFieldTeaser(game)
-  return (
-    <Link to={`/activities/${game.id}`} className="history-item games-list-row">
-      <div className="history-item-row">
-        <span className="history-item-main">
-          {formatDateMedium(game.date)} · {activityLabel(game)}
-          {teaser && <span className="activity-classify-teaser"> · {teaser}</span>}
-        </span>
-      </div>
-    </Link>
-  )
+// One-line weekend teaser under a tournament header — null when none of its
+// games have field metrics yet, so the header just shows the game count.
+function tournamentSummaryLine(games) {
+  const s = summariseGames(games)
+  if (!s.gamesWithMetrics) return null
+  return `${s.totalPoints} pts · ${formatHoursMinutes(s.totalLiveSeconds)} live`
 }
 
 export default function GamesListPage() {
@@ -146,15 +137,21 @@ export default function GamesListPage() {
       )}
 
       <div className="history-week-list section-gap">
-        {sections.map(({ tournament, games: gs }) => (
-          <div key={tournament.id} className="history-week">
-            <div className="history-week-header">
-              <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
-              <span className="history-week-count">{gs.length} game{gs.length === 1 ? '' : 's'}</span>
+        {sections.map(({ tournament, games: gs }) => {
+          const summaryLine = tournamentSummaryLine(gs)
+          return (
+            <div key={tournament.id} className="history-week">
+              <Link to={`/tournaments/${tournament.id}`} className="tournament-section-link">
+                <div className="history-week-header">
+                  <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
+                  <span className="history-week-count">{gs.length} game{gs.length === 1 ? '' : 's'}</span>
+                </div>
+                {summaryLine && <p className="tournament-section-summary">{summaryLine}</p>}
+              </Link>
+              {gs.map((g) => <GameRow key={g.id} game={g} />)}
             </div>
-            {gs.map((g) => <GameRow key={g.id} game={g} />)}
-          </div>
-        ))}
+          )
+        })}
 
         {loose.length > 0 && (
           <div className="history-week">

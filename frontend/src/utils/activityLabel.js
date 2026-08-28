@@ -4,6 +4,16 @@ export function formatDuration(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
+// "1h 12min" / "48min" — a rounded-to-the-minute duration for field-time
+// totals and legends, where seconds precision is noise. Shared by the game
+// detail page, the field split bar and the tournament roll-up.
+export function formatHoursMinutes(totalSeconds) {
+  const minutes = Math.round(totalSeconds / 60)
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
+}
+
 // Centralizes per-type display text so Ultimate (no distance) never renders
 // a "0 km" or otherwise distance-shaped placeholder alongside a real run.
 export function activityLabel(activity) {

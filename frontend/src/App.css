@@ -2860,6 +2860,36 @@ td {
   flex: 1 1 8rem;
 }
 
+/* Tournament roll-up: the tappable header on each /games section, and the
+   per-day load line on the tournament detail page. */
+.tournament-section-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.tournament-section-link:hover .history-week-header span:first-child,
+.tournament-section-link:focus-visible .history-week-header span:first-child {
+  color: var(--accent);
+}
+
+.tournament-section-summary {
+  margin: 0 0 var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tournament-day-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  padding-top: var(--space-2xs);
+  font-size: var(--text-sm);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 .field-timeline {
   margin-top: var(--space-lg);
   display: flex;

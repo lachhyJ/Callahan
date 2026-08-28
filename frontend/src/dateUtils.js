@@ -55,3 +55,11 @@ export function formatDateMedium(isoDateStr) {
   if (d.getFullYear() === new Date().getFullYear()) return `${weekday} ${dayMonth}`
   return `${weekday} ${dayMonth} ${d.getFullYear()}`
 }
+
+// "Sat 30 May – Mon 1 Jun" for a date span, collapsing to a single
+// formatDateMedium when start and end are the same day. Used by the games
+// list and the tournament detail page for tournament headers.
+export function formatDateRange(startIso, endIso) {
+  if (startIso === endIso) return formatDateMedium(startIso)
+  return `${formatDateMedium(startIso)} – ${formatDateMedium(endIso)}`
+}

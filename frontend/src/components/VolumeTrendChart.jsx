@@ -1,3 +1,5 @@
+import { niceStep } from '../utils/chartScale'
+
 const WIDTH = 320
 const HEIGHT = 90
 const PAD_LEFT = 34
@@ -11,14 +13,6 @@ function formatVolume(v) {
 
 function formatMonth(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })
-}
-
-function niceStep(range) {
-  const rough = range / 3
-  const magnitude = 10 ** Math.floor(Math.log10(rough || 1))
-  const normalized = rough / magnitude
-  const step = normalized < 1.5 ? 1 : normalized < 3.5 ? 2.5 : normalized < 7.5 ? 5 : 10
-  return step * magnitude
 }
 
 export default function VolumeTrendChart({ months }) {
