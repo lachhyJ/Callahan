@@ -2356,11 +2356,17 @@ td {
 
 .wellness-metric-row {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wellness-metric-row-main {
+  display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: var(--space-md);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--border-subtle);
 }
 
 .wellness-metric-name {
@@ -2405,6 +2411,37 @@ td {
 .wellness-disclaimer {
   margin-top: var(--space-lg);
   color: var(--text-tertiary);
+}
+
+.wellness-sparkline {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.wellness-sparkline-baseline {
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.wellness-sparkline-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wellness-sparkline-dot {
+  fill: var(--accent);
+}
+
+.wellness-card-sparkline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin-top: var(--space-sm);
 }
 
 .muscle-bar-list {

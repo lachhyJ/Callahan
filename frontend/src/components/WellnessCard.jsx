@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { ChevronRightIcon } from '../icons'
+import WellnessSparkline from './WellnessSparkline'
 
 function formatSleepDuration(seconds) {
   const h = Math.floor(seconds / 3600)
@@ -13,7 +14,7 @@ function formatSleepDuration(seconds) {
 // breakdown. Renders only the stats Garmin actually returned for this date - a
 // watch that doesn't report training readiness shouldn't show a permanent
 // em-dash.
-export default function WellnessCard({ wellness, todayIso, insight }) {
+export default function WellnessCard({ wellness, todayIso, insight, readinessSeries }) {
   const stats = []
   if (wellness.sleepSeconds != null) {
     stats.push({ label: 'Sleep', value: formatSleepDuration(wellness.sleepSeconds) })
@@ -29,6 +30,7 @@ export default function WellnessCard({ wellness, todayIso, insight }) {
   }
 
   const headline = insight?.hasEnoughHistory ? insight.headline : null
+  const readinessBaseline = insight?.metrics?.find((m) => m.key === 'readiness')?.baselineAvg
   if (stats.length === 0 && !headline) return null
 
   const isStale = wellness.date !== todayIso
@@ -50,6 +52,12 @@ export default function WellnessCard({ wellness, todayIso, insight }) {
               <span className="stat-value wellness-card-stat-value">{s.value}</span>
             </div>
           ))}
+        </div>
+      )}
+      {readinessSeries && (
+        <div className="wellness-card-sparkline">
+          <span className="stat-label">Readiness · last {readinessSeries.length} days</span>
+          <WellnessSparkline values={readinessSeries} baselineAvg={readinessBaseline} />
         </div>
       )}
       {headline && <p className="wellness-card-insight">{headline}</p>}

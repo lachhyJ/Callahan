@@ -1,26 +1,16 @@
 import { useEffect, useState } from 'react'
-import { getWellnessInsight } from '../api/client'
+import { getWellness, getWellnessInsight } from '../api/client'
+import { buildDailySeries, DIRECTION_CLASS, formatMetricValue, wellnessRange } from '../wellnessMetrics'
+import WellnessSparkline from '../components/WellnessSparkline'
 
-function formatValue(key, value) {
-  if (value == null) return '—'
-  if (key === 'sleepDuration') {
-    const h = Math.floor(value / 3600)
-    const m = Math.round((value % 3600) / 60)
-    return `${h}h ${m}m`
-  }
-  if (key === 'hrv') return `${Math.round(value)} ms`
-  if (key === 'restingHeartRate') return `${Math.round(value)} bpm`
-  return Math.round(value)
-}
-
-// "below" reads as a warning tint, "above" as positive - matches the
-// LiftTrendsList up/down convention. in_line / insufficient stay neutral.
-const DIRECTION_CLASS = { below: 'down', above: 'up' }
+// Days of history the per-metric sparklines cover.
+const SPARK_DAYS = 35
 
 export default function WellnessPage() {
   const [insight, setInsight] = useState(null)
   const [error, setError] = useState(null)
   const [loaded, setLoaded] = useState(false)
+  const [series, setSeries] = useState(null)
 
   useEffect(() => {
     getWellnessInsight()
@@ -29,6 +19,14 @@ export default function WellnessPage() {
         setLoaded(true)
       })
       .catch((err) => setError(err.message))
+  }, [])
+
+  useEffect(() => {
+    // Additive — a sparkline fetch failure just leaves the numbers as they are.
+    const { start, end } = wellnessRange(SPARK_DAYS)
+    getWellness(start, end)
+      .then((rows) => setSeries(buildDailySeries(rows, SPARK_DAYS)))
+      .catch(() => {})
   }, [])
 
   return (
@@ -55,20 +53,25 @@ export default function WellnessPage() {
           <div className="wellness-metric-list">
             {insight.metrics.map((m) => (
               <div key={m.key} className="wellness-metric-row">
-                <div className="wellness-metric-name">
-                  <span>{m.label}</span>
-                  <span className="wellness-metric-phrase">{m.phrase}</span>
-                </div>
-                <div className="wellness-metric-values">
-                  <span className={`wellness-metric-today ${DIRECTION_CLASS[m.direction] ?? ''}`}>
-                    {formatValue(m.key, m.today)}
-                  </span>
-                  {m.direction !== 'insufficient' && (
-                    <span className="wellness-metric-baseline">
-                      typically ~{formatValue(m.key, m.baselineAvg)}
+                <div className="wellness-metric-row-main">
+                  <div className="wellness-metric-name">
+                    <span>{m.label}</span>
+                    <span className="wellness-metric-phrase">{m.phrase}</span>
+                  </div>
+                  <div className="wellness-metric-values">
+                    <span className={`wellness-metric-today ${DIRECTION_CLASS[m.direction] ?? ''}`}>
+                      {formatMetricValue(m.key, m.today)}
                     </span>
-                  )}
+                    {m.direction !== 'insufficient' && (
+                      <span className="wellness-metric-baseline">
+                        typically ~{formatMetricValue(m.key, m.baselineAvg)}
+                      </span>
+                    )}
+                  </div>
                 </div>
+                {series && m.direction !== 'insufficient' && (
+                  <WellnessSparkline values={series[m.key]} baselineAvg={m.baselineAvg} />
+                )}
               </div>
             ))}
           </div>
