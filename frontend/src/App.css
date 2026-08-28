@@ -2290,11 +2290,29 @@ td {
   padding: var(--space-sm) var(--space-md);
 }
 
+.wellness-card-link {
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: background var(--duration-normal) var(--ease-out);
+}
+
+.wellness-card-link:hover {
+  background: var(--surface-overlay);
+}
+
 .wellness-card-header {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   margin-bottom: var(--space-sm);
+}
+
+.wellness-card-header-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  color: var(--text-tertiary);
 }
 
 .wellness-card-stale {
@@ -2314,7 +2332,79 @@ td {
 }
 
 .wellness-card-stat-value {
-  font-size: var(--text-md);
+  font-size: var(--text-lg);
+}
+
+.wellness-card-insight {
+  margin: var(--space-sm) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  line-height: var(--leading-normal);
+}
+
+.wellness-headline {
+  font-size: var(--text-lg);
+  color: var(--text-h);
+  line-height: var(--leading-snug);
+  margin: 0 0 var(--space-lg);
+}
+
+.wellness-metric-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wellness-metric-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-md);
+  padding: var(--space-sm) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.wellness-metric-name {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  min-width: 0;
+}
+
+.wellness-metric-phrase {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.wellness-metric-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-2xs);
+  white-space: nowrap;
+}
+
+.wellness-metric-today {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.wellness-metric-today.down {
+  color: var(--warning-text);
+}
+
+.wellness-metric-today.up {
+  color: var(--success-text);
+}
+
+.wellness-metric-baseline {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+
+.wellness-disclaimer {
+  margin-top: var(--space-lg);
+  color: var(--text-tertiary);
 }
 
 .muscle-bar-list {
