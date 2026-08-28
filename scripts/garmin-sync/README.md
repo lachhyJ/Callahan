@@ -75,6 +75,37 @@ Rebuild the image (`docker build` above) whenever `garmin_sync.py` or
 `requirements.txt` changes — a `git pull` alone won't update the running
 image.
 
+## On-demand sync (the app's "Sync Garmin" button)
+
+Separate from cron: `docker-compose.prod.yml` runs an always-on
+`garmin-sync-trigger` service built from this same directory, with its
+entrypoint overridden to `trigger_server.py` — a tiny stdlib HTTP server
+(no new deps). It has **no host port**; only the backend reaches it, at
+`http://garmin-sync-trigger:8099`, via `POST /api/sync/garmin` (which the
+Dashboard and Games "Sync Garmin" buttons call). On each request it runs
+the same `cmd_sync` (+ `cmd_sync_wellness` when `?wellness=1`) this script's
+default mode does, one at a time (a second concurrent request gets `409`).
+
+It reads the **same** `/mnt/tank/callahan-data/garmin-sync.env` the cron job
+uses. Two optional knobs there:
+
+- `TRIGGER_TOKEN` — shared secret. If set, the backend must send the same
+  value as `Sync__TriggerToken` in `backend.prod.env`. If unset, the trigger
+  accepts any request from the compose network (fine for this single-user
+  setup behind Cloudflare).
+- `TRIGGER_SYNC_DAYS` / `TRIGGER_WELLNESS_DAYS` — lookback windows
+  (default 14 / 3).
+
+Enable it by setting `Sync__TriggerBaseUrl=http://garmin-sync-trigger:8099`
+in `backend.prod.env` (see `backend.prod.env.example`); leave it blank and
+the button 502s with a clear message, everything else unaffected. The
+nightly cron `docker run --rm` is untouched — the button is additive and
+every write is idempotent, so the two can even overlap harmlessly.
+
+`deploy.sh`'s `docker compose ... up -d --build` builds and (re)starts this
+service on every deploy — no manual `docker build` step for it, unlike the
+cron image.
+
 ## Mapped activity types
 
 `TYPE_MAP` in `garmin_sync.py` currently covers:
