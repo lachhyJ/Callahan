@@ -93,6 +93,17 @@ uncommitted or unpushed locally. This happened once (2026-08-26: security-harden
 work was written up in the vault as shipped while three files were still
 uncommitted on the working tree).
 
+**Build now vs. park it:** when a session is shaping a batch of loosely-related small
+items (a list of papercuts, "a couple of things to plan out"), ask explicitly at
+plan-finalisation time whether the goal is to build them now or just to have them
+recorded for later, rather than assuming build and finding out otherwise after a full
+implementation plan is already written. If the answer is "park it," write each item to
+`backlog.md` as its own bullet (per the split above) — not Claude's own session memory,
+which isn't durable across sessions and isn't where Callahan context belongs. This
+happened once (2026-08-25: four shaped UI papercuts were rejected for building after a
+full plan was presented, and the plan had to be rewritten from "how to build" into "how
+to record" — a one-line question up front would have avoided the rework).
+
 ## Verifying UI in the browser preview
 The preview's screenshot can be shorter than the page's layout viewport — at the
 default desktop preset the page laid out at 720px tall while the capture was only
