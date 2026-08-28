@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -24,6 +25,9 @@ public class WellnessController : ControllerBase
     // an empty one.
     private const int LatestWindowDays = 3;
 
+    // Trailing window the readiness insight compares the latest day against.
+    private const int BaselineWindowDays = 28;
+
     [HttpGet("latest")]
     public async Task<ActionResult<DailyWellnessDto>> GetLatest()
     {
@@ -46,6 +50,32 @@ public class WellnessController : ControllerBase
 
         var wellness = await query.OrderBy(w => w.Date).ToListAsync();
         return Ok(wellness.Select(ToDto).ToList());
+    }
+
+    // Phase 5: the latest day read against a trailing personal baseline, as
+    // plain-language strings. Anchored to the latest row's date (not "today")
+    // so a day-stale card still gets a correct comparison.
+    [HttpGet("insight")]
+    public async Task<ActionResult<ReadinessInsightDto>> GetInsight()
+    {
+        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-LatestWindowDays));
+        var latest = await _db.DailyWellness
+            .Where(w => w.Date >= cutoff)
+            .OrderByDescending(w => w.Date)
+            .FirstOrDefaultAsync();
+
+        if (latest is null) return NoContent();
+
+        var windowStart = latest.Date.AddDays(-BaselineWindowDays);
+        var baseline = await _db.DailyWellness
+            .Where(w => w.Date >= windowStart && w.Date < latest.Date)
+            .OrderBy(w => w.Date)
+            .ToListAsync();
+
+        var insight = ReadinessInsightCalculator.Compute(
+            ToDto(latest),
+            baseline.Select(ToDto).ToList());
+        return Ok(insight);
     }
 
     [HttpPut]

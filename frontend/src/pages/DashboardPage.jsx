@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getMonthlyReports, getWeeklyVolume, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getMonthlyReports, getWeeklyVolume, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import WellnessCard from '../components/WellnessCard'
@@ -75,6 +75,7 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [weeklyVolume, setWeeklyVolume] = useState(null)
   const [wellness, setWellness] = useState(null)
+  const [wellnessInsight, setWellnessInsight] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [unviewedReport, setUnviewedReport] = useState(null)
 
@@ -87,6 +88,7 @@ export default function DashboardPage() {
     // blank the whole dashboard the way the workouts/activities Promise.all
     // below does via the page-level `error` state.
     getLatestWellness().then(setWellness).catch(() => {})
+    getWellnessInsight().then(setWellnessInsight).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -278,7 +280,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {wellness && <WellnessCard wellness={wellness} todayIso={todayIso} />}
+      {wellness && <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} />}
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 

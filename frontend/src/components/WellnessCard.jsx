@@ -1,15 +1,19 @@
+import { Link } from 'react-router-dom'
+import { ChevronRightIcon } from '../icons'
+
 function formatSleepDuration(seconds) {
   const h = Math.floor(seconds / 3600)
   const m = Math.round((seconds % 3600) / 60)
   return `${h}h ${m}m`
 }
 
-// Compact, non-interactive glance card - same footprint/placement pattern as
-// WeeklyVolumeChart, but numbers instead of a chart since there's nothing to
-// plot yet (that's the Phase 5 rolling-baseline trend). Renders only the
-// stats Garmin actually returned for this date - a watch that doesn't
-// report training readiness shouldn't show a permanent em-dash.
-export default function WellnessCard({ wellness, todayIso }) {
+// Compact glance card on the dashboard - the raw same-day Garmin numbers, plus
+// (once there's ~a week of history) a one-line plain-language read against the
+// rolling baseline. The card links to /wellness for the full per-metric
+// breakdown. Renders only the stats Garmin actually returned for this date - a
+// watch that doesn't report training readiness shouldn't show a permanent
+// em-dash.
+export default function WellnessCard({ wellness, todayIso, insight }) {
   const stats = []
   if (wellness.sleepSeconds != null) {
     stats.push({ label: 'Sleep', value: formatSleepDuration(wellness.sleepSeconds) })
@@ -24,24 +28,31 @@ export default function WellnessCard({ wellness, todayIso }) {
     stats.push({ label: 'Readiness', value: wellness.trainingReadinessScore })
   }
 
-  if (stats.length === 0) return null
+  const headline = insight?.hasEnoughHistory ? insight.headline : null
+  if (stats.length === 0 && !headline) return null
 
   const isStale = wellness.date !== todayIso
 
   return (
-    <div className="wellness-card">
+    <Link to="/wellness" className="wellness-card wellness-card-link">
       <div className="wellness-card-header">
         <span className="volume-chart-label">Wellness</span>
-        {isStale && <span className="wellness-card-stale">Yesterday</span>}
+        <span className="wellness-card-header-right">
+          {isStale && <span className="wellness-card-stale">Yesterday</span>}
+          <ChevronRightIcon />
+        </span>
       </div>
-      <div className="wellness-card-stats">
-        {stats.map((s) => (
-          <div key={s.label} className="wellness-card-stat">
-            <span className="stat-label">{s.label}</span>
-            <span className="stat-value wellness-card-stat-value">{s.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+      {stats.length > 0 && (
+        <div className="wellness-card-stats">
+          {stats.map((s) => (
+            <div key={s.label} className="wellness-card-stat">
+              <span className="stat-label">{s.label}</span>
+              <span className="stat-value wellness-card-stat-value">{s.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {headline && <p className="wellness-card-insight">{headline}</p>}
+    </Link>
   )
 }

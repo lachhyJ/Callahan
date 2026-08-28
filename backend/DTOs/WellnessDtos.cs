@@ -26,6 +26,24 @@ public record DailyWellnessDto(
 // rejecting it. Null in a field means "Garmin has no value for this date" -
 // PUT /api/wellness overwrites with null rather than ignoring it, so a
 // retracted score stops being claimed.
+// Phase 5 readiness insight: today's wellness read against a trailing personal
+// baseline, delivered as finished plain-language strings (see
+// ReadinessInsightCalculator). The client only renders these.
+public record ReadinessInsightDto(
+    DateOnly Date,
+    bool HasEnoughHistory,
+    string Headline,
+    IReadOnlyList<MetricInsightDto> Metrics);
+
+public record MetricInsightDto(
+    string Key,           // "readiness" | "sleepScore" | "sleepDuration" | "hrv"
+    string Label,         // "Readiness"
+    double? Today,        // raw units: points, sleep seconds, or HRV ms
+    double? BaselineAvg,  // same units, rounded; null when there is no history at all
+    int BaselineDays,     // non-null days that fed BaselineAvg
+    string Direction,     // "below" | "in_line" | "above" | "insufficient"
+    string Phrase);       // "well below your recent average"
+
 public record UpsertDailyWellnessRequest(
     DateOnly Date,
     int? SleepSeconds = null,
