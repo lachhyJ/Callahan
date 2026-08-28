@@ -144,6 +144,10 @@ export function getRunTypeTrends(months = 6) {
   return apiFetch(`/api/trends/runs?months=${months}`)
 }
 
+export function getLoadTrend(weeks = 12) {
+  return apiFetch(`/api/wellness/load-trend?weeks=${weeks}`)
+}
+
 export function getTaperEvents() {
   return apiFetch('/api/taper/events')
 }

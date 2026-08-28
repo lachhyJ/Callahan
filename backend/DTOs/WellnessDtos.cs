@@ -44,6 +44,19 @@ public record MetricInsightDto(
     string Direction,     // "below" | "in_line" | "above" | "insufficient"
     string Phrase);       // "well below your recent average"
 
+// One Monday-started week of training load alongside that week's mean wellness,
+// for the "recovery vs load" chart (see LoadTrendBuilder). Mean* is null for a
+// week with no readings.
+public record LoadTrendWeekDto(
+    DateOnly WeekStart,
+    decimal GymVolume,          // Σ weight × reps, all sets
+    decimal RunKm,
+    int UltimateLivePlayMin,
+    double? MeanReadiness,
+    double? MeanHrv,
+    double? MeanSleepScore,
+    bool IsTournamentWeek);
+
 public record UpsertDailyWellnessRequest(
     DateOnly Date,
     int? SleepSeconds = null,
