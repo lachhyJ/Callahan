@@ -39,6 +39,15 @@ Full PR review isn't required for routine changes — this is a solo project. Re
 a branch + PR specifically when you want a second pair of eyes before something goes
 live, not as default ceremony.
 
+**Uncommitted files you didn't touch are normal — don't report them.** With more than
+one thread active, `git status` will routinely show modified and untracked files
+belonging to another session. That is the expected steady state, not a problem, and it
+does not need flagging in every status update. Before committing, check only whether
+the other thread's files *overlap with the ones you edited*; if they don't, stage your
+own paths explicitly (`git add <path>`, never `git add -A`) and carry on without
+mentioning theirs. Only raise it when there's real overlap — that's the case the next
+paragraph covers.
+
 If your changes end up interleaved with another thread's in the same shared working
 directory (uncommitted edits to the same files from two sessions at once), coordinate
 with that thread for real — `SendMessage` to it directly and wait for its actual reply
