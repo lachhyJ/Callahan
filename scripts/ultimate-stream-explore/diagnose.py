@@ -26,7 +26,13 @@ import statistics
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.normpath(os.path.join(HERE, "..", "..", "tests", "Callahan.Api.Tests", "Fixtures"))
 
-# Mirrors FieldGeometryOptions.Default in backend/Services/FieldGeometry.cs
+# Mirrors FieldGeometryOptions.Default in backend/Services/FieldGeometry.cs.
+# NOTE: nothing enforces that. FOLLOW_S/FOLLOW_FRAC sat at the pre-a93a610
+# values (90.0/0.6) for a day after the C# moved to 60/0.5, so analyse()
+# silently scored the SUPERSEDED classifier while this comment claimed
+# otherwise. If you are measuring anything that matters, pass the constants
+# explicitly as kwargs the way holdout_check.py does - that is what made it
+# immune - and diff this block against the C# record before trusting it.
 WIN = 100.0
 FAST = 4.0
 MIN_DWELL = 75.0
@@ -35,8 +41,8 @@ CENTRE_FACTOR = 0.55
 EZ_FRAC = 0.55
 EZ_MIN_S = 25.0
 EZ_MAX_SPD = 2.5
-FOLLOW_S = 90.0
-FOLLOW_FRAC = 0.6
+FOLLOW_S = 60.0       # was 90.0 until 2026-08-28 - see the drift note below
+FOLLOW_FRAC = 0.5     # was 0.6 until 2026-08-28
 
 
 def project(t, lat, lon, spd, fast=FAST):
