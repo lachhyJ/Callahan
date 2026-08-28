@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMuscleBalance } from '../api/client'
 import { endOfWeek, isoDate, startOfWeek } from '../dateUtils'
-import MuscleHeatmap from '../components/MuscleHeatmap'
+import MuscleHeatmap from './MuscleHeatmap'
 
 const WEEK_FORMAT = { month: 'short', day: 'numeric' }
 
@@ -15,7 +15,10 @@ function barScale(setCount, maxCount) {
   return Math.max(setCount / maxCount, 0.02)
 }
 
-export default function MuscleBalancePage() {
+// Week-scoped muscle-balance view, folded into the Trends page as its own
+// section. Self-fetches, so it renders independently of the 6-month trends
+// data (and still shows when that history is too thin to say anything).
+export default function MuscleBalanceSection() {
   const [cursor, setCursor] = useState(() => new Date())
   const [balance, setBalance] = useState(null)
   const [error, setError] = useState(null)
@@ -44,10 +47,10 @@ export default function MuscleBalancePage() {
   const hasAnySets = balance?.some((b) => b.setCount > 0)
 
   return (
-    <main className="page">
-      <h1>Muscle balance</h1>
+    <div className="section-gap">
+      <h2 className="trend-chart-title">Muscle balance</h2>
 
-      <div className="calendar-nav section-gap">
+      <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeWeek(-1)} aria-label="Previous week">
           ‹
         </button>
@@ -92,6 +95,6 @@ export default function MuscleBalancePage() {
           Sets per muscle group this week — a set counts full toward its primary muscle, half toward each secondary one.
         </p>
       )}
-    </main>
+    </div>
   )
 }

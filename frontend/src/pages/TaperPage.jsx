@@ -48,7 +48,7 @@ function formatDistance(v) {
 }
 
 // Fill scaled to actual-vs-baseline, capped so an over-baseline week doesn't
-// blow the bar out of its track — mirrors MuscleBalancePage's barScale.
+// blow the bar out of its track — mirrors MuscleBalanceSection's barScale.
 function barScale(actual, baseline) {
   if (!baseline || baseline <= 0) return 0.02
   return Math.min(Math.max(actual / baseline, 0.02), 1)

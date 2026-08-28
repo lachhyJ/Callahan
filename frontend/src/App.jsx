@@ -19,7 +19,6 @@ import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import UltimateGameDetailPage from './pages/UltimateGameDetailPage'
 import GamesListPage from './pages/GamesListPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
-import MuscleBalancePage from './pages/MuscleBalancePage'
 import StreakPage from './pages/StreakPage'
 import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
@@ -39,7 +38,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/muscle-balance', '/streaks', '/trends', '/program', '/recently-deleted', '/plate-calculator', '/reports', '/wellness']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/plate-calculator', '/reports', '/wellness']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -218,7 +217,6 @@ function AppRoutes() {
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
-          <Route path="/muscle-balance" element={<ProtectedRoute><MuscleBalancePage /></ProtectedRoute>} />
           <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
           <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
@@ -229,6 +227,8 @@ function AppRoutes() {
           <Route path="/plate-calculator" element={<ProtectedRoute><PlateCalculatorPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/:year/:month" element={<ProtectedRoute><ReportDetailPage /></ProtectedRoute>} />
+          {/* Muscle balance folded into Trends — keep old bookmarks/PWA shortcuts working. */}
+          <Route path="/muscle-balance" element={<Navigate to="/trends" replace />} />
         </Routes>
       </div>
       {isAuthenticated && <GlobalRestBar restTimer={restTimer} isTicking={isTicking} now={now} />}

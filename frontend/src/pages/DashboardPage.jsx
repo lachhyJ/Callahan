@@ -35,7 +35,6 @@ function ultimateDotShapeClass(ultimateActivities) {
 
 // Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
-  { to: '/muscle-balance', label: 'Muscle balance', Icon: ChartIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
