@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiftTrends, getRunTypeTrends, getTrends } from '../api/client'
+import { getLiftTrends, getLoadTrend, getRunTypeTrends, getTrends } from '../api/client'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
 import RunTypeTrendsList from '../components/RunTypeTrendsList'
+import LoadVsWellnessChart from '../components/LoadVsWellnessChart'
 import MuscleBalanceSection from '../components/MuscleBalanceSection'
 
 function formatVolume(v) {
@@ -28,20 +29,40 @@ function periodSummary(months) {
   }
 }
 
+// Plain "averaged N (M before)" line under the recovery-vs-load chart — a
+// description of what the line did, deliberately not a recommendation.
+function readinessSummary(weeks) {
+  const mean = (list) => {
+    const vals = list.map((w) => w.meanReadiness).filter((v) => v != null)
+    return vals.length ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) : null
+  }
+  const recent = mean(weeks.slice(-4))
+  if (recent == null) return null
+  const prior = mean(weeks.slice(-8, -4))
+  return prior == null
+    ? `Readiness averaged ${recent} over the last 4 weeks.`
+    : `Readiness averaged ${recent} over the last 4 weeks (${prior} in the 4 before).`
+}
+
 export default function TrendsPage() {
   const [months, setMonths] = useState(null)
   const [liftTrends, setLiftTrends] = useState(null)
   const [runTypeTrends, setRunTypeTrends] = useState(null)
+  const [loadTrend, setLoadTrend] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
     getTrends(6).then(setMonths).catch((err) => setError(err.message))
     getLiftTrends(6).then(setLiftTrends).catch(() => setLiftTrends([]))
     getRunTypeTrends(6).then(setRunTypeTrends).catch(() => setRunTypeTrends([]))
+    getLoadTrend(12).then(setLoadTrend).catch(() => setLoadTrend([]))
   }, [])
 
   const hasAnyData = months?.some((m) => m.gymSessions > 0 || m.runSessions > 0)
   const summary = months && hasAnyData ? periodSummary(months) : null
+
+  const showLoadTrend = loadTrend?.some((w) => w.gymVolume > 0 || w.meanReadiness != null)
+  const loadSummary = showLoadTrend ? readinessSummary(loadTrend) : null
 
   return (
     <main className="page">
@@ -85,6 +106,13 @@ export default function TrendsPage() {
             </div>
           )}
         </>
+      )}
+
+      {showLoadTrend && (
+        <div className="section-gap">
+          <LoadVsWellnessChart weeks={loadTrend} />
+          {loadSummary && <p className="trend-summary">{loadSummary}</p>}
+        </div>
       )}
 
       <MuscleBalanceSection />

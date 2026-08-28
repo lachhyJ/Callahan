@@ -89,6 +89,45 @@ public class WellnessController : ControllerBase
         return Ok(insight);
     }
 
+    // Phase 5 visualisations, slice 3: weekly training load aligned with that
+    // week's mean readiness / HRV / sleep score, tournament weeks flagged.
+    [HttpGet("load-trend")]
+    public async Task<ActionResult<List<LoadTrendWeekDto>>> GetLoadTrend([FromQuery] int weeks = 12)
+    {
+        weeks = Math.Clamp(weeks, 1, 52);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var earliest = LoadTrendBuilder.MondayOf(today).AddDays(-7 * (weeks - 1));
+
+        var gymSets = await _db.ExerciseSets
+            .Where(s => s.WorkoutSession.Date >= earliest)
+            .Select(s => new GymSetLoad(s.WorkoutSession.Date, s.WeightKg * s.Reps))
+            .ToListAsync();
+
+        var runs = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliest && a.DistanceKm != null)
+            .Select(a => new RunLoad(a.Date, a.DistanceKm!.Value))
+            .ToListAsync();
+
+        var ultimate = await _db.Activities
+            .Where(a => a.Type == ActivityType.Ultimate && a.Date >= earliest && a.LivePlaySeconds != null)
+            .Select(a => new UltimateLoad(a.Date, a.LivePlaySeconds!.Value))
+            .ToListAsync();
+
+        var wellness = await _db.DailyWellness
+            .Where(w => w.Date >= earliest)
+            .OrderBy(w => w.Date)
+            .ToListAsync();
+
+        var tournaments = await _db.Tournaments
+            .Where(t => t.EndDate >= earliest)
+            .Select(t => new TournamentSpan(t.StartDate, t.EndDate))
+            .ToListAsync();
+
+        var result = LoadTrendBuilder.Build(
+            today, weeks, gymSets, runs, ultimate, wellness.Select(ToDto), tournaments);
+        return Ok(result);
+    }
+
     [HttpPut]
     public async Task<ActionResult<DailyWellnessDto>> Upsert(UpsertDailyWellnessRequest request)
     {

@@ -1704,6 +1704,18 @@ td {
   stroke-dasharray: 3 3;
 }
 
+.chart-tick-label-accent {
+  fill: var(--accent);
+}
+
+.load-tournament-band {
+  fill: var(--accent-bg);
+}
+
+.load-vs-wellness-svg {
+  height: auto;
+}
+
 .chart-end-label {
   fill: var(--text-h);
   font-size: var(--text-2xs);
