@@ -94,20 +94,16 @@ export default function TournamentDetailPage() {
               <span className="stat-label">Live play</span>
               <span className="stat-value">{formatHoursMinutes(summary.totalLiveSeconds)}</span>
             </div>
-            <div className="stat-card">
-              <span className="stat-label">On field</span>
-              <span className="stat-value">{formatHoursMinutes(summary.totalOnFieldSeconds)}</span>
-            </div>
             {summary.avgLiveMinPerPoint != null && (
               <div className="stat-card">
                 <span className="stat-label">Live min / point</span>
                 <span className="stat-value">{summary.avgLiveMinPerPoint.toFixed(1)}</span>
               </div>
             )}
-            {summary.totalOnFieldDistanceKm > 0 && (
+            {summary.totalDistanceKm > 0 && (
               <div className="stat-card">
-                <span className="stat-label">On-field distance</span>
-                <span className="stat-value">{summary.totalOnFieldDistanceKm.toFixed(1)} km</span>
+                <span className="stat-label">Distance covered</span>
+                <span className="stat-value">{summary.totalDistanceKm.toFixed(1)} km</span>
               </div>
             )}
           </>
@@ -120,7 +116,6 @@ export default function TournamentDetailPage() {
           onFieldSeconds={summary.totalOnFieldSeconds}
           offFieldSeconds={summary.totalOffFieldSeconds}
           mixedSeconds={summary.totalMixedSeconds}
-          onFieldContext="across this tournament"
         />
       )}
 

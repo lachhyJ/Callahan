@@ -29,22 +29,20 @@ export function activityLabel(activity) {
   return `${activity.type} · ${duration}`
 }
 
-// A one-glance teaser for the on/off-field data behind the game-detail link
-// - cheap enough to compute inline that the feature doesn't stay hidden
-// behind a tap. Undefined (not just null) whenever the fields aren't there,
-// so it never renders "0 pts" for pre-backfill or unclassified games. Shared
-// by ActivitySessionRow (History/Dashboard) and GamesListPage - one
-// definition for the "13 pts · 48% on field · 24% live" string. "on field" is
-// field-occupancy time (includes between-point standing); "live" is time
-// inside a detected point - see backend/decisions "on-field time measures
-// field occupancy" and "the active-play figure".
-export function onFieldTeaser(activity) {
+// A one-glance teaser for the live-play data behind the game-detail link -
+// cheap enough to compute inline that the feature doesn't stay hidden behind
+// a tap. Null (never "0 pts") whenever the fields aren't there, so it stays
+// blank for pre-backfill or unclassified games. Shared by ActivitySessionRow
+// (History/Dashboard) and GameRow (games + tournament lists) - one definition
+// for the "14 pts · 24% live play" string. "Live play" is on-field time
+// inside a detected point, as opposed to waiting on the line between points;
+// see backend/decisions "the active-play figure".
+export function livePlayTeaser(activity) {
   if (activity.type !== 'Ultimate' || activity.pointsPlayed == null) return null
-  const total = activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
-  if (!total) return null
-  const onPct = Math.round((activity.onFieldSeconds / total) * 100)
   const pts = `${activity.pointsPlayed} pt${activity.pointsPlayed === 1 ? '' : 's'}`
-  if (activity.livePlaySeconds == null) return `${pts} · ${onPct}% on field`
+  if (activity.livePlaySeconds == null) return pts
+  const total = activity.onFieldSeconds + activity.offFieldSeconds + (activity.mixedSeconds ?? 0)
+  if (!total) return pts
   const livePct = Math.round((activity.livePlaySeconds / total) * 100)
-  return `${pts} · ${onPct}% on field · ${livePct}% live`
+  return `${pts} · ${livePct}% live play`
 }

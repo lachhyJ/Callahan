@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { activityLabel, onFieldTeaser } from '../utils/activityLabel'
+import { activityLabel, livePlayTeaser } from '../utils/activityLabel'
 import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 import { suggestUltimateSessionType } from '../utils/ultimateSessionSuggestion'
 
@@ -63,7 +63,7 @@ export default function ActivitySessionRow({ activity, sessionTypes, openPickerI
   const typesForActivity = sessionTypes.filter((t) => t.activityType === activity.type)
   const suggested = suggestSessionType(activity, typesForActivity)
   const isHighSpeedIntervals = activity.activitySessionTypeName === HIGH_SPEED_INTERVALS_TYPE_NAME
-  const teaser = onFieldTeaser(activity)
+  const teaser = livePlayTeaser(activity)
 
   return (
     <span className="activity-classify">

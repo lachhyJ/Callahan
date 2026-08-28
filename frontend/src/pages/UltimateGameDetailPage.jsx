@@ -144,10 +144,10 @@ export default function UltimateGameDetailPage() {
                 <span className="stat-value">{livePerPoint}</span>
               </div>
             )}
-            {activity.onFieldDistanceKm != null && (
+            {activity.distanceKm != null && (
               <div className="stat-card">
-                <span className="stat-label">On-field distance</span>
-                <span className="stat-value">{Number(activity.onFieldDistanceKm).toFixed(2)} km</span>
+                <span className="stat-label">Distance covered</span>
+                <span className="stat-value">{Number(activity.distanceKm).toFixed(2)} km</span>
               </div>
             )}
           </div>
