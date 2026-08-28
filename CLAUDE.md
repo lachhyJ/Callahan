@@ -92,3 +92,18 @@ otherwise the doc ends up describing work as "shipped" while it's still sitting
 uncommitted or unpushed locally. This happened once (2026-08-26: security-hardening
 work was written up in the vault as shipped while three files were still
 uncommitted on the working tree).
+
+## Verifying UI in the browser preview
+The preview's screenshot can be shorter than the page's layout viewport — at the
+default desktop preset the page laid out at 720px tall while the capture was only
+450px. Anything pinned to the bottom (`position: fixed; bottom: 0` — the tab bar, the
+rest bar) is then correctly positioned and simply cropped out of the picture. This
+cost several minutes of suspecting the CSS on 2026-08-25 when nothing was wrong.
+
+So: for fixed or sticky bottom-anchored elements, ask the page where things are
+(`getBoundingClientRect` / `getComputedStyle` via `javascript_tool`) and treat that as
+the source of truth; use a screenshot to confirm afterwards, not to diagnose. **If the
+screenshot and the computed geometry disagree, suspect the capture before the CSS.**
+
+After `resize_window` (e.g. to the mobile preset), pixel-coordinate clicks became
+unreliable — re-run `read_page`/`find` and click by `ref` instead of raw coordinates.
