@@ -141,3 +141,14 @@ export function PlateIcon(props) {
     </svg>
   )
 }
+
+// Two-arrow refresh cycle. Spun (via .icon-spin) while a sync is in flight.
+export function SyncIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M15.5 6.5A6.5 6.5 0 0 0 4 5.2" />
+      <path d="M4.5 13.5A6.5 6.5 0 0 0 16 14.8" />
+      <path d="M15.5 2.5v4h-4M4.5 17.5v-4h4" />
+    </svg>
+  )
+}

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { syncGarmin } from '../api/client'
+import { SyncIcon, CheckIcon } from '../icons'
 
 // The trigger returns its Python log tail; pull a one-line result out of it
 // rather than showing raw log lines in the UI.
@@ -15,42 +16,71 @@ function summarise(result) {
   return result?.wellness ? 'Garmin + wellness synced.' : 'Garmin synced.'
 }
 
-// Shared by the Dashboard and the Games page. Owns its own in-flight state
-// and a transient result line; the host passes onSynced to refetch its data.
-export default function SyncGarminButton({ onSynced, className }) {
+// Shared by the Dashboard and the Games page. `variant="icon"` is a bare
+// icon button (Dashboard header) that reports its result via onResult so the
+// host places the message; the default `labelled` variant shows its own
+// transient result line (Games header). onSynced refetches the host's data.
+export default function SyncGarminButton({ variant = 'labelled', onSynced, onResult, className }) {
   const [syncing, setSyncing] = useState(false)
-  const [msg, setMsg] = useState(null) // { text, isError }
+  const [msg, setMsg] = useState(null) // { text, isError } — labelled variant only
   const timer = useRef(null)
 
   useEffect(() => () => clearTimeout(timer.current), [])
 
-  function flash(text, isError) {
-    setMsg({ text, isError })
+  function flash(payload) {
+    setMsg(payload)
     clearTimeout(timer.current)
     timer.current = setTimeout(() => setMsg(null), 6000)
   }
 
-  async function handleClick() {
+  async function run() {
     if (syncing) return
     setSyncing(true)
     setMsg(null)
     try {
       const result = await syncGarmin()
-      flash(summarise(result), false)
+      const payload = { text: summarise(result), isError: false }
+      if (onResult) onResult(payload)
+      else flash(payload)
       onSynced?.()
     } catch (err) {
-      flash(err.message, true)
+      const payload = { text: err.message, isError: true }
+      if (onResult) onResult(payload)
+      else flash(payload)
     } finally {
       setSyncing(false)
     }
   }
 
+  const icon = <SyncIcon className={syncing ? 'icon-spin' : undefined} />
+
+  if (variant === 'icon') {
+    return (
+      <button
+        type="button"
+        className={className ? `icon-link ${className}` : 'icon-link'}
+        onClick={run}
+        disabled={syncing}
+        title="Sync Garmin"
+        aria-label={syncing ? 'Syncing Garmin…' : 'Sync Garmin'}
+      >
+        {icon}
+      </button>
+    )
+  }
+
   return (
     <div className={className ? `sync-garmin ${className}` : 'sync-garmin'}>
-      <button type="button" className="secondary-btn" onClick={handleClick} disabled={syncing}>
+      <button type="button" className="secondary-btn sync-garmin-btn" onClick={run} disabled={syncing}>
+        {icon}
         {syncing ? 'Syncing…' : 'Sync Garmin'}
       </button>
-      {msg && <p className={msg.isError ? 'sync-garmin-msg error' : 'sync-garmin-msg'}>{msg.text}</p>}
+      {msg && (
+        <p className={msg.isError ? 'sync-garmin-msg error' : 'sync-garmin-msg'}>
+          {!msg.isError && <CheckIcon />}
+          {msg.text}
+        </p>
+      )}
     </div>
   )
 }
