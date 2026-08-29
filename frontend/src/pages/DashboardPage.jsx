@@ -278,12 +278,6 @@ export default function DashboardPage() {
         })}
       </div>
 
-      {wellness && (
-        <div className="section-gap">
-          <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />
-        </div>
-      )}
-
       <div className="quick-links-grid section-gap">
         {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
           soon ? (
@@ -307,6 +301,12 @@ export default function DashboardPage() {
             {MONTH_NAMES[unviewedReport.month - 1]} {unviewedReport.year} report is ready — {unviewedReport.headlineVerdict}
           </Link>
           <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>
+        </div>
+      )}
+
+      {wellness && (
+        <div className="section-gap">
+          <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />
         </div>
       )}
 
