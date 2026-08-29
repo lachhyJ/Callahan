@@ -40,6 +40,7 @@ function ConeDistanceInput({ activity, onConeDistanceChange }) {
           type="number"
           inputMode="numeric"
           min="0"
+          placeholder="—"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={commit}

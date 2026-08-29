@@ -2078,17 +2078,30 @@ td {
 }
 
 .activity-classify-cone input {
-  width: 3ch;
+  width: 3.5ch;
   box-sizing: content-box;
   background: transparent;
   border: none;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--text-tertiary);
   border-radius: 0;
-  padding: 1px 2px;
+  padding: 1px 4px;
   color: var(--text-h);
   font-size: var(--text-sm);
   text-align: center;
   font-variant-numeric: tabular-nums;
+}
+
+/* Empty: a faint recessed patch + a centred em-dash placeholder, so the
+   tap-here slot is obvious. Once a value is typed it goes back to a plain
+   underlined number. */
+.activity-classify-cone input:placeholder-shown {
+  background: var(--surface-sunken);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.activity-classify-cone input::placeholder {
+  color: var(--text-tertiary);
+  opacity: 1;
 }
 
 .activity-classify-cone input:focus {
