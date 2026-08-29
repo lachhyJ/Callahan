@@ -36,13 +36,13 @@ function ultimateDotShapeClass(ultimateActivities) {
 
 // Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
-  { to: '/exercises', label: 'Exercises', Icon: ListIcon },
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/reports', label: 'Reports', Icon: DocumentIcon },
   { to: '/games', label: 'Games', Icon: HistoryIcon },
+  { to: '/exercises', label: 'Exercises', Icon: ListIcon },
 ]
 
 // Monday-first grid: leading/trailing cells from adjacent months are left blank
@@ -278,6 +278,12 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {wellness && (
+        <div className="section-gap">
+          <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />
+        </div>
+      )}
+
       <div className="quick-links-grid section-gap">
         {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
           soon ? (
@@ -303,8 +309,6 @@ export default function DashboardPage() {
           <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>
         </div>
       )}
-
-      {wellness && <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />}
 
       {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 
