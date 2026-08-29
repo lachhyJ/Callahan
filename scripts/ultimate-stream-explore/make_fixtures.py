@@ -35,6 +35,15 @@ FOLLOW_S = 60.0
 FOLLOW_FRAC = 0.5
 
 
+def haversine(lat1, lon1, lat2, lon2):
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1)
+    dl = math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(min(1.0, math.sqrt(h)))
+
+
 def project(t, lat, lon, spd):
     mla = statistics.mean(lat)
     mlo = statistics.mean(lon)
@@ -123,7 +132,7 @@ def analyse(t, lat, lon, spd):
                         for ls, ac in zip(lat_spread, abs_cross)], MIN_DWELL)
 
     inez = [abs(a) > halfl * EZ_FRAC for a in along]
-    pts = 0
+    dwells = []
     for state, i0, i1 in runs(inez):
         if not state or t[i1] - t[i0] < EZ_MIN_S:
             continue
@@ -137,13 +146,25 @@ def analyse(t, lat, lon, spd):
         follow = onfield[i1:j + 1]
         if not follow or sum(follow) < len(follow) * FOLLOW_FRAC:
             continue
-        pts += 1
+        dwells.append((i0, i1))
+    pts = len(dwells)
 
     on = sum(t[i] - t[i - 1] for i in range(1, len(t)) if onfield[i - 1])
+    # Live play (segment.py b2): time + GPS distance over the on-field windows
+    # between consecutive accepted dwells. Matches GeometryResult.LivePlay*.
+    live = sum(t[i] - t[i - 1]
+               for k in range(len(dwells) - 1)
+               for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
+               if onfield[i - 1])
+    live_dist = sum(haversine(lat[i - 1], lon[i - 1], lat[i], lon[i])
+                    for k in range(len(dwells) - 1)
+                    for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
+                    if onfield[i - 1])
     dur = t[-1] - t[0]
     return {"onFieldSeconds": round(on), "durationSeconds": round(dur),
             "onFieldFraction": round(on / dur, 4), "pointsPlayed": pts,
-            "fieldWidthM": round(2 * halfw, 1), "fieldLengthM": round(2 * halfl, 1)}
+            "fieldWidthM": round(2 * halfw, 1), "fieldLengthM": round(2 * halfl, 1),
+            "livePlaySeconds": round(live), "livePlayDistanceM": round(live_dist)}
 
 
 def main():
@@ -152,7 +173,7 @@ def main():
     games = json.load(open(sys.argv[1]))
     os.makedirs(OUT, exist_ok=True)
     baselines = []
-    tot_on = tot_dur = tot_pts = 0
+    tot_on = tot_dur = tot_pts = tot_live = tot_live_dist = 0
     for gi, g in enumerate(games, 1):
         D = {x["key"]: x["metricsIndex"] for x in g["metricDescriptors"]}
         rows = [r["metrics"] for r in g["activityDetailMetrics"]]
@@ -172,6 +193,8 @@ def main():
         tot_on += base["onFieldSeconds"]
         tot_dur += base["durationSeconds"]
         tot_pts += base["pointsPlayed"]
+        tot_live += base["livePlaySeconds"]
+        tot_live_dist += base["livePlayDistanceM"]
 
         # privacy shift: centre longitudes on 0 (per-game constant, output-neutral)
         clon = statistics.mean(lon)
@@ -197,7 +220,9 @@ def main():
     summary = {"games": baselines,
                "tournament": {"onFieldSeconds": tot_on, "durationSeconds": tot_dur,
                               "onFieldFraction": round(tot_on / tot_dur, 4),
-                              "pointsPlayed": tot_pts}}
+                              "pointsPlayed": tot_pts,
+                              "livePlaySeconds": tot_live,
+                              "livePlayDistanceM": tot_live_dist}}
     with open(os.path.join(OUT, "baselines.json"), "w") as f:
         json.dump(summary, f, indent=2)
     print(f"\ntournament: {tot_on/60:.0f}/{tot_dur/60:.0f} min "

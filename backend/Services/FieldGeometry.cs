@@ -28,7 +28,12 @@ public sealed record GeometryResult(
     // the line between points. Always <= OnFieldSeconds. Inherits the point
     // detector's softness: a missed point's time lands in the between-points
     // remainder, so this slightly under-counts.
-    int LivePlaySeconds);
+    int LivePlaySeconds,
+    // Sample-to-sample GPS distance summed over exactly the same live-play
+    // windows as LivePlaySeconds - i.e. metres covered while a point was in
+    // play, as opposed to OnFieldDistanceM which also counts pacing the line
+    // between points. Always <= OnFieldDistanceM, same under-count caveat.
+    double LivePlayDistanceM);
 
 // Every magic number from scripts/ultimate-stream-explore/segment.py, one
 // constant each. Retuning geometry is a change here + a FieldGeometry.Version
@@ -62,7 +67,9 @@ public static class FieldGeometry
     // gate keys on LapFieldClassifier.Version, bumped in lockstep.
     // v3 = GeometryResult also carries LivePlaySeconds (on-field time inside a
     // detected point). Additive - no change to on/off or point numbers.
-    public const int Version = 3;
+    // v4 = GeometryResult also carries LivePlayDistanceM (GPS distance over the
+    // same live-play windows). Additive - nothing else moves.
+    public const int Version = 4;
 
     public static GeometryResult Analyse(IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null)
     {
@@ -102,7 +109,7 @@ public static class FieldGeometry
             onRaw[i] = latSpread[i] > halfW * o.SpreadFactor || medAbsCross[i] < halfW * o.CentreFactor;
         var onField = MergeShort(t, onRaw, o.MinDwellSec);
 
-        var (points, liveSec) = CountPoints(t, along, spd, onField, halfL, o);
+        var (points, liveSec, liveDist) = CountPoints(t, along, spd, onField, samples, halfL, o);
 
         double onSec = 0, offSec = 0, onDist = 0;
         for (int i = 1; i < n; i++)
@@ -126,7 +133,7 @@ public static class FieldGeometry
         var fit = new FieldFit(fit0.ThetaRad, fit0.CentreCrossM, halfW, halfL);
         return new GeometryResult(fit, onField, segments,
             (int)Math.Round(onSec), (int)Math.Round(offSec), points, onDist,
-            (int)Math.Round(liveSec));
+            (int)Math.Round(liveSec), liveDist);
     }
 
     // Fraction of the time window [t0, t1) that was on-field, weighted by the
@@ -214,11 +221,12 @@ public static class FieldGeometry
     }
 
     // --- port of segment.py point counter (non-strict variant) ---
-    // Returns the accepted-dwell count and the on-field seconds that fall in
-    // the live-play windows between consecutive accepted dwells (segment.py's
-    // b2 / "in-point on-field time").
-    private static (int Points, double LiveSeconds) CountPoints(
-        double[] t, double[] along, double[] spd, bool[] onField, double halfL, FieldGeometryOptions o)
+    // Returns the accepted-dwell count, the on-field seconds that fall in the
+    // live-play windows between consecutive accepted dwells (segment.py's b2 /
+    // "in-point on-field time"), and the GPS distance over those same windows.
+    private static (int Points, double LiveSeconds, double LiveDistanceM) CountPoints(
+        double[] t, double[] along, double[] spd, bool[] onField,
+        IReadOnlyList<TrackSample> samples, double halfL, FieldGeometryOptions o)
     {
         int n = t.Length;
         var inEz = new bool[n];
@@ -258,15 +266,19 @@ public static class FieldGeometry
         // Live play = on-field time from the end of one accepted dwell to the
         // start of the next. The tail after the last dwell (handshake, cooldown)
         // is deliberately excluded.
-        double live = 0;
+        double live = 0, liveDist = 0;
         for (int k = 0; k < accepted.Count - 1; k++)
         {
             int ia = accepted[k].I1, ib = accepted[k + 1].I0;
             for (int i = ia + 1; i <= ib; i++)
-                if (onField[i - 1]) live += t[i] - t[i - 1];
+                if (onField[i - 1])
+                {
+                    live += t[i] - t[i - 1];
+                    liveDist += Haversine(samples[i - 1], samples[i]);
+                }
         }
 
-        return (accepted.Count, live);
+        return (accepted.Count, live, liveDist);
     }
 
     // --- primitives, ported to match Python semantics exactly ---

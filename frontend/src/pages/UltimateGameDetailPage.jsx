@@ -150,6 +150,12 @@ export default function UltimateGameDetailPage() {
                 <span className="stat-value">{Number(activity.distanceKm).toFixed(2)} km</span>
               </div>
             )}
+            {activity.livePlayDistanceKm != null && (
+              <div className="stat-card">
+                <span className="stat-label">Distance in play</span>
+                <span className="stat-value">{Number(activity.livePlayDistanceKm).toFixed(2)} km</span>
+              </div>
+            )}
           </div>
 
           <FieldTimeline timeline={timeline} />

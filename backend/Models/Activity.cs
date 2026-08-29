@@ -46,6 +46,9 @@ public class Activity
     // to OnFieldSeconds which also counts waiting on the line between points.
     // Always <= OnFieldSeconds. See GeometryResult.LivePlaySeconds.
     public int? LivePlaySeconds { get; set; }
+    // GPS distance (metres) covered inside detected points - the live-play
+    // counterpart to OnFieldDistanceM. Always <= OnFieldDistanceM.
+    public decimal? LivePlayDistanceM { get; set; }
     // Count of adjacent lap pairs that shared an on/off state - i.e. missed
     // lap presses. 0 means a clean capture. Doubles as feedback on lapping.
     public int? AlternationViolations { get; set; }

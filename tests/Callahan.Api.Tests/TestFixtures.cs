@@ -14,11 +14,11 @@ internal static class TestFixtures
     public sealed record Baseline(
         int Game, string Name, int OnFieldSeconds, int DurationSeconds,
         double OnFieldFraction, int PointsPlayed, double FieldWidthM, double FieldLengthM,
-        int LivePlaySeconds);
+        int LivePlaySeconds, int LivePlayDistanceM);
 
     public sealed record Tournament(
         int OnFieldSeconds, int DurationSeconds, double OnFieldFraction, int PointsPlayed,
-        int LivePlaySeconds);
+        int LivePlaySeconds, int LivePlayDistanceM);
 
     public sealed record Baselines(List<Baseline> Games, Tournament Tournament);
 

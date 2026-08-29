@@ -60,6 +60,14 @@ def project(rows, D):
     return idxs, along, [c - c0 for c in cross], [s for _, _, s in xy]
 
 
+def haversine(lat1, lon1, lat2, lon2):
+    r = 6371000.0
+    p1, p2 = math.radians(lat1), math.radians(lat2)
+    dp = math.radians(lat2 - lat1); dl = math.radians(lon2 - lon1)
+    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
+    return 2 * r * math.asin(min(1.0, math.sqrt(h)))
+
+
 def roll(t, vals, win, fn):
     n = len(t); out = [0.0] * n; lo = hi = 0
     for i in range(n):
@@ -99,7 +107,7 @@ def runs(t, lab):
 
 d = json.load(open(PATH))
 tot_pts = 0
-tot_on = tot_dur = tot_live = 0.0
+tot_on = tot_dur = tot_live = tot_live_dist = 0.0
 print(f"{'game':22} {'dur':>6} {'on-field':>9} {'%':>4} {'pts':>4} {'s/pt':>6}  timeline")
 print("-" * 104)
 detail = []
@@ -109,6 +117,8 @@ for g in d:
     tall = [r[D['directTimestamp']] / 1000 for r in rows]; t0 = tall[0]
     idxs, along, cross, spd = project(rows, D)
     t = [tall[i] - t0 for i in idxs]
+    lat = [rows[i][D['directLatitude']] for i in idxs]
+    lon = [rows[i][D['directLongitude']] for i in idxs]
 
     fc = sorted(abs(c) for c, s in zip(cross, spd) if s >= FAST)
     halfw = fc[int(len(fc) * 0.9)] if len(fc) > 20 else 18.0
@@ -167,8 +177,14 @@ for g in d:
                for k in range(len(dwells) - 1)
                for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
                if onfield[i - 1])
+    # Live-play distance: GPS metres over the same windows. C# port stores it
+    # as GeometryResult.LivePlayDistanceM.
+    live_dist = sum(haversine(lat[i - 1], lon[i - 1], lat[i], lon[i])
+                    for k in range(len(dwells) - 1)
+                    for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
+                    if onfield[i - 1])
     dur = t[-1] - t[0]
-    tot_pts += pts; tot_on += on; tot_dur += dur; tot_live += live
+    tot_pts += pts; tot_on += on; tot_dur += dur; tot_live += live; tot_live_dist += live_dist
     tl = ''
     for m in range(int(dur // 60) + 1):
         seg = [onfield[i] for i in range(len(t)) if m * 60 <= t[i] < (m + 1) * 60]
@@ -182,6 +198,8 @@ print("-" * 104)
 print(f"{'TOURNAMENT':22} {tot_dur/60:>5.0f}m {tot_on/60:>8.0f}m {tot_on/tot_dur:>4.0%} {tot_pts:>4}")
 print(f"{'  live play':22} {tot_live/60:>5.0f}m of on-field  "
       f"({tot_live/tot_on:.0%} of on-field, {tot_live/tot_dur:.0%} of game, {tot_live/tot_pts/60:.1f} min/pt)")
+print(f"{'  live-play dist':22} {tot_live_dist/1000:>5.2f}km  "
+      f"({tot_live_dist/tot_pts:.0f} m/pt)")
 print()
 for name, tl, halfw, halfl, pts, on, dur, gaps in detail:
     print(f"\n{name}  — field fitted {2*halfw:.0f}m wide x {2*halfl:.0f}m long | "

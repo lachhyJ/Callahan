@@ -27,6 +27,11 @@ public class FieldGeometryTests
         Assert.InRange(r.LivePlaySeconds, baseline.LivePlaySeconds * 0.90, baseline.LivePlaySeconds * 1.10);
         Assert.True(r.LivePlaySeconds <= r.OnFieldSeconds);
 
+        // Live-play distance is summed over the same windows: bands against the
+        // fixture, and never more than total on-field distance.
+        Assert.InRange(r.LivePlayDistanceM, baseline.LivePlayDistanceM * 0.90, baseline.LivePlayDistanceM * 1.10);
+        Assert.True(r.LivePlayDistanceM <= r.OnFieldDistanceM + 1.0);
+
         int dur = r.OnFieldSeconds + r.OffFieldSeconds;
         Assert.InRange(dur, (int)(baseline.DurationSeconds * 0.98), (int)(baseline.DurationSeconds * 1.02));
 
@@ -44,11 +49,12 @@ public class FieldGeometryTests
     {
         var b = TestFixtures.LoadBaselines().Tournament;
         int on = 0, off = 0, pts = 0, live = 0;
+        double liveDist = 0;
         foreach (var g in Enumerable.Range(1, 6))
         {
             var r = FieldGeometry.Analyse(TestFixtures.LoadTrack(g).Samples);
             on += r.OnFieldSeconds; off += r.OffFieldSeconds; pts += r.PointsPlayed;
-            live += r.LivePlaySeconds;
+            live += r.LivePlaySeconds; liveDist += r.LivePlayDistanceM;
         }
 
         double frac = (double)on / (on + off);
@@ -57,6 +63,7 @@ public class FieldGeometryTests
         Assert.InRange(on, (int)(b.OnFieldSeconds * 0.97), (int)(b.OnFieldSeconds * 1.03));
         Assert.InRange(live, (int)(b.LivePlaySeconds * 0.95), (int)(b.LivePlaySeconds * 1.05));  // ~50% of on-field
         Assert.InRange((double)live / on, 0.42, 0.58);
+        Assert.InRange(liveDist, b.LivePlayDistanceM * 0.95, b.LivePlayDistanceM * 1.05);       // ~13.8 km
     }
 
     [Fact]

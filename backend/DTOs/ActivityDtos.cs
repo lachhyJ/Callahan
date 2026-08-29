@@ -26,6 +26,8 @@ public record ActivityDto(
     decimal? OnFieldDistanceKm = null,
     // On-field time inside a detected point ("live play"), <= OnFieldSeconds.
     int? LivePlaySeconds = null,
+    // Distance (km) covered inside detected points, <= OnFieldDistanceKm.
+    decimal? LivePlayDistanceKm = null,
     int? AlternationViolations = null,
     string? LapClassifierMethod = null,
     decimal? OnFieldSpeedThresholdMps = null,

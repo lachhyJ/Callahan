@@ -80,6 +80,7 @@ public class ActivitiesController : ControllerBase
                 a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
                 a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
                 a.LivePlaySeconds,
+                a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
                 a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
                 a.Track == null ? 0 : a.Track.SampleCount,
                 a.TournamentId, a.Tournament == null ? null : a.Tournament.Name))
@@ -513,6 +514,7 @@ public class ActivitiesController : ControllerBase
             activity.PointsPlayed = summary.PointsPlayed;
             activity.OnFieldDistanceM = summary.OnFieldDistanceM;
             activity.LivePlaySeconds = summary.LivePlaySeconds;
+            activity.LivePlayDistanceM = summary.LivePlayDistanceM;
             activity.AlternationViolations = summary.AlternationViolations;
             activity.LapClassifierMethod = summary.Method;
             activity.OnFieldSpeedThresholdMps = summary.ThresholdMps;   // null now; kept for old rows
@@ -530,6 +532,7 @@ public class ActivitiesController : ControllerBase
         activity.PointsPlayed = null;
         activity.OnFieldDistanceM = null;
         activity.LivePlaySeconds = null;
+        activity.LivePlayDistanceM = null;
         activity.AlternationViolations = null;
         activity.LapClassifierMethod = null;
         activity.OnFieldSpeedThresholdMps = null;
@@ -567,6 +570,7 @@ public class ActivitiesController : ControllerBase
         a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.LivePlaySeconds,
+        a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
         a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
         a.Track?.SampleCount ?? 0,
         a.TournamentId, a.Tournament?.Name);
