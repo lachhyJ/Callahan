@@ -25,12 +25,15 @@ what's currently live.
 Live at `callahan.ljlab.online` and `REDACTED-LAN-IP:30070`.
 
 ## Concurrent work — Callahan-specific
-`~/.claude/rules/concurrent-work.md` covers the general multi-thread git hygiene.
-Callahan-specific: because deploy is automatic on push, **merging to `main` *is* the
-deploy decision** — don't merge a thread's work until it's actually meant to go live,
-even if it's finished and reviewed. To ship one thread's work while another's is
-mid-flight on `main`, use the rollback `workflow_dispatch` to pin the deploy to a
-specific commit rather than letting the automatic push-deploy carry both.
+`~/.claude/rules/concurrent-work.md` carries the worktree-per-thread workflow and the
+"ask before non-trivial work in the primary checkout" rule. Callahan-specific:
+
+- **Merging to `main` *is* the deploy decision** — deploy is automatic on push. Don't
+  merge a thread's work until it's actually meant to go live, even if it's finished and
+  reviewed. To ship one thread's work while another's is mid-flight on `main`, use the
+  rollback `workflow_dispatch` to pin the deploy to a specific commit rather than letting
+  the automatic push-deploy carry both.
+- Name worktrees `../Callahan-<short-name>`; `git worktree remove` after the branch ships.
 
 ## Commit conventions
 Do **not** add a `Co-Authored-By: Claude` trailer to commits in this repo — a
