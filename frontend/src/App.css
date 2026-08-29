@@ -2065,32 +2065,34 @@ td {
   white-space: nowrap;
 }
 
-/* The one editable thing in this row - reads as a labelled field, not more
-   grey caption text, and carries a real tap target on a phone. */
+/* The one editable thing in this row. Deliberately understated - an inline
+   number with a single underline, not a filled input box, so it sits quietly
+   next to the read-only GPS figure rather than shouting "form field". */
 .activity-classify-cone {
   display: inline-flex;
   flex-direction: row; /* the global label{} rule stacks column - keep the unit + input side by side */
-  align-items: center;
-  gap: var(--space-xs);
+  align-items: baseline;
+  gap: var(--space-2xs);
   white-space: nowrap;
-  color: var(--text-secondary);
+  color: var(--text-tertiary); /* match the GPS caption; only the value itself gets full contrast */
 }
 
 .activity-classify-cone input {
-  width: 4.5em;
-  min-height: 2.25rem;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
+  width: 3ch;
+  box-sizing: content-box;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  padding: 1px 2px;
   color: var(--text-h);
   font-size: var(--text-sm);
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
 
-.activity-classify-cone input:focus-visible {
-  border-color: var(--text-tertiary);
+.activity-classify-cone input:focus {
+  border-bottom-color: var(--accent);
   outline: none;
 }
 
