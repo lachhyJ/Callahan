@@ -79,6 +79,7 @@ export default function DashboardPage() {
   const [wellnessInsight, setWellnessInsight] = useState(null)
   const [readinessSeries, setReadinessSeries] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
+  const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
 
   useEffect(() => {
@@ -117,6 +118,12 @@ export default function DashboardPage() {
     const timeout = setTimeout(() => setSavedMessage(null), 4000)
     return () => clearTimeout(timeout)
   }, [savedMessage])
+
+  useEffect(() => {
+    if (!syncResult) return
+    const timeout = setTimeout(() => setSyncResult(null), 6000)
+    return () => clearTimeout(timeout)
+  }, [syncResult])
 
   function loadSessions() {
     Promise.all([getWorkoutSessions(), getActivities()])
@@ -167,16 +174,23 @@ export default function DashboardPage() {
     <main className="page dashboard-page">
       <div className="dashboard-header">
         <h1>Dashboard</h1>
-        <Link to="/recently-deleted" className="icon-link" aria-label="Recently deleted">
-          <TrashIcon />
-        </Link>
+        <div className="dashboard-header-actions">
+          <SyncGarminButton variant="icon" onSynced={loadSessions} onResult={setSyncResult} />
+          <Link to="/recently-deleted" className="icon-link" aria-label="Recently deleted">
+            <TrashIcon />
+          </Link>
+        </div>
       </div>
 
       {savedMessage && (
         <p className="save-confirmation"><CheckIcon /> {savedMessage}</p>
       )}
 
-      <SyncGarminButton className="section-gap" onSynced={loadSessions} />
+      {syncResult && (
+        <p className={syncResult.isError ? 'save-confirmation error' : 'save-confirmation'}>
+          {!syncResult.isError && <CheckIcon />} {syncResult.text}
+        </p>
+      )}
 
       <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">

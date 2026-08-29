@@ -399,16 +399,30 @@ td {
   }
 }
 
+.dashboard-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3xs, 2px);
+}
+
 .icon-link {
   display: inline-flex;
   align-items: center;
   padding: var(--space-2xs);
+  background: none;
+  border: none;
   color: var(--text-tertiary);
+  cursor: pointer;
   transition: color var(--duration-fast) var(--ease-out);
 
   &:hover,
   &:focus-visible {
     color: var(--text-h);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
 }
 
@@ -422,19 +436,49 @@ td {
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-sm);
   margin: 0;
+
+  &.error {
+    color: var(--error-text);
+    background: var(--error-bg);
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.icon-spin {
+  animation: spin 0.9s linear infinite;
 }
 
 .sync-garmin {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
+  gap: var(--space-xs);
+}
+
+.sync-garmin-btn {
+  display: inline-flex;
+  align-items: center;
   gap: var(--space-2xs);
 }
 
 .sync-garmin-msg {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
   margin: 0;
   font-size: var(--text-sm);
   color: var(--text-tertiary);
+
+  &.error {
+    color: var(--error-text);
+  }
+
+  svg {
+    color: var(--success-text);
+  }
 }
 
 .delete-toast {
