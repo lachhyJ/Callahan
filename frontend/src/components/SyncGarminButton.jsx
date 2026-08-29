@@ -20,12 +20,23 @@ function summarise(result) {
 // icon button (Dashboard header) that reports its result via onResult so the
 // host places the message; the default `labelled` variant shows its own
 // transient result line (Games header). onSynced refetches the host's data.
+// Kept non-interactive for a beat after a sync finishes so a frustrated
+// double/triple-tap can't fire a second (pointless, though harmless) run.
+// Matches how long the result line stays up, so the button re-enables just
+// as the "Synced …" confirmation fades rather than sitting dead afterwards.
+const COOLDOWN_MS = 6000
+
 export default function SyncGarminButton({ variant = 'labelled', onSynced, onResult, className }) {
   const [syncing, setSyncing] = useState(false)
+  const [cooling, setCooling] = useState(false)
   const [msg, setMsg] = useState(null) // { text, isError } — labelled variant only
   const timer = useRef(null)
+  const coolTimer = useRef(null)
 
-  useEffect(() => () => clearTimeout(timer.current), [])
+  useEffect(() => () => {
+    clearTimeout(timer.current)
+    clearTimeout(coolTimer.current)
+  }, [])
 
   function flash(payload) {
     setMsg(payload)
@@ -34,7 +45,7 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
   }
 
   async function run() {
-    if (syncing) return
+    if (syncing || cooling) return
     setSyncing(true)
     setMsg(null)
     try {
@@ -49,8 +60,13 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
       else flash(payload)
     } finally {
       setSyncing(false)
+      setCooling(true)
+      clearTimeout(coolTimer.current)
+      coolTimer.current = setTimeout(() => setCooling(false), COOLDOWN_MS)
     }
   }
+
+  const disabled = syncing || cooling
 
   const icon = <SyncIcon className={syncing ? 'icon-spin' : undefined} />
 
@@ -60,7 +76,7 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
         type="button"
         className={className ? `icon-link ${className}` : 'icon-link'}
         onClick={run}
-        disabled={syncing}
+        disabled={disabled}
         title="Sync Garmin"
         aria-label={syncing ? 'Syncing Garmin…' : 'Sync Garmin'}
       >
@@ -71,7 +87,7 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
 
   return (
     <div className={className ? `sync-garmin ${className}` : 'sync-garmin'}>
-      <button type="button" className="secondary-btn sync-garmin-btn" onClick={run} disabled={syncing}>
+      <button type="button" className="secondary-btn sync-garmin-btn" onClick={run} disabled={disabled}>
         {icon}
         {syncing ? 'Syncing…' : 'Sync Garmin'}
       </button>
