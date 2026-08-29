@@ -28,6 +28,9 @@ export default function WellnessCard({ wellness, todayIso, insight, readinessSer
   if (wellness.trainingReadinessScore != null) {
     stats.push({ label: 'Readiness', value: wellness.trainingReadinessScore })
   }
+  if (wellness.restingHeartRate != null) {
+    stats.push({ label: 'Resting HR', value: `${wellness.restingHeartRate} bpm` })
+  }
 
   const headline = insight?.hasEnoughHistory ? insight.headline : null
   const readinessBaseline = insight?.metrics?.find((m) => m.key === 'readiness')?.baselineAvg

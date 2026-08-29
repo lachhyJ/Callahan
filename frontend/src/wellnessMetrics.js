@@ -17,6 +17,11 @@ export const WELLNESS_METRICS = [
 // Recovery-direction tint classes, matching the LiftTrendsList up/down convention.
 export const DIRECTION_CLASS = { below: 'down', above: 'up' }
 
+// Non-null readings a metric needs in its window before a trend view is worth
+// drawing. Mirrors ReadinessInsightCalculator.MinDaysPerMetric on the backend —
+// the same bar the insight itself uses to decide a metric has "enough history".
+export const MIN_TREND_READINGS = 7
+
 export function formatMetricValue(key, value) {
   if (value == null) return '—'
   if (key === 'sleepDuration') {

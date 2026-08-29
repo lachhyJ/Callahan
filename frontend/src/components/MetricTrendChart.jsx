@@ -16,8 +16,10 @@ function formatDay(iso) {
 // a crosshair are deferred). Modelled on TournamentGameChart but with a padded,
 // non-zero Y domain (readiness / HRV / resting HR sit in narrow high bands) and
 // gap-aware paths, since Garmin skips days. `points` values are already in
-// display units; a null value marks a missing day.
-export default function MetricTrendChart({ points, baselineAvg, caption }) {
+// display units; a null value marks a missing day. The caption lives once at
+// the top of the list (WellnessPage), not per-chart — this just takes an
+// `ariaLabel` for the SVG.
+export default function MetricTrendChart({ points, baselineAvg, ariaLabel }) {
   const real = points.map((p, i) => ({ ...p, i })).filter((p) => p.value != null)
   if (real.length < 2) return null
 
@@ -37,7 +39,6 @@ export default function MetricTrendChart({ points, baselineAvg, caption }) {
 
   const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
-  const bottom = PAD_TOP + plotHeight
 
   const xFor = (i) => PAD_LEFT + (points.length <= 1 ? plotWidth / 2 : (i / (points.length - 1)) * plotWidth)
   const yFor = (v) => PAD_TOP + plotHeight - ((v - yMin) / (yMax - yMin)) * plotHeight
@@ -60,10 +61,18 @@ export default function MetricTrendChart({ points, baselineAvg, caption }) {
   const linePaths = drawable.map((s) =>
     s.map((p, k) => `${k === 0 ? 'M' : 'L'} ${xFor(p.i).toFixed(1)} ${yFor(p.value).toFixed(1)}`).join(' ')
   )
-  const areaPaths = drawable.map((s) => {
-    const top = s.map((p, k) => `${k === 0 ? 'M' : 'L'} ${xFor(p.i).toFixed(1)} ${yFor(p.value).toFixed(1)}`).join(' ')
-    return `${top} L ${xFor(s[s.length - 1].i).toFixed(1)} ${bottom} L ${xFor(s[0].i).toFixed(1)} ${bottom} Z`
-  })
+  // Faint dashed connectors span the days Garmin skipped, so a run of gaps
+  // reads as one trend rather than a row of disconnected blocks. Every real
+  // reading (including a lone one between two gaps) also gets a dot.
+  const bridgePaths = []
+  for (let k = 1; k < real.length; k++) {
+    if (real[k].i !== real[k - 1].i + 1) {
+      bridgePaths.push(
+        `M ${xFor(real[k - 1].i).toFixed(1)} ${yFor(real[k - 1].value).toFixed(1)} ` +
+          `L ${xFor(real[k].i).toFixed(1)} ${yFor(real[k].value).toFixed(1)}`
+      )
+    }
+  }
 
   const first = real[0]
   const mid = real[Math.floor(real.length / 2)]
@@ -78,7 +87,7 @@ export default function MetricTrendChart({ points, baselineAvg, caption }) {
 
   return (
     <div className="progression-chart">
-      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="progression-chart-svg" role="img" aria-label={caption}>
+      <svg viewBox={`0 0 ${WIDTH} ${HEIGHT}`} className="progression-chart-svg" role="img" aria-label={ariaLabel}>
         {ticks.map((t) => (
           <g key={t}>
             <line x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} className="chart-gridline" />
@@ -88,11 +97,14 @@ export default function MetricTrendChart({ points, baselineAvg, caption }) {
           </g>
         ))}
 
-        {areaPaths.map((d, k) => (
-          <path key={k} d={d} className="chart-area" />
+        {bridgePaths.map((d, k) => (
+          <path key={`g${k}`} d={d} className="chart-line-gap" />
         ))}
         {linePaths.map((d, k) => (
           <path key={k} d={d} className="chart-line" />
+        ))}
+        {real.map((p) => (
+          <circle key={`d${p.i}`} cx={xFor(p.i)} cy={yFor(p.value)} r="1.6" className="chart-dot" />
         ))}
 
         {showBaseline && (
@@ -107,7 +119,6 @@ export default function MetricTrendChart({ points, baselineAvg, caption }) {
           </text>
         ))}
       </svg>
-      {caption && <span className="trend-chart-caption">{caption}</span>}
     </div>
   )
 }

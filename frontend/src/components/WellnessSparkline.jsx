@@ -12,8 +12,13 @@ export default function WellnessSparkline({ values, baselineAvg }) {
   if (real.length < 5) return null
 
   const nums = real.map((p) => p.v)
-  const lo = Math.min(...nums, baselineAvg ?? Infinity)
-  const hi = Math.max(...nums, baselineAvg ?? -Infinity)
+  const rawLo = Math.min(...nums, baselineAvg ?? Infinity)
+  const rawHi = Math.max(...nums, baselineAvg ?? -Infinity)
+  // Pad the domain so the latest dot and the baseline rule never sit flush
+  // against the top/bottom edge (the dot has a 3px radius).
+  const margin = (rawHi - rawLo) * 0.12 || Math.abs(rawHi) * 0.05 || 1
+  const lo = rawLo - margin
+  const hi = rawHi + margin
   const span = hi - lo || 1
 
   const x = (i) => (values.length <= 1 ? WIDTH / 2 : (i / (values.length - 1)) * WIDTH)
