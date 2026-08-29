@@ -371,3 +371,11 @@ export function getMonthlyReport(year, month) {
 export function markMonthlyReportViewed(year, month) {
   return apiFetch(`/api/MonthlyReports/${year}/${month}/viewed`, { method: 'POST' })
 }
+
+// Kicks off an on-demand Garmin pull (activities, plus wellness when asked).
+// Resolves with the trigger's summary { ok, wellness, durationMs, log[] };
+// rejects with a readable message on 409 (already running) or 502 (not set
+// up / unreachable / the sync itself failed).
+export function syncGarmin(wellness = false) {
+  return apiFetch(`/api/sync/garmin?wellness=${wellness ? 'true' : 'false'}`, { method: 'POST' })
+}

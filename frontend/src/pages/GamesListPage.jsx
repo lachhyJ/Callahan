@@ -5,6 +5,7 @@ import { formatDateRange, isoDate } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/activityLabel'
 import { summariseGames } from '../utils/tournamentStats'
 import GameRow from '../components/GameRow'
+import SyncGarminButton from '../components/SyncGarminButton'
 
 // One-line weekend teaser under a tournament header — null when none of its
 // games have field metrics yet, so the header just shows the game count.
@@ -102,9 +103,12 @@ export default function GamesListPage() {
     <main className="page">
       <div className="history-week-header">
         <h1>Games</h1>
-        <button type="button" className="secondary-btn" onClick={() => setShowForm((v) => !v)}>
-          {showForm ? 'Cancel' : '+ New tournament'}
-        </button>
+        <div className="games-header-actions">
+          <SyncGarminButton onSynced={load} />
+          <button type="button" className="secondary-btn" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Cancel' : '+ New tournament'}
+          </button>
+        </div>
       </div>
 
       {showForm && (

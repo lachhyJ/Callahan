@@ -7,4 +7,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY garmin_sync.py .
+# Also baked in for the always-on `garmin-sync-trigger` compose service, which
+# overrides the entrypoint to run this instead (see docker-compose.prod.yml).
+COPY trigger_server.py .
 ENTRYPOINT ["python", "garmin_sync.py"]

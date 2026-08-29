@@ -26,6 +26,13 @@ builder.Services.AddHttpClient<TaperConsultService>(client =>
     client.BaseAddress = new Uri("https://api.anthropic.com");
     client.Timeout = TimeSpan.FromSeconds(30);
 });
+// Proxies the "Sync Garmin" button to the garmin-sync-trigger container. A
+// normal daily pull is seconds; the generous timeout only matters on a first
+// run with no cached Garmin/Callahan tokens.
+builder.Services.AddHttpClient<GarminSyncClient>(client =>
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 builder.Services.AddHostedService<TaperReminderService>();
 
 var jwtSecret = builder.Configuration["Auth:JwtSecret"]

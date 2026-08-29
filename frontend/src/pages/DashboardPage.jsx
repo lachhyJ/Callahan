@@ -6,6 +6,7 @@ import { isoDate, startOfWeek } from '../dateUtils'
 import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
+import SyncGarminButton from '../components/SyncGarminButton'
 import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -117,14 +118,16 @@ export default function DashboardPage() {
     return () => clearTimeout(timeout)
   }, [savedMessage])
 
-  useEffect(() => {
+  function loadSessions() {
     Promise.all([getWorkoutSessions(), getActivities()])
       .then(([w, a]) => {
         setWorkouts(w)
         setActivities(a)
       })
       .catch((err) => setError(err.message))
-  }, [])
+  }
+
+  useEffect(loadSessions, [])
 
   const byDate = useMemo(() => {
     const map = new Map()
@@ -172,6 +175,8 @@ export default function DashboardPage() {
       {savedMessage && (
         <p className="save-confirmation"><CheckIcon /> {savedMessage}</p>
       )}
+
+      <SyncGarminButton className="section-gap" onSynced={loadSessions} />
 
       <div className="calendar-nav">
         <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">

@@ -22,3 +22,28 @@ services:
       - "30070:80"
     depends_on:
       - backend
+
+  # Always-on trigger for the app's "Sync Garmin" button. Runs the same
+  # scripts/garmin-sync image as the nightly TrueNAS cron job, but with its
+  # entrypoint overridden to the tiny HTTP server in trigger_server.py. No
+  # host port — only the backend (same network) reaches it, at
+  # http://garmin-sync-trigger:8099. The nightly cron `docker run --rm` is
+  # unchanged; this is additive and all sync writes are idempotent.
+  garmin-sync-trigger:
+    build: ./scripts/garmin-sync
+    entrypoint: ["python", "trigger_server.py"]
+    restart: unless-stopped
+    # Same gitignored env file the cron job uses (Garmin + Callahan creds).
+    # Add TRIGGER_TOKEN there to require a shared secret on the trigger; the
+    # backend sends it as Sync__TriggerToken.
+    env_file:
+      - /mnt/tank/callahan-data/garmin-sync.env
+    environment:
+      - HOME=/data
+      - CALLAHAN_API_BASE=http://backend:8080
+    volumes:
+      # Persists garth's Garmin session token + the cached Callahan JWT across
+      # restarts, same directory the cron job mounts.
+      - /mnt/tank/callahan-data/garmin-sync-state:/data
+    depends_on:
+      - backend
