@@ -1755,6 +1755,19 @@ td {
   stroke-linejoin: round;
 }
 
+.chart-line-gap {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 2 3;
+  opacity: 0.35;
+}
+
+.chart-dot {
+  fill: var(--accent);
+}
+
 .chart-crosshair {
   stroke: var(--border);
   stroke-width: 1;
@@ -2451,6 +2464,10 @@ td {
   font-size: var(--text-lg);
   color: var(--text-h);
   line-height: var(--leading-snug);
+  margin: 0 0 var(--space-xs);
+}
+
+.wellness-list-caption {
   margin: 0 0 var(--space-lg);
 }
 
@@ -2459,12 +2476,22 @@ td {
   flex-direction: column;
 }
 
-.wellness-metric-row {
+/* One block per metric: the header line, then its 12-week chart (or a
+   sparkline fallback) directly under it, so the small and large views of a
+   metric are read together rather than in two separate stacks. */
+.wellness-metric-block {
   display: flex;
   flex-direction: column;
-  gap: var(--space-xs);
-  padding: var(--space-sm) 0;
+  gap: var(--space-sm);
+  padding: var(--space-md) 0;
   border-bottom: 1px solid var(--border-subtle);
+}
+
+.wellness-chart-skeleton {
+  height: 110px;
+  border-radius: var(--radius-sm);
+  background: var(--border-subtle);
+  opacity: 0.4;
 }
 
 .wellness-metric-row-main {
@@ -2547,26 +2574,6 @@ td {
   flex-direction: column;
   gap: var(--space-2xs);
   margin-top: var(--space-sm);
-}
-
-.wellness-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-lg);
-}
-
-.wellness-timeline > h2 {
-  margin: 0;
-}
-
-.wellness-timeline-chart {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-xs);
-}
-
-.wellness-timeline-chart h3 {
-  margin: 0;
 }
 
 .muscle-bar-list {
