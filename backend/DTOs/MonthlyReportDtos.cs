@@ -46,6 +46,19 @@ public record TaperSectionDto(
     decimal ExclTaperWeeksSessionsPerWeek
 );
 
+// One recovery metric: this month's average against the trailing 3-month
+// average, with a recovery-oriented direction ("below" = worse than baseline).
+// Avgs are null when the month / trailing window had too few readings.
+public record WellnessMetricDto(string Key, string Label, decimal? MonthAvg, decimal? TrailingAvg, string Direction);
+
+public record WellnessSectionDto(
+    List<WellnessMetricDto> Metrics,
+    int NightsLogged,
+    int DaysInMonth,
+    int NightsUnder7h,
+    string? LoadVsRecoveryLine
+);
+
 public record MonthlyReportDto(
     int Year,
     int Month,
@@ -60,5 +73,6 @@ public record MonthlyReportDto(
     BalanceSectionDto Balance,
     ContextSectionDto Context,
     List<TaperSectionDto> TaperOverlaps,
-    List<string> NextMonthQuestions
+    List<string> NextMonthQuestions,
+    WellnessSectionDto? Wellness = null
 );

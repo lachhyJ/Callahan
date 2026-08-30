@@ -117,6 +117,18 @@ export function DocumentIcon(props) {
   )
 }
 
+// Document outline with a bar-chart mark inside — a report, as distinct from
+// DocumentIcon's plain text-lines page (used for the program PDF).
+export function ReportIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M6 2h6l3 3v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1z" />
+      <path d="M12 2v3h3" />
+      <path d="M8 15v-3M10 15v-5M12 15v-2" />
+    </svg>
+  )
+}
+
 export function TrashIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

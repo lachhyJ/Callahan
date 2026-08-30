@@ -2,8 +2,11 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getMonthlyReport, markMonthlyReportViewed } from '../api/client'
 import { formatDateLong, formatDateMedium } from '../dateUtils'
+import { DIRECTION_CLASS, formatMetricValue } from '../wellnessMetrics'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+const DIRECTION_LABEL = { below: 'below baseline', above: 'above baseline', in_line: 'in line' }
 
 function fmt(n, digits = 1) {
   if (n === null || n === undefined) return '—'
@@ -29,6 +32,14 @@ export default function ReportDetailPage() {
 
   const c = report.consistency
   const l = report.loadProgression
+  const w = report.wellness
+
+  // Verdict headline is "Label — one-line detail" since the Aug 2026 rework;
+  // older locked snapshots carry just the detail sentence.
+  const verdictParts = report.headlineVerdict.split(' — ')
+  const hasVerdictLabel = verdictParts.length > 1
+  const verdictLabel = hasVerdictLabel ? verdictParts[0] : report.headlineVerdict
+  const verdictDetail = hasVerdictLabel ? verdictParts.slice(1).join(' — ') : null
 
   return (
     <main className="page">
@@ -38,7 +49,8 @@ export default function ReportDetailPage() {
       )}
 
       <section className="report-section">
-        <h2>{report.headlineVerdict}</h2>
+        <h2>{verdictLabel}</h2>
+        {verdictDetail && <p>{verdictDetail}</p>}
       </section>
 
       <section className="report-section">
@@ -84,10 +96,15 @@ export default function ReportDetailPage() {
             {l.zeroSetProgramExercises.map((name) => <li key={name}>{name}</li>)}
           </ul>
         )}
+        {report.balance.flaggedLine && (
+          <p className="report-balance-line">{report.balance.flaggedLine}</p>
+        )}
       </section>
 
       <section className="report-section">
-        <h3>Running</h3>
+        <h3>Running &amp; context</h3>
+
+        <h4>Running</h4>
         {report.running.byType.length === 0 ? <p className="report-empty">No runs logged this month.</p> : (
           <ul className="report-list">
             {report.running.byType.map((r) => (
@@ -95,34 +112,51 @@ export default function ReportDetailPage() {
             ))}
           </ul>
         )}
-      </section>
 
-      <section className="report-section">
-        <h3>Balance</h3>
-        <p className={report.balance.flaggedLine ? undefined : 'report-empty'}>{report.balance.flaggedLine ?? 'No push/pull imbalance flagged this month.'}</p>
-      </section>
-
-      <section className="report-section">
-        <h3>Context</h3>
-        {report.context.tournaments.length > 0 && (
-          <p>Tournaments: {report.context.tournaments.join(', ')}</p>
+        <h4>Context</h4>
+        {report.context.tournaments.length === 0 && report.context.longestGapDays == null ? (
+          <p className="report-empty">Nothing notable framing the month.</p>
+        ) : (
+          <>
+            {report.context.tournaments.length > 0 && (
+              <p>Tournaments: {report.context.tournaments.join(', ')}</p>
+            )}
+            {report.context.longestGapDays != null && (
+              <p>Longest gap: {report.context.longestGapDays} days ({formatDateMedium(report.context.longestGapStart)} – {formatDateMedium(report.context.longestGapEnd)})</p>
+            )}
+          </>
         )}
-        {report.context.longestGapDays != null && (
-          <p>Longest gap: {report.context.longestGapDays} days ({formatDateMedium(report.context.longestGapStart)} – {formatDateMedium(report.context.longestGapEnd)})</p>
+
+        {report.taperOverlaps.length > 0 && (
+          <>
+            <h4>Taper</h4>
+            {report.taperOverlaps.map((t) => (
+              <div key={t.eventName + t.eventDate} className="report-taper-block">
+                <p><strong>{t.eventName}</strong> ({formatDateLong(t.eventDate)}) — {t.overlap} overlap with this month</p>
+                <p>Sessions/wk: {fmt(t.rawSessionsPerWeek, 2)} raw, {fmt(t.exclTaperWeeksSessionsPerWeek, 2)} excl. taper weeks</p>
+                <p>Planned volume reduction: {t.plannedReductionPercent != null ? `${fmt(t.plannedReductionPercent)}%` : '—'} · Actual: {t.actualReductionPercent != null ? `${fmt(t.actualReductionPercent)}%` : '—'}</p>
+                <p>Check-ins completed: {t.checkInsCompleted}/{t.checkInsExpected}</p>
+              </div>
+            ))}
+          </>
         )}
       </section>
 
-      {report.taperOverlaps.length > 0 && (
+      {w && (
         <section className="report-section">
-          <h3>Taper</h3>
-          {report.taperOverlaps.map((t) => (
-            <div key={t.eventName + t.eventDate} className="report-taper-block">
-              <p><strong>{t.eventName}</strong> ({formatDateLong(t.eventDate)}) — {t.overlap} overlap with this month</p>
-              <p>Sessions/wk: {fmt(t.rawSessionsPerWeek, 2)} raw, {fmt(t.exclTaperWeeksSessionsPerWeek, 2)} excl. taper weeks</p>
-              <p>Planned volume reduction: {t.plannedReductionPercent != null ? `${fmt(t.plannedReductionPercent)}%` : '—'} · Actual: {t.actualReductionPercent != null ? `${fmt(t.actualReductionPercent)}%` : '—'}</p>
-              <p>Check-ins completed: {t.checkInsCompleted}/{t.checkInsExpected}</p>
-            </div>
-          ))}
+          <h3>Recovery</h3>
+          <p className="report-coverage-note">{w.nightsLogged}/{w.daysInMonth} nights logged · {w.nightsUnder7h} under 7h</p>
+          <ul className="report-list">
+            {w.metrics.map((m) => (
+              <li key={m.key}>
+                {m.label}: {m.monthAvg == null ? '—' : formatMetricValue(m.key, m.monthAvg)}
+                {m.monthAvg != null && m.trailingAvg != null && m.direction !== 'insufficient' && (
+                  <> (was {formatMetricValue(m.key, m.trailingAvg)}, <span className={`report-trend ${DIRECTION_CLASS[m.direction] ?? ''}`}>{DIRECTION_LABEL[m.direction] ?? m.direction}</span>)</>
+                )}
+              </li>
+            ))}
+          </ul>
+          {w.loadVsRecoveryLine && <p className="report-balance-line">{w.loadVsRecoveryLine}</p>}
         </section>
       )}
 

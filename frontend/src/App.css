@@ -2376,43 +2376,12 @@ td {
   font-size: var(--text-xs);
 }
 
-.volume-chart {
-  background: var(--surface-raised);
-  border-radius: var(--radius-lg);
-  padding: var(--space-sm) var(--space-md);
-}
-
-.volume-chart-header {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  margin-bottom: var(--space-xs);
-}
-
+/* Retained for WellnessCard's header label; the weekly-volume chart that
+   defined the rest of the .volume-chart* family was removed from the
+   dashboard (Trends covers weekly volume with axes + a readiness overlay). */
 .volume-chart-label {
   font-size: var(--text-xs);
   color: var(--text);
-}
-
-.volume-chart-current {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--text-h);
-  font-variant-numeric: tabular-nums;
-}
-
-.volume-chart-svg {
-  width: 100%;
-  height: 48px;
-  display: block;
-}
-
-.volume-bar {
-  fill: var(--border);
-}
-
-.volume-bar.current {
-  fill: var(--accent);
 }
 
 .wellness-card {
@@ -2754,6 +2723,26 @@ td {
   border-radius: var(--radius-lg);
   padding: var(--space-md);
   margin-top: var(--space-sm);
+}
+
+/* One-line callouts inside a section: the push/pull balance flag under Load &
+   progression, and the load-vs-recovery line under Recovery. */
+.report-balance-line {
+  margin-top: var(--space-sm);
+  font-weight: 600;
+}
+
+.report-section .report-coverage-note {
+  color: var(--text);
+  font-size: 0.9em;
+}
+
+.report-trend.down {
+  color: var(--warning-text);
+}
+
+.report-trend.up {
+  color: var(--success-text);
 }
 
 .streak-card {

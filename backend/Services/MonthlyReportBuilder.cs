@@ -50,18 +50,60 @@ public class MonthlyReportBuilder
 
         var taperEvents = await _db.TaperEvents.ToListAsync();
 
+        var wellnessRows = (await _db.DailyWellness
+                .Where(w => w.Date >= trailingStart && w.Date <= monthEnd)
+                .ToListAsync())
+            .Select(WellnessMapping.ToDto)
+            .ToList();
+        var monthWellness = wellnessRows.Where(w => w.Date >= monthStart && w.Date <= monthEnd).ToList();
+        var trailingWellness = wellnessRows.Where(w => w.Date >= trailingStart && w.Date < trailingEndExclusive).ToList();
+
         var consistency = BuildConsistency(monthWorkouts, monthActivities, trailingWorkouts, trailingActivities, weeksInMonth, trailingWeeks, daysInMonth);
         var loadProgression = await BuildLoadProgressionAsync(monthStart, monthEnd);
         var running = BuildRunning(monthActivities);
         var balance = await BuildBalanceAsync(monthStart, monthEnd);
         var context = BuildContext(monthWorkouts, monthActivities, taperEvents, monthStart, monthEnd);
         var taperOverlaps = await BuildTaperOverlapsAsync(taperEvents, monthStart, monthEnd);
-        var headline = BuildHeadline(consistency);
+        var wellness = await BuildWellnessAsync(monthStart, monthEnd, daysInMonth, monthWellness, trailingWellness);
+        var headline = BuildHeadline(consistency, loadProgression);
         var nextMonth = BuildNextMonthQuestions(loadProgression, context, consistency);
 
         return new MonthlyReportDto(
             year, month, false, true, DateTime.UtcNow, null,
-            headline, consistency, loadProgression, running, balance, context, taperOverlaps, nextMonth);
+            headline, consistency, loadProgression, running, balance, context, taperOverlaps, nextMonth, wellness);
+    }
+
+    private async Task<WellnessSectionDto?> BuildWellnessAsync(
+        DateOnly monthStart, DateOnly monthEnd, int daysInMonth,
+        List<DTOs.DailyWellnessDto> monthWellness, List<DTOs.DailyWellnessDto> trailingWellness)
+    {
+        // Per-week gym tonnage for the report month, paired with that week's
+        // mean readiness — the load-vs-recovery input. Matches the taper
+        // section's volume definition (weight × reps, non-warmup).
+        var monthSetLoads = await _db.ExerciseSets
+            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= monthStart && s.WorkoutSession.Date <= monthEnd)
+            .Select(s => new { s.WorkoutSession.Date, Vol = s.WeightKg * s.Reps })
+            .ToListAsync();
+
+        var readinessByWeek = monthWellness
+            .Where(w => w.TrainingReadinessScore is not null)
+            .GroupBy(w => LoadTrendBuilder.MondayOf(w.Date))
+            .ToDictionary(g => g.Key, g => g.Average(w => (double)w.TrainingReadinessScore!.Value));
+
+        var monthWeeks = monthSetLoads
+            .GroupBy(x => LoadTrendBuilder.MondayOf(x.Date))
+            .Select(g => new WellnessWeekLoad(
+                g.Sum(x => x.Vol),
+                readinessByWeek.TryGetValue(g.Key, out var r) ? r : null))
+            .ToList();
+
+        var trailingReadings = trailingWellness
+            .Where(w => w.TrainingReadinessScore is not null)
+            .Select(w => (double)w.TrainingReadinessScore!.Value)
+            .ToList();
+        double? trailingReadinessAvg = trailingReadings.Count >= 7 ? trailingReadings.Average() : null;
+
+        return MonthlyWellnessSummarizer.Summarize(monthWellness, trailingWellness, daysInMonth, monthWeeks, trailingReadinessAvg);
     }
 
     private static ConsistencySectionDto BuildConsistency(
@@ -349,12 +391,33 @@ public class MonthlyReportBuilder
         return results;
     }
 
-    private static string BuildHeadline(ConsistencySectionDto c)
+    private static string BuildHeadline(ConsistencySectionDto c, LoadProgressionSectionDto load)
     {
         var weeksFmt = c.WeeksInMonth.ToString("0.0");
         var perWeekFmt = c.SessionsPerWeek.ToString("0.0");
         var trailingFmt = c.TrailingSessionsPerWeek.ToString("0.0");
-        return $"{c.TotalSessions} session{(c.TotalSessions == 1 ? "" : "s")} across {weeksFmt} weeks ({perWeekFmt}/wk vs {trailingFmt}/wk trailing average).";
+        var detail = $"{c.TotalSessions} session{(c.TotalSessions == 1 ? "" : "s")} across {weeksFmt} weeks ({perWeekFmt}/wk vs {trailingFmt}/wk trailing average).";
+        return $"{ClassifyMonth(c, load)} — {detail}";
+    }
+
+    // Deterministic month verdict — the report's job is to "make a call", not
+    // restate the numbers. Consistency vs the trailing rate is the spine: a
+    // genuine drop in training frequency is the only thing that makes a month
+    // "Down". Stalls / PRs / net mover direction only decide Strong vs Steady —
+    // a high-volume month full of plateaus is Steady, not Down. Thresholds are
+    // tunable; kept pure and public so it unit-tests directly.
+    public static string ClassifyMonth(ConsistencySectionDto c, LoadProgressionSectionDto load)
+    {
+        var trailing = c.TrailingSessionsPerWeek;
+        var moversNetPositive = load.Movers.Sum(m => m.DeltaPercent) > 0;
+
+        if (trailing > 0 && c.SessionsPerWeek < trailing * 0.8m)
+            return "Down month";
+
+        if (c.SessionsPerWeek >= trailing && load.Stalls.Count == 0 && (load.Prs.Count > 0 || moversNetPositive))
+            return "Strong month";
+
+        return "Steady month";
     }
 
     private static List<string> BuildNextMonthQuestions(LoadProgressionSectionDto load, ContextSectionDto context, ConsistencySectionDto consistency)
