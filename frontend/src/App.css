@@ -1447,16 +1447,29 @@ td {
   color: var(--error-text);
 }
 
-/* Tuning aid for the iOS in-app rest alert — unobtrusive text button. */
+/* Tuning aid for the iOS in-app rest alert — unobtrusive text button + status. */
+.rest-alert-test {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  margin: calc(-1 * var(--space-xs)) 0 var(--space-xs);
+}
+
 .rest-alert-test-link {
   background: none;
   border: none;
   padding: 0;
-  margin: calc(-1 * var(--space-xs)) 0 var(--space-xs);
   font-size: var(--text-xs);
   color: var(--text-tertiary);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.rest-alert-test-status {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
 }
 
 .push-prompt {

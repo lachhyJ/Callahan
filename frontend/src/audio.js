@@ -1,146 +1,149 @@
-// Rest-timer alert audio, built around two iOS Safari constraints:
+// Rest-timer alert audio for iOS Safari / installed PWA.
 //
-//  A. The hardware silent switch mutes the Web Audio API (unlike <audio>/<video>
-//     media elements). Playing a looping <audio> element first sets the page's
-//     iOS audio session to the "playback" category; Web Audio output created /
-//     resumed after that rides the same session and is no longer muted by the
-//     switch. That looping element (near-silent) is the "keepalive".
+// v1 tried Web Audio oscillators scheduled on the audio-thread clock, with a
+// silent looping <audio> element to promote the iOS "playback" audio session so
+// the hardware silent switch wouldn't mute them. On-device that produced *no
+// sound at all*, even foregrounded from a tap — the silent-media session
+// promotion didn't take, and the switch mutes Web Audio outright.
 //
-//  B. A backgrounded tab's JS (setTimeout / rAF / React ticks) is suspended, so
-//     we can't *trigger* the beep at T=0 from the main thread. Instead the beep
-//     is pre-scheduled on the Web Audio audio-thread clock the moment the rest
-//     starts (a real user gesture — completing a set), via
-//     oscillator.start(ctx.currentTime + delay). That fires even while JS is
-//     frozen, as long as the AudioContext stays alive — which the keepalive
-//     element is there to ensure.
+// v2 drops Web Audio entirely and plays everything through HTMLAudioElements,
+// which DO sound through the silent switch when playback was user-initiated
+// (same reason web videos play on a muted iPhone):
 //
-// All of this is iOS-fragile by nature (the OS can still cull the keepalive or
-// suspend the context after long backgrounding). The reactive playBeepNow()
-// path is kept as a foreground fallback.
+//  - `playBeepNow()` plays a short pre-generated beep WAV. Foreground / gesture
+//    path (the countdown-tick fallback, and the test button).
+//
+//  - `scheduleBeep(delaySeconds)` generates a WAV that is `delaySeconds` of
+//    silence followed by the beep, and plays it. The timing is baked into the
+//    file, so it fires at the right moment even with the JS main thread frozen,
+//    and media playback started before backgrounding keeps running. Called from
+//    the set-completion / rest-adjust taps, so it's always user-initiated.
+//
+// Still iOS-fragile: whether a backgrounded standalone PWA keeps a media
+// element playing to completion is not guaranteed. `lastStatus` records what
+// the most recent play attempt did, for the on-screen test readout.
 
-let ctx = null
-let keepaliveEl = null
-let scheduledNodes = [] // oscillators for the pending beep
-let scheduledFireAt = null // audio-clock time the pending scheduled beep sounds
+const SAMPLE_RATE = 8000
 
-function getAudioContextClass() {
-  return window.AudioContext || window.webkitAudioContext
+let beepEl = null // short beep, for playBeepNow()
+let scheduledEl = null // silence + beep, for scheduleBeep()
+let scheduledUrl = null // object URL currently held by scheduledEl
+let beepUrl = null
+let lastStatus = 'idle'
+
+function setStatus(s) {
+  lastStatus = s
 }
 
-// Minimal valid mono 8 kHz 16-bit PCM WAV, ~0.4 s, amplitude ±1 LSB — audibly
-// silent but not digital-black, so iOS won't treat the element as "nothing
-// playing" and stop it. Built at runtime so no multi-KB base64 lives in source.
-function silentWavUrl() {
-  const sampleRate = 8000
-  const samples = sampleRate * 0.4
-  const dataBytes = samples * 2
-  const buffer = new ArrayBuffer(44 + dataBytes)
-  const view = new DataView(buffer)
-  const writeStr = (offset, str) => {
-    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
-  }
-  writeStr(0, 'RIFF')
-  view.setUint32(4, 36 + dataBytes, true)
-  writeStr(8, 'WAVE')
-  writeStr(12, 'fmt ')
-  view.setUint32(16, 16, true) // PCM chunk size
-  view.setUint16(20, 1, true) // format = PCM
-  view.setUint16(22, 1, true) // channels
-  view.setUint32(24, sampleRate, true)
-  view.setUint32(28, sampleRate * 2, true) // byte rate
-  view.setUint16(32, 2, true) // block align
-  view.setUint16(34, 16, true) // bits per sample
-  writeStr(36, 'data')
-  view.setUint32(40, dataBytes, true)
-  for (let i = 0; i < samples; i++) view.setInt16(44 + i * 2, i % 2 ? 1 : -1, true)
-  return URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }))
+// For the on-screen test readout — what the most recent play attempt did.
+export function audioStatus() {
+  return lastStatus
 }
 
-// Call from within a user gesture that begins a workout (opening a template,
-// completing a set). Idempotent. Establishes the audio session + a running
-// AudioContext so later scheduled beeps aren't muted by the silent switch and
-// survive backgrounding.
-export function unlockAudio() {
-  const AudioContextClass = getAudioContextClass()
-  if (!AudioContextClass) return
+// Build a mono 16-bit PCM WAV: `leadSilenceSec` of near-silence, then a
+// two-pulse 880/1320 Hz beep (~0.65 s). Returns an object URL.
+function makeAlertWavUrl(leadSilenceSec = 0) {
+  const lead = Math.max(0, Math.round(leadSilenceSec * SAMPLE_RATE))
+  const pulse = Math.round(0.25 * SAMPLE_RATE)
+  const gap = Math.round(0.15 * SAMPLE_RATE)
+  const toneLen = pulse + gap + pulse
+  const total = lead + toneLen
+  const dataBytes = total * 2
+  const buf = new ArrayBuffer(44 + dataBytes)
+  const view = new DataView(buf)
+  const put = (off, str) => { for (let i = 0; i < str.length; i++) view.setUint8(off + i, str.charCodeAt(i)) }
+  put(0, 'RIFF'); view.setUint32(4, 36 + dataBytes, true); put(8, 'WAVE')
+  put(12, 'fmt '); view.setUint32(16, 16, true); view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true); view.setUint32(24, SAMPLE_RATE, true)
+  view.setUint32(28, SAMPLE_RATE * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true)
+  put(36, 'data'); view.setUint32(40, dataBytes, true)
 
-  if (!keepaliveEl) {
-    keepaliveEl = new Audio(silentWavUrl())
-    keepaliveEl.loop = true
-    keepaliveEl.preload = 'auto'
-    // No `muted` — a muted element does not promote the audio session.
-    keepaliveEl.volume = 1
-  }
-  // Play (or resume) the keepalive first so the AudioContext below inherits the
-  // "playback" session. A rejected promise (no gesture yet) is fine — the next
-  // gesture retries.
-  keepaliveEl.play().catch(() => {})
+  const base = 44
+  // Lead: alternating ±1 LSB, so it's not treated as digital-black / "nothing".
+  for (let i = 0; i < lead; i++) view.setInt16(base + i * 2, i % 2 ? 1 : -1, true)
 
-  if (!ctx) ctx = new AudioContextClass()
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
-}
-
-// Two stacked triangle tones, twice — enough harmonic content to cut through a
-// music track. Shared by the scheduled and immediate paths.
-function emitTones(startAt) {
-  if (!ctx) return
-  for (const delay of [0, 0.3]) {
-    for (const frequency of [880, 1320]) {
-      const oscillator = ctx.createOscillator()
-      const gain = ctx.createGain()
-      oscillator.type = 'triangle'
-      oscillator.frequency.value = frequency
-      const t = startAt + delay
-      gain.gain.setValueAtTime(0.0001, t)
-      gain.gain.exponentialRampToValueAtTime(0.45, t + 0.01)
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.25)
-      oscillator.connect(gain)
-      gain.connect(ctx.destination)
-      oscillator.start(t)
-      oscillator.stop(t + 0.25)
-      scheduledNodes.push(oscillator)
+  const writePulse = (startSample) => {
+    for (let i = 0; i < pulse; i++) {
+      const t = i / SAMPLE_RATE
+      // Short linear attack/release so it doesn't click.
+      const env = Math.min(1, i / (0.01 * SAMPLE_RATE), (pulse - i) / (0.03 * SAMPLE_RATE))
+      const s = env * 0.5 * (Math.sin(2 * Math.PI * 880 * t) * 0.6 + Math.sin(2 * Math.PI * 1320 * t) * 0.4)
+      view.setInt16(base + (startSample + i) * 2, Math.max(-1, Math.min(1, s)) * 32767, true)
     }
   }
+  writePulse(lead)
+  for (let i = 0; i < gap; i++) view.setInt16(base + (lead + pulse + i) * 2, 0, true)
+  writePulse(lead + pulse + gap)
+
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
 }
 
-// Pre-schedule the alert to sound `delaySeconds` from now on the audio-thread
-// clock. Call from the gesture that starts/adjusts a rest. Replaces any
-// previously scheduled beep.
+// Call from a user gesture that begins a workout / completes a set. Creates the
+// audio elements and primes beepEl with a muted play/pause so later .play()
+// calls from non-gesture code (the countdown tick) are allowed.
+export function unlockAudio() {
+  if (!beepEl) {
+    if (!beepUrl) beepUrl = makeAlertWavUrl(0)
+    beepEl = new Audio(beepUrl)
+    beepEl.preload = 'auto'
+  }
+  if (!scheduledEl) {
+    scheduledEl = new Audio()
+    scheduledEl.preload = 'auto'
+  }
+  beepEl.muted = true
+  beepEl.play().then(() => {
+    beepEl.pause()
+    beepEl.currentTime = 0
+    beepEl.muted = false
+  }).catch(() => { beepEl.muted = false })
+}
+
+export function playBeepNow() {
+  unlockAudio()
+  if (!beepEl) return
+  try {
+    beepEl.currentTime = 0
+    beepEl.play()
+      .then(() => setStatus('playBeepNow: playing'))
+      .catch((e) => setStatus('playBeepNow blocked: ' + e.name))
+  } catch (e) {
+    setStatus('playBeepNow threw: ' + e.name)
+  }
+}
+
+// Play "delaySeconds of silence, then the beep" — timing baked into the file so
+// it fires even if JS is suspended. Replaces any pending scheduled beep.
 export function scheduleBeep(delaySeconds) {
   unlockAudio()
-  if (!ctx) return
-  cancelScheduledBeep()
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
-  const fireAt = ctx.currentTime + Math.max(0, delaySeconds)
-  scheduledFireAt = fireAt
-  emitTones(fireAt)
+  if (!scheduledEl) return
+  // Stop whatever's pending, but don't load() an empty src — assigning the new
+  // src below is the load, and an interleaved load() aborts the play promise.
+  try { scheduledEl.pause() } catch { /* ignore */ }
+  if (scheduledUrl) URL.revokeObjectURL(scheduledUrl)
+
+  scheduledUrl = makeAlertWavUrl(Math.max(0, delaySeconds))
+  scheduledEl.src = scheduledUrl
+  try {
+    scheduledEl.currentTime = 0
+    scheduledEl.play()
+      .then(() => setStatus('scheduleBeep: playing (' + Math.round(delaySeconds) + 's lead)'))
+      .catch((e) => setStatus('scheduleBeep blocked: ' + e.name))
+  } catch (e) {
+    setStatus('scheduleBeep threw: ' + e.name)
+  }
 }
 
-// Stop a pending scheduled beep (rest adjusted, skipped, next set started,
-// workout finished, page unmounted).
 export function cancelScheduledBeep() {
-  for (const node of scheduledNodes) {
+  if (scheduledEl) {
     try {
-      node.stop()
-    } catch {
-      // already stopped / finished
-    }
+      scheduledEl.pause()
+      scheduledEl.removeAttribute('src')
+      scheduledEl.load()
+    } catch { /* ignore */ }
   }
-  scheduledNodes = []
-  scheduledFireAt = null
-}
-
-// Immediate beep — foreground fallback for the reactive countdown effect, and
-// for platforms where scheduling drifts. No-op safe if audio was never unlocked.
-// Suppressed if a scheduled beep for roughly this moment has already fired (or
-// is about to), so a foregrounded countdown doesn't double up with it.
-export function playBeepNow() {
-  const AudioContextClass = getAudioContextClass()
-  if (!AudioContextClass) return
-  if (!ctx) ctx = new AudioContextClass()
-  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
-  if (scheduledFireAt != null && ctx.currentTime >= scheduledFireAt - 1 && ctx.currentTime <= scheduledFireAt + 2) {
-    return
+  if (scheduledUrl) {
+    URL.revokeObjectURL(scheduledUrl)
+    scheduledUrl = null
   }
-  emitTones(ctx.currentTime)
 }
