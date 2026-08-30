@@ -73,5 +73,11 @@ public class Activity
     // Inert unless explicitly Include'd - it carries a ~100 KB blob.
     public ActivityTrack? Track { get; set; }
 
+    // Manual entry: the game's final score from Lachlan's own record, since
+    // Garmin has no concept of a team score. Gives "points played" a real
+    // denominator. Both null until entered; entered as a pair.
+    public int? FinalScoreFor { get; set; }
+    public int? FinalScoreAgainst { get; set; }
+
     public DateTime? DeletedAt { get; set; }
 }

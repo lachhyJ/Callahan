@@ -316,6 +316,17 @@ export function getActivity(id) {
   return apiFetch(`/api/activities/${id}`)
 }
 
+// Pass both numbers, or both null to clear.
+export function updateActivityScore(id, { finalScoreFor, finalScoreAgainst } = {}) {
+  return apiFetch(`/api/activities/${id}/score`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      finalScoreFor: finalScoreFor ?? null,
+      finalScoreAgainst: finalScoreAgainst ?? null,
+    }),
+  })
+}
+
 // Returns null (204) for anything that isn't a classified Ultimate Game with
 // a decodable GPS track — never throws for that case, only for a real
 // network/auth failure.

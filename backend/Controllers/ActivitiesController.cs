@@ -83,7 +83,8 @@ public class ActivitiesController : ControllerBase
                 a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
                 a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
                 a.Track == null ? 0 : a.Track.SampleCount,
-                a.TournamentId, a.Tournament == null ? null : a.Tournament.Name))
+                a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
+                a.FinalScoreFor, a.FinalScoreAgainst))
             .ToListAsync();
 
         return Ok(activities);
@@ -443,6 +444,30 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
+    // Manual final score for an Ultimate game - Garmin has no team score, so
+    // this is the only way "points played" gets a real denominator. Entered
+    // as a pair; pass both null to clear.
+    [HttpPut("{id}/score")]
+    public async Task<ActionResult<ActivityDto>> UpdateScore(int id, UpdateActivityScoreRequest request)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Tournament)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+        if (activity.Type != ActivityType.Ultimate)
+            return BadRequest(new { error = "A final score is only stored for Ultimate games." });
+        if (request.FinalScoreFor is null != (request.FinalScoreAgainst is null))
+            return BadRequest(new { error = "Provide both score values or neither." });
+        if (request.FinalScoreFor is < 0 || request.FinalScoreAgainst is < 0)
+            return BadRequest(new { error = "Scores can't be negative." });
+
+        activity.FinalScoreFor = request.FinalScoreFor;
+        activity.FinalScoreAgainst = request.FinalScoreAgainst;
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(activity));
+    }
+
     // Manual override for the auto-attach sweep - sets or clears (null) which
     // tournament this game belongs to. Not restricted to Ultimate at the DB
     // level (see Activity.TournamentId), so no type check here either; a
@@ -573,5 +598,6 @@ public class ActivitiesController : ControllerBase
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
         a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
         a.Track?.SampleCount ?? 0,
-        a.TournamentId, a.Tournament?.Name);
+        a.TournamentId, a.Tournament?.Name,
+        a.FinalScoreFor, a.FinalScoreAgainst);
 }

@@ -38,7 +38,13 @@ public record ActivityDto(
     // Which tournament this game belongs to, if any - set by the date-range
     // attach sweep or the manual picker on the game detail page.
     int? TournamentId = null,
-    string? TournamentName = null);
+    string? TournamentName = null,
+    // Manually-entered final score (null until entered, always as a pair).
+    int? FinalScoreFor = null,
+    int? FinalScoreAgainst = null);
+
+// PUT /api/activities/{id}/score body. Both values or neither.
+public record UpdateActivityScoreRequest(int? FinalScoreFor, int? FinalScoreAgainst);
 
 public record CreateActivityRequest(
     DateOnly Date,

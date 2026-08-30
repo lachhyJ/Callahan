@@ -3218,6 +3218,38 @@ td {
   color: var(--text-tertiary);
 }
 
+/* Manual final-score line under the tournament row on the game detail page. */
+.game-score-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs);
+  margin-top: var(--space-xs);
+  font-size: var(--text-sm);
+}
+
+.game-score-value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.game-score-dash {
+  color: var(--text-tertiary);
+}
+
+.game-score-input {
+  width: 3.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The "/ 27" total-points suffix on the Points played stat. */
+.stat-denominator {
+  color: var(--text-tertiary);
+  font-weight: 400;
+}
+
 /* Kept last deliberately: at equal specificity CSS resolves ties by source
    order, so a responsive override placed earlier than the base rules it's
    meant to beat loses silently. Everything below must stay last in the file. */

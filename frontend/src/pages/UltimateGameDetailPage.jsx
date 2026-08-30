@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityTournament } from '../api/client'
+import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityScore, updateActivityTournament } from '../api/client'
 import { activityLabel, formatDuration } from '../utils/activityLabel'
 import { formatDateLong } from '../dateUtils'
 import FieldTimeline from '../components/FieldTimeline'
@@ -76,6 +76,10 @@ export default function UltimateGameDetailPage() {
   const livePerPoint = hasFieldData && activity.pointsPlayed && liveSeconds
     ? (liveSeconds / 60 / activity.pointsPlayed).toFixed(1)
     : null
+  // Once the final score is in, "points played" can show a real denominator.
+  const totalGamePoints = activity.finalScoreFor != null && activity.finalScoreAgainst != null
+    ? activity.finalScoreFor + activity.finalScoreAgainst
+    : null
 
   return (
     <main className="page">
@@ -114,6 +118,8 @@ export default function UltimateGameDetailPage() {
         </span>
       )}
 
+      {activity.type === 'Ultimate' && <ScoreLine activity={activity} onSaved={setActivity} />}
+
       {!hasFieldData && (
         <p className="notes">
           {activity.type === 'Ultimate'
@@ -135,7 +141,10 @@ export default function UltimateGameDetailPage() {
             {activity.pointsPlayed != null && (
               <div className="stat-card">
                 <span className="stat-label">Points played</span>
-                <span className="stat-value">{activity.pointsPlayed}</span>
+                <span className="stat-value">
+                  {activity.pointsPlayed}
+                  {totalGamePoints != null && <span className="stat-denominator"> / {totalGamePoints}</span>}
+                </span>
               </div>
             )}
             {livePerPoint != null && (
@@ -170,5 +179,83 @@ export default function UltimateGameDetailPage() {
         </>
       )}
     </main>
+  )
+}
+
+// Manual final score for a game, entered as a pair. Garmin has no team score.
+function ScoreLine({ activity, onSaved }) {
+  const [editing, setEditing] = useState(false)
+  const [ours, setOurs] = useState('')
+  const [theirs, setTheirs] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+
+  const hasScore = activity.finalScoreFor != null && activity.finalScoreAgainst != null
+
+  function open() {
+    setOurs(activity.finalScoreFor != null ? String(activity.finalScoreFor) : '')
+    setTheirs(activity.finalScoreAgainst != null ? String(activity.finalScoreAgainst) : '')
+    setErr(null)
+    setEditing(true)
+  }
+
+  async function save(clear) {
+    setErr(null)
+    let body
+    if (clear) {
+      body = { finalScoreFor: null, finalScoreAgainst: null }
+    } else {
+      const f = Number(ours)
+      const a = Number(theirs)
+      if (ours === '' || theirs === '' || Number.isNaN(f) || Number.isNaN(a) || f < 0 || a < 0) {
+        setErr('Enter both scores.')
+        return
+      }
+      body = { finalScoreFor: f, finalScoreAgainst: a }
+    }
+    setSaving(true)
+    try {
+      onSaved(await updateActivityScore(activity.id, body))
+      setEditing(false)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (editing) {
+    return (
+      <div className="game-score-row">
+        <input
+          type="number" inputMode="numeric" min="0" className="game-score-input"
+          value={ours} onChange={(e) => setOurs(e.target.value)} aria-label="Our score"
+        />
+        <span className="game-score-dash">–</span>
+        <input
+          type="number" inputMode="numeric" min="0" className="game-score-input"
+          value={theirs} onChange={(e) => setTheirs(e.target.value)} aria-label="Opponent score"
+        />
+        <button type="button" className="activity-classify-btn" onClick={() => save(false)} disabled={saving}>Save</button>
+        <button type="button" className="activity-classify-btn" onClick={() => setEditing(false)} disabled={saving}>Cancel</button>
+        {hasScore && (
+          <button type="button" className="activity-classify-btn" onClick={() => save(true)} disabled={saving}>Clear</button>
+        )}
+        {err && <span className="error">{err}</span>}
+      </div>
+    )
+  }
+
+  return (
+    <div className="game-score-row">
+      {hasScore ? (
+        <>
+          <span className="game-score-value">{activity.finalScoreFor}–{activity.finalScoreAgainst}</span>
+          <button type="button" className="activity-classify-btn" onClick={open}>Edit score</button>
+        </>
+      ) : (
+        <button type="button" className="activity-classify-btn" onClick={open}>Add final score</button>
+      )}
+    </div>
   )
 }
