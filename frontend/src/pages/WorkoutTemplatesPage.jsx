@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { getWorkoutTemplates } from '../api/client'
 import { loadActiveWorkout } from '../activeWorkout'
-import { unlockAudioContext } from '../beep'
+import { unlockAudio } from '../audio'
 import { RunIcon } from '../icons'
 
 export default function WorkoutTemplatesPage() {
@@ -28,13 +28,13 @@ export default function WorkoutTemplatesPage() {
       {templates === null && !error && <p>Loading workouts…</p>}
       <div className="template-list">
         {templates?.map((t) => (
-          <Link key={t.id} to={`/workout/${t.id}`} className="template-card" onClick={unlockAudioContext}>
+          <Link key={t.id} to={`/workout/${t.id}`} className="template-card" onClick={unlockAudio}>
             {t.name}
             <span className="template-card-subtitle">{t.subtitle}</span>
           </Link>
         ))}
       </div>
-      <Link to="/workout/custom" className="custom-workout-link" onClick={unlockAudioContext}>
+      <Link to="/workout/custom" className="custom-workout-link" onClick={unlockAudio}>
         Or start an empty workout
       </Link>
       <Link to="/run" className="log-run-card">
