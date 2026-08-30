@@ -1,9 +1,11 @@
 import { formatHoursMinutes } from '../utils/activityLabel'
 
-// The split bar + legend + honesty note, fed raw second totals. Segments are
-// live play / between points / (mixed) / off field. Shared by the single-game
-// detail page and the tournament roll-up so the segment maths and the note
-// copy live in one place. Renders nothing if there's no tracked time.
+// A two-segment split: live play vs everything else (waiting on the line
+// between points, subbing on, mixed lap-press time, off the field). The
+// between-points band used to be its own segment but it didn't earn the
+// visual weight - the honest, useful cut is live / not-live. Shared by the
+// single-game detail page and the tournament roll-up. Renders nothing if
+// there's no tracked time.
 export default function FieldSplitBar({
   liveSeconds = 0,
   onFieldSeconds = 0,
@@ -13,48 +15,32 @@ export default function FieldSplitBar({
   const totalTracked = onFieldSeconds + offFieldSeconds + mixedSeconds
   if (!totalTracked) return null
 
-  // On-field time outside a detected point: waiting on the line, stall counts,
-  // subbing on.
-  const betweenSeconds = Math.max(0, onFieldSeconds - liveSeconds)
+  const live = Math.max(0, Math.min(liveSeconds, totalTracked))
+  const notLive = totalTracked - live
   const pct = (part) => Math.round((part / totalTracked) * 100)
-  const livePct = pct(liveSeconds)
-  const betweenPct = pct(betweenSeconds)
-  const offPct = pct(offFieldSeconds)
-  const mixedPct = mixedSeconds > 0 ? pct(mixedSeconds) : null
+  const livePct = pct(live)
 
   return (
     <>
       <div className="field-split-bar">
         <div className="field-split-segment field-split-live" style={{ width: `${livePct}%` }} />
-        <div className="field-split-segment field-split-on-idle" style={{ width: `${betweenPct}%` }} />
-        {mixedPct != null && <div className="field-split-segment field-split-mixed" style={{ width: `${mixedPct}%` }} />}
-        <div className="field-split-segment field-split-off" style={{ width: `${offPct}%` }} />
+        <div className="field-split-segment field-split-off" style={{ width: `${100 - livePct}%` }} />
       </div>
       <div className="field-split-legend">
         <span className="field-split-legend-item">
           <i className="field-timeline-swatch field-timeline-swatch-live" />
-          Live play {formatHoursMinutes(liveSeconds)} · {livePct}%
+          Live play {formatHoursMinutes(live)} · {livePct}%
         </span>
-        <span className="field-split-legend-item">
-          <i className="field-timeline-swatch field-timeline-swatch-on-idle" />
-          Between points {formatHoursMinutes(betweenSeconds)} · {betweenPct}%
-        </span>
-        {mixedPct != null && (
-          <span className="field-split-legend-item">
-            <i className="field-timeline-swatch field-timeline-swatch-mixed" />
-            Mixed {formatHoursMinutes(mixedSeconds)} · {mixedPct}%
-          </span>
-        )}
         <span className="field-split-legend-item">
           <i className="field-timeline-swatch field-timeline-swatch-off" />
-          Off field {formatHoursMinutes(offFieldSeconds)} · {offPct}%
+          Not live {formatHoursMinutes(notLive)} · {100 - livePct}%
         </span>
       </div>
       <p className="field-split-note">
         <strong>Live play</strong> is time inside a detected point. Everything
-        else is waiting on the line between points, stall counts and subbing on,
-        or off the field entirely. Live play misses points the detector drops,
-        so read it as a slight under-count.
+        else — waiting on the line between points, stall counts, subbing on, or
+        off the field — is grouped as not live. Live play misses points the
+        detector drops, so read it as a slight under-count.
       </p>
     </>
   )

@@ -69,9 +69,9 @@ export default function UltimateGameDetailPage() {
   }
 
   const hasFieldData = activity.onFieldSeconds != null
-  // "Live play" = on-field time inside a detected point. The rest of on-field
-  // time (waiting on the line between points, subbing on) is shown separately
-  // by FieldSplitBar.
+  // "Live play" = on-field time inside a detected point. FieldSplitBar shows
+  // it against everything else (between-points, subbing on, off field) as one
+  // "not live" remainder.
   const liveSeconds = hasFieldData ? (activity.livePlaySeconds ?? 0) : 0
   const livePerPoint = hasFieldData && activity.pointsPlayed && liveSeconds
     ? (liveSeconds / 60 / activity.pointsPlayed).toFixed(1)
