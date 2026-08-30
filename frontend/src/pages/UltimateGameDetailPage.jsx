@@ -80,6 +80,10 @@ export default function UltimateGameDetailPage() {
   const totalGamePoints = activity.finalScoreFor != null && activity.finalScoreAgainst != null
     ? activity.finalScoreFor + activity.finalScoreAgainst
     : null
+  // Impossible: you can't play more points than the game had. A hard signal
+  // the point counter over-counted this game.
+  const pointsOverFinalScore = totalGamePoints != null && activity.pointsPlayed != null
+    && activity.pointsPlayed > totalGamePoints
 
   return (
     <main className="page">
@@ -166,6 +170,12 @@ export default function UltimateGameDetailPage() {
               </div>
             )}
           </div>
+
+          {pointsOverFinalScore && (
+            <p className="game-method-note game-warning">
+              Detected {activity.pointsPlayed} points but the final score only totals {totalGamePoints} — the point counter has over-counted this game.
+            </p>
+          )}
 
           <FieldTimeline timeline={timeline} />
 

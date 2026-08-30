@@ -23,6 +23,9 @@ export function summariseGames(games) {
   const totalOffFieldSeconds = withMetrics.reduce((s, g) => s + num(g.offFieldSeconds), 0)
   const totalMixedSeconds = withMetrics.reduce((s, g) => s + num(g.mixedSeconds), 0)
   const totalLiveSeconds = withMetrics.reduce((s, g) => s + num(g.livePlaySeconds), 0)
+  // GPS distance covered inside detected points - the live-play counterpart to
+  // totalDistanceKm. Null on games synced before the LivePlayDistanceM column.
+  const totalLiveDistanceKm = withMetrics.reduce((s, g) => s + num(g.livePlayDistanceKm), 0)
   const totalPoints = withMetrics.reduce((s, g) => s + num(g.pointsPlayed), 0)
   // Whole-activity GPS distance (Garmin's own figure) - not gated on field
   // metrics, and covers warmup/standing as well as play.
@@ -37,6 +40,7 @@ export function summariseGames(games) {
     totalOffFieldSeconds,
     totalMixedSeconds,
     totalLiveSeconds,
+    totalLiveDistanceKm,
     totalTrackedSeconds,
     totalDistanceKm,
     avgLiveMinPerPoint: totalPoints ? totalLiveSeconds / 60 / totalPoints : null,

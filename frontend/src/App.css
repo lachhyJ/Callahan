@@ -3232,6 +3232,11 @@ td {
   color: var(--text-tertiary);
 }
 
+/* Points-played exceeds the entered final score - a classifier over-count. */
+.game-method-note.game-warning {
+  color: var(--warning-text);
+}
+
 /* Manual final-score line under the tournament row on the game detail page. */
 .game-score-row {
   display: flex;

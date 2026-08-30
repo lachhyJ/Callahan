@@ -110,6 +110,12 @@ export default function TournamentDetailPage() {
                 <span className="stat-value">{summary.totalDistanceKm.toFixed(1)} km</span>
               </div>
             )}
+            {summary.totalLiveDistanceKm > 0 && (
+              <div className="stat-card">
+                <span className="stat-label">Distance in play</span>
+                <span className="stat-value">{summary.totalLiveDistanceKm.toFixed(1)} km</span>
+              </div>
+            )}
           </>
         )}
       </div>
