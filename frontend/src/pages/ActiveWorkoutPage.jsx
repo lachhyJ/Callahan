@@ -68,11 +68,12 @@ function kgToLbDisplay(weightKg) {
 // Warmup rows are prepended before the working rows, always in addition to
 // targetSets rather than replacing part of it — setOrder runs continuously
 // across both so it lines up with how sets are actually logged and matched
-// against next time's previousSets.
+// against next time's previousSets. 0-based, matching what the API returns
+// and what both history views assume (`Set {setOrder + 1}`).
 function buildInitialSets(targetSets, previousSets, warmupSets = 0) {
   const previousByOrder = new Map(previousSets.map((p) => [p.setOrder, p]))
   const warmupRows = Array.from({ length: warmupSets }, (_, i) => {
-    const setOrder = i + 1
+    const setOrder = i
     const previous = previousByOrder.get(setOrder) ?? null
     return {
       setOrder,
@@ -84,7 +85,7 @@ function buildInitialSets(targetSets, previousSets, warmupSets = 0) {
     }
   })
   const workingRows = Array.from({ length: targetSets }, (_, i) => {
-    const setOrder = warmupSets + i + 1
+    const setOrder = warmupSets + i
     const previous = previousByOrder.get(setOrder) ?? null
     return {
       setOrder,
@@ -457,7 +458,7 @@ export default function ActiveWorkoutPage() {
           : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
       )
     )
-    if (nowCompleting) startRestTimer(exercise, set.setOrder + 1)
+    if (nowCompleting) startRestTimer(exercise, set.setOrder + 2)
   }
 
   function adjustRest(deltaSeconds) {
@@ -501,10 +502,10 @@ export default function ActiveWorkoutPage() {
     const ex = exercises[exIdx]
     const set = ex.sets[setIdx]
     const warning = set.completed ? ' This set is already marked complete.' : ''
-    if (!window.confirm(`Remove set ${set.setOrder} of ${ex.exerciseName}?${warning}`)) return
+    if (!window.confirm(`Remove set ${set.setOrder + 1} of ${ex.exerciseName}?${warning}`)) return
     setExercises((prev) => {
       const target = prev[exIdx]
-      const remainingSets = target.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j + 1 }))
+      const remainingSets = target.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j }))
       if (remainingSets.length === 0) {
         return prev.filter((_, i) => i !== exIdx)
       }
@@ -531,7 +532,7 @@ export default function ActiveWorkoutPage() {
               ...ex,
               sets: [
                 ...ex.sets,
-                { setOrder: ex.sets.length + 1, reps: '', weightKg: '', previous: null, completed: false, type: 'Normal' },
+                { setOrder: ex.sets.length, reps: '', weightKg: '', previous: null, completed: false, type: 'Normal' },
               ],
             }
       )

@@ -172,6 +172,28 @@ public class WorkoutSessionsController : ControllerBase
             return BadRequest(new { error = "Unknown set type." });
         }
 
+        // SetOrder is assigned here, not trusted from the client: the 0-based
+        // position of each set within its exercise, in the order sent (which is
+        // display / logged order). Guarantees a unique, contiguous, 0-based
+        // sequence per exercise - the client has drifted between 0- and 1-based
+        // (the 2026-08-22 warmup change), and an early import produced colliding
+        // values. Both history views render `Set {setOrder + 1}`, so 0-based is
+        // the correct convention.
+        var nextOrder = new Dictionary<int, int>();
+        var sets = request.Sets.Select(s =>
+        {
+            int order = nextOrder.GetValueOrDefault(s.ExerciseId);
+            nextOrder[s.ExerciseId] = order + 1;
+            return new ExerciseSet
+            {
+                ExerciseId = s.ExerciseId,
+                Reps = s.Reps,
+                WeightKg = s.WeightKg,
+                SetOrder = order,
+                SetType = Enum.Parse<SetType>(s.SetType, ignoreCase: true)
+            };
+        }).ToList();
+
         var session = new WorkoutSession
         {
             Date = request.Date,
@@ -180,14 +202,7 @@ public class WorkoutSessionsController : ControllerBase
             WorkoutTemplateId = request.WorkoutTemplateId,
             StartedAt = request.StartedAt,
             FinishedAt = request.FinishedAt,
-            Sets = request.Sets.Select(s => new ExerciseSet
-            {
-                ExerciseId = s.ExerciseId,
-                Reps = s.Reps,
-                WeightKg = s.WeightKg,
-                SetOrder = s.SetOrder,
-                SetType = Enum.Parse<SetType>(s.SetType, ignoreCase: true)
-            }).ToList()
+            Sets = sets
         };
 
         _db.WorkoutSessions.Add(session);
