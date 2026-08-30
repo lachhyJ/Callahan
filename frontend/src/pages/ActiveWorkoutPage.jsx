@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { cancelScheduledBeep, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
+import { audioStatus, cancelScheduledBeep, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
@@ -164,6 +164,7 @@ export default function ActiveWorkoutPage() {
   })
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
+  const [audioTestStatus, setAudioTestStatus] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [openPlateCalc, setOpenPlateCalc] = useState(null)
@@ -714,16 +715,24 @@ export default function ActiveWorkoutPage() {
       </div>
       {error && <p className="error">{error}</p>}
 
-      {/* Tuning aid for the iOS in-app alert path: schedules the beep 3s out on
-          the audio thread so you can lock / background the phone and hear
-          whether it fires. */}
-      <button
-        type="button"
-        className="rest-alert-test-link"
-        onClick={() => { unlockAudio(); scheduleBeep(3) }}
-      >
-        Test alert sound (3s)
-      </button>
+      {/* Tuning aid for the iOS in-app alert path: schedules the beep 3s out so
+          you can lock / background the phone and hear whether it fires. The
+          status line reports what the play attempt actually did. */}
+      <div className="rest-alert-test">
+        <button
+          type="button"
+          className="rest-alert-test-link"
+          onClick={() => {
+            unlockAudio()
+            playBeepNow()
+            scheduleBeep(3)
+            setTimeout(() => setAudioTestStatus(audioStatus()), 400)
+          }}
+        >
+          Test alert sound (now + 3s)
+        </button>
+        {audioTestStatus && <span className="rest-alert-test-status">{audioTestStatus}</span>}
+      </div>
 
       {!pushEnabled && pushSupported() && (
         <div className="push-prompt">
