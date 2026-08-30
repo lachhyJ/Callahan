@@ -1,35 +1,25 @@
 import { Link } from 'react-router-dom'
 import { ChevronRightIcon } from '../icons'
+import { formatMetricValue } from '../wellnessMetrics'
 import WellnessSparkline from './WellnessSparkline'
 
-function formatSleepDuration(seconds) {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.round((seconds % 3600) / 60)
-  return `${h}h ${m}m`
-}
-
-// Compact glance card on the dashboard - the raw same-day Garmin numbers, plus
-// (once there's ~a week of history) a one-line plain-language read against the
-// rolling baseline. The card links to /wellness for the full per-metric
-// breakdown. Renders only the stats Garmin actually returned for this date - a
-// watch that doesn't report training readiness shouldn't show a permanent
-// em-dash.
+// Compact glance card on the dashboard - a same-day snapshot of the three
+// metrics worth reading at a glance (sleep / HRV / readiness), plus (once
+// there's ~a week of history) a one-line plain-language read against the
+// rolling baseline. The full per-metric breakdown - sleep score, resting HR,
+// stage split, 12-week charts - lives on /wellness, which this card links to.
+// Renders only the stats Garmin actually returned for this date - a watch that
+// doesn't report training readiness shouldn't show a permanent em-dash.
 export default function WellnessCard({ wellness, todayIso, insight, readinessSeries }) {
   const stats = []
   if (wellness.sleepSeconds != null) {
-    stats.push({ label: 'Sleep', value: formatSleepDuration(wellness.sleepSeconds) })
-  }
-  if (wellness.sleepScore != null) {
-    stats.push({ label: 'Sleep score', value: wellness.sleepScore })
+    stats.push({ label: 'Sleep', value: formatMetricValue('sleepDuration', wellness.sleepSeconds) })
   }
   if (wellness.hrvLastNightAvg != null) {
-    stats.push({ label: 'HRV', value: `${wellness.hrvLastNightAvg} ms` })
+    stats.push({ label: 'HRV', value: formatMetricValue('hrv', wellness.hrvLastNightAvg) })
   }
   if (wellness.trainingReadinessScore != null) {
-    stats.push({ label: 'Readiness', value: wellness.trainingReadinessScore })
-  }
-  if (wellness.restingHeartRate != null) {
-    stats.push({ label: 'Resting HR', value: `${wellness.restingHeartRate} bpm` })
+    stats.push({ label: 'Readiness', value: formatMetricValue('readiness', wellness.trainingReadinessScore) })
   }
 
   const headline = insight?.hasEnoughHistory ? insight.headline : null

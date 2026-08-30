@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getMonthlyReports, getWeeklyVolume, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getMonthlyReports, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { buildDailySeries, wellnessRange } from '../wellnessMetrics'
 import { isoDate, startOfWeek } from '../dateUtils'
-import WeeklyVolumeChart from '../components/WeeklyVolumeChart'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, TaperIcon, TrashIcon } from '../icons'
+import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -40,7 +39,7 @@ const QUICK_LINKS = [
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
-  { to: '/reports', label: 'Reports', Icon: DocumentIcon },
+  { to: '/reports', label: 'Reports', Icon: ReportIcon },
   { to: '/games', label: 'Games', Icon: HistoryIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
 ]
@@ -74,17 +73,12 @@ export default function DashboardPage() {
     return { year: now.getFullYear(), month: now.getMonth() }
   })
   const [selectedDate, setSelectedDate] = useState(null)
-  const [weeklyVolume, setWeeklyVolume] = useState(null)
   const [wellness, setWellness] = useState(null)
   const [wellnessInsight, setWellnessInsight] = useState(null)
   const [readinessSeries, setReadinessSeries] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
-
-  useEffect(() => {
-    getWeeklyVolume(8).then(setWeeklyVolume).catch(() => {})
-  }, [])
 
   useEffect(() => {
     // Own effect, own silent catch - a wellness fetch failure must never
@@ -155,7 +149,6 @@ export default function DashboardPage() {
   if (workouts === null || activities === null) return <main className="page"><p>Loading dashboard…</p></main>
 
   const hasAnyHistory = workouts.length > 0 || activities.length > 0
-  const hasUnviewedReport = unviewedReport != null
   const weeks = buildMonthGrid(cursor.year, cursor.month)
   const todayIso = isoDate(new Date())
   const currentWeekStartIso = isoDate(startOfWeek(new Date()))
@@ -289,7 +282,7 @@ export default function DashboardPage() {
           ) : (
             <Link key={to} to={to} className="quick-link-tile">
               <Icon />
-              <span>{label}{to === '/reports' && hasUnviewedReport && <span className="report-unviewed-dot" aria-label="New report" />}</span>
+              <span>{label}</span>
             </Link>
           )
         )}
@@ -309,8 +302,6 @@ export default function DashboardPage() {
           <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />
         </div>
       )}
-
-      {weeklyVolume && <WeeklyVolumeChart weeks={weeklyVolume} />}
 
       <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
     </main>

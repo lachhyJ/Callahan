@@ -100,6 +100,27 @@ public static class ReadinessInsightCalculator
         return new ReadinessInsightDto(today.Date, hasEnoughHistory, BuildHeadline(hasEnoughHistory, notable), metrics);
     }
 
+    // Reusable single-metric comparison for callers that already have an
+    // aggregate value and a baseline (e.g. the monthly report's month-average
+    // vs trailing-3-month-average). Returns recovery-oriented direction —
+    // "below" = worse than baseline (low readiness/sleep/HRV, or elevated
+    // resting HR), "above" = better, "in_line" = within the noise band — using
+    // the same Specs and Band thresholds as the daily insight. Unknown keys
+    // and a zero/!finite baseline fall back to "in_line".
+    public static string CompareToBaseline(string metricKey, double value, double baseline)
+    {
+        var spec = Array.Find(Specs, s => s.Key == metricKey);
+        if (spec is null || double.IsNaN(baseline) || double.IsInfinity(baseline)) return "in_line";
+
+        var (numericDir, _, _) = Band(spec.Scale, value, baseline);
+        return numericDir switch
+        {
+            "in_line" => "in_line",
+            "below" => spec.LowerIsBetter ? "above" : "below",
+            _ => spec.LowerIsBetter ? "below" : "above",
+        };
+    }
+
     private static (string NumericDir, int Strength, string Phrase) Band(Scale scale, double today, double avg)
     {
         double delta = scale switch

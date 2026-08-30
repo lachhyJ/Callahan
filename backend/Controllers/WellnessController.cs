@@ -174,11 +174,5 @@ public class WellnessController : ControllerBase
         return Ok(ToDto(existing));
     }
 
-    private static DailyWellnessDto ToDto(DailyWellness w) => new(
-        w.Id, w.Date,
-        w.SleepSeconds, w.DeepSleepSeconds, w.LightSleepSeconds, w.RemSleepSeconds, w.AwakeSeconds,
-        w.SleepScore, w.SleepScoreQualifier,
-        w.HrvLastNightAvg, w.HrvWeeklyAvg, w.HrvStatus,
-        w.TrainingReadinessScore, w.TrainingReadinessLevel, w.TrainingReadinessFeedback,
-        w.RestingHeartRate, w.BodyBatteryHigh, w.BodyBatteryLow, w.AvgStressLevel);
+    private static DailyWellnessDto ToDto(DailyWellness w) => WellnessMapping.ToDto(w);
 }
