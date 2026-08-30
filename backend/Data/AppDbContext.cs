@@ -63,6 +63,13 @@ public class AppDbContext : DbContext
             .HasIndex(l => new { l.ActivityId, l.LapIndex })
             .IsUnique();
 
+        // SetOrder is assigned server-side per exercise (see
+        // WorkoutSessionsController.Create); this makes a duplicate within a
+        // session's exercise a DB-level impossibility, not just a convention.
+        modelBuilder.Entity<ExerciseSet>()
+            .HasIndex(s => new { s.WorkoutSessionId, s.ExerciseId, s.SetOrder })
+            .IsUnique();
+
         modelBuilder.Entity<ActivityTrack>()
             .HasIndex(t => t.ActivityId)
             .IsUnique();
