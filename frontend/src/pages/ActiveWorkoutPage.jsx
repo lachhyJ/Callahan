@@ -725,8 +725,11 @@ export default function ActiveWorkoutPage() {
           onClick={() => {
             unlockAudio()
             playBeepNow()
-            scheduleBeep(3)
-            setTimeout(() => setAudioTestStatus(audioStatus()), 400)
+            setTimeout(() => {
+              const immediate = audioStatus()
+              scheduleBeep(3)
+              setTimeout(() => setAudioTestStatus(`now → ${immediate} | +3s → ${audioStatus()}`), 400)
+            }, 300)
           }}
         >
           Test alert sound (now + 3s)
