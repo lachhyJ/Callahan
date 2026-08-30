@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Diagnostic instrumentation for the on/off-field geometry classifier.
 
-Loads the six committed test fixtures directly (gzipped {t,lat,lon,spd}
-arrays — the same shape PUT /api/activities/{id}/track stores) and re-runs
+Loads every committed test fixture directly (gzipped {t,lat,lon,spd} arrays
+— the same shape PUT /api/activities/{id}/track stores) and re-runs
 segment.py's analyse() with extra instrumentation:
 
   - fitted theta/halfw/halfl per game, and the derived centre threshold

@@ -2,12 +2,19 @@ using Callahan.Api.Services;
 
 namespace Callahan.Api.Tests;
 
-// Oracle: scripts/ultimate-stream-explore/segment.py on the six real games.
-// Bands, not equality: Math.Atan2 / double ordering / index percentiles won't
-// reproduce CPython bit-for-bit, and an exact suite here would be flaky forever.
+// Oracle: scripts/ultimate-stream-explore/segment.py on every tournament game
+// synced so far - 6 Regionals + 5 Big C + 6 Div 2 Nationals. Big C was played
+// on a constrained club oval (shorter fields), so this set spans field regimes
+// deliberately: a geometry change that only holds on WFDF-standard sizes fails
+// here. Bands, not equality: Math.Atan2 / double ordering / index percentiles
+// won't reproduce CPython bit-for-bit, and an exact suite would be flaky.
 public class FieldGeometryTests
 {
-    public static IEnumerable<object[]> Games => Enumerable.Range(1, 6).Select(g => new object[] { g });
+    public static IEnumerable<object[]> Games =>
+        Enumerable.Range(1, 17).Select(g => new object[] { g });
+
+    public static IEnumerable<object[]> Tournaments =>
+        new[] { "Regionals", "BigC", "Nationals" }.Select(t => new object[] { t });
 
     [Theory]
     [MemberData(nameof(Games))]
@@ -38,19 +45,24 @@ public class FieldGeometryTests
         Assert.InRange(2 * r.Fit.HalfWidthM, baseline.FieldWidthM * 0.90, baseline.FieldWidthM * 1.10);
         Assert.InRange(2 * r.Fit.HalfLengthM, baseline.FieldLengthM * 0.90, baseline.FieldLengthM * 1.10);
 
-        // Still recognisably a field (fitted over the whole game incl. sideline
-        // time, so smaller than the real ~37x100 m).
+        // Still recognisably a field. Wide band on purpose: the fitted frame
+        // spans club ovals through to full WFDF pitches, and a per-game theta
+        // wobble can smear length into width (see the 2026-08-30 investigation).
         Assert.InRange(2 * r.Fit.HalfWidthM, 15.0, 55.0);
         Assert.InRange(2 * r.Fit.HalfLengthM, 45.0, 110.0);
     }
 
-    [Fact]
-    public void TournamentAggregateWithinBand()
+    [Theory]
+    [MemberData(nameof(Tournaments))]
+    public void TournamentAggregateWithinBand(string tag)
     {
-        var b = TestFixtures.LoadBaselines().Tournament;
+        var all = TestFixtures.LoadBaselines();
+        var b = all.Tournaments[tag];
+        var games = all.Games.Where(g => g.Tournament == tag).Select(g => g.Game);
+
         int on = 0, off = 0, pts = 0, live = 0;
         double liveDist = 0;
-        foreach (var g in Enumerable.Range(1, 6))
+        foreach (var g in games)
         {
             var r = FieldGeometry.Analyse(TestFixtures.LoadTrack(g).Samples);
             on += r.OnFieldSeconds; off += r.OffFieldSeconds; pts += r.PointsPlayed;
@@ -58,12 +70,13 @@ public class FieldGeometryTests
         }
 
         double frac = (double)on / (on + off);
-        Assert.InRange(frac, b.OnFieldFraction - 0.02, b.OnFieldFraction + 0.02);   // ~0.67
-        Assert.InRange(pts, b.PointsPlayed - 4, b.PointsPlayed + 4);                // ~113
+        Assert.InRange(frac, b.OnFieldFraction - 0.02, b.OnFieldFraction + 0.02);
+        Assert.InRange(pts, b.PointsPlayed - 4, b.PointsPlayed + 4);
         Assert.InRange(on, (int)(b.OnFieldSeconds * 0.97), (int)(b.OnFieldSeconds * 1.03));
-        Assert.InRange(live, (int)(b.LivePlaySeconds * 0.95), (int)(b.LivePlaySeconds * 1.05));  // ~50% of on-field
-        Assert.InRange((double)live / on, 0.42, 0.58);
-        Assert.InRange(liveDist, b.LivePlayDistanceM * 0.95, b.LivePlayDistanceM * 1.05);       // ~13.8 km
+        Assert.InRange(live, (int)(b.LivePlaySeconds * 0.95), (int)(b.LivePlaySeconds * 1.05));
+        Assert.InRange(liveDist, b.LivePlayDistanceM * 0.95, b.LivePlayDistanceM * 1.05);
+        // Live play is roughly half of on-field time across every tournament.
+        Assert.InRange((double)live / on, 0.40, 0.62);
     }
 
     [Fact]

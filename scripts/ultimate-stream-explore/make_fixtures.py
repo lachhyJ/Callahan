@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """Turn a `--dump-stream` JSON into committed test fixtures for FieldGeometry.
 
+For refreshing the committed fixtures from production, use
+fixtures_from_db.py instead - it reads the Callahan DB (where the tracks now
+live in this exact shape), covers every tournament game, and tags each by
+tournament. This script only handles a raw Garmin `--dump-stream` and writes
+a flat single-aggregate baselines.json; keep it for a stream that isn't in
+the DB yet. Its analyse() is imported by fixtures_from_db.py.
+
 Input:  a `garmin_sync.py --dump-stream` array (raw get_activity_details).
 Output: tests/Callahan.Api.Tests/Fixtures/game-0N.json.gz  (the exact wire /
         storage shape a PUT /api/activities/{id}/track will carry)

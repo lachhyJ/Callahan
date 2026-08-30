@@ -12,7 +12,8 @@ namespace Callahan.Api.Tests;
 internal static class TestFixtures
 {
     public sealed record Baseline(
-        int Game, string Name, int OnFieldSeconds, int DurationSeconds,
+        int Game, string Name, string Tournament,
+        int OnFieldSeconds, int DurationSeconds,
         double OnFieldFraction, int PointsPlayed, double FieldWidthM, double FieldLengthM,
         int LivePlaySeconds, int LivePlayDistanceM);
 
@@ -20,7 +21,8 @@ internal static class TestFixtures
         int OnFieldSeconds, int DurationSeconds, double OnFieldFraction, int PointsPlayed,
         int LivePlaySeconds, int LivePlayDistanceM);
 
-    public sealed record Baselines(List<Baseline> Games, Tournament Tournament);
+    // Keyed by the short tag in baselines.json ("Regionals", "BigC", "Nationals").
+    public sealed record Baselines(List<Baseline> Games, Dictionary<string, Tournament> Tournaments);
 
     private static readonly JsonSerializerOptions Web = new(JsonSerializerDefaults.Web);
 
