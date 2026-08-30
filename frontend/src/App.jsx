@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNaviga
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
-import { playBeep } from './beep'
+import { playBeepNow } from './audio'
 import { getHealth } from './api/client'
 import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
@@ -167,7 +167,10 @@ function useGlobalRestTimer() {
     if (!isTicking) return
     const remaining = Math.round((restTimer.endAt - now) / 1000)
     if (remaining <= 0) {
-      playBeep()
+      // Foreground fallback — the real alert is the beep pre-scheduled on the
+      // audio thread in ActiveWorkoutPage. playBeepNow() no-ops if that one
+      // already covered this moment.
+      playBeepNow()
       clearRestTimer()
       setRestTimer(null)
     }

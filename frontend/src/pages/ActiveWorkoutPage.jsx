@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { playBeep, unlockAudioContext } from '../beep'
+import { cancelScheduledBeep, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
@@ -262,7 +262,10 @@ export default function ActiveWorkoutPage() {
     // remaining time is always correct rather than having drifted.
     const remaining = Math.round((restTimer.endAt - now.getTime()) / 1000)
     if (remaining <= 0) {
-      playBeep()
+      // Foreground fallback — the alert is normally the beep pre-scheduled on
+      // the audio thread when the rest started (survives backgrounding).
+      // playBeepNow() no-ops if that scheduled beep already covered this moment.
+      playBeepNow()
       setRestTimer(null)
     }
   }, [now, restTimer])
@@ -420,6 +423,10 @@ export default function ActiveWorkoutPage() {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
     const duration = exercise.restSeconds || 90
+    // Pre-schedule the in-app beep on the audio thread now, while we're inside
+    // the set-completion tap — this is what actually sounds if the phone is
+    // backgrounded / locked when the rest ends.
+    scheduleBeep(duration)
     setRestTimer({
       endAt: Date.now() + duration * 1000,
       totalSeconds: duration,
@@ -449,7 +456,7 @@ export default function ActiveWorkoutPage() {
     // covers entry points the templates-page unlock doesn't (resuming an
     // existing session, a stale-bundle reload mid-workout) without having
     // to track every possible route back into an active workout.
-    unlockAudioContext()
+    unlockAudio()
     const nowCompleting = !set.completed
     setExercises((prev) =>
       prev.map((ex, i) =>
@@ -462,11 +469,15 @@ export default function ActiveWorkoutPage() {
   }
 
   function adjustRest(deltaSeconds) {
+    if (!restTimer) return
+    const newEndAt = Math.max(Date.now(), restTimer.endAt + deltaSeconds * 1000)
+    const newRemaining = Math.max(0, Math.round((newEndAt - Date.now()) / 1000))
+    // Reschedule the audio-thread beep to the new end time (this runs inside
+    // the +/- tap, so it's a valid gesture to (re)schedule from).
+    scheduleBeep(newRemaining)
     setRestTimer((prev) => {
       if (!prev) return prev
-      const newEndAt = Math.max(Date.now(), prev.endAt + deltaSeconds * 1000)
       if (prev.timerId) {
-        const newRemaining = Math.max(0, Math.round((newEndAt - Date.now()) / 1000))
         cancelRestTimer(prev.timerId).catch(() => {})
         scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets)
           .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
@@ -477,6 +488,7 @@ export default function ActiveWorkoutPage() {
   }
 
   function skipRest() {
+    cancelScheduledBeep()
     if (restTimer?.timerId) {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
@@ -582,6 +594,7 @@ export default function ActiveWorkoutPage() {
       const summary = gaps.map((g) => `${g.name} ×${g.missing}`).join(', ')
       if (!window.confirm(`Some planned sets weren't logged: ${summary}. Save anyway?`)) return
     }
+    cancelScheduledBeep()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     setError(null)
@@ -620,6 +633,7 @@ export default function ActiveWorkoutPage() {
 
   function handleDiscard() {
     if (!window.confirm('Discard this workout? All logged sets will be lost.')) return
+    cancelScheduledBeep()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     clearActiveWorkout()
@@ -699,6 +713,17 @@ export default function ActiveWorkoutPage() {
         <span>{stats.setCount} set{stats.setCount === 1 ? '' : 's'}</span>
       </div>
       {error && <p className="error">{error}</p>}
+
+      {/* Tuning aid for the iOS in-app alert path: schedules the beep 3s out on
+          the audio thread so you can lock / background the phone and hear
+          whether it fires. */}
+      <button
+        type="button"
+        className="rest-alert-test-link"
+        onClick={() => { unlockAudio(); scheduleBeep(3) }}
+      >
+        Test alert sound (3s)
+      </button>
 
       {!pushEnabled && pushSupported() && (
         <div className="push-prompt">

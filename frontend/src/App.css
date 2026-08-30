@@ -1447,6 +1447,18 @@ td {
   color: var(--error-text);
 }
 
+/* Tuning aid for the iOS in-app rest alert — unobtrusive text button. */
+.rest-alert-test-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: calc(-1 * var(--space-xs)) 0 var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .push-prompt {
   display: flex;
   align-items: center;
