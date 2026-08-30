@@ -15,9 +15,12 @@ import sys
 
 import diagnose as d
 
+# The shipped default is FOLLOW_S=60 / FRAC=0.50 (a93a610); diagnose.py pulls
+# it live from FieldGeometry.cs and this row mirrors it. The rest are the
+# comparison points from the 2026-08-27 relaxation sweep, kept for the record.
 CANDIDATES = [
-    ("current (FOLLOW_S=90, FRAC=0.60)", dict(follow_s=90, follow_frac=0.60)),
-    ("FOLLOW_S=60, FRAC=0.50", dict(follow_s=60, follow_frac=0.50)),
+    ("current (FOLLOW_S=60, FRAC=0.50)", dict(follow_s=d.FOLLOW_S, follow_frac=d.FOLLOW_FRAC)),
+    ("pre-a93a610 (FOLLOW_S=90, FRAC=0.60)", dict(follow_s=90, follow_frac=0.60)),
     ("FOLLOW_S=60, FRAC=0.40", dict(follow_s=60, follow_frac=0.40)),
     ("FOLLOW_S=45, FRAC=0.60", dict(follow_s=45, follow_frac=0.60)),
 ]
