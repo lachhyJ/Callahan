@@ -62,6 +62,48 @@ function buildMonthGrid(year, month) {
   return weeks
 }
 
+// Rolling window: `weekCount` Monday-first weeks ending with the week that
+// contains `anchorDate`. Every cell is a real date (no leading/trailing blanks),
+// so the grid height is fixed regardless of where month boundaries fall.
+function buildRollingWeeks(anchorDate, weekCount = 6) {
+  const endWeekStart = startOfWeek(anchorDate)
+  const weeks = []
+  for (let w = 0; w < weekCount; w++) {
+    const offset = (w - (weekCount - 1)) * 7 // -35, -28, ... , 0
+    const week = []
+    for (let d = 0; d < 7; d++) {
+      week.push(new Date(endWeekStart.getFullYear(), endWeekStart.getMonth(), endWeekStart.getDate() + offset + d))
+    }
+    weeks.push(week)
+  }
+  return weeks
+}
+
+// The calendar view (rolling vs. month) is remembered for 90 minutes from the
+// last toggle - long enough to hold "month" for the duration of a workout, but
+// a cold open later in the day drops back to the rolling default. The stored
+// timestamp is never refreshed on read, so opening the app doesn't extend it.
+const CALENDAR_VIEW_KEY = 'callahan.calendarView'
+const CALENDAR_VIEW_TTL_MS = 90 * 60 * 1000
+
+function readStoredCalendarView() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CALENDAR_VIEW_KEY))
+    if (stored?.mode === 'month' && Date.now() - stored.ts < CALENDAR_VIEW_TTL_MS) return 'month'
+  } catch {
+    // no/blocked/malformed storage - fall through to the default
+  }
+  return 'rolling'
+}
+
+function writeStoredCalendarView(mode) {
+  try {
+    localStorage.setItem(CALENDAR_VIEW_KEY, JSON.stringify({ mode, ts: Date.now() }))
+  } catch {
+    // storage unavailable - the view just won't persist, which is fine
+  }
+}
+
 export default function DashboardPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -72,6 +114,7 @@ export default function DashboardPage() {
     const now = new Date()
     return { year: now.getFullYear(), month: now.getMonth() }
   })
+  const [calendarView, setCalendarView] = useState(readStoredCalendarView)
   const [selectedDate, setSelectedDate] = useState(null)
   const [wellness, setWellness] = useState(null)
   const [wellnessInsight, setWellnessInsight] = useState(null)
@@ -149,10 +192,13 @@ export default function DashboardPage() {
   if (workouts === null || activities === null) return <main className="page"><p>Loading dashboard…</p></main>
 
   const hasAnyHistory = workouts.length > 0 || activities.length > 0
-  const weeks = buildMonthGrid(cursor.year, cursor.month)
+  const now = new Date()
+  const isMonthView = calendarView === 'month'
+  const weeks = isMonthView ? buildMonthGrid(cursor.year, cursor.month) : buildRollingWeeks(now)
   const todayIso = isoDate(new Date())
   const currentWeekStartIso = isoDate(startOfWeek(new Date()))
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(undefined, MONTH_FORMAT)
+  const isViewingCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth()
   const selectedEntry = selectedDate ? byDate.get(selectedDate) : null
 
   function changeMonth(delta) {
@@ -161,6 +207,19 @@ export default function DashboardPage() {
       const d = new Date(prev.year, prev.month + delta, 1)
       return { year: d.getFullYear(), month: d.getMonth() }
     })
+  }
+
+  function goToCurrentMonth() {
+    setSelectedDate(null)
+    setCursor({ year: now.getFullYear(), month: now.getMonth() })
+  }
+
+  function toggleCalendarView() {
+    const next = isMonthView ? 'rolling' : 'month'
+    setSelectedDate(null)
+    if (next === 'month') setCursor({ year: now.getFullYear(), month: now.getMonth() })
+    setCalendarView(next)
+    writeStoredCalendarView(next)
   }
 
   return (
@@ -185,13 +244,27 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <div className="calendar-nav">
-        <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
-          ‹
-        </button>
-        <span className="calendar-month-label">{monthLabel}</span>
-        <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
-          ›
+      <div className="calendar-controls">
+        {isMonthView ? (
+          <div className="calendar-nav">
+            <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
+              ‹
+            </button>
+            <span className="calendar-month-label">{monthLabel}</span>
+            <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
+              ›
+            </button>
+            {!isViewingCurrentMonth && (
+              <button type="button" className="calendar-view-toggle calendar-today-btn" onClick={goToCurrentMonth}>
+                Today
+              </button>
+            )}
+          </div>
+        ) : (
+          <span className="calendar-controls-spacer" />
+        )}
+        <button type="button" className="calendar-view-toggle" onClick={toggleCalendarView}>
+          {isMonthView ? 'Recent' : 'Month view'}
         </button>
       </div>
 
@@ -210,6 +283,14 @@ export default function DashboardPage() {
         {weeks.flatMap((week, wi) => {
           const firstRealDate = week.find((d) => d)
           const weekStartIso = firstRealDate ? isoDate(startOfWeek(firstRealDate)) : null
+
+          // Rolling view spans month boundaries, so mark the row that contains a
+          // 1st (never the top row - nothing above it to divide from) and tag
+          // its gutter with the new month's name.
+          const firstOfMonthCell = !isMonthView && wi > 0 ? week.find((d) => d && d.getDate() === 1) : null
+          const monthTag = firstOfMonthCell
+            ? firstOfMonthCell.toLocaleDateString(undefined, { month: 'short' })
+            : null
 
           const dayCells = week.map((date, di) => {
             if (!date) return <div key={`${wi}-${di}`} className="calendar-cell calendar-cell-blank" />
@@ -239,7 +320,7 @@ export default function DashboardPage() {
               <button
                 key={iso}
                 type="button"
-                className={isSelected ? 'calendar-cell calendar-cell-active selected' : 'calendar-cell calendar-cell-active'}
+                className={`calendar-cell calendar-cell-active${isSelected ? ' selected' : ''}`}
                 onClick={() => setSelectedDate(isSelected ? null : iso)}
               >
                 {dayNumber}
@@ -261,13 +342,18 @@ export default function DashboardPage() {
               aria-label={`View sessions for the week of ${weekStartIso}`}
               onClick={() => navigate(`/history?week=${weekStartIso}`)}
             >
+              {monthTag && <span className="calendar-gutter-month">{monthTag}</span>}
               <ChevronRightIcon />
             </button>
           ) : (
             <div key={`gutter-${wi}`} className="calendar-week-gutter calendar-cell-blank" />
           )
 
-          return [gutter, ...dayCells]
+          const divider = monthTag
+            ? <div key={`divider-${wi}`} className="calendar-month-divider" />
+            : null
+
+          return divider ? [divider, gutter, ...dayCells] : [gutter, ...dayCells]
         })}
       </div>
 
