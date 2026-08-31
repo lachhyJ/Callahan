@@ -142,8 +142,17 @@ function missedSetGaps(exercises) {
 
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
+  // No :templateId in the route means the "empty workout" entry point
+  // (/workout/custom) — same screen, but nothing is pre-loaded and the
+  // session isn't tied to a template. 'custom' is the stable id everything
+  // that keys off the active-workout / rest-timer stores uses in that mode,
+  // and it's also what the resume links interpolate back into a URL.
+  const isCustom = templateId === undefined
+  const sessionKey = isCustom ? 'custom' : Number(templateId)
   const [templateName, setTemplateName] = useState('')
   const [templateSubtitle, setTemplateSubtitle] = useState('')
+  const [date, setDate] = useState(todayIso())
+  const [sessionNotes, setSessionNotes] = useState('')
   const [exercises, setExercises] = useState(null)
   const [finishers, setFinishers] = useState([])
   const [pickableExercises, setPickableExercises] = useState(null)
@@ -160,7 +169,7 @@ export default function ActiveWorkoutPage() {
   // athlete navigates away to check the dashboard/program and comes back.
   const [restTimer, setRestTimer] = useState(() => {
     const saved = loadRestTimer()
-    return saved && saved.templateId === Number(templateId) ? saved : null
+    return saved && saved.templateId === sessionKey ? saved : null
   })
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
@@ -195,11 +204,17 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     const saved = loadActiveWorkout()
-    if (saved && saved.templateId === Number(templateId)) {
+    if (saved && saved.templateId === sessionKey) {
       setTemplateName(saved.templateName)
       setTemplateSubtitle(saved.templateSubtitle ?? '')
       setExercises(saved.exercises)
       setStartedAt(new Date(saved.startedAt))
+      if (saved.date) setDate(saved.date)
+      if (saved.sessionNotes) setSessionNotes(saved.sessionNotes)
+    } else if (isCustom) {
+      // Empty workout — start with a blank slate; exercises get added via
+      // the picker / finishers list, same as an ad-hoc add mid-template.
+      setExercises([])
     } else {
       startWorkoutTemplate(templateId)
         .then((data) => {
@@ -212,7 +227,7 @@ export default function ActiveWorkoutPage() {
 
     getFinishers().then(setFinishers).catch(() => {})
     hasActiveSubscription().then(setPushEnabled).catch(() => {})
-  }, [templateId])
+  }, [templateId, isCustom, sessionKey])
 
   useEffect(() => {
     // Once only, on arrival — resuming a partially-done workout should land
@@ -236,8 +251,8 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     if (!exercises) return
-    saveActiveWorkout({ templateId: Number(templateId), templateName, templateSubtitle, exercises, startedAt: startedAt.toISOString() })
-  }, [exercises, templateName, templateSubtitle, templateId, startedAt])
+    saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: startedAt.toISOString(), date, sessionNotes })
+  }, [exercises, templateName, templateSubtitle, sessionKey, startedAt, date, sessionNotes])
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000)
@@ -275,11 +290,11 @@ export default function ActiveWorkoutPage() {
   // synchronously mid-render of this component.
   useEffect(() => {
     if (restTimer) {
-      saveRestTimer({ ...restTimer, templateId: Number(templateId) })
+      saveRestTimer({ ...restTimer, templateId: sessionKey })
     } else {
       clearRestTimerStore()
     }
-  }, [restTimer, templateId])
+  }, [restTimer, sessionKey])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -608,9 +623,9 @@ export default function ActiveWorkoutPage() {
         .map((ex) => ({ exerciseId: ex.exerciseId, notes: ex.notes.trim() }))
 
       await createWorkoutSession({
-        date: todayIso(),
-        notes: null,
-        workoutTemplateId: Number(templateId),
+        date: isCustom ? date : todayIso(),
+        notes: isCustom ? (sessionNotes.trim() || null) : null,
+        workoutTemplateId: isCustom ? null : Number(templateId),
         startedAt: startedAt.toISOString(),
         finishedAt: new Date().toISOString(),
         sets,
@@ -643,7 +658,7 @@ export default function ActiveWorkoutPage() {
 
     return (
       <main className="page">
-        <h1>Finish {templateName}?</h1>
+        <h1>Finish {templateName || 'workout'}?</h1>
         <div className="live-stats">
           <span>{formatDuration(now - startedAt)}</span>
           <span>{stats.volume.toLocaleString()} kg</span>
@@ -691,11 +706,27 @@ export default function ActiveWorkoutPage() {
       </div>
       <div className="active-workout-header" ref={headerRef}>
         <div>
-          <h1>{templateName}</h1>
+          <h1>{templateName || 'Empty workout'}</h1>
           {templateSubtitle && <p className="active-workout-subtitle">{templateSubtitle}</p>}
+          {isCustom && (
+            <label className="custom-workout-date">
+              Date
+              <input type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
+            </label>
+          )}
         </div>
         <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
       </div>
+      {isCustom && (
+        <input
+          type="text"
+          className="exercise-notes-input"
+          placeholder="Session notes…"
+          value={sessionNotes}
+          onChange={(e) => setSessionNotes(e.target.value)}
+          aria-label="Session notes"
+        />
+      )}
       {taper && taper.phase !== 'none' && taper.phase !== 'build' && (
         <p className="taper-nudge">{taper.message}</p>
       )}
@@ -759,7 +790,7 @@ export default function ActiveWorkoutPage() {
             />
           )}
           <p className="target-reps">
-            Target: {ex.targetSets} × {ex.targetReps} · rest{' '}
+            {ex.targetReps ? `Target: ${ex.targetSets} × ${ex.targetReps} · ` : ''}rest{' '}
             <input
               type="number"
               inputMode="numeric"
@@ -918,6 +949,10 @@ export default function ActiveWorkoutPage() {
         </div>
         )
       })}
+
+      {exercises.length === 0 && (
+        <p className="empty-workout-hint">No exercises yet — add one below to start logging.</p>
+      )}
 
       {availableFinishers.length > 0 && (
         <div className="finisher-list">

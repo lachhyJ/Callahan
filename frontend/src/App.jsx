@@ -9,7 +9,6 @@ import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
 import ActiveWorkoutPage from './pages/ActiveWorkoutPage'
-import LogWorkoutPage from './pages/LogWorkoutPage'
 import LogActivityPage from './pages/LogActivityPage'
 import HistoryPage from './pages/HistoryPage'
 import DashboardPage from './pages/DashboardPage'
@@ -208,7 +207,7 @@ function AppRoutes() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<ProtectedRoute><WorkoutTemplatesPage /></ProtectedRoute>} />
-          <Route path="/workout/custom" element={<ProtectedRoute><LogWorkoutPage /></ProtectedRoute>} />
+          <Route path="/workout/custom" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
           <Route path="/workout/:templateId" element={<ProtectedRoute><ActiveWorkoutPage /></ProtectedRoute>} />
           <Route path="/run" element={<ProtectedRoute><LogActivityPage /></ProtectedRoute>} />
           <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
