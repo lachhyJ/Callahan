@@ -23,9 +23,17 @@ export function activityLabel(activity) {
     return `${label} · ${activity.distanceKm} km in ${duration}`
   }
   if (activity.type === 'Ultimate') {
-    const name = activity.notes?.trim() || 'Ultimate'
+    // Garmin's auto-title for the sport is "<City> Ultimate Disc" (e.g.
+    // "Melbourne Ultimate Disc") - not a name Lachlan chose, so treat it as
+    // unnamed. A title he set himself is kept as-is.
+    let name = activity.notes?.trim() || 'Ultimate'
+    if (/ultimate disc$/i.test(name)) name = 'Ultimate'
     const category = activity.activitySessionTypeName
-    return category ? `${name} · ${category} · ${duration}` : `${name} · ${duration}`
+    if (!category) return `${name} · ${duration}`
+    // Don't render "Pod · Pod" when the Garmin event was named the same as the
+    // category we assigned.
+    if (name.toLowerCase() === category.toLowerCase()) return `${category} · ${duration}`
+    return `${name} · ${category} · ${duration}`
   }
   return `${activity.type} · ${duration}`
 }
