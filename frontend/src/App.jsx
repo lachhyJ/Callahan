@@ -167,9 +167,8 @@ function useGlobalRestTimer() {
     if (!isTicking) return
     const remaining = Math.round((restTimer.endAt - now) / 1000)
     if (remaining <= 0) {
-      // Foreground fallback — the real alert is the beep pre-scheduled on the
-      // audio thread in ActiveWorkoutPage. playBeepNow() no-ops if that one
-      // already covered this moment.
+      // In-app beep when the rest ends on another in-app screen. Foreground
+      // only (this ticks only while visible); backgrounded relies on the push.
       playBeepNow()
       clearRestTimer()
       setRestTimer(null)
