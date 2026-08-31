@@ -22,6 +22,11 @@
 //    even if JS is suspended, and playback started before a backgrounding
 //    keeps running (best-effort on iOS).
 //
+// v5: v4 played the beep but stopped the user's music and didn't resume it —
+// the default <audio> session interrupts other audio. Setting
+// navigator.audioSession.type = 'transient' makes the beep MIX with other
+// audio (music ducks, then restores) while still ignoring the mute switch.
+//
 // audioStatus() reports the last play attempt for the on-screen tuning readout.
 
 const BEEP_SRC = '/beep.m4a'
@@ -43,10 +48,23 @@ const describe = (e, el) => {
   return `${e && e.name ? e.name : String(e)}${code}`
 }
 
+// WebKit audio-session hint. 'transient' = a short sound that MIXES with other
+// audio (the OS ducks e.g. music while it plays, then restores it) and is NOT
+// silenced by the hardware mute switch — exactly what a rest-timer beep wants.
+// Without this an <audio> element uses a 'playback' session that stops other
+// audio and doesn't resume it. No-op where the API is absent.
+function setTransientAudioSession() {
+  try {
+    if (navigator.audioSession) navigator.audioSession.type = 'transient'
+  } catch { /* ignore */ }
+}
+setTransientAudioSession()
+
 // Call from a user gesture that begins a workout / completes a set. Creates the
 // elements and primes them with a volume-0 play so the countdown-tick fallback
 // can call play() later outside a gesture.
 export function unlockAudio() {
+  setTransientAudioSession()
   if (!beepEl) {
     beepEl = new Audio(BEEP_SRC)
     beepEl.preload = 'auto'
