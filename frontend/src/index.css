@@ -26,8 +26,16 @@
      Distinct from the status bases above (not reused, to avoid implying
      "warning"/"error" on a training category) and from the purple accent
      (~283° hue) that already carries meaning elsewhere in the UI. */
-  --teal-400:   #2dd4bf;  /* running */
-  --orange-400: #fb923c;  /* ultimate */
+  --teal-400:   #2dd4bf;
+  --orange-400: #fb923c;  /* also the field-split "on-field" hue */
+  --blue-500:   #3b82f6;
+
+  /* ── Semantic — activity categories ──
+     One indirection so the calendar dots (and anything else that keys off
+     an activity type) can be re-hued without touching the primitives, which
+     are shared with unrelated UI. */
+  --activity-running:  var(--blue-500);
+  --activity-ultimate: var(--teal-400);
 
   /* ── Primitives — spacing (8pt scale) ── */
   --space-2xs: 0.25rem;  /* 4px */

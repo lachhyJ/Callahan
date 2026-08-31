@@ -2017,6 +2017,14 @@ td {
   }
 }
 
+/* Today = a position cue (accent ring on the cell), not a colour on the
+   number — the day-number's accent used to collide with the purple gym dot.
+   inset box-shadow so it respects the cell's border-radius and adds no
+   layout shift; stacks fine with .selected's fill + border. */
+.calendar-cell-today {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 .calendar-day-number {
   font-size: var(--text-sm);
   color: var(--text-h);
@@ -2024,51 +2032,57 @@ td {
 }
 
 .calendar-day-number.today {
-  color: var(--accent);
   font-weight: 700;
 }
 
 .calendar-dots {
   display: flex;
   gap: 3px;
-  height: 6px;
+  height: var(--cal-dot-size, 8px);
 }
 
 .calendar-dot {
-  width: 6px;
-  height: 6px;
+  width: var(--cal-dot-size, 8px);
+  height: var(--cal-dot-size, 8px);
+  box-sizing: border-box;
   border-radius: var(--radius-full);
+  background: var(--cal-dot-color);
 }
 
+/* Colour is the family signal, shape is the subtype signal. */
 .calendar-dot-workout {
-  background: var(--accent);
+  --cal-dot-color: var(--accent);
 }
 
 .calendar-dot-run {
-  background: transparent;
-  border: 1.5px solid var(--teal-400);
+  --cal-dot-color: var(--activity-running);
 }
 
 .calendar-dot-ultimate {
-  background: var(--orange-400);
+  --cal-dot-color: var(--activity-ultimate);
 }
 
-/* Subtype shape within the Ultimate dot's colour — Solo+Throws / Pod /
-   Club Training+Game, 3 shapes rather than one per classification type, to
-   stay legible at 6px. The triangle uses clip-path (not a rotated square)
-   so its bounding box stays exactly 6x6 and never overlaps a neighbouring
-   dot in the flex row. */
-.calendar-dot-ultimate-circle {
+/* Shared subtype-shape vocabulary, reused across Running and Ultimate dots
+   (their colour keeps the families apart). The triangle/diamond use clip-path
+   rather than border-radius / rotation so the bounding box stays exactly
+   --cal-dot-size square and never overlaps a neighbouring dot in the flex row. */
+.calendar-dot--disc {
   border-radius: var(--radius-full);
 }
 
-.calendar-dot-ultimate-square {
-  border-radius: 1px;
-}
-
-.calendar-dot-ultimate-triangle {
+.calendar-dot--triangle {
   border-radius: 0;
   clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+.calendar-dot--diamond {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+}
+
+.calendar-dot--ring {
+  background: transparent;
+  border: 2px solid var(--cal-dot-color);
 }
 
 .activity-classify {
