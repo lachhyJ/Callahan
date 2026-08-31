@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { audioStatus, cancelScheduledBeep, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
+import { playBeepNow, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
@@ -164,7 +164,6 @@ export default function ActiveWorkoutPage() {
   })
   const [pushEnabled, setPushEnabled] = useState(false)
   const [pushError, setPushError] = useState(null)
-  const [audioTestStatus, setAudioTestStatus] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [openPlateCalc, setOpenPlateCalc] = useState(null)
@@ -263,9 +262,8 @@ export default function ActiveWorkoutPage() {
     // remaining time is always correct rather than having drifted.
     const remaining = Math.round((restTimer.endAt - now.getTime()) / 1000)
     if (remaining <= 0) {
-      // Foreground fallback — the alert is normally the beep pre-scheduled on
-      // the audio thread when the rest started (survives backgrounding).
-      // playBeepNow() no-ops if that scheduled beep already covered this moment.
+      // In-app beep. Foreground only — this effect only advances while the tab
+      // is visible; a backgrounded / locked phone gets the push notification.
       playBeepNow()
       setRestTimer(null)
     }
@@ -424,10 +422,9 @@ export default function ActiveWorkoutPage() {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
     const duration = exercise.restSeconds || 90
-    // Pre-schedule the in-app beep on the audio thread now, while we're inside
-    // the set-completion tap — this is what actually sounds if the phone is
-    // backgrounded / locked when the rest ends.
-    scheduleBeep(duration)
+    // Unlock the beep element inside this tap so the countdown effect can sound
+    // it later. (No scheduling — a backgrounded phone relies on the push.)
+    unlockAudio()
     setRestTimer({
       endAt: Date.now() + duration * 1000,
       totalSeconds: duration,
@@ -473,9 +470,6 @@ export default function ActiveWorkoutPage() {
     if (!restTimer) return
     const newEndAt = Math.max(Date.now(), restTimer.endAt + deltaSeconds * 1000)
     const newRemaining = Math.max(0, Math.round((newEndAt - Date.now()) / 1000))
-    // Reschedule the audio-thread beep to the new end time (this runs inside
-    // the +/- tap, so it's a valid gesture to (re)schedule from).
-    scheduleBeep(newRemaining)
     setRestTimer((prev) => {
       if (!prev) return prev
       if (prev.timerId) {
@@ -489,7 +483,6 @@ export default function ActiveWorkoutPage() {
   }
 
   function skipRest() {
-    cancelScheduledBeep()
     if (restTimer?.timerId) {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
@@ -595,7 +588,6 @@ export default function ActiveWorkoutPage() {
       const summary = gaps.map((g) => `${g.name} ×${g.missing}`).join(', ')
       if (!window.confirm(`Some planned sets weren't logged: ${summary}. Save anyway?`)) return
     }
-    cancelScheduledBeep()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     setError(null)
@@ -634,7 +626,6 @@ export default function ActiveWorkoutPage() {
 
   function handleDiscard() {
     if (!window.confirm('Discard this workout? All logged sets will be lost.')) return
-    cancelScheduledBeep()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     clearActiveWorkout()
@@ -715,27 +706,15 @@ export default function ActiveWorkoutPage() {
       </div>
       {error && <p className="error">{error}</p>}
 
-      {/* Tuning aid for the iOS in-app alert path: schedules the beep 3s out so
-          you can lock / background the phone and hear whether it fires. The
-          status line reports what the play attempt actually did. */}
-      <div className="rest-alert-test">
-        <button
-          type="button"
-          className="rest-alert-test-link"
-          onClick={() => {
-            unlockAudio()
-            playBeepNow()
-            setTimeout(() => {
-              const immediate = audioStatus()
-              scheduleBeep(3)
-              setTimeout(() => setAudioTestStatus(`now → ${immediate} | +3s → ${audioStatus()}`), 400)
-            }, 300)
-          }}
-        >
-          Test alert sound (now + 3s)
-        </button>
-        {audioTestStatus && <span className="rest-alert-test-status">{audioTestStatus}</span>}
-      </div>
+      {/* Confirm the in-app beep is unlocked and audible before relying on it
+          mid-set. Foreground only — a locked/backgrounded phone gets the push. */}
+      <button
+        type="button"
+        className="rest-alert-test-link"
+        onClick={() => { unlockAudio(); playBeepNow() }}
+      >
+        Test beep
+      </button>
 
       {!pushEnabled && pushSupported() && (
         <div className="push-prompt">
