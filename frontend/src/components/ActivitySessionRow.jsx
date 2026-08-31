@@ -32,7 +32,7 @@ function ConeDistanceInput({ activity, onConeDistanceChange }) {
   return (
     <span className="activity-classify-detail">
       {activity.highSpeedDistanceKm != null && (
-        <span className="activity-classify-stat">GPS high-speed: {activity.highSpeedDistanceKm} km</span>
+        <span className="activity-classify-stat">GPS estimate: {activity.highSpeedDistanceKm.toFixed(2)} km</span>
       )}
       <label className="activity-classify-cone">
         Cones (m)

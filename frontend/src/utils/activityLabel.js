@@ -23,8 +23,9 @@ export function activityLabel(activity) {
     return `${label} · ${activity.distanceKm} km in ${duration}`
   }
   if (activity.type === 'Ultimate') {
-    const label = activity.notes?.trim() || 'Ultimate'
-    return `${label} · ${duration}`
+    const name = activity.notes?.trim() || 'Ultimate'
+    const category = activity.activitySessionTypeName
+    return category ? `${name} · ${category} · ${duration}` : `${name} · ${duration}`
   }
   return `${activity.type} · ${duration}`
 }
