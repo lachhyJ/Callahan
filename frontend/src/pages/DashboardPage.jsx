@@ -224,9 +224,12 @@ export default function DashboardPage() {
 
   return (
     <main className="page dashboard-page">
+      <h1 className="sr-only">Dashboard</h1>
       <div className="dashboard-header">
-        <h1>Dashboard</h1>
         <div className="dashboard-header-actions">
+          <button type="button" className="calendar-view-toggle" onClick={toggleCalendarView}>
+            {isMonthView ? 'Recent' : 'Month view'}
+          </button>
           <SyncGarminButton variant="icon" onSynced={loadSessions} onResult={setSyncResult} />
           <Link to="/recently-deleted" className="icon-link" aria-label="Recently deleted">
             <TrashIcon />
@@ -244,29 +247,22 @@ export default function DashboardPage() {
         </p>
       )}
 
-      <div className="calendar-controls">
-        {isMonthView ? (
-          <div className="calendar-nav">
-            <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
-              ‹
+      {isMonthView && (
+        <div className="calendar-nav">
+          <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(-1)} aria-label="Previous month">
+            ‹
+          </button>
+          <span className="calendar-month-label">{monthLabel}</span>
+          <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
+            ›
+          </button>
+          {!isViewingCurrentMonth && (
+            <button type="button" className="calendar-view-toggle calendar-today-btn" onClick={goToCurrentMonth}>
+              Today
             </button>
-            <span className="calendar-month-label">{monthLabel}</span>
-            <button type="button" className="secondary-btn calendar-nav-btn" onClick={() => changeMonth(1)} aria-label="Next month">
-              ›
-            </button>
-            {!isViewingCurrentMonth && (
-              <button type="button" className="calendar-view-toggle calendar-today-btn" onClick={goToCurrentMonth}>
-                Today
-              </button>
-            )}
-          </div>
-        ) : (
-          <span className="calendar-controls-spacer" />
-        )}
-        <button type="button" className="calendar-view-toggle" onClick={toggleCalendarView}>
-          {isMonthView ? 'Recent' : 'Month view'}
-        </button>
-      </div>
+          )}
+        </div>
+      )}
 
       {!hasAnyHistory && (
         <div className="empty-state section-gap">
