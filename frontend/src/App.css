@@ -2017,10 +2017,11 @@ td {
   }
 }
 
-/* Today = a position cue (accent ring on the cell), not a colour on the
-   number — the day-number's accent used to collide with the purple gym dot.
-   inset box-shadow so it respects the cell's border-radius and adds no
-   layout shift; stacks fine with .selected's fill + border. */
+/* Today = an accent ring on the cell, not a colour on the day number (which
+   used to collide with the old purple gym dot — gym is pink now, so accent
+   is free of category meaning on the calendar again). inset box-shadow so it
+   respects the cell's border-radius and adds no layout shift; sits in the
+   same accent family as .selected's fill + border. */
 .calendar-cell-today {
   box-shadow: inset 0 0 0 1px var(--accent);
 }
@@ -2051,7 +2052,7 @@ td {
 
 /* Colour is the family signal, shape is the subtype signal. */
 .calendar-dot-workout {
-  --cal-dot-color: var(--accent);
+  --cal-dot-color: var(--activity-workout);
 }
 
 .calendar-dot-run {
@@ -2082,7 +2083,7 @@ td {
 
 .calendar-dot--ring {
   background: transparent;
-  border: 2px solid var(--cal-dot-color);
+  border: 1.5px solid var(--cal-dot-color);
 }
 
 .activity-classify {
