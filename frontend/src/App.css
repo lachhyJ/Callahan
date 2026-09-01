@@ -3122,9 +3122,15 @@ td {
 }
 
 .trend-summary {
-  margin: calc(-1 * var(--space-xs)) 0 0;
-  font-size: var(--text-sm);
-  color: var(--text);
+  /* Sit snug under its chart card; the following section provides separation. */
+  margin: var(--space-2xs) 0 var(--space-sm);
+  /* Line the text up with the chart card's content, not its outer edge. */
+  padding-inline: var(--space-md);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  text-wrap: pretty;
+  font-variant-numeric: tabular-nums;
 }
 
 .lift-trends-list {
