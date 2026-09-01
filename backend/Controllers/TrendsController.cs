@@ -27,8 +27,12 @@ public class TrendsController : ControllerBase
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
+        // Warmups excluded, matching every other volume figure in the app —
+        // the taper section, the push/pull comparison, and the load-vs-recovery
+        // input all count working sets only. This query didn't, so the Volume
+        // chart read 3-7% high and disagreed with all of them.
         var sets = await _db.ExerciseSets
-            .Where(s => s.WorkoutSession.Date >= earliestMonthStart)
+            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= earliestMonthStart)
             .Include(s => s.WorkoutSession)
             .ToListAsync();
 
