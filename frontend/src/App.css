@@ -1883,6 +1883,11 @@ td {
   margin-top: var(--space-2xs);
 }
 
+.season-legend-more {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .trend-legend-swatch.key-season {
   background: color-mix(in srgb, var(--text-h) 8%, transparent);
   border: 1px solid var(--border);

@@ -69,6 +69,12 @@ export default function SeasonStrengthChart({ data }) {
       return next
     })
 
+  // The legend can list every program lift; collapsed, it shows only the ones
+  // currently drawn plus a "+N more" affordance.
+  const [legendExpanded, setLegendExpanded] = useState(false)
+  const legendSeries = legendExpanded ? series : series.filter((s) => !hidden.has(s.exerciseId))
+  const hiddenCount = series.length - series.filter((s) => !hidden.has(s.exerciseId)).length
+
   const visibleSeries = series.filter((s) => !hidden.has(s.exerciseId))
 
   const xForDate = makeXForDate(months)
@@ -223,7 +229,7 @@ export default function SeasonStrengthChart({ data }) {
       </svg>
 
       <div className="trend-chart-legend" style={{ flexWrap: 'wrap' }}>
-        {series.map((s) => {
+        {legendSeries.map((s) => {
           const idx = series.findIndex((x) => x.exerciseId === s.exerciseId)
           const off = hidden.has(s.exerciseId)
           return (
@@ -239,6 +245,15 @@ export default function SeasonStrengthChart({ data }) {
             </button>
           )
         })}
+        {(legendExpanded || hiddenCount > 0) && (
+          <button
+            type="button"
+            className="trend-legend-item is-toggle season-legend-more"
+            onClick={() => setLegendExpanded((v) => !v)}
+          >
+            {legendExpanded ? 'Show fewer' : `+${hiddenCount} more`}
+          </button>
+        )}
       </div>
 
       <div className="trend-chart-legend season-strength-keys">
