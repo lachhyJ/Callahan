@@ -23,7 +23,7 @@ public class WeeklyConsistencyService
     public static readonly WeeklyConsistencyDefinition[] Definitions =
     [
         new("gym2", "2+ gym sessions", (gym, run) => gym >= 2),
-        new("total3", "3+ sessions", (gym, run) => gym + run >= 3),
+        new("gym3", "3+ gym sessions", (gym, run) => gym >= 3),
         new("gym3run1", "3 gym + a run", (gym, run) => gym >= 3 && run >= 1),
         new("run1", "1+ run", (gym, run) => run >= 1),
     ];

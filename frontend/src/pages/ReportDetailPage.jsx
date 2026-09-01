@@ -9,9 +9,48 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 
 const DIRECTION_LABEL = { below: 'below baseline', above: 'above baseline', in_line: 'in line' }
 
+// Session families, in the order they read on the page. Labels are the
+// section headings; the backend tags each count row with one of these.
+const FAMILIES = [
+  { key: 'Gym', label: 'Gym' },
+  { key: 'Running', label: 'Running' },
+  { key: 'Ultimate', label: 'Ultimate' },
+]
+
+// Movers and stalls can each run to ten rows. Two lifts' worth is what's
+// actually readable at a glance; the rest sit behind a toggle.
+const COLLAPSED_ROWS = 3
+
 function fmt(n, digits = 1) {
   if (n === null || n === undefined) return '—'
   return Number(n).toFixed(digits)
+}
+
+// "a, b and c" — used for the PR and zero-set one-liners.
+function joinList(parts) {
+  if (parts.length <= 1) return parts.join('')
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+// A list that shows COLLAPSED_ROWS rows plus a "+N more" toggle. Mirrors the
+// season-strength legend's affordance so the two read the same.
+function CollapsibleList({ items, renderItem, keyOf }) {
+  const [expanded, setExpanded] = useState(false)
+  const hidden = items.length - COLLAPSED_ROWS
+  const shown = expanded ? items : items.slice(0, COLLAPSED_ROWS)
+
+  return (
+    <>
+      <ul className="report-list">
+        {shown.map((item) => <li key={keyOf(item)}>{renderItem(item)}</li>)}
+      </ul>
+      {hidden > 0 && (
+        <button type="button" className="report-more-toggle" onClick={() => setExpanded((v) => !v)}>
+          {expanded ? 'Show fewer' : `+${hidden} more`}
+        </button>
+      )}
+    </>
+  )
 }
 
 export default function ReportDetailPage() {
@@ -42,6 +81,17 @@ export default function ReportDetailPage() {
   const verdictLabel = hasVerdictLabel ? verdictParts[0] : report.headlineVerdict
   const verdictDetail = hasVerdictLabel ? verdictParts.slice(1).join(' — ') : null
 
+  const prLine = l.prs.length === 0
+    ? 'No new bests this month.'
+    : `${l.prs.length} new best${l.prs.length === 1 ? '' : 's'}: ${joinList(l.prs.map((p) => `${p.exerciseName} ${fmt(p.e1Rm)} kg`))} e1RM.`
+
+  const zeroSet = l.zeroSetProgramExercises
+  const zeroSetLine = zeroSet.length === 0
+    ? 'Every program exercise got logged this month.'
+    : zeroSet.length <= 2
+      ? `Didn't log ${joinList(zeroSet)} from the program this month.`
+      : `Didn't log ${joinList(zeroSet.slice(0, 2))} or ${zeroSet.length - 2} others from the program this month.`
+
   return (
     <main className="page">
       <h1>{MONTH_NAMES[report.month - 1]} {report.year}</h1>
@@ -58,45 +108,55 @@ export default function ReportDetailPage() {
         <h3>Consistency</h3>
         <p>{c.totalSessions} sessions across {fmt(c.weeksInMonth)} weeks — {fmt(c.sessionsPerWeek)}/wk vs {fmt(c.trailingSessionsPerWeek)}/wk trailing 3-month average.</p>
         <p>{c.daysTrained} of {c.daysInMonth} days trained.</p>
-        <ul className="report-list">
-          {c.sessionsByType.map((t) => <li key={t.label}>{t.label}: {t.count}</li>)}
-        </ul>
+        {FAMILIES.map(({ key, label }) => {
+          const rows = c.sessionsByType.filter((t) => t.family === key)
+          if (rows.length === 0) return null
+          return (
+            <div key={key}>
+              <h4>{label}</h4>
+              <ul className="report-list">
+                {rows.map((t) => <li key={t.label}>{t.label}: {t.count}</li>)}
+              </ul>
+            </div>
+          )
+        })}
         <h4>Weekly targets</h4>
+        <p className="report-coverage-note">Gym and runs only — Ultimate sessions aren't counted toward these.</p>
         <ul className="report-list">
-          {c.weeklyTargets.map((w) => <li key={w.type}>{w.label}: {w.weeksHit}/{w.weeksTotal} weeks</li>)}
+          {c.weeklyTargets.map((t) => <li key={t.type}>{t.label}: {t.weeksHit}/{t.weeksTotal} weeks</li>)}
         </ul>
       </section>
 
       <section className="report-section">
-        <h3>Load & progression</h3>
-        <h4>PRs (best e1RM)</h4>
-        {l.prs.length === 0 ? <p className="report-empty">No new PRs this month.</p> : (
-          <ul className="report-list">
-            {l.prs.map((p) => (
-              <li key={p.exerciseId}>
-                {p.exerciseName}: {fmt(p.e1Rm)} kg e1RM{p.previousE1Rm != null ? `, up from ${fmt(p.previousE1Rm)} kg` : ''} ({formatDateMedium(p.date)})
-              </li>
-            ))}
-          </ul>
-        )}
+        <h3>Load &amp; progression</h3>
+        <p className="report-coverage-note">
+          Movement is measured across each lift's last {l.windowSessions} logged sessions, which may reach back before this month.
+        </p>
+
         <h4>Movers</h4>
         {l.movers.length === 0 ? <p className="report-empty">Nothing moving meaningfully this month.</p> : (
-          <ul className="report-list">
-            {l.movers.map((m) => <li key={m.exerciseId}>{m.exerciseName}: {m.deltaPercent > 0 ? '+' : ''}{fmt(m.deltaPercent)}% ({fmt(m.fromE1Rm)} → {fmt(m.toE1Rm)} kg e1RM)</li>)}
-          </ul>
+          <CollapsibleList
+            items={l.movers}
+            keyOf={(m) => m.exerciseId}
+            renderItem={(m) => (
+              <>{m.exerciseName}: {m.deltaPercent > 0 ? '+' : ''}{fmt(m.deltaPercent)}% ({fmt(m.fromE1Rm)} → {fmt(m.toE1Rm)} kg e1RM, last {formatDateMedium(m.lastSessionDate)})</>
+            )}
+          />
         )}
+
         <h4>Stalls</h4>
         {l.stalls.length === 0 ? <p className="report-empty">No stalls flagged.</p> : (
-          <ul className="report-list">
-            {l.stalls.map((s) => <li key={s.exerciseId}>{s.exerciseName}: flat across last {s.sessionsFlat} sessions (last: {formatDateMedium(s.lastSessionDate)})</li>)}
-          </ul>
+          <CollapsibleList
+            items={l.stalls}
+            keyOf={(s) => s.exerciseId}
+            renderItem={(s) => (
+              <>{s.exerciseName}: flat across last {s.sessionsFlat} sessions (last: {formatDateMedium(s.lastSessionDate)})</>
+            )}
+          />
         )}
-        <h4>Zero-set program exercises</h4>
-        {l.zeroSetProgramExercises.length === 0 ? <p className="report-empty">Every program exercise got logged this month.</p> : (
-          <ul className="report-list">
-            {l.zeroSetProgramExercises.map((name) => <li key={name}>{name}</li>)}
-          </ul>
-        )}
+
+        <p>{prLine}</p>
+        <p>{zeroSetLine}</p>
         {report.balance.flaggedLine && (
           <p className="report-balance-line">{report.balance.flaggedLine}</p>
         )}
@@ -108,9 +168,16 @@ export default function ReportDetailPage() {
         <h4>Running</h4>
         {report.running.byType.length === 0 ? <p className="report-empty">No runs logged this month.</p> : (
           <ul className="report-list">
-            {report.running.byType.map((r) => (
-              <li key={r.typeName}>{r.typeName}: {r.count} sessions, {fmt(r.totalDistanceKm)} km, {Math.round(r.totalDurationSeconds / 60)} min</li>
-            ))}
+            {report.running.byType.map((r) => {
+              // Only the metrics that mean something for this session type
+              // come back non-null — see RunningMetrics on the backend.
+              const parts = [`${r.count} session${r.count === 1 ? '' : 's'}`]
+              if (r.workRepCount != null) parts.push(`${r.workRepCount} reps`)
+              if (r.highSpeedDistanceKm != null) parts.push(`${fmt(r.highSpeedDistanceKm, 2)} km at speed`)
+              if (r.totalDistanceKm != null) parts.push(`${fmt(r.totalDistanceKm)} km`)
+              if (r.totalDurationSeconds != null) parts.push(`${Math.round(r.totalDurationSeconds / 60)} min`)
+              return <li key={r.typeName}>{r.typeName}: {parts.join(', ')}</li>
+            })}
           </ul>
         )}
 
@@ -157,7 +224,6 @@ export default function ReportDetailPage() {
               </li>
             ))}
           </ul>
-          {w.loadVsRecoveryLine && <p className="report-balance-line">{w.loadVsRecoveryLine}</p>}
         </section>
       )}
 

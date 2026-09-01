@@ -24,6 +24,11 @@ public class MonthlyReportsController : ControllerBase
     // live and is marked provisional.
     private const int LockDayOfFollowingMonth = 8;
 
+    // Bump whenever MonthlyReportDto's shape or a section's meaning changes.
+    // Any stored snapshot below this is rebuilt in place on the next read,
+    // keeping its row and its ViewedAt.
+    private const int CurrentReportSchemaVersion = 1;
+
     public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder)
     {
         _db = db;
@@ -97,6 +102,7 @@ public class MonthlyReportsController : ControllerBase
             Month = month,
             ReportJson = Serialize(dto),
             ComputedAt = DateTime.UtcNow,
+            SchemaVersion = CurrentReportSchemaVersion,
             ViewedAt = DateTime.UtcNow,
         };
         _db.MonthlyReports.Add(row);
@@ -121,26 +127,31 @@ public class MonthlyReportsController : ControllerBase
 
         var existing = await _db.MonthlyReports.FirstOrDefaultAsync(r => r.Year == year && r.Month == month);
 
-        if (existing is not null && shouldBeLocked)
+        if (existing is not null && shouldBeLocked && existing.SchemaVersion >= CurrentReportSchemaVersion)
         {
-            // Already snapshotted and past the lock point — immutable, return as-is.
+            // Already snapshotted at the current shape and past the lock
+            // point — immutable, return as-is.
             var locked = Deserialize(existing.ReportJson) with { IsLocked = true, IsProvisional = false, ViewedAt = existing.ViewedAt };
             return locked;
         }
 
         if (shouldBeLocked)
         {
-            // Past the lock point, no snapshot yet — compute once and store it.
+            // Past the lock point with no snapshot, or one written under an
+            // older report shape — compute and store. Rebuilding overwrites
+            // the existing row rather than replacing it, so ViewedAt survives.
             var toSnapshot = await _builder.BuildAsync(year, month);
-            toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false };
-            var row = new MonthlyReport
+            toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false, ViewedAt = existing?.ViewedAt };
+
+            if (existing is null)
             {
-                Year = year,
-                Month = month,
-                ReportJson = Serialize(toSnapshot),
-                ComputedAt = DateTime.UtcNow,
-            };
-            _db.MonthlyReports.Add(row);
+                existing = new MonthlyReport { Year = year, Month = month };
+                _db.MonthlyReports.Add(existing);
+            }
+            existing.ReportJson = Serialize(toSnapshot);
+            existing.ComputedAt = DateTime.UtcNow;
+            existing.SchemaVersion = CurrentReportSchemaVersion;
+
             await _db.SaveChangesAsync();
             return toSnapshot;
         }

@@ -2,7 +2,19 @@ namespace Callahan.Api.DTOs;
 
 public record MonthlyReportListEntryDto(int Year, int Month, bool IsLocked, bool Viewed, string HeadlineVerdict);
 
-public record SessionTypeCountDto(string Label, int Count);
+// Family groups the label into the three things that are actually
+// substitutable for each other: gym templates, run types, Ultimate session
+// types. Comparing counts ACROSS families is meaningless (a club training is
+// not an alternative to an interval session), which the next-month
+// "rebalance?" question used to do.
+public record SessionTypeCountDto(string Label, int Count, string Family);
+
+public static class SessionFamily
+{
+    public const string Gym = "Gym";
+    public const string Running = "Running";
+    public const string Ultimate = "Ultimate";
+}
 public record WeeklyTargetHitDto(string Type, string Label, int WeeksHit, int WeeksTotal);
 
 public record ConsistencySectionDto(
@@ -17,17 +29,35 @@ public record ConsistencySectionDto(
 );
 
 public record PrDto(int ExerciseId, string ExerciseName, decimal E1Rm, DateOnly Date, decimal? PreviousE1Rm);
-public record MoverDto(int ExerciseId, string ExerciseName, decimal FromE1Rm, decimal ToE1Rm, decimal DeltaPercent);
+public record MoverDto(int ExerciseId, string ExerciseName, decimal FromE1Rm, decimal ToE1Rm, decimal DeltaPercent, DateOnly LastSessionDate);
 public record StallDto(int ExerciseId, string ExerciseName, int SessionsFlat, DateOnly LastSessionDate);
 
+// WindowSessions is how many of each exercise's most recent sessions the
+// movers/stalls windows look at - surfaced so the UI can say so rather than
+// letting a reader assume "movers" means "moved during this month". The
+// window is deliberately NOT clipped to the report month (see
+// MonthlyReportBuilder's class comment).
 public record LoadProgressionSectionDto(
     List<PrDto> Prs,
     List<MoverDto> Movers,
     List<StallDto> Stalls,
-    List<string> ZeroSetProgramExercises
+    List<string> ZeroSetProgramExercises,
+    int WindowSessions
 );
 
-public record RunTypeSummaryDto(string TypeName, int Count, decimal TotalDistanceKm, int TotalDurationSeconds);
+// Which fields are populated depends on the session type - see
+// RunningMetrics. Totalling GPS distance and elapsed duration is only
+// meaningful for continuous running; for rep-based sessions those totals
+// mislead (GPS under-measures shuttle turns, elapsed time counts standing
+// rest), so they come back null and the rep-based fields carry the work
+// instead. Nulls mean "not meaningful for this type", not "missing".
+public record RunTypeSummaryDto(
+    string TypeName,
+    int Count,
+    decimal? TotalDistanceKm,
+    int? TotalDurationSeconds,
+    decimal? HighSpeedDistanceKm,
+    int? WorkRepCount);
 public record RunningSectionDto(List<RunTypeSummaryDto> ByType);
 
 public record BalanceSectionDto(string? FlaggedLine);
@@ -55,8 +85,7 @@ public record WellnessSectionDto(
     List<WellnessMetricDto> Metrics,
     int NightsLogged,
     int DaysInMonth,
-    int NightsUnder7h,
-    string? LoadVsRecoveryLine
+    int NightsUnder7h
 );
 
 public record MonthlyReportDto(

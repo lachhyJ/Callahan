@@ -19,8 +19,8 @@ public class MonthlyReportHeadlineTests
             .Select(i => new StallDto(i, $"Ex{i}", 5, new DateOnly(2026, 8, 1))).ToList();
         var movers = moverDelta == 0m
             ? new List<MoverDto>()
-            : [new MoverDto(1, "Ex", 100m, 100m + moverDelta, moverDelta)];
-        return new LoadProgressionSectionDto(prList, movers, stallList, []);
+            : [new MoverDto(1, "Ex", 100m, 100m + moverDelta, moverDelta, new DateOnly(2026, 8, 1))];
+        return new LoadProgressionSectionDto(prList, movers, stallList, [], WindowSessions: 8);
     }
 
     [Fact]
