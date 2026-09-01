@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getMonthlyReports } from '../api/client'
 import { ChevronRightIcon } from '../icons'
+import { reportProgressTag } from '../utils/reportStatus'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -33,7 +34,7 @@ export default function ReportsPage() {
               <div>
                 <span className="streak-label">
                   {MONTH_NAMES[r.month - 1]} {r.year}
-                  {!r.isLocked && <span className="report-provisional-tag"> · still settling</span>}
+                  {!r.isLocked && <span className="report-provisional-tag"> · {reportProgressTag(r.year, r.month)}</span>}
                   {!r.viewed && <span className="report-unviewed-dot" aria-label="Unviewed" />}
                 </span>
                 <p className="report-headline-preview">{r.headlineVerdict}</p>

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getMonthlyReport, markMonthlyReportViewed } from '../api/client'
 import { formatDateLong, formatDateMedium } from '../dateUtils'
 import { DIRECTION_CLASS, formatMetricValue } from '../wellnessMetrics'
+import { reportProgressNote } from '../utils/reportStatus'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -45,7 +46,7 @@ export default function ReportDetailPage() {
     <main className="page">
       <h1>{MONTH_NAMES[report.month - 1]} {report.year}</h1>
       {!report.isLocked && (
-        <p className="report-settling-note">Still settling — this report will lock on day 8 of next month.</p>
+        <p className="report-settling-note">{reportProgressNote(report.year, report.month)}</p>
       )}
 
       <section className="report-section">

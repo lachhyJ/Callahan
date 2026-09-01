@@ -146,9 +146,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     getMonthlyReports().then((reports) => {
-      // Newest first from the API — the latest finalized-or-provisional
-      // report that hasn't been opened yet, if any.
-      const latestUnviewed = reports.find((r) => !r.viewed)
+      // Newest first from the API. Only nudge about a month that has
+      // actually ended — the API also returns the current, in-progress
+      // month as a provisional entry, and surfacing that produces a
+      // misleading "Down month — 0 sessions" headline early in the month.
+      const now = new Date()
+      const currentMonthKey = now.getFullYear() * 12 + now.getMonth()
+      const latestUnviewed = reports.find(
+        (r) => !r.viewed && r.year * 12 + (r.month - 1) < currentMonthKey,
+      )
       setUnviewedReport(latestUnviewed ?? null)
     }).catch(() => {})
   }, [])
