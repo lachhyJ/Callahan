@@ -4,6 +4,7 @@ import { getMonthlyReport, markMonthlyReportViewed } from '../api/client'
 import { formatDateLong, formatDateMedium } from '../dateUtils'
 import { DIRECTION_CLASS, formatMetricValue } from '../wellnessMetrics'
 import { reportProgressNote } from '../utils/reportStatus'
+import { formatDelta, formatSet } from '../liftSets'
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
@@ -83,7 +84,7 @@ export default function ReportDetailPage() {
 
   const prLine = l.prs.length === 0
     ? 'No new bests this month.'
-    : `${l.prs.length} new best${l.prs.length === 1 ? '' : 's'}: ${joinList(l.prs.map((p) => `${p.exerciseName} ${fmt(p.e1Rm)} kg`))} e1RM.`
+    : `${l.prs.length} new best${l.prs.length === 1 ? '' : 's'}: ${joinList(l.prs.map((p) => `${p.exerciseName} ${formatSet(p.best, p.basis)}`))}.`
 
   const zeroSet = l.zeroSetProgramExercises
   const zeroSetLine = zeroSet.length === 0
@@ -139,7 +140,7 @@ export default function ReportDetailPage() {
             items={l.movers}
             keyOf={(m) => m.exerciseId}
             renderItem={(m) => (
-              <>{m.exerciseName}: {m.deltaPercent > 0 ? '+' : ''}{fmt(m.deltaPercent)}% ({fmt(m.fromE1Rm)} → {fmt(m.toE1Rm)} kg e1RM, last {formatDateMedium(m.lastSessionDate)})</>
+              <>{m.exerciseName}: {formatDelta(m.deltaPercent, m.from, m.to, m.basis)} ({formatSet(m.from, m.basis)} → {formatSet(m.to, m.basis)}, last {formatDateMedium(m.lastSessionDate)})</>
             )}
           />
         )}
@@ -150,7 +151,7 @@ export default function ReportDetailPage() {
             items={l.stalls}
             keyOf={(s) => s.exerciseId}
             renderItem={(s) => (
-              <>{s.exerciseName}: flat across last {s.sessionsFlat} sessions (last: {formatDateMedium(s.lastSessionDate)})</>
+              <>{s.exerciseName}: flat across last {s.sessionsFlat} sessions at {formatSet(s.best, s.basis)} (last: {formatDateMedium(s.lastSessionDate)})</>
             )}
           />
         )}

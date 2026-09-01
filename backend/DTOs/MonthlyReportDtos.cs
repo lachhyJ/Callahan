@@ -28,9 +28,17 @@ public record ConsistencySectionDto(
     int DaysInMonth
 );
 
-public record PrDto(int ExerciseId, string ExerciseName, decimal E1Rm, DateOnly Date, decimal? PreviousE1Rm);
-public record MoverDto(int ExerciseId, string ExerciseName, decimal FromE1Rm, decimal ToE1Rm, decimal DeltaPercent, DateOnly LastSessionDate);
-public record StallDto(int ExerciseId, string ExerciseName, int SessionsFlat, DateOnly LastSessionDate);
+// A real set that was actually performed, plus its estimated 1RM where the
+// estimate is trustworthy for that exercise (null otherwise - see LiftBasis).
+// Reporting the set alongside the estimate is deliberate: an e1RM on its own
+// is a number that was never lifted.
+public record LiftSetDto(decimal WeightKg, int Reps, decimal? E1Rm);
+
+// Basis is LiftBasis as a string, so the UI can label what it's comparing -
+// a +13% on set volume is not the same claim as a +13% on e1RM.
+public record PrDto(int ExerciseId, string ExerciseName, LiftSetDto Best, LiftSetDto? Previous, string Basis, DateOnly Date);
+public record MoverDto(int ExerciseId, string ExerciseName, LiftSetDto From, LiftSetDto To, decimal? DeltaPercent, string Basis, DateOnly LastSessionDate);
+public record StallDto(int ExerciseId, string ExerciseName, int SessionsFlat, DateOnly LastSessionDate, LiftSetDto Best, string Basis);
 
 // WindowSessions is how many of each exercise's most recent sessions the
 // movers/stalls windows look at - surfaced so the UI can say so rather than

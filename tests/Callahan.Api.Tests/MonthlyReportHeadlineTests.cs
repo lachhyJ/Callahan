@@ -13,13 +13,17 @@ public class MonthlyReportHeadlineTests
     private static LoadProgressionSectionDto Load(
         int prs = 0, int stalls = 0, decimal moverDelta = 0m)
     {
+        var day = new DateOnly(2026, 8, 1);
+        var set = new LiftSetDto(100m, 8, 126.7m);
+        var basis = nameof(LiftBasis.E1Rm);
+
         var prList = Enumerable.Range(0, prs)
-            .Select(i => new PrDto(i, $"Ex{i}", 100m, new DateOnly(2026, 8, 1), null)).ToList();
+            .Select(i => new PrDto(i, $"Ex{i}", set, null, basis, day)).ToList();
         var stallList = Enumerable.Range(0, stalls)
-            .Select(i => new StallDto(i, $"Ex{i}", 5, new DateOnly(2026, 8, 1))).ToList();
+            .Select(i => new StallDto(i, $"Ex{i}", 5, day, set, basis)).ToList();
         var movers = moverDelta == 0m
             ? new List<MoverDto>()
-            : [new MoverDto(1, "Ex", 100m, 100m + moverDelta, moverDelta, new DateOnly(2026, 8, 1))];
+            : [new MoverDto(1, "Ex", set, new LiftSetDto(100m + moverDelta, 8, null), moverDelta, basis, day)];
         return new LoadProgressionSectionDto(prList, movers, stallList, [], WindowSessions: 8);
     }
 

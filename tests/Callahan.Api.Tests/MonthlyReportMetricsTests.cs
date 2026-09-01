@@ -239,3 +239,90 @@ public class RebalanceQuestionTests
         Assert.Null(MonthlyReportBuilder.RebalanceQuestion([T("Workout 1", 9, SessionFamily.Gym)]));
     }
 }
+
+public class LiftProgressTests
+{
+    private static LiftSetInput S(decimal kg, int reps) => new(kg, reps);
+
+    [Fact]
+    public void NormalWorkingSets_UseE1Rm()
+    {
+        Assert.Equal(LiftBasis.E1Rm, LiftProgress.BasisFor([S(100, 8), S(105, 8), S(105, 10)]));
+    }
+
+    // 15-20 rep work: Epley multiplies by up to 1.67, and a range that wide
+    // moves the estimate ~17% on formula alone, swamping the real signal.
+    [Fact]
+    public void HighRepAccessory_UsesSetVolume()
+    {
+        Assert.Equal(LiftBasis.SetVolume, LiftProgress.BasisFor([S(40, 15), S(40, 18), S(40, 20)]));
+    }
+
+    // 12-rep slots are pinned at 12 rather than spanning a range, so Epley's
+    // bias is constant and cancels out of a month-to-month comparison.
+    [Fact]
+    public void TwelveReps_StaysOnE1Rm()
+    {
+        Assert.Equal(LiftBasis.E1Rm, LiftProgress.BasisFor([S(30, 12), S(30, 12), S(32.5m, 12)]));
+    }
+
+    [Fact]
+    public void AnyNonPositiveLoad_MeansAssisted()
+    {
+        Assert.Equal(LiftBasis.Assisted, LiftProgress.BasisFor([S(-14, 8), S(-14, 10), S(0, 5)]));
+        Assert.Equal(LiftBasis.Assisted, LiftProgress.BasisFor([S(0, 6), S(0, 8)]));
+    }
+
+    // The bug this basis exists for: on a negative load Epley makes more reps
+    // look WORSE, and at bodyweight it is identically zero.
+    [Fact]
+    public void Epley_WouldInvertOnAssistedLoads()
+    {
+        Assert.True(LiftMath.Epley1Rm(12, -16m) < LiftMath.Epley1Rm(8, -16m));
+        Assert.Equal(0m, LiftMath.Epley1Rm(20, 0m));
+    }
+
+    [Fact]
+    public void Assisted_LessAssistanceScoresHigher()
+    {
+        Assert.True(LiftProgress.Score(S(-8, 8), LiftBasis.Assisted) > LiftProgress.Score(S(-16, 8), LiftBasis.Assisted));
+        Assert.True(LiftProgress.Score(S(0, 5), LiftBasis.Assisted) > LiftProgress.Score(S(-8, 12), LiftBasis.Assisted));
+    }
+
+    [Fact]
+    public void Assisted_MoreRepsWinsAtTheSameAssistance()
+    {
+        Assert.True(LiftProgress.Score(S(-14, 10), LiftBasis.Assisted) > LiftProgress.Score(S(-14, 8), LiftBasis.Assisted));
+    }
+
+    // Double progression: reps climb inside a fixed range before the weight
+    // moves. Top weight is flat across that; e1RM is not.
+    [Fact]
+    public void E1Rm_TracksRepProgressAtAHeldWeight()
+    {
+        Assert.True(LiftProgress.Score(S(240, 12), LiftBasis.E1Rm) > LiftProgress.Score(S(240, 10), LiftBasis.E1Rm));
+    }
+
+    [Fact]
+    public void AssistedLifts_GetNoPercentage()
+    {
+        Assert.Null(LiftProgress.DeltaPercent(S(-16, 8), S(-8, 8), LiftBasis.Assisted));
+        Assert.NotNull(LiftProgress.DeltaPercent(S(100, 8), S(110, 8), LiftBasis.E1Rm));
+    }
+
+    [Fact]
+    public void AssistedFlatness_NeedsBothLoadAndRepsUnchanged()
+    {
+        Assert.True(LiftProgress.IsFlat([S(-14, 8), S(-14, 8), S(-14, 8)], LiftBasis.Assisted, 3m));
+        Assert.False(LiftProgress.IsFlat([S(-14, 8), S(-14, 9), S(-14, 10)], LiftBasis.Assisted, 3m));
+        Assert.False(LiftProgress.IsFlat([S(-14, 8), S(-12, 8), S(-10, 8)], LiftBasis.Assisted, 3m));
+    }
+
+    [Fact]
+    public void EstimateIsOnlyAttachedWhereItIsTrustworthy()
+    {
+        Assert.NotNull(LiftProgress.ToDto(S(100, 8), LiftBasis.E1Rm).E1Rm);
+        Assert.Null(LiftProgress.ToDto(S(40, 18), LiftBasis.SetVolume).E1Rm);
+        Assert.Null(LiftProgress.ToDto(S(-14, 8), LiftBasis.Assisted).E1Rm);
+    }
+}

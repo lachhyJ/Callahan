@@ -123,37 +123,60 @@ public class MonthlyReportBuilder
             .Include(s => s.Exercise)
             .ToListAsync();
 
-        // PRs: this month's best e1RM per exercise that exceeds every set
-        // logged before the month started (i.e. a genuine new all-time best,
-        // not just the best-of-the-month).
+        // Each exercise is measured on the basis its own history supports —
+        // e1RM for normal working sets, set volume for high-rep accessories,
+        // load-then-reps for assisted/bodyweight work where e1RM is either
+        // inverted or identically zero. See LiftProgress.
+        var basisByExercise = allSets
+            .GroupBy(s => s.ExerciseId)
+            .ToDictionary(g => g.Key, g => LiftProgress.BasisFor(g.Select(ToInput).ToList()));
+
+        // PRs: this month's best set per exercise that beats every set logged
+        // before the month started — a genuine new all-time best, not just
+        // the best of the month.
         var prs = new List<PrDto>();
         foreach (var g in allSets.GroupBy(s => s.ExerciseId))
         {
-            var before = g.Where(s => s.WorkoutSession.Date < monthStart).ToList();
+            var basis = basisByExercise[g.Key];
+            var before = g.Where(s => s.WorkoutSession.Date < monthStart).Select(ToInput).ToList();
             var inMonth = g.Where(s => s.WorkoutSession.Date >= monthStart && s.WorkoutSession.Date <= monthEnd).ToList();
             if (inMonth.Count == 0) continue;
 
-            var beforeMax = before.Count > 0 ? before.Max(E1Rm) : 0m;
-            var monthBest = inMonth.OrderByDescending(E1Rm).First();
-            var monthBestE1Rm = E1Rm(monthBest);
-            if (monthBestE1Rm > beforeMax)
-            {
-                decimal? previousE1Rm = before.Count > 0 ? beforeMax : null;
-                prs.Add(new PrDto(monthBest.ExerciseId, monthBest.Exercise.Name, monthBestE1Rm, monthBest.WorkoutSession.Date, previousE1Rm));
-            }
+            var monthBestSet = inMonth
+                .OrderByDescending(x => LiftProgress.Score(ToInput(x), basis))
+                .First();
+            var monthBest = ToInput(monthBestSet);
+            var previousBest = LiftProgress.Best(before, basis);
+
+            var beats = previousBest is null
+                || LiftProgress.Score(monthBest, basis) > LiftProgress.Score(previousBest, basis);
+            if (!beats) continue;
+
+            prs.Add(new PrDto(
+                monthBestSet.ExerciseId, monthBestSet.Exercise.Name,
+                LiftProgress.ToDto(monthBest, basis),
+                previousBest is null ? null : LiftProgress.ToDto(previousBest, basis),
+                basis.ToString(), monthBestSet.WorkoutSession.Date));
         }
 
         // Stalls / movers: rolling last StallWindow sessions per exercise,
-        // across all history, independent of the month boundary. A
-        // "session" here is one WorkoutSession that logged this exercise;
-        // the value compared per session is that session's best e1RM set.
+        // across all history, independent of the month boundary. A "session"
+        // here is one WorkoutSession that logged this exercise; the value
+        // compared per session is that session's best set on the exercise's
+        // own basis.
         var movers = new List<MoverDto>();
         var stalls = new List<StallDto>();
 
         foreach (var g in allSets.GroupBy(s => s.ExerciseId))
         {
+            var basis = basisByExercise[g.Key];
+
             var perSession = g.GroupBy(s => s.WorkoutSessionId)
-                .Select(sg => new { Date = sg.First().WorkoutSession.Date, BestE1Rm = sg.Max(E1Rm) })
+                .Select(sg => new
+                {
+                    Date = sg.First().WorkoutSession.Date,
+                    Best = LiftProgress.Best(sg.Select(ToInput).ToList(), basis)!,
+                })
                 .OrderBy(x => x.Date)
                 .ToList();
 
@@ -168,26 +191,41 @@ public class MonthlyReportBuilder
             var nearMonth = mostRecentDate >= monthStart && mostRecentDate <= monthEnd.AddDays(7);
             if (!nearMonth) continue;
 
-            var first = window[0].BestE1Rm;
-            var last = window[^1].BestE1Rm;
-            if (first <= 0) continue;
-
-            var deltaPercent = (last - first) / first * 100m;
-            var range = window.Max(x => x.BestE1Rm) - window.Min(x => x.BestE1Rm);
-            var rangePercent = first > 0 ? range / first * 100m : 0m;
-
+            var windowSets = window.Select(x => x.Best).ToList();
+            var first = windowSets[0];
+            var last = windowSets[^1];
             var exerciseName = g.First().Exercise.Name;
-            if (window.Count >= 4 && rangePercent < StallThresholdPercent)
+
+            if (window.Count >= 4 && LiftProgress.IsFlat(windowSets, basis, StallThresholdPercent))
             {
-                stalls.Add(new StallDto(g.Key, exerciseName, window.Count, mostRecentDate));
+                stalls.Add(new StallDto(
+                    g.Key, exerciseName, window.Count, mostRecentDate,
+                    LiftProgress.ToDto(last, basis), basis.ToString()));
+                continue;
             }
-            else if (Math.Abs(deltaPercent) >= StallThresholdPercent)
+
+            var deltaPercent = LiftProgress.DeltaPercent(first, last, basis);
+
+            // Assisted lifts get no percentage (the score is a composite
+            // ordering, not a magnitude), so "did it move" is judged on the
+            // sets themselves.
+            var moved = deltaPercent is null
+                ? first.WeightKg != last.WeightKg || first.Reps != last.Reps
+                : Math.Abs(deltaPercent.Value) >= StallThresholdPercent;
+
+            if (moved)
             {
-                movers.Add(new MoverDto(g.Key, exerciseName, first, last, Math.Round(deltaPercent, 1), mostRecentDate));
+                movers.Add(new MoverDto(
+                    g.Key, exerciseName,
+                    LiftProgress.ToDto(first, basis), LiftProgress.ToDto(last, basis),
+                    deltaPercent is null ? null : Math.Round(deltaPercent.Value, 1),
+                    basis.ToString(), mostRecentDate));
             }
         }
 
-        movers = movers.OrderByDescending(m => Math.Abs(m.DeltaPercent)).Take(10).ToList();
+        // Percentage movers rank by magnitude; assisted ones have no
+        // percentage, so they sort after but are still shown.
+        movers = movers.OrderByDescending(m => m.DeltaPercent is null ? 0m : Math.Abs(m.DeltaPercent.Value)).Take(10).ToList();
         stalls = stalls.OrderByDescending(s => s.SessionsFlat).Take(10).ToList();
 
         // Program exercises with zero logged (non-warmup) sets this month.
@@ -214,7 +252,7 @@ public class MonthlyReportBuilder
             movers, stalls, zeroSet, StallWindow);
     }
 
-    private static decimal E1Rm(ExerciseSet s) => LiftMath.Epley1Rm(s.Reps, s.WeightKg);
+    private static LiftSetInput ToInput(ExerciseSet s) => new(s.WeightKg, s.Reps);
 
     private async Task<RunningSectionDto> BuildRunningAsync(
         DateOnly monthStart, DateOnly monthEnd, List<Activity> monthActivities)

@@ -90,38 +90,48 @@ public class TrendsController : ControllerBase
             .Include(s => s.Exercise)
             .ToListAsync();
 
-        var maxWeightByExerciseAndMonth = new Dictionary<int, Dictionary<DateOnly, decimal>>();
-        var exerciseNames = new Dictionary<int, string>();
-
-        foreach (var s in sets)
-        {
-            exerciseNames[s.ExerciseId] = s.Exercise.Name;
-            var monthStart = new DateOnly(s.WorkoutSession.Date.Year, s.WorkoutSession.Date.Month, 1);
-
-            if (!maxWeightByExerciseAndMonth.TryGetValue(s.ExerciseId, out var byMonth))
-            {
-                byMonth = [];
-                maxWeightByExerciseAndMonth[s.ExerciseId] = byMonth;
-            }
-
-            byMonth[monthStart] = byMonth.TryGetValue(monthStart, out var existing) ? Math.Max(existing, s.WeightKg) : s.WeightKg;
-        }
+        // Each exercise's basis comes from its own history (LiftProgress):
+        // e1RM normally, set volume for high-rep accessories, load-then-reps
+        // for assisted/bodyweight. This used to take Math.Max(WeightKg) per
+        // month, which is blind to double progression - grinding 240x10 up to
+        // 240x12 showed as +0 kg - and pointed backwards on assisted lifts,
+        // where a bigger number means more help.
+        var byExercise = sets
+            .GroupBy(s => s.ExerciseId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         var trends = new List<LiftTrendDto>();
-        foreach (var (exerciseId, byMonth) in maxWeightByExerciseAndMonth)
+        foreach (var (exerciseId, exerciseSets) in byExercise)
         {
-            if (byMonth.Count < 2) continue;
+            var basis = LiftProgress.BasisFor(exerciseSets.Select(ToInput).ToList());
 
-            var months2 = byMonth.Keys.OrderBy(m => m).ToList();
+            var bestByMonth = exerciseSets
+                .GroupBy(s => new DateOnly(s.WorkoutSession.Date.Year, s.WorkoutSession.Date.Month, 1))
+                .ToDictionary(
+                    g => g.Key,
+                    g => LiftProgress.Best(g.Select(ToInput).ToList(), basis)!);
+
+            if (bestByMonth.Count < 2) continue;
+
+            var months2 = bestByMonth.Keys.OrderBy(m => m).ToList();
             var earliestMonth = months2[0];
             var latestMonth = months2[^1];
-            var earliestWeight = byMonth[earliestMonth];
-            var latestWeight = byMonth[latestMonth];
+            var earliest = bestByMonth[earliestMonth];
+            var latest = bestByMonth[latestMonth];
 
-            trends.Add(new LiftTrendDto(exerciseId, exerciseNames[exerciseId], earliestWeight, earliestMonth, latestWeight, latestMonth, latestWeight - earliestWeight));
+            trends.Add(new LiftTrendDto(
+                exerciseId, exerciseSets[0].Exercise.Name,
+                LiftProgress.ToDto(earliest, basis), earliestMonth,
+                LiftProgress.ToDto(latest, basis), latestMonth,
+                LiftProgress.DeltaPercent(earliest, latest, basis) is decimal d ? Math.Round(d, 1) : null,
+                latest.WeightKg - earliest.WeightKg,
+                basis.ToString()));
         }
 
-        return Ok(trends.OrderByDescending(t => Math.Abs(t.DeltaKg)).ToList());
+        return Ok(trends
+            .OrderByDescending(t => t.DeltaPercent is null ? 0m : Math.Abs(t.DeltaPercent.Value))
+            .ThenByDescending(t => Math.Abs(t.DeltaKg))
+            .ToList());
     }
 
     // Count per type first (what Lachlan asked to see), plus whichever of
@@ -247,4 +257,6 @@ public class TrendsController : ControllerBase
         var result = SeasonStrengthBuilder.Build(today, months, sets, runs, ultimate, tournaments, seasons, programOrder);
         return Ok(result);
     }
+
+    private static LiftSetInput ToInput(Models.ExerciseSet s) => new(s.WeightKg, s.Reps);
 }

@@ -2,14 +2,21 @@ namespace Callahan.Api.DTOs;
 
 public record TrendPointDto(DateOnly MonthStart, decimal VolumeKg, int GymSessions, int RunSessions);
 
+// Earliest/Latest are the actual best sets of those months, on whichever
+// basis the exercise supports (Basis is LiftBasis as a string). DeltaPercent
+// is null for assisted/bodyweight lifts, where the underlying score is an
+// ordering rather than a magnitude; DeltaKg still carries the load change,
+// which for an assisted lift reads as assistance coming off.
 public record LiftTrendDto(
     int ExerciseId,
     string ExerciseName,
-    decimal EarliestWeightKg,
+    LiftSetDto Earliest,
     DateOnly EarliestMonth,
-    decimal LatestWeightKg,
+    LiftSetDto Latest,
     DateOnly LatestMonth,
-    decimal DeltaKg);
+    decimal? DeltaPercent,
+    decimal DeltaKg,
+    string Basis);
 
 // Distance fields are nullable for the same reason as RunTypeSummaryDto's:
 // a total (or average) GPS distance is only meaningful for continuous
