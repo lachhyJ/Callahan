@@ -60,50 +60,17 @@ public class MonthlyReportBuilder
 
         var consistency = BuildConsistency(monthWorkouts, monthActivities, trailingWorkouts, trailingActivities, weeksInMonth, trailingWeeks, daysInMonth);
         var loadProgression = await BuildLoadProgressionAsync(monthStart, monthEnd);
-        var running = BuildRunning(monthActivities);
+        var running = await BuildRunningAsync(monthStart, monthEnd, monthActivities);
         var balance = await BuildBalanceAsync(monthStart, monthEnd);
         var context = BuildContext(monthWorkouts, monthActivities, taperEvents, monthStart, monthEnd);
         var taperOverlaps = await BuildTaperOverlapsAsync(taperEvents, monthStart, monthEnd);
-        var wellness = await BuildWellnessAsync(monthStart, monthEnd, daysInMonth, monthWellness, trailingWellness);
+        var wellness = MonthlyWellnessSummarizer.Summarize(monthWellness, trailingWellness, daysInMonth);
         var headline = BuildHeadline(consistency, loadProgression);
         var nextMonth = BuildNextMonthQuestions(loadProgression, context, consistency);
 
         return new MonthlyReportDto(
             year, month, false, true, DateTime.UtcNow, null,
             headline, consistency, loadProgression, running, balance, context, taperOverlaps, nextMonth, wellness);
-    }
-
-    private async Task<WellnessSectionDto?> BuildWellnessAsync(
-        DateOnly monthStart, DateOnly monthEnd, int daysInMonth,
-        List<DTOs.DailyWellnessDto> monthWellness, List<DTOs.DailyWellnessDto> trailingWellness)
-    {
-        // Per-week gym tonnage for the report month, paired with that week's
-        // mean readiness — the load-vs-recovery input. Matches the taper
-        // section's volume definition (weight × reps, non-warmup).
-        var monthSetLoads = await _db.ExerciseSets
-            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= monthStart && s.WorkoutSession.Date <= monthEnd)
-            .Select(s => new { s.WorkoutSession.Date, Vol = s.WeightKg * s.Reps })
-            .ToListAsync();
-
-        var readinessByWeek = monthWellness
-            .Where(w => w.TrainingReadinessScore is not null)
-            .GroupBy(w => LoadTrendBuilder.MondayOf(w.Date))
-            .ToDictionary(g => g.Key, g => g.Average(w => (double)w.TrainingReadinessScore!.Value));
-
-        var monthWeeks = monthSetLoads
-            .GroupBy(x => LoadTrendBuilder.MondayOf(x.Date))
-            .Select(g => new WellnessWeekLoad(
-                g.Sum(x => x.Vol),
-                readinessByWeek.TryGetValue(g.Key, out var r) ? r : null))
-            .ToList();
-
-        var trailingReadings = trailingWellness
-            .Where(w => w.TrainingReadinessScore is not null)
-            .Select(w => (double)w.TrainingReadinessScore!.Value)
-            .ToList();
-        double? trailingReadinessAvg = trailingReadings.Count >= 7 ? trailingReadings.Average() : null;
-
-        return MonthlyWellnessSummarizer.Summarize(monthWellness, trailingWellness, daysInMonth, monthWeeks, trailingReadinessAvg);
     }
 
     private static ConsistencySectionDto BuildConsistency(
@@ -116,17 +83,22 @@ public class MonthlyReportBuilder
         var sessionsPerWeek = weeksInMonth > 0 ? totalSessions / weeksInMonth : 0m;
         var trailingPerWeek = trailingWeeks > 0 ? trailingTotal / trailingWeeks : 0m;
 
+        // All three families break down the same way - Ultimate's session
+        // types (Solo / Throws / Pod / Club Training / Game) are already
+        // seeded and already attached, they just weren't being read.
         var byType = new List<SessionTypeCountDto>();
         foreach (var g in monthWorkouts.GroupBy(w => w.WorkoutTemplate?.Name ?? "Manual"))
         {
-            byType.Add(new SessionTypeCountDto(g.Key, g.Count()));
+            byType.Add(new SessionTypeCountDto(g.Key, g.Count(), SessionFamily.Gym));
         }
         foreach (var g in monthActivities.Where(a => a.Type == ActivityType.Running).GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified run"))
         {
-            byType.Add(new SessionTypeCountDto(g.Key, g.Count()));
+            byType.Add(new SessionTypeCountDto(g.Key, g.Count(), SessionFamily.Running));
         }
-        var ultimateCount = monthActivities.Count(a => a.Type == ActivityType.Ultimate);
-        if (ultimateCount > 0) byType.Add(new SessionTypeCountDto("Ultimate", ultimateCount));
+        foreach (var g in monthActivities.Where(a => a.Type == ActivityType.Ultimate).GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified"))
+        {
+            byType.Add(new SessionTypeCountDto(g.Key, g.Count(), SessionFamily.Ultimate));
+        }
 
         var buckets = WeeklyConsistencyService.BucketByWeek(
             monthWorkouts.Select(w => w.Date).ToList(),
@@ -211,7 +183,7 @@ public class MonthlyReportBuilder
             }
             else if (Math.Abs(deltaPercent) >= StallThresholdPercent)
             {
-                movers.Add(new MoverDto(g.Key, exerciseName, first, last, Math.Round(deltaPercent, 1)));
+                movers.Add(new MoverDto(g.Key, exerciseName, first, last, Math.Round(deltaPercent, 1), mostRecentDate));
             }
         }
 
@@ -239,49 +211,78 @@ public class MonthlyReportBuilder
 
         return new LoadProgressionSectionDto(
             prs.OrderByDescending(p => p.Date).ToList(),
-            movers, stalls, zeroSet);
+            movers, stalls, zeroSet, StallWindow);
     }
 
     private static decimal E1Rm(ExerciseSet s) => LiftMath.Epley1Rm(s.Reps, s.WeightKg);
 
-    private static RunningSectionDto BuildRunning(List<Activity> monthActivities)
+    private async Task<RunningSectionDto> BuildRunningAsync(
+        DateOnly monthStart, DateOnly monthEnd, List<Activity> monthActivities)
     {
-        var byType = monthActivities
-            .Where(a => a.Type == ActivityType.Running)
-            .GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified run")
-            .Select(g => new RunTypeSummaryDto(
-                g.Key, g.Count(),
-                g.Where(a => a.DistanceKm != null).Sum(a => a.DistanceKm!.Value),
-                g.Sum(a => a.DurationSeconds)))
-            .OrderByDescending(r => r.Count)
-            .ToList();
+        // Work-rep counts, as a projection - no lap rows are materialised.
+        var activeLapCounts = await _db.ActivityLaps
+            .Where(l => l.IntensityType == ActivityLap.ActiveIntensityType
+                     && l.Activity.Date >= monthStart && l.Activity.Date <= monthEnd)
+            .GroupBy(l => l.ActivityId)
+            .Select(g => new { ActivityId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ActivityId, x => x.Count);
 
-        return new RunningSectionDto(byType);
+        var runs = monthActivities
+            .Where(a => a.Type == ActivityType.Running)
+            .Select(a => new RunActivityInput(
+                a.ActivitySessionType?.Name ?? "Unspecified run",
+                a.DistanceKm,
+                a.DurationSeconds,
+                a.HighSpeedDistanceM,
+                activeLapCounts.TryGetValue(a.Id, out var laps) ? laps : 0));
+
+        return new RunningSectionDto(RunningMetrics.Summarize(runs));
     }
 
+    // Push/pull as execution drift against what the month's own sessions
+    // prescribed, not as a raw ratio - see PushPullBalance for why the raw
+    // ratio measured the program rather than the training. Manual sessions
+    // (no template) are excluded: there's no plan to compare them against.
     private async Task<BalanceSectionDto> BuildBalanceAsync(DateOnly monthStart, DateOnly monthEnd)
     {
-        var sets = await _db.ExerciseSets
-            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= monthStart && s.WorkoutSession.Date <= monthEnd)
-            .Include(s => s.Exercise)
+        var templatedSessions = await _db.WorkoutSessions
+            .Where(s => s.Date >= monthStart && s.Date <= monthEnd && s.WorkoutTemplateId != null)
+            .Select(s => new { s.Id, TemplateId = s.WorkoutTemplateId!.Value })
             .ToListAsync();
 
-        if (sets.Count == 0) return new BalanceSectionDto(null);
+        if (templatedSessions.Count == 0) return new BalanceSectionDto(null);
 
-        var pushCount = sets.Count(s => s.Exercise.Category == ExerciseCategory.Push);
-        var pullCount = sets.Count(s => s.Exercise.Category == ExerciseCategory.Pull);
+        var sessionIds = templatedSessions.Select(s => s.Id).ToHashSet();
 
-        if (pushCount == 0 || pullCount == 0) return new BalanceSectionDto(null);
+        // Prescribed: each template's target sets by category, counted once
+        // per time that template was actually run this month.
+        var runsPerTemplate = templatedSessions
+            .GroupBy(s => s.TemplateId)
+            .ToDictionary(g => g.Key, g => g.Count());
 
-        var higher = Math.Max(pushCount, pullCount);
-        var lower = Math.Min(pushCount, pullCount);
-        var pctBelow = (higher - lower) / (decimal)higher * 100m;
+        var templateTargets = await _db.WorkoutTemplateExercises
+            .Where(te => runsPerTemplate.Keys.Contains(te.WorkoutTemplateId))
+            .Select(te => new { te.WorkoutTemplateId, te.TargetSets, te.Exercise.Category })
+            .ToListAsync();
 
-        if (pctBelow < 20m) return new BalanceSectionDto(null); // in balance, nothing worth flagging
+        var plannedPush = templateTargets
+            .Where(t => t.Category == ExerciseCategory.Push)
+            .Sum(t => t.TargetSets * runsPerTemplate[t.WorkoutTemplateId]);
+        var plannedPull = templateTargets
+            .Where(t => t.Category == ExerciseCategory.Pull)
+            .Sum(t => t.TargetSets * runsPerTemplate[t.WorkoutTemplateId]);
 
-        var lowerLabel = pushCount < pullCount ? "Push" : "Pull";
-        var higherLabel = pushCount < pullCount ? "Pull" : "Push";
-        return new BalanceSectionDto($"{lowerLabel} volume {Math.Round(pctBelow)}% below {higherLabel} this month");
+        // Logged: the same sessions, non-warmup sets only.
+        var loggedCategories = await _db.ExerciseSets
+            .Where(s => s.SetType != SetType.Warmup && sessionIds.Contains(s.WorkoutSessionId))
+            .Select(s => s.Exercise.Category)
+            .ToListAsync();
+
+        var actualPush = loggedCategories.Count(c => c == ExerciseCategory.Push);
+        var actualPull = loggedCategories.Count(c => c == ExerciseCategory.Pull);
+
+        return new BalanceSectionDto(
+            PushPullBalance.Flag(new PushPullInput(plannedPush, plannedPull, actualPush, actualPull)));
     }
 
     private static ContextSectionDto BuildContext(
@@ -419,6 +420,37 @@ public class MonthlyReportBuilder
         return "Steady month";
     }
 
+    // "Did X run twice as often as Y?" is only a real question when X and Y
+    // are alternatives to each other. Comparing across families produced
+    // nonsense - a club training is not a substitute for an interval session,
+    // so their counts have no reason to match. Compared within a family only,
+    // preferring Gym: templates are the genuinely interchangeable set.
+    private const int MinCountForRebalanceQuestion = 3;
+
+    private static readonly string[] RebalanceFamilyPreference =
+        [SessionFamily.Gym, SessionFamily.Running, SessionFamily.Ultimate];
+
+    public static string? RebalanceQuestion(List<SessionTypeCountDto> byType)
+    {
+        foreach (var family in RebalanceFamilyPreference)
+        {
+            var inFamily = byType.Where(t => t.Family == family).ToList();
+            if (inFamily.Count < 2) continue;
+
+            var max = inFamily.Max(t => t.Count);
+            var min = inFamily.Min(t => t.Count);
+            // 3, not 2: a 2x-vs-1x split clears the "twice as often" bar
+            // arithmetically but is far too thin to ask a question about.
+            if (max < MinCountForRebalanceQuestion || max < min * 2) continue;
+
+            var maxType = inFamily.First(t => t.Count == max).Label;
+            var minType = inFamily.First(t => t.Count == min).Label;
+            return $"{maxType} ran {max}x this month vs {minType}'s {min}x — deliberate, or worth rebalancing?";
+        }
+
+        return null;
+    }
+
     private static List<string> BuildNextMonthQuestions(LoadProgressionSectionDto load, ContextSectionDto context, ConsistencySectionDto consistency)
     {
         var questions = new List<string>();
@@ -436,18 +468,8 @@ public class MonthlyReportBuilder
             questions.Add($"{name}{extra} didn't get logged at all this month — dropped on purpose, or just slipping?");
         }
 
-        var typeCounts = consistency.SessionsByType;
-        if (typeCounts.Count > 1)
-        {
-            var max = typeCounts.Max(t => t.Count);
-            var min = typeCounts.Min(t => t.Count);
-            if (max >= min * 2 && max >= 2)
-            {
-                var maxType = typeCounts.First(t => t.Count == max).Label;
-                var minType = typeCounts.First(t => t.Count == min).Label;
-                questions.Add($"{maxType} ran {max}x this month vs {minType}'s {min}x — deliberate, or worth rebalancing?");
-            }
-        }
+        var rebalance = RebalanceQuestion(consistency.SessionsByType);
+        if (rebalance is not null) questions.Add(rebalance);
 
         if (questions.Count < 3 && context.LongestGapDays is > 7)
         {

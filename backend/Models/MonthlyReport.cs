@@ -19,5 +19,13 @@ public class MonthlyReport
     public string ReportJson { get; set; } = "{}";
     public DateTime ComputedAt { get; set; }
 
+    // Which shape of MonthlyReportDto ReportJson holds. A snapshot written
+    // under an older shape is stale the moment the report changes, so rather
+    // than deleting rows (which would lose ViewedAt), a row below
+    // MonthlyReportsController.CurrentReportSchemaVersion is recomputed and
+    // overwritten in place on the next read. 0 is "written before this column
+    // existed" and always rebuilds.
+    public int SchemaVersion { get; set; }
+
     public DateTime? ViewedAt { get; set; }
 }

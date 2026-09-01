@@ -23,36 +23,53 @@ public class MonthlyWellnessSummarizerTests
     [Fact]
     public void ReturnsNull_WhenMonthHasFewerThanSevenLoggedDaysForEveryMetric()
     {
-        var month = Days(MonthStart, 6, readiness: 70, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
-        var trailing = Days(TrailStart, 60, readiness: 70, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+        var month = Days(MonthStart, 6, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+        var trailing = Days(TrailStart, 60, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], 70);
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31);
 
         Assert.Null(result);
+    }
+
+    // Readiness is deliberately not a monthly metric — it's acute and
+    // mean-reverting, so a month average against a 3-month baseline carries
+    // almost no information. It stays on the dashboard, same-day.
+    [Fact]
+    public void ReadinessIsNotReported_AndSlowMovingMetricsLead()
+    {
+        var month = Days(MonthStart, 28, readiness: 45, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+        var trailing = Days(TrailStart, 80, readiness: 70, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
+
+        Assert.DoesNotContain(result.Metrics, m => m.Key == "readiness");
+        Assert.Equal(
+            new[] { "restingHeartRate", "hrv", "sleepDuration", "sleepScore" },
+            result.Metrics.Select(m => m.Key));
     }
 
     [Fact]
     public void FlatMonthVsFlatBaseline_IsInLine()
     {
-        var month = Days(MonthStart, 28, readiness: 68, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
-        var trailing = Days(TrailStart, 80, readiness: 68, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+        var month = Days(MonthStart, 28, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
+        var trailing = Days(TrailStart, 80, sleepScore: 80, sleepSeconds: 27000, hrv: 50, rhr: 44);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], 68)!;
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
 
-        Assert.Equal("in_line", Metric(result, "readiness").Direction);
-        Assert.Equal(68m, Metric(result, "readiness").MonthAvg);
-        Assert.Equal(68m, Metric(result, "readiness").TrailingAvg);
+        Assert.Equal("in_line", Metric(result, "hrv").Direction);
+        Assert.Equal(50m, Metric(result, "hrv").MonthAvg);
+        Assert.Equal(50m, Metric(result, "hrv").TrailingAvg);
     }
 
     [Fact]
-    public void ReadinessWellBelowBaseline_IsFlaggedBelow()
+    public void HrvWellBelowBaseline_IsFlaggedBelow()
     {
-        var month = Days(MonthStart, 28, readiness: 45);
-        var trailing = Days(TrailStart, 80, readiness: 70);
+        var month = Days(MonthStart, 28, hrv: 40);
+        var trailing = Days(TrailStart, 80, hrv: 55);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], 70)!;
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
 
-        Assert.Equal("below", Metric(result, "readiness").Direction);
+        Assert.Equal("below", Metric(result, "hrv").Direction);
     }
 
     [Fact]
@@ -63,7 +80,7 @@ public class MonthlyWellnessSummarizerTests
         var month = Days(MonthStart, 28, rhr: 48);
         var trailing = Days(TrailStart, 80, rhr: 44);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], null)!;
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
 
         Assert.Equal("below", Metric(result, "restingHeartRate").Direction);
     }
@@ -75,11 +92,11 @@ public class MonthlyWellnessSummarizerTests
         month.AddRange(Days(MonthStart, 10, sleepSeconds: 21600));       // 6h — under 7h
         month.AddRange(Days(MonthStart.AddDays(10), 12, sleepSeconds: 28800)); // 8h
         // 8 further days with no sleep reading at all
-        month.AddRange(Days(MonthStart.AddDays(22), 8, readiness: 60));
+        month.AddRange(Days(MonthStart.AddDays(22), 8, rhr: 44));
 
         var trailing = Days(TrailStart, 80, sleepSeconds: 27000);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], null)!;
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
 
         Assert.Equal(22, result.NightsLogged);
         Assert.Equal(31, result.DaysInMonth);
@@ -87,64 +104,16 @@ public class MonthlyWellnessSummarizerTests
     }
 
     [Fact]
-    public void LoadVsRecoveryLine_EmittedWhenTopVolumeWeeksReadinessDipsBelowBaseline()
-    {
-        var month = Days(MonthStart, 28, readiness: 65);
-        var trailing = Days(TrailStart, 80, readiness: 65);
-        var weeks = new List<WellnessWeekLoad>
-        {
-            new(12000m, 55.0),   // highest volume, low readiness
-            new(11000m, 57.0),   // 2nd highest, low readiness
-            new(4000m, 70.0),
-            new(3000m, 72.0),
-        };
-
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, weeks, trailingReadinessAvg: 70)!;
-
-        Assert.NotNull(result.LoadVsRecoveryLine);
-        Assert.Contains("highest-volume weeks", result.LoadVsRecoveryLine);
-    }
-
-    [Fact]
-    public void LoadVsRecoveryLine_NullWhenGapWithinBand()
-    {
-        var month = Days(MonthStart, 28, readiness: 68);
-        var trailing = Days(TrailStart, 80, readiness: 68);
-        var weeks = new List<WellnessWeekLoad>
-        {
-            new(12000m, 69.0),
-            new(11000m, 68.0),
-            new(4000m, 70.0),
-        };
-
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, weeks, trailingReadinessAvg: 70)!;
-
-        Assert.Null(result.LoadVsRecoveryLine);
-    }
-
-    [Fact]
-    public void LoadVsRecoveryLine_NullWhenTooFewUsableWeeks()
-    {
-        var month = Days(MonthStart, 28, readiness: 65);
-        var trailing = Days(TrailStart, 80, readiness: 65);
-        var weeks = new List<WellnessWeekLoad> { new(12000m, 50.0), new(11000m, 52.0) };
-
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, weeks, trailingReadinessAvg: 70)!;
-
-        Assert.Null(result.LoadVsRecoveryLine);
-    }
-
-    [Fact]
     public void TrailingWindowUnderSevenDays_LeavesDirectionInsufficient()
     {
-        var month = Days(MonthStart, 28, readiness: 60);
-        var trailing = Days(TrailStart, 4, readiness: 70);
+        var month = Days(MonthStart, 28, rhr: 50);
+        var trailing = Days(TrailStart, 4, rhr: 44);
 
-        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31, [], 70)!;
+        var result = MonthlyWellnessSummarizer.Summarize(month, trailing, 31)!;
 
-        var readiness = Metric(result, "readiness");
-        Assert.Equal(60m, readiness.MonthAvg);
-        Assert.Null(readiness.TrailingAvg);
-        Assert.Equal("insufficient", readiness.Direction);
+        var rhr = Metric(result, "restingHeartRate");
+        Assert.Equal(50m, rhr.MonthAvg);
+        Assert.Null(rhr.TrailingAvg);
+        Assert.Equal("insufficient", rhr.Direction);
     }
 }

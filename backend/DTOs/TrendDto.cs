@@ -11,12 +11,18 @@ public record LiftTrendDto(
     DateOnly LatestMonth,
     decimal DeltaKg);
 
+// Distance fields are nullable for the same reason as RunTypeSummaryDto's:
+// a total (or average) GPS distance is only meaningful for continuous
+// running. RunningMetrics.ShapeFor decides, so this and the monthly report
+// can't say contradictory things about the same sessions.
 public record RunTypeTrendDto(
     int RunSessionTypeId,
     string RunSessionTypeName,
     int SessionCount,
-    decimal TotalDistanceKm,
-    decimal AvgDistanceKm);
+    decimal? TotalDistanceKm,
+    decimal? AvgDistanceKm,
+    decimal? HighSpeedDistanceKm,
+    int? WorkRepCount);
 
 public record SeasonStrengthDto(
     List<SeasonMonthDto> Months,

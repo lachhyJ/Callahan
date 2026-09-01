@@ -124,11 +124,14 @@ public class TrendsController : ControllerBase
         return Ok(trends.OrderByDescending(t => Math.Abs(t.DeltaKg)).ToList());
     }
 
-    // Count per type first (what Lachlan asked to see), plus distance so
-    // e.g. "how far am I actually covering in High Speed Intervals sessions"
-    // has an answer — that's the whole-session distance, not a breakdown of
-    // just the sprint portions, since Garmin sync only pulls aggregate
-    // distance/duration per activity, not lap-level splits.
+    // Count per type first (what Lachlan asked to see), plus whichever of
+    // distance / high-speed distance / work reps actually means something for
+    // that type — RunningMetrics.ShapeFor is the shared rule, so this agrees
+    // with the monthly report's running section. Whole-session distance used
+    // to be shown for every type on the grounds that Garmin gave us nothing
+    // finer; lap-level splits landed 2026-08-25, and for the rep-based types
+    // that total was actively misleading (GPS under-measures shuttle turns,
+    // elapsed time counts standing rest).
     [HttpGet("runs")]
     public async Task<ActionResult<List<RunTypeTrendDto>>> GetRunTypeTrends([FromQuery] int months = 6)
     {
@@ -141,15 +144,47 @@ public class TrendsController : ControllerBase
             .Include(a => a.ActivitySessionType)
             .ToListAsync();
 
+        var activeLapCounts = await _db.ActivityLaps
+            .Where(l => l.IntensityType == ActivityLap.ActiveIntensityType
+                     && l.Activity.Type == ActivityType.Running && l.Activity.Date >= earliestMonthStart)
+            .GroupBy(l => l.ActivityId)
+            .Select(g => new { ActivityId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.ActivityId, x => x.Count);
+
         var trends = runs
             .GroupBy(a => new { a.ActivitySessionTypeId, Name = a.ActivitySessionType!.Name })
             .Select(g =>
             {
-                var withDistance = g.Where(a => a.DistanceKm != null).ToList();
-                var totalDistance = withDistance.Sum(a => a.DistanceKm!.Value);
+                var shape = RunningMetrics.ShapeFor(g.Key.Name);
+
+                decimal? total = null, avg = null;
+                if (shape.Distance)
+                {
+                    var withDistance = g.Where(a => a.DistanceKm != null).ToList();
+                    total = withDistance.Sum(a => a.DistanceKm!.Value);
+                    avg = withDistance.Count > 0 ? total / withDistance.Count : 0m;
+                }
+
+                decimal? highSpeedKm = null;
+                if (shape.HighSpeed)
+                {
+                    var withHighSpeed = g.Where(a => a.HighSpeedDistanceM != null).ToList();
+                    if (withHighSpeed.Count > 0)
+                    {
+                        highSpeedKm = Math.Round(withHighSpeed.Sum(a => a.HighSpeedDistanceM!.Value) / 1000m, 2);
+                    }
+                }
+
+                int? reps = null;
+                if (shape.Reps)
+                {
+                    var totalReps = g.Sum(a => activeLapCounts.TryGetValue(a.Id, out var n) ? n : 0);
+                    if (totalReps > 0) reps = totalReps;
+                }
+
                 return new RunTypeTrendDto(
                     g.Key.ActivitySessionTypeId!.Value, g.Key.Name, g.Count(),
-                    totalDistance, withDistance.Count > 0 ? totalDistance / withDistance.Count : 0);
+                    total, avg, highSpeedKm, reps);
             })
             .OrderByDescending(t => t.SessionCount)
             .ToList();

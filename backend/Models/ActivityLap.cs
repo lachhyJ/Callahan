@@ -16,6 +16,12 @@ public class ActivityLap
     // heuristic needed, Garmin already did that classification.
     public string? IntensityType { get; set; }
 
+    // The IntensityType value marking a work rep. Lives here rather than in
+    // any one caller so the lap-sync path (which caches
+    // Activity.HighSpeedDistanceM off it) and the monthly report's rep counts
+    // can't drift apart.
+    public const string ActiveIntensityType = "ACTIVE";
+
     public decimal? DistanceM { get; set; }
     public decimal? DurationSeconds { get; set; }
     public decimal? MovingDurationSeconds { get; set; }

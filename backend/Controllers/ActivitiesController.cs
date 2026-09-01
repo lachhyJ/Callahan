@@ -302,7 +302,7 @@ public class ActivitiesController : ControllerBase
     // marks "ACTIVE" for a structured interval workout - no speed-threshold
     // heuristic needed, confirmed against a real High Speed Intervals
     // session via --dump-laps (2026-08-25).
-    private const string HighSpeedIntensityType = "ACTIVE";
+    private const string HighSpeedIntensityType = ActivityLap.ActiveIntensityType;
 
     [HttpPut("{id}/laps")]
     public async Task<ActionResult<ActivityLapsResponse>> ReplaceLaps(int id, UpsertActivityLapsRequest request)
