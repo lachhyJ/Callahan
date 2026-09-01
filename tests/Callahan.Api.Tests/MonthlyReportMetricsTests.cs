@@ -326,3 +326,32 @@ public class LiftProgressTests
         Assert.Null(LiftProgress.ToDto(S(-14, 8), LiftBasis.Assisted).E1Rm);
     }
 }
+
+public class LiftBasisStabilityTests
+{
+    private static LiftSetInput S(decimal kg, int reps) => new(kg, reps);
+
+    // The basis must be a property of the exercise, not of the date range
+    // being viewed — otherwise the same lift reads as set volume in the
+    // monthly report and as e1RM on /trends, purely because the two look at
+    // different windows. Seen live 2026-09-01.
+    [Fact]
+    public void BasisIsUnchangedByLookingAtASubsetOfHistory()
+    {
+        // Full history is high-rep; a recent window happens to be low-rep.
+        List<LiftSetInput> full = [S(40, 20), S(40, 18), S(40, 16), S(45, 10), S(45, 11)];
+        var recentWindow = full.TakeLast(2).ToList();
+
+        Assert.Equal(LiftBasis.SetVolume, LiftProgress.BasisFor(full));
+        Assert.NotEqual(LiftProgress.BasisFor(full), LiftProgress.BasisFor(recentWindow));
+    }
+
+    // Likewise an assisted lift that has since reached bodyweight-plus must
+    // not flip basis just because the recent window contains no assisted set.
+    [Fact]
+    public void AssistedStaysAssisted_EvenWhenRecentSetsAreAllPositive()
+    {
+        List<LiftSetInput> full = [S(-14, 8), S(-8, 8), S(0, 6), S(5, 5)];
+        Assert.Equal(LiftBasis.Assisted, LiftProgress.BasisFor(full));
+    }
+}

@@ -85,10 +85,23 @@ public class TrendsController : ControllerBase
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
         var sets = await _db.ExerciseSets
-            .Where(s => s.WorkoutSession.Date >= earliestMonthStart)
+            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= earliestMonthStart)
             .Include(s => s.WorkoutSession)
             .Include(s => s.Exercise)
             .ToListAsync();
+
+        // Basis is a property of the exercise, not of the window being viewed,
+        // so it's derived from the FULL history — deriving it from the window
+        // let the same lift show as set volume in the monthly report and as
+        // e1RM here, purely because the two looked at different date ranges.
+        var basisByExercise = (await _db.ExerciseSets
+                .Where(s => s.SetType != SetType.Warmup)
+                .Select(s => new { s.ExerciseId, s.WeightKg, s.Reps })
+                .ToListAsync())
+            .GroupBy(s => s.ExerciseId)
+            .ToDictionary(
+                g => g.Key,
+                g => LiftProgress.BasisFor(g.Select(s => new LiftSetInput(s.WeightKg, s.Reps)).ToList()));
 
         // Each exercise's basis comes from its own history (LiftProgress):
         // e1RM normally, set volume for high-rep accessories, load-then-reps
@@ -103,7 +116,7 @@ public class TrendsController : ControllerBase
         var trends = new List<LiftTrendDto>();
         foreach (var (exerciseId, exerciseSets) in byExercise)
         {
-            var basis = LiftProgress.BasisFor(exerciseSets.Select(ToInput).ToList());
+            var basis = basisByExercise.TryGetValue(exerciseId, out var b) ? b : LiftBasis.E1Rm;
 
             var bestByMonth = exerciseSets
                 .GroupBy(s => new DateOnly(s.WorkoutSession.Date.Year, s.WorkoutSession.Date.Month, 1))
