@@ -28,16 +28,21 @@ public record RunActivityInput(
 // safe default for something that might be a plain continuous run.
 public static class RunningMetrics
 {
-    private record Shape(bool Distance, bool HighSpeed, bool Reps);
+    public record RunTypeShape(bool Distance, bool HighSpeed, bool Reps);
 
-    private static readonly Shape Continuous = new(Distance: true, HighSpeed: false, Reps: false);
+    private static readonly RunTypeShape Continuous = new(Distance: true, HighSpeed: false, Reps: false);
 
-    private static readonly Dictionary<string, Shape> ByTypeName = new()
+    private static readonly Dictionary<string, RunTypeShape> ByTypeName = new()
     {
         ["Easy Aerobic Run"] = Continuous,
         ["High Speed Intervals"] = new(Distance: false, HighSpeed: true, Reps: true),
         ["Speed & Acceleration"] = new(Distance: false, HighSpeed: false, Reps: true),
     };
+
+    // Public so /trends/runs applies the same rule as the monthly report -
+    // the two showed contradictory things about the same sessions otherwise.
+    public static RunTypeShape ShapeFor(string typeName) =>
+        ByTypeName.TryGetValue(typeName, out var s) ? s : Continuous;
 
     public static List<RunTypeSummaryDto> Summarize(IEnumerable<RunActivityInput> runs)
     {
@@ -45,7 +50,7 @@ public static class RunningMetrics
             .GroupBy(r => r.TypeName)
             .Select(g =>
             {
-                var shape = ByTypeName.TryGetValue(g.Key, out var s) ? s : Continuous;
+                var shape = ShapeFor(g.Key);
 
                 decimal? highSpeedKm = null;
                 if (shape.HighSpeed)

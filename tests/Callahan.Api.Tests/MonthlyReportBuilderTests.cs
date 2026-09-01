@@ -327,6 +327,40 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
         Assert.DoesNotContain("old shape", row.ReportJson);
     }
 
+    // Two readers both find no snapshot and both try to create one. This is
+    // routine, not exotic: React runs effects twice in development, and the
+    // first load after a schema-version bump has every month rebuilding at
+    // once. (Year, Month) is unique, so the loser must take the winner's row
+    // rather than 500.
+    [Fact]
+    public async Task ConcurrentFirstReads_DoNotCollideOnTheUniqueMonth()
+    {
+        var second = new MonthlyReportsController(_db, new MonthlyReportBuilder(_db));
+
+        var first = Unwrap(await _controller.Get(Year, Month));
+
+        // Simulate the racing request: it read "no row" before the winner
+        // committed, so it still tries to insert.
+        _db.ChangeTracker.Clear();
+        var racer = new MonthlyReport
+        {
+            Year = Year,
+            Month = Month,
+            ReportJson = "{}",
+            ComputedAt = DateTime.UtcNow,
+        };
+        _db.MonthlyReports.Add(racer);
+        await Assert.ThrowsAsync<DbUpdateException>(() => _db.SaveChangesAsync());
+        _db.ChangeTracker.Clear();
+
+        // The endpoint itself must still succeed and still see one row.
+        var again = Unwrap(await second.Get(Year, Month));
+
+        Assert.True(again.IsLocked);
+        Assert.Equal(first.HeadlineVerdict, again.HeadlineVerdict);
+        Assert.Single(_db.MonthlyReports);
+    }
+
     [Fact]
     public async Task CurrentSnapshot_IsReturnedUnchanged_AndNotRecomputed()
     {

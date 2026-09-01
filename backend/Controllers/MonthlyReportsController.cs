@@ -86,15 +86,10 @@ public class MonthlyReportsController : ControllerBase
 
         // Provisional (unsnapshotted) month — nothing to persist yet, but we
         // still want "viewed" to survive if it locks later without another
-        // real view. Store a placeholder snapshot marked as viewed; the next
-        // GET past the lock day will overwrite it with the real computed
-        // report anyway if it doesn't already exist... except it does now,
-        // so instead: only allow marking-viewed on months that already have
-        // *a* row (locked or not). If unlocked and no row exists yet, create
-        // a lightweight row carrying just ViewedAt; GetOrComputeAsync treats
-        // a present-but-not-yet-locked-month row as "not locked" via the
+        // real view. If unlocked and no row exists yet, create a lightweight
+        // row carrying just ViewedAt; GetOrComputeAsync treats a
+        // present-but-not-yet-locked-month row as "not locked" via the
         // separate lock day check, so this doesn't accidentally freeze data.
-        var today = DateOnly.FromDateTime(DateTime.Now);
         var dto = await _builder.BuildAsync(year, month);
         row = new MonthlyReport
         {
@@ -106,7 +101,25 @@ public class MonthlyReportsController : ControllerBase
             ViewedAt = DateTime.UtcNow,
         };
         _db.MonthlyReports.Add(row);
-        await _db.SaveChangesAsync();
+
+        try
+        {
+            await _db.SaveChangesAsync();
+        }
+        catch (DbUpdateException)
+        {
+            // Lost a race to insert this month's row — (Year, Month) is
+            // unique. The frontend fires this from an effect that React runs
+            // twice in development, so two concurrent calls both read "no row"
+            // and both insert. Whoever won created the row; marking it viewed
+            // is all this endpoint wanted anyway.
+            _db.Entry(row).State = EntityState.Detached;
+            var winner = await _db.MonthlyReports.FirstOrDefaultAsync(r => r.Year == year && r.Month == month);
+            if (winner is null) throw;
+            winner.ViewedAt = DateTime.UtcNow;
+            await _db.SaveChangesAsync();
+        }
+
         return NoContent();
     }
 
@@ -143,6 +156,7 @@ public class MonthlyReportsController : ControllerBase
             var toSnapshot = await _builder.BuildAsync(year, month);
             toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false, ViewedAt = existing?.ViewedAt };
 
+            var isNewRow = existing is null;
             if (existing is null)
             {
                 existing = new MonthlyReport { Year = year, Month = month };
@@ -152,7 +166,30 @@ public class MonthlyReportsController : ControllerBase
             existing.ComputedAt = DateTime.UtcNow;
             existing.SchemaVersion = CurrentReportSchemaVersion;
 
-            await _db.SaveChangesAsync();
+            try
+            {
+                await _db.SaveChangesAsync();
+            }
+            catch (DbUpdateException) when (isNewRow)
+            {
+                // Lost the race to create this month's row — (Year, Month) is
+                // unique, and concurrent readers both see "no snapshot" and
+                // both insert. Two things make that routine rather than
+                // exotic: the frontend's effects run twice in development,
+                // and the first load after a schema-version bump has every
+                // month rebuilding at once. The winner computed from the same
+                // data, so take their row rather than failing the request.
+                _db.Entry(existing).State = EntityState.Detached;
+                var winner = await _db.MonthlyReports.FirstOrDefaultAsync(r => r.Year == year && r.Month == month);
+                if (winner is null) throw;
+                return Deserialize(winner.ReportJson) with
+                {
+                    IsLocked = true,
+                    IsProvisional = false,
+                    ViewedAt = winner.ViewedAt,
+                };
+            }
+
             return toSnapshot;
         }
 

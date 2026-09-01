@@ -88,9 +88,9 @@ export default function ReportDetailPage() {
   const zeroSet = l.zeroSetProgramExercises
   const zeroSetLine = zeroSet.length === 0
     ? 'Every program exercise got logged this month.'
-    : zeroSet.length <= 2
+    : zeroSet.length <= 3
       ? `Didn't log ${joinList(zeroSet)} from the program this month.`
-      : `Didn't log ${joinList(zeroSet.slice(0, 2))} or ${zeroSet.length - 2} others from the program this month.`
+      : `Didn't log ${zeroSet.slice(0, 2).join(', ')} and ${zeroSet.length - 2} others from the program this month.`
 
   return (
     <main className="page">
