@@ -425,6 +425,8 @@ public class MonthlyReportBuilder
     // nonsense - a club training is not a substitute for an interval session,
     // so their counts have no reason to match. Compared within a family only,
     // preferring Gym: templates are the genuinely interchangeable set.
+    private const int MinCountForRebalanceQuestion = 3;
+
     private static readonly string[] RebalanceFamilyPreference =
         [SessionFamily.Gym, SessionFamily.Running, SessionFamily.Ultimate];
 
@@ -437,7 +439,9 @@ public class MonthlyReportBuilder
 
             var max = inFamily.Max(t => t.Count);
             var min = inFamily.Min(t => t.Count);
-            if (max < 2 || max < min * 2) continue;
+            // 3, not 2: a 2x-vs-1x split clears the "twice as often" bar
+            // arithmetically but is far too thin to ask a question about.
+            if (max < MinCountForRebalanceQuestion || max < min * 2) continue;
 
             var maxType = inFamily.First(t => t.Count == max).Label;
             var minType = inFamily.First(t => t.Count == min).Label;

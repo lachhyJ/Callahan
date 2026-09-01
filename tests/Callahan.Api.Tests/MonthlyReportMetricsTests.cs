@@ -213,6 +213,26 @@ public class RebalanceQuestionTests
         Assert.Contains("Club Training", question);
     }
 
+    // 2x vs 1x satisfies "twice as often" but is too thin to be worth asking
+    // about — the bar is 3.
+    [Fact]
+    public void TwoVersusOne_IsTooThinToAsk()
+    {
+        Assert.Null(MonthlyReportBuilder.RebalanceQuestion([
+            T("Easy Aerobic Run", 2, SessionFamily.Running),
+            T("Speed & Acceleration", 1, SessionFamily.Running),
+        ]));
+    }
+
+    [Fact]
+    public void ThreeVersusOne_DoesAsk()
+    {
+        Assert.NotNull(MonthlyReportBuilder.RebalanceQuestion([
+            T("Easy Aerobic Run", 3, SessionFamily.Running),
+            T("Speed & Acceleration", 1, SessionFamily.Running),
+        ]));
+    }
+
     [Fact]
     public void SingleTypeInAFamily_IsNotAComparison()
     {
