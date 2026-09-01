@@ -217,6 +217,7 @@ function AppRoutes() {
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/games" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
+          <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
           <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
           <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />

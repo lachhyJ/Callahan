@@ -1,12 +1,32 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiftTrends, getLoadTrend, getRunTypeTrends, getTrends } from '../api/client'
+import { getLiftTrends, getLoadTrend, getRunTypeTrends, getSeasonStrength, getTrends } from '../api/client'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
 import RunTypeTrendsList from '../components/RunTypeTrendsList'
 import LoadVsWellnessChart from '../components/LoadVsWellnessChart'
+import SeasonStrengthChart from '../components/SeasonStrengthChart'
 import MuscleBalanceSection from '../components/MuscleBalanceSection'
+
+const SEASON_STRENGTH_MONTHS = 9
+
+function seasonStrengthSummary(data) {
+  const primary = data.series.filter((s) => s.isPrimary)
+  const pick = (primary.length > 0 ? primary : data.series).slice(0, 3)
+  const top = pick.map((s) => {
+    const pct = Math.round(Number(s.points[s.points.length - 1].pctFromBaseline))
+    return `${s.exerciseName} ${pct >= 0 ? '+' : ''}${pct}%`
+  })
+  if (top.length === 0) return null
+  let line = `${top.join(', ')} over ${SEASON_STRENGTH_MONTHS} months`
+  if (data.seasons.length > 0) {
+    const s = data.seasons[0]
+    const m = (iso) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-AU', { month: 'short' })
+    line += ` · in-season ${m(s.start)}–${m(s.end)}`
+  }
+  return line
+}
 
 function formatVolume(v) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
@@ -49,6 +69,7 @@ export default function TrendsPage() {
   const [liftTrends, setLiftTrends] = useState(null)
   const [runTypeTrends, setRunTypeTrends] = useState(null)
   const [loadTrend, setLoadTrend] = useState(null)
+  const [seasonStrength, setSeasonStrength] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -56,6 +77,7 @@ export default function TrendsPage() {
     getLiftTrends(6).then(setLiftTrends).catch(() => setLiftTrends([]))
     getRunTypeTrends(6).then(setRunTypeTrends).catch(() => setRunTypeTrends([]))
     getLoadTrend(12).then(setLoadTrend).catch(() => setLoadTrend([]))
+    getSeasonStrength(SEASON_STRENGTH_MONTHS).then(setSeasonStrength).catch(() => setSeasonStrength(null))
   }, [])
 
   const hasAnyData = months?.some((m) => m.gymSessions > 0 || m.runSessions > 0)
@@ -92,10 +114,12 @@ export default function TrendsPage() {
             {summary.priorVolume > 0 && ` (${formatVolume(summary.priorVolume)} kg in the 3 before that)`}
           </p>
 
-          {liftTrends && liftTrends.length > 0 && (
+          {seasonStrength?.series?.length >= 2 && (
             <div className="section-gap">
-              <h2 className="trend-chart-title">Lift trends</h2>
-              <LiftTrendsList trends={liftTrends} />
+              <SeasonStrengthChart data={seasonStrength} />
+              {seasonStrengthSummary(seasonStrength) && (
+                <p className="trend-summary">{seasonStrengthSummary(seasonStrength)}</p>
+              )}
             </div>
           )}
 
@@ -116,6 +140,15 @@ export default function TrendsPage() {
       )}
 
       <MuscleBalanceSection />
+
+      {/* Kept at the bottom deliberately — largely superseded by the season
+          strength chart above; candidate for removal (see project backlog). */}
+      {months && hasAnyData && liftTrends && liftTrends.length > 0 && (
+        <div className="section-gap">
+          <h2 className="trend-chart-title">Lift trends</h2>
+          <LiftTrendsList trends={liftTrends} />
+        </div>
+      )}
     </main>
   )
 }

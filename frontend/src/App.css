@@ -1824,6 +1824,104 @@ td {
   fill: var(--accent-bg);
 }
 
+/* ── Season-strength chart ── */
+.chart-series-1 { stroke: var(--chart-series-1); }
+.chart-series-2 { stroke: var(--chart-series-2); }
+.chart-series-3 { stroke: var(--chart-series-3); }
+.chart-series-4 { stroke: var(--chart-series-4); }
+.chart-series-5 { stroke: var(--chart-series-5); }
+.chart-series-6 { stroke: var(--chart-series-6); }
+
+.season-band {
+  fill: color-mix(in srgb, var(--text-h) 7%, transparent);
+}
+
+.season-band-edge {
+  stroke: color-mix(in srgb, var(--text-h) 30%, transparent);
+  stroke-width: 1;
+}
+
+.season-band-label,
+.season-month-label {
+  fill: var(--text-tertiary);
+  font-size: var(--text-2xs);
+}
+
+.season-nationals-marker {
+  stroke: var(--text-h);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 2;
+}
+
+.season-nationals-label {
+  fill: var(--text-h);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
+
+.season-run-line {
+  fill: none;
+  stroke: var(--teal-400);
+  stroke-width: 1;
+  opacity: 0.5;
+  stroke-dasharray: 2 2;
+}
+
+.chart-tick-label-run {
+  fill: var(--teal-400);
+}
+
+.season-ultimate-line {
+  fill: none;
+  stroke: var(--text-tertiary);
+  stroke-width: 1;
+  stroke-dasharray: 1 2;
+}
+
+.season-strength-keys {
+  flex-wrap: wrap;
+  margin-top: var(--space-2xs);
+}
+
+.trend-legend-swatch.key-season {
+  background: color-mix(in srgb, var(--text-h) 8%, transparent);
+  border: 1px solid var(--border);
+}
+
+.trend-legend-swatch.key-tournament {
+  background: var(--accent-bg);
+}
+
+.trend-legend-swatch.key-nationals {
+  width: 2px;
+  background: var(--text-h);
+}
+
+.trend-legend-swatch.key-run {
+  background: var(--teal-400);
+}
+
+.trend-legend-swatch.key-ultimate {
+  background: var(--text-tertiary);
+}
+
+.trend-legend-item.is-toggle {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: var(--text-tertiary);
+}
+
+.trend-legend-item.is-off {
+  opacity: 0.4;
+}
+
+.trend-legend-swatch.series {
+  border-radius: var(--radius-sm);
+}
+
 .load-vs-wellness-svg {
   height: auto;
 }
@@ -3001,7 +3099,7 @@ td {
 }
 
 .trend-bar {
-  fill: var(--border);
+  fill: var(--text-tertiary);
 }
 
 .trend-bar.current {

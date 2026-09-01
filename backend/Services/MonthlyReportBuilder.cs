@@ -242,8 +242,7 @@ public class MonthlyReportBuilder
             movers, stalls, zeroSet);
     }
 
-    // Epley formula: 1RM = weight * (1 + reps/30).
-    private static decimal E1Rm(ExerciseSet s) => s.WeightKg * (1 + s.Reps / 30m);
+    private static decimal E1Rm(ExerciseSet s) => LiftMath.Epley1Rm(s.Reps, s.WeightKg);
 
     private static RunningSectionDto BuildRunning(List<Activity> monthActivities)
     {

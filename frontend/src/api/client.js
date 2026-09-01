@@ -144,6 +144,10 @@ export function getLoadTrend(weeks = 12) {
   return apiFetch(`/api/wellness/load-trend?weeks=${weeks}`)
 }
 
+export function getSeasonStrength(months = 9) {
+  return apiFetch(`/api/trends/season-strength?months=${months}`)
+}
+
 export function getTaperEvents() {
   return apiFetch('/api/taper/events')
 }
@@ -361,6 +365,32 @@ export function deleteTournament(id) {
 
 export function attachTournamentGames(id) {
   return apiFetch(`/api/tournaments/${id}/attach-games`, { method: 'POST' })
+}
+
+export function getSeasons() {
+  return apiFetch('/api/seasons')
+}
+
+export function createSeason({ name, startDate, endDate, targetTournamentId }) {
+  return apiFetch('/api/seasons', {
+    method: 'POST',
+    body: JSON.stringify({ name, startDate, endDate, targetTournamentId: targetTournamentId ?? null }),
+  })
+}
+
+export function updateSeason(id, { name, startDate, endDate, targetTournamentId }) {
+  return apiFetch(`/api/seasons/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name, startDate, endDate, targetTournamentId: targetTournamentId ?? null }),
+  })
+}
+
+export function deleteSeason(id) {
+  return apiFetch(`/api/seasons/${id}`, { method: 'DELETE' })
+}
+
+export function attachSeasonTournaments(id) {
+  return apiFetch(`/api/seasons/${id}/attach-tournaments`, { method: 'POST' })
 }
 
 export function getHealth() {

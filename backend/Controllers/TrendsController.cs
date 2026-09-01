@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -154,5 +155,61 @@ public class TrendsController : ControllerBase
             .ToList();
 
         return Ok(trends);
+    }
+
+    // Strength through the season: per-lift monthly best e1RM as % change from
+    // its own baseline month, with monthly run / Ultimate load and the
+    // season / tournament bands to draw behind it. Descriptive only.
+    [HttpGet("season-strength")]
+    public async Task<ActionResult<SeasonStrengthDto>> GetSeasonStrength([FromQuery] int months = 9)
+    {
+        months = Math.Clamp(months, 1, 24);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+
+        // The current program: every exercise in any Day A/B/C template, keyed
+        // to its shallowest slot position (1 = first lift of a session). The
+        // chart tracks only these, and starts with the compounds (slot <= 2)
+        // visible.
+        var programSlots = await _db.WorkoutTemplateExercises
+            .GroupBy(te => te.ExerciseId)
+            .Select(g => new { ExerciseId = g.Key, Order = g.Min(te => te.ExerciseOrder) })
+            .ToListAsync();
+        var programOrder = programSlots.ToDictionary(x => x.ExerciseId, x => x.Order);
+        var programIds = programOrder.Keys.ToList();
+
+        var sets = await _db.ExerciseSets
+            .Where(s => s.WorkoutSession.Date >= earliestMonthStart
+                && s.SetType != SetType.Warmup
+                && programIds.Contains(s.ExerciseId))
+            .Select(s => new SeasonStrengthBuilder.LiftSetInput(
+                s.ExerciseId, s.Exercise.Name, s.WorkoutSession.Date, s.Reps, s.WeightKg))
+            .ToListAsync();
+
+        var runs = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.DistanceKm != null)
+            .Select(a => new RunLoad(a.Date, a.DistanceKm!.Value))
+            .ToListAsync();
+
+        var ultimate = await _db.Activities
+            .Where(a => a.Type == ActivityType.Ultimate && a.Date >= earliestMonthStart && a.LivePlaySeconds != null)
+            .Select(a => new UltimateLoad(a.Date, a.LivePlaySeconds!.Value))
+            .ToListAsync();
+
+        var tournaments = await _db.Tournaments
+            .Where(t => t.EndDate >= earliestMonthStart)
+            .Select(t => new SeasonStrengthBuilder.TournamentBand(t.Name, t.StartDate, t.EndDate))
+            .ToListAsync();
+
+        var seasons = await _db.Seasons
+            .Where(s => s.EndDate >= earliestMonthStart)
+            .Select(s => new SeasonStrengthBuilder.SeasonInput(
+                s.Name, s.StartDate, s.EndDate,
+                s.TargetTournament != null ? s.TargetTournament.StartDate : (DateOnly?)null))
+            .ToListAsync();
+
+        var result = SeasonStrengthBuilder.Build(today, months, sets, runs, ultimate, tournaments, seasons, programOrder);
+        return Ok(result);
     }
 }

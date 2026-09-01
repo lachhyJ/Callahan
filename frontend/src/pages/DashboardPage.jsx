@@ -49,7 +49,7 @@ const QUICK_LINKS = [
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/reports', label: 'Reports', Icon: ReportIcon },
-  { to: '/games', label: 'Games', Icon: HistoryIcon },
+  { to: '/ultimate', label: 'Ultimate', Icon: HistoryIcon },
   { to: '/exercises', label: 'Exercises', Icon: ListIcon },
 ]
 

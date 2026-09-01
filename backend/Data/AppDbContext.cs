@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
     public DbSet<ActivityTrack> ActivityTracks => Set<ActivityTrack>();
     public DbSet<Tournament> Tournaments => Set<Tournament>();
+    public DbSet<Season> Seasons => Set<Season>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -90,6 +91,24 @@ public class AppDbContext : DbContext
             // Activity rows it groups.
             .OnDelete(DeleteBehavior.SetNull);
 
+        modelBuilder.Entity<Season>()
+            .HasIndex(s => s.StartDate);
+        // Season <-> Tournament: a season groups tournaments; deleting a season
+        // just detaches them (same "grouping label" reasoning as Tournament
+        // above).
+        modelBuilder.Entity<Tournament>()
+            .HasOne(t => t.Season)
+            .WithMany(s => s.Tournaments)
+            .HasForeignKey(t => t.SeasonId)
+            .OnDelete(DeleteBehavior.SetNull);
+        // Season.TargetTournament: the "Nationals" pointer. No inverse nav, and
+        // deleting that tournament clears the pointer rather than the season.
+        modelBuilder.Entity<Season>()
+            .HasOne(s => s.TargetTournament)
+            .WithMany()
+            .HasForeignKey(s => s.TargetTournamentId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 2, Name = "Overhead Press", Category = ExerciseCategory.Push },
@@ -111,7 +130,7 @@ public class AppDbContext : DbContext
             new Exercise { Id = 16, Name = "DB Lateral Raise", Category = ExerciseCategory.Push },
             new Exercise { Id = 17, Name = "Cable Face Pull", Category = ExerciseCategory.Pull },
             new Exercise { Id = 18, Name = "Single Leg Standing Calf Raise", Category = ExerciseCategory.Legs },
-            new Exercise { Id = 19, Name = "Barbell or Trap Bar Squat", Category = ExerciseCategory.Legs },
+            new Exercise { Id = 19, Name = "Barbell Squat", Category = ExerciseCategory.Legs },
             new Exercise { Id = 20, Name = "Single Leg RDL (DB)", Category = ExerciseCategory.Legs },
             new Exercise { Id = 21, Name = "Push Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 22, Name = "Chin-Ups", Category = ExerciseCategory.Pull },

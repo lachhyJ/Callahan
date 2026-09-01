@@ -40,6 +40,18 @@
   --activity-ultimate: var(--teal-400);
   --activity-workout:  var(--pink-400);
 
+  /* ── Primitives — categorical chart series (Okabe-Ito, colourblind-safe) ──
+     Ordered so the first three (the common case) are maximally separated and
+     none reads as teal/green, which is reserved for the running overlay.
+     Paired with distinct dash patterns in SeasonStrengthChart so colour is
+     never the only channel. */
+  --chart-series-1: #0072b2;  /* blue */
+  --chart-series-2: #d55e00;  /* vermillion */
+  --chart-series-3: #cc79a7;  /* reddish purple */
+  --chart-series-4: #e69f00;  /* amber */
+  --chart-series-5: #009e73;  /* green */
+  --chart-series-6: #56b4e9;  /* sky */
+
   /* ── Primitives — spacing (8pt scale) ── */
   --space-2xs: 0.25rem;  /* 4px */
   --space-xs:  0.5rem;   /* 8px */
@@ -187,6 +199,14 @@
     --accent-border: color-mix(in srgb, var(--accent-400) 50%, transparent);
     --shadow:
       rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+
+    /* Brighter series hues for dark backgrounds — same order as :root. */
+    --chart-series-1: #4aa3d8;  /* blue */
+    --chart-series-2: #ef7f43;  /* vermillion */
+    --chart-series-3: #dc9cc4;  /* reddish purple */
+    --chart-series-4: #f0b03d;  /* amber */
+    --chart-series-5: #34c99b;  /* green */
+    --chart-series-6: #7cc7ef;  /* sky */
 
     --surface-raised:  color-mix(in srgb, var(--bg) 90%, var(--text-h));
     --surface-overlay: var(--gray-925);

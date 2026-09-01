@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -175,8 +176,7 @@ public class ExercisesController : ControllerBase
         }
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
-        // Epley formula: 1RM = weight * (1 + reps/30). Rounded up to the nearest whole rep.
-        var bestEstimated1Rm = sets.Max(s => s.WeightKg * (1 + s.Reps / 30m));
+        var bestEstimated1Rm = sets.Max(s => LiftMath.Epley1Rm(s.Reps, s.WeightKg));
         var bestSetVolume = sets.Max(s => s.WeightKg * s.Reps);
 
         var sessionVolumes = sets
