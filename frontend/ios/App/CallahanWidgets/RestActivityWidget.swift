@@ -37,12 +37,18 @@ struct RestActivityWidget: Widget {
                         .foregroundStyle(Self.accent)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(timerInterval: context.state.startAt...context.state.endAt,
-                         countsDown: true)
-                        .font(.system(.title3, design: .rounded).monospacedDigit())
-                        .foregroundStyle(Self.accent)
-                        .lineLimit(1)
-                        .frame(minWidth: 64, alignment: .trailing)
+                    Group {
+                        if context.isStale {
+                            Text("Go").font(.system(.title3, design: .rounded))
+                        } else {
+                            Text(timerInterval: context.state.startAt...context.state.endAt,
+                                 countsDown: true)
+                                .font(.system(.title3, design: .rounded).monospacedDigit())
+                                .lineLimit(1)
+                        }
+                    }
+                    .foregroundStyle(Self.accent)
+                    .frame(minWidth: 64, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     // Two rows, not three: the expanded region has a tight height
@@ -69,14 +75,19 @@ struct RestActivityWidget: Widget {
             } compactLeading: {
                 Image(systemName: "timer").foregroundStyle(Self.accent)
             } compactTrailing: {
-                Text(timerInterval: context.state.startAt...context.state.endAt,
-                     countsDown: true)
-                    .font(.caption2.monospacedDigit())
-                    .foregroundStyle(Self.accent)
-                    .lineLimit(1)
-                    .frame(minWidth: 40, alignment: .trailing)
+                if context.isStale {
+                    Image(systemName: "checkmark").foregroundStyle(Self.accent)
+                } else {
+                    Text(timerInterval: context.state.startAt...context.state.endAt,
+                         countsDown: true)
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(Self.accent)
+                        .lineLimit(1)
+                        .frame(minWidth: 40, alignment: .trailing)
+                }
             } minimal: {
-                Image(systemName: "timer").foregroundStyle(Self.accent)
+                Image(systemName: context.isStale ? "checkmark" : "timer")
+                    .foregroundStyle(Self.accent)
             }
             .keylineTint(Self.accent)
         }
@@ -127,13 +138,22 @@ private struct LockScreenView: View {
                 // width first, the timer is squeezed under its ideal size, and it
                 // renders "2:--" instead of shrinking. The name absorbs the squeeze
                 // instead — it has lineLimit(1) and minimumScaleFactor to do so.
-                Text(timerInterval: context.state.startAt...context.state.endAt,
-                     countsDown: true)
-                    .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(RestActivityWidget.accent)
-                    .lineLimit(1)
-                    .layoutPriority(1)
-                    .frame(minWidth: 96, alignment: .trailing)
+                Group {
+                    if context.isStale {
+                        // Past endAt the countdown would sit on a dead 0:00. The
+                        // activity is on its way out at this point; say so.
+                        Text("Go")
+                            .font(.system(size: 30, weight: .semibold, design: .rounded))
+                    } else {
+                        Text(timerInterval: context.state.startAt...context.state.endAt,
+                             countsDown: true)
+                            .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
+                            .lineLimit(1)
+                    }
+                }
+                .foregroundStyle(RestActivityWidget.accent)
+                .layoutPriority(1)
+                .frame(minWidth: 96, alignment: .trailing)
             }
 
             ProgressView(timerInterval: context.state.startAt...context.state.endAt,

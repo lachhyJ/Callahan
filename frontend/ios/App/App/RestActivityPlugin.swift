@@ -1,6 +1,7 @@
 import ActivityKit
 import Capacitor
 import Foundation
+import UIKit
 
 /// Bridges the web app's rest timer to a Live Activity.
 ///
@@ -24,6 +25,38 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var currentActivity: Any?
+    private var currentEndAt: Date?
+
+    override public func load() {
+        // Ending is driven from JS, but iOS suspends the webview once the app is
+        // backgrounded, so a rest timer that runs out while you are elsewhere
+        // strands its activity until you come back. Clearing it on return is the
+        // best that can be done without push updates.
+        //
+        // Do NOT try to pre-empt this by ending the activity on willResignActive
+        // with dismissalPolicy .after(endAt): measured on iOS 26.5, that dismisses
+        // immediately rather than at the date, so the countdown vanishes from both
+        // the Dynamic Island and the Lock Screen the instant you leave the app —
+        // which removes the feature exactly when it is meant to be useful. The
+        // staleDate below is what stops a finished activity showing a dead 0:00.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleBecomeActive),
+            name: UIApplication.didBecomeActiveNotification,
+            object: nil
+        )
+    }
+
+    @objc private func handleBecomeActive() {
+        guard #available(iOS 16.2, *) else { return }
+        guard let endAt = currentEndAt, endAt <= Date() else { return }
+        let activity = currentActivity as? Activity<RestActivityAttributes>
+        currentActivity = nil
+        currentEndAt = nil
+        Task {
+            await activity?.end(nil, dismissalPolicy: .immediate)
+        }
+    }
 
     @objc func isSupported(_ call: CAPPluginCall) {
         if #available(iOS 16.2, *) {
@@ -55,26 +88,29 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
             totalSets: call.getInt("totalSets") ?? 1
         )
+        let endAt = Date(timeIntervalSince1970: endAtMs / 1000)
         let state = RestActivityAttributes.ContentState(
-            endAt: Date(timeIntervalSince1970: endAtMs / 1000),
+            endAt: endAt,
             totalSeconds: call.getInt("totalSeconds") ?? 0
         )
+        self.currentEndAt = endAt
 
         Task {
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
                 if existing.attributes == attributes {
-                    await existing.update(ActivityContent(state: state, staleDate: nil))
+                    await existing.update(ActivityContent(state: state, staleDate: endAt))
                     call.resolve(["started": true, "updated": true])
                     return
                 }
                 // Different set or exercise — this activity is finished.
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil
+                self.currentEndAt = nil
             }
             do {
                 let activity = try Activity.request(
                     attributes: attributes,
-                    content: ActivityContent(state: state, staleDate: nil),
+                    content: ActivityContent(state: state, staleDate: endAt),
                     pushType: nil
                 )
                 self.currentActivity = activity
@@ -94,6 +130,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil
+                self.currentEndAt = nil
             }
             // Also clear anything left over from a previous launch — a crash or a
             // force-quit mid-rest would otherwise strand an activity on the lock
