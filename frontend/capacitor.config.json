@@ -1,0 +1,12 @@
+{
+  "appId": "online.ljlab.callahan",
+  "appName": "Callahan",
+  "webDir": "dist",
+  "server": {
+    "url": "https://callahan.ljlab.online",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always"
+  }
+}
