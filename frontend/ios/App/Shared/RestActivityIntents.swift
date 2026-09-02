@@ -89,17 +89,26 @@ actor RestTimerStore {
         await updateActivities(endAt: moved, totalSeconds: total)
     }
 
+    /// Skip ends the *rest*, not the activity: the card belongs to the workout
+    /// and should stay up between sets with the countdown zeroed.
     func skip() async {
         clear()
         bumpRevision()
         for activity in Activity<RestActivityAttributes>.activities {
-            await activity.end(nil, dismissalPolicy: .immediate)
+            var state = activity.content.state
+            state.endAt = nil
+            state.totalSeconds = 0
+            await activity.update(ActivityContent(state: state, staleDate: nil))
         }
     }
 
+    /// Moves the countdown without disturbing which set the card describes —
+    /// that half of the state belongs to the app, not to these buttons.
     private func updateActivities(endAt: Date, totalSeconds: Int) async {
-        let state = RestActivityAttributes.ContentState(endAt: endAt, totalSeconds: totalSeconds)
         for activity in Activity<RestActivityAttributes>.activities {
+            var state = activity.content.state
+            state.endAt = endAt
+            state.totalSeconds = totalSeconds
             await activity.update(ActivityContent(state: state, staleDate: endAt))
         }
     }

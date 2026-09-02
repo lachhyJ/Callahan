@@ -16,16 +16,20 @@ function formatWeight(weightKg) {
   return `${Number.isInteger(n) ? n : Math.round(n * 10) / 10} kg`
 }
 
-export function syncRestActivity(restTimer, { sessionStartedAt } = {}) {
+// The activity belongs to the workout, not to a rest period: it goes up when a
+// session starts and comes down when it is finished or discarded, so Skip zeroes
+// the countdown instead of tearing the card down. `rest` is null between sets.
+export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet } = {}) {
   if (!available) return
+  const detail = rest ?? lastSet ?? {}
   RestActivity.sync({
-    endAt: restTimer.endAt,
-    totalSeconds: restTimer.totalSeconds,
-    exerciseName: restTimer.exerciseName ?? 'Rest',
-    targetReps: restTimer.targetReps == null ? '' : String(restTimer.targetReps),
-    targetWeight: formatWeight(restTimer.targetWeightKg),
-    nextSetNumber: restTimer.nextSetNumber ?? 1,
-    totalSets: restTimer.totalSets ?? 1,
+    endAt: rest ? rest.endAt : undefined,
+    totalSeconds: rest ? rest.totalSeconds : 0,
+    exerciseName: detail.exerciseName ?? 'Workout',
+    targetReps: detail.targetReps == null ? '' : String(detail.targetReps),
+    targetWeight: formatWeight(detail.targetWeightKg),
+    nextSetNumber: detail.nextSetNumber ?? 1,
+    totalSets: detail.totalSets ?? 1,
     sessionStartedAt: sessionStartedAt ?? Date.now(),
   }).catch(() => {
     // A Live Activity is a nicety on top of the push notification — if the user
@@ -33,7 +37,7 @@ export function syncRestActivity(restTimer, { sessionStartedAt } = {}) {
   })
 }
 
-export function endRestActivity() {
+export function endWorkoutActivity() {
   if (!available) return
   RestActivity.end().catch(() => {})
 }

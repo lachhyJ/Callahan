@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { endRestActivity, readNativeRestState, syncRestActivity } from '../restActivity'
+import { endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { playBeepNow, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
@@ -121,6 +121,25 @@ function taperSetSuggestion(ex, taper) {
   return Math.max(1, Math.round(ex.targetSets * taper.gymTargetPct))
 }
 
+// What the Live Activity should describe when no rest is running: the first
+// exercise that still has an unticked set. Keeps the card meaningful for the
+// whole session rather than only in the gap after a set.
+function nextSetDescriptor(exercises) {
+  if (!exercises) return null
+  for (const ex of exercises) {
+    const idx = ex.sets.findIndex((s) => !s.completed)
+    if (idx === -1) continue
+    return {
+      exerciseName: ex.exerciseName,
+      targetReps: ex.targetReps,
+      targetWeightKg: ex.sets[idx].weightKg,
+      nextSetNumber: idx + 1,
+      totalSets: ex.sets.length,
+    }
+  }
+  return null
+}
+
 function completedSetsFor(ex) {
   return ex.sets.filter((s) => s.completed && s.reps !== '')
 }
@@ -174,6 +193,9 @@ export default function ActiveWorkoutPage() {
   const [taper, setTaper] = useState(null)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
+  // Last rest period's exercise/set, so the card still says what you just did
+  // once the countdown has finished.
+  const lastRestRef = useRef(null)
   const headerRef = useRef(null)
   const keyboardInset = useKeyboardInset()
 
@@ -284,16 +306,20 @@ export default function ActiveWorkoutPage() {
   useEffect(() => {
     if (restTimer) {
       saveRestTimer({ ...restTimer, templateId: sessionKey })
-      // Same mirror, second surface: on native this drives the lock-screen and
-      // Dynamic Island countdown. Every path that changes the timer — start,
-      // ±15s, skip, expiry — already flows through here, so the Live Activity
-      // stays in step without four separate call sites.
-      syncRestActivity(restTimer, { sessionStartedAt: startedAt.getTime() })
     } else {
       clearRestTimerStore()
-      endRestActivity()
     }
-  }, [restTimer, sessionKey, startedAt])
+    // The activity belongs to the workout, so this updates it rather than
+    // creating and destroying it: between sets it stays up with the countdown
+    // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
+    // keeps the exercise/set line populated once the rest has ended.
+    if (restTimer) lastRestRef.current = restTimer
+    syncWorkoutActivity({
+      rest: restTimer,
+      lastSet: nextSetDescriptor(exercises) ?? lastRestRef.current,
+      sessionStartedAt: startedAt.getTime(),
+    })
+  }, [restTimer, sessionKey, startedAt, exercises])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -659,6 +685,7 @@ export default function ActiveWorkoutPage() {
         exerciseNotes,
       })
       clearActiveWorkout()
+      endWorkoutActivity()
       navigate('/dashboard', { state: { savedMessage: 'Workout saved' } })
     } catch (err) {
       setError(err.message)
@@ -671,6 +698,7 @@ export default function ActiveWorkoutPage() {
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     clearActiveWorkout()
+    endWorkoutActivity()
     navigate('/')
   }
 
