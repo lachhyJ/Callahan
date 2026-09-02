@@ -6,7 +6,7 @@
 //   - settling: the month is over but late edits / backfills can still
 //     land, so the report keeps recomputing until it locks on day 8 of
 //     the following month.
-export function reportProgressState(year, month) {
+function reportProgressState(year, month) {
   const now = new Date()
   const currentKey = now.getFullYear() * 12 + now.getMonth()
   const reportKey = year * 12 + (month - 1)

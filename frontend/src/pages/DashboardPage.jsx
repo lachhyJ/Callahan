@@ -370,20 +370,12 @@ export default function DashboardPage() {
       </div>
 
       <div className="quick-links-grid section-gap">
-        {QUICK_LINKS.map(({ to, label, Icon, soon }) =>
-          soon ? (
-            <div key={label} className="quick-link-tile soon">
-              <span className="quick-link-soon-badge">Soon</span>
-              <Icon />
-              <span>{label}</span>
-            </div>
-          ) : (
-            <Link key={to} to={to} className="quick-link-tile">
-              <Icon />
-              <span>{label}</span>
-            </Link>
-          )
-        )}
+        {QUICK_LINKS.map(({ to, label, Icon }) => (
+          <Link key={to} to={to} className="quick-link-tile">
+            <Icon />
+            <span>{label}</span>
+          </Link>
+        ))}
       </div>
 
       {unviewedReport && (

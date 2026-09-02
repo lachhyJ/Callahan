@@ -1089,11 +1089,6 @@ td {
   font-size: var(--text-sm);
 }
 
-.plate-calc-visibility-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm);
-}
 
 .plate-calc-hide-toggle {
   background: transparent;
@@ -2408,25 +2403,6 @@ td {
   }
 }
 
-.quick-link-tile.soon {
-  color: var(--text-tertiary);
-
-  svg {
-    color: var(--text-tertiary);
-  }
-}
-
-.quick-link-soon-badge {
-  position: absolute;
-  top: var(--space-xs);
-  right: var(--space-xs);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-  color: var(--text-tertiary);
-  background: var(--code-bg);
-  border-radius: var(--radius-full);
-  padding: 2px var(--space-xs);
-}
 
 .sheet-backdrop {
   position: fixed;
@@ -2530,50 +2506,6 @@ td {
   }
 }
 
-.pr-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.pr-list-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-sm);
-  padding: var(--space-sm) 0;
-  border-bottom: 1px solid var(--border-subtle);
-  color: var(--text-h);
-  text-decoration: none;
-
-  &:hover,
-  &:focus-visible {
-    color: var(--accent);
-  }
-}
-
-.pr-list-item-name {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.pr-list-item-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-}
-
-.pr-weight {
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.pr-date {
-  color: var(--text-tertiary);
-  font-size: var(--text-xs);
-}
 
 /* Retained for WellnessCard's header label; the weekly-volume chart that
    defined the rest of the .volume-chart* family was removed from the
@@ -3288,7 +3220,6 @@ td {
   height: 100%;
 }
 
-.field-split-on,
 .field-timeline-band-on,
 .field-timeline-swatch-on {
   background: var(--orange-400);

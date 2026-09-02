@@ -1,6 +1,6 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
-export async function apiFetch(path, options = {}) {
+async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('callahan_token')
   const headers = {
     'Content-Type': 'application/json',
@@ -43,13 +43,6 @@ export function login(username, password) {
 
 export function getExercises() {
   return apiFetch('/api/exercises')
-}
-
-export function createExercise(name, category) {
-  return apiFetch('/api/exercises', {
-    method: 'POST',
-    body: JSON.stringify({ name, category }),
-  })
 }
 
 export function getExerciseHistory(exerciseId, limit = 10, offset = 0) {
@@ -350,17 +343,6 @@ export function createTournament({ name, startDate, endDate }) {
     method: 'POST',
     body: JSON.stringify({ name, startDate, endDate }),
   })
-}
-
-export function updateTournament(id, { name, startDate, endDate }) {
-  return apiFetch(`/api/tournaments/${id}`, {
-    method: 'PUT',
-    body: JSON.stringify({ name, startDate, endDate }),
-  })
-}
-
-export function deleteTournament(id) {
-  return apiFetch(`/api/tournaments/${id}`, { method: 'DELETE' })
 }
 
 export function attachTournamentGames(id) {

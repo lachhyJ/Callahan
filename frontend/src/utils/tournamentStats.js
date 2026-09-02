@@ -12,7 +12,7 @@ function num(v) {
   return v == null ? 0 : Number(v)
 }
 
-export function hasFieldMetrics(game) {
+function hasFieldMetrics(game) {
   return game.onFieldSeconds != null
 }
 

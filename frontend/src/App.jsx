@@ -28,7 +28,6 @@ import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
 import PlateCalculatorPage from './pages/PlateCalculatorPage'
 import ReportsPage from './pages/ReportsPage'
 import ReportDetailPage from './pages/ReportDetailPage'
-import { getMonthlyReports } from './api/client'
 import './App.css'
 
 const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon }

@@ -31,7 +31,7 @@ function Seg({ x, y, w, h, fill, rTop, rBottom, label }) {
   return <path className="muscle-region" d={d} fill={fill} stroke="var(--border)" strokeWidth="0.5" aria-label={label} />
 }
 
-function Figure({ title, torsoTop, torsoBottom, armTop, armBottom, legTop, legBottom, calfBottom }) {
+function Figure({ title, torsoTop, torsoBottom, armBottom, legTop, legBottom }) {
   return (
     <div className="muscle-figure-wrap">
       <svg viewBox="0 0 100 190" className="muscle-figure" role="img" aria-label={title}>
