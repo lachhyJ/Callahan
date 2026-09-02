@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
+import { endRestActivity, syncRestActivity } from '../restActivity'
 import { playBeepNow, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
@@ -283,8 +284,14 @@ export default function ActiveWorkoutPage() {
   useEffect(() => {
     if (restTimer) {
       saveRestTimer({ ...restTimer, templateId: sessionKey })
+      // Same mirror, second surface: on native this drives the lock-screen and
+      // Dynamic Island countdown. Every path that changes the timer — start,
+      // ±15s, skip, expiry — already flows through here, so the Live Activity
+      // stays in step without four separate call sites.
+      syncRestActivity(restTimer)
     } else {
       clearRestTimerStore()
+      endRestActivity()
     }
   }, [restTimer, sessionKey])
 

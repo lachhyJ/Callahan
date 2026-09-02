@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
+		346D34367EB3003B9918E131 /* CallahanWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 0E41191E95902B287FDEF7C5 /* CallahanWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		4C67E90D4DD2EBF05118E59F /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
 		504EC3081FED79650016851F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504EC3071FED79650016851F /* AppDelegate.swift */; };
@@ -15,11 +17,45 @@
 		504EC30F1FED79650016851F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 504EC30E1FED79650016851F /* Assets.xcassets */; };
 		504EC3121FED79650016851F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 504EC3101FED79650016851F /* LaunchScreen.storyboard */; };
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
+		612938DF34E1EB6A791BFDE7 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BF5D4A7B1991C13E7B3ACB5A /* Foundation.framework */; };
+		6815188AB51945020424F39A /* MainViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */; };
+		8E6C82338FBAFC8DE26F29A5 /* RestActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */; };
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
+		98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */; };
+		AF470A054137040203D78B1B /* RestActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */; };
+		C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		21B7C13C8F8EFE7D2D3C6AB6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F280B16C5D746816E0F073E4;
+			remoteInfo = CallahanWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1575C7F88D9868B5AC867DE5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				346D34367EB3003B9918E131 /* CallahanWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityAttributes.swift; sourceTree = "<group>"; };
+		0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityWidget.swift; sourceTree = "<group>"; };
+		0E41191E95902B287FDEF7C5 /* CallahanWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CallahanWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CallahanWidgetsBundle.swift; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		504EC3071FED79650016851F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -28,11 +64,22 @@
 		504EC3111FED79650016851F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		504EC3131FED79650016851F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		50B271D01FEDC1A000F3C39B /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
+		7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = MainViewController.swift; sourceTree = "<group>"; };
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
+		BF5D4A7B1991C13E7B3ACB5A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		4D8C4491A9A64C961557C147 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				612938DF34E1EB6A791BFDE7 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3011FED79650016851F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -44,12 +91,25 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		11070FADEBFD4CEF470D3A3B /* CallahanWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */,
+				0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */,
+			);
+			name = CallahanWidgets;
+			path = CallahanWidgets;
+			sourceTree = "<group>";
+		};
 		504EC2FB1FED79650016851F = {
 			isa = PBXGroup;
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
 				504EC3051FED79650016851F /* Products */,
+				CE427265A02E22CB5BD4062E /* Shared */,
+				AEA42DFD22BD19D0B9D60CC1 /* Frameworks */,
+				11070FADEBFD4CEF470D3A3B /* CallahanWidgets */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +117,7 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				0E41191E95902B287FDEF7C5 /* CallahanWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -73,8 +134,35 @@
 				504EC3131FED79650016851F /* Info.plist */,
 				2FAD9762203C412B000D30F8 /* config.xml */,
 				50B271D01FEDC1A000F3C39B /* public */,
+				D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */,
+				7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		AEA42DFD22BD19D0B9D60CC1 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				F881A30F036CCD4AE8FC755E /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		CE427265A02E22CB5BD4062E /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */,
+			);
+			name = Shared;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		F881A30F036CCD4AE8FC755E /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				BF5D4A7B1991C13E7B3ACB5A /* Foundation.framework */,
+			);
+			name = iOS;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -87,10 +175,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				1575C7F88D9868B5AC867DE5 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				7ED0CC443F6DF1223FEE98C4 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -99,6 +189,23 @@
 			productName = App;
 			productReference = 504EC3041FED79650016851F /* App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		F280B16C5D746816E0F073E4 /* CallahanWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1D0441DAC2B4DF8173D18032 /* Build configuration list for PBXNativeTarget "CallahanWidgets" */;
+			buildPhases = (
+				C9AF5CF0EB4441C890C6862B /* Sources */,
+				4D8C4491A9A64C961557C147 /* Frameworks */,
+				505EF7EAF1D94B64F69C9A39 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CallahanWidgets;
+			productName = CallahanWidgets;
+			productReference = 0E41191E95902B287FDEF7C5 /* CallahanWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -133,6 +240,7 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				F280B16C5D746816E0F073E4 /* CallahanWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -151,6 +259,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		505EF7EAF1D94B64F69C9A39 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -160,10 +275,32 @@
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
+				AF470A054137040203D78B1B /* RestActivityPlugin.swift in Sources */,
+				4C67E90D4DD2EBF05118E59F /* RestActivityAttributes.swift in Sources */,
+				6815188AB51945020424F39A /* MainViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C9AF5CF0EB4441C890C6862B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */,
+				8E6C82338FBAFC8DE26F29A5 /* RestActivityWidget.swift in Sources */,
+				98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		7ED0CC443F6DF1223FEE98C4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = CallahanWidgets;
+			target = F280B16C5D746816E0F073E4 /* CallahanWidgets */;
+			targetProxy = 21B7C13C8F8EFE7D2D3C6AB6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -338,9 +475,59 @@
 			};
 			name = Release;
 		};
+		720726CA7F5FD1AF069BF4E1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CallahanWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Callahan Widgets";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = online.ljlab.callahan.widgets;
+				PRODUCT_NAME = CallahanWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		DB3E85BFC898C90D2E7B79C3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CallahanWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Callahan Widgets";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = online.ljlab.callahan.widgets;
+				PRODUCT_NAME = CallahanWidgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		1D0441DAC2B4DF8173D18032 /* Build configuration list for PBXNativeTarget "CallahanWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DB3E85BFC898C90D2E7B79C3 /* Release */,
+				720726CA7F5FD1AF069BF4E1 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
