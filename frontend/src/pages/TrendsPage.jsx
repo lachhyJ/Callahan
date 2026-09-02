@@ -8,6 +8,7 @@ import RunTypeTrendsList from '../components/RunTypeTrendsList'
 import LoadVsWellnessChart from '../components/LoadVsWellnessChart'
 import SeasonStrengthChart from '../components/SeasonStrengthChart'
 import MuscleBalanceSection from '../components/MuscleBalanceSection'
+import { formatVolume } from '../utils/format'
 
 const SEASON_STRENGTH_MONTHS = 9
 
@@ -28,10 +29,6 @@ function seasonStrengthSummary(data) {
   return line
 }
 
-function formatVolume(v) {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
-  return String(Math.round(v))
-}
 
 // months is always the fixed 6-month window from getTrends(6) — split cleanly
 // into two 3-month halves to compare against each other.

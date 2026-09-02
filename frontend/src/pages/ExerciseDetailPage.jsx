@@ -3,13 +3,10 @@ import { Link, useParams } from 'react-router-dom'
 import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
+import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
 
-const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const PAGE_SIZE = 10
 
-function formatWeight(v) {
-  return Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)
-}
 
 export default function ExerciseDetailPage() {
   const { exerciseId } = useParams()

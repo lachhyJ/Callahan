@@ -3,14 +3,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
 import { formatDateLong } from '../dateUtils'
+import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
 
 const UNDO_WINDOW_MS = 6000
 
-const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 
-function formatWeight(v) {
-  return Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)
-}
 
 function formatDuration(startedAt, finishedAt) {
   if (!startedAt || !finishedAt) return null

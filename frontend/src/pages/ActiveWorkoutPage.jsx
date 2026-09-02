@@ -8,9 +8,9 @@ import { enablePushNotifications, hasActiveSubscription, pushSupported } from '.
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
+import { SET_TYPE_LABELS, formatClock } from '../utils/format'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 
-const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
@@ -45,11 +45,6 @@ function formatDuration(ms) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
-function formatCountdown(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
 
 const KG_PER_LB = 0.45359237
 
@@ -1030,7 +1025,7 @@ export default function ActiveWorkoutPage() {
               style={{ transform: `scaleX(${progress})` }}
             />
             <button type="button" onClick={() => adjustRest(-15)}>-15</button>
-            <span className="rest-countdown">{formatCountdown(remainingSeconds)}</span>
+            <span className="rest-countdown">{formatClock(remainingSeconds)}</span>
             <button type="button" onClick={() => adjustRest(15)}>+15</button>
             <button type="button" className="skip-btn" onClick={skipRest}>Skip</button>
           </div>

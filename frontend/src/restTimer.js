@@ -1,27 +1,11 @@
-const KEY = 'callahan_rest_timer'
-const CHANGE_EVENT = 'callahan-rest-timer-changed'
+import { createPersistedSlot } from './persistedSlot'
 
-export function saveRestTimer(state) {
-  localStorage.setItem(KEY, JSON.stringify(state))
-  window.dispatchEvent(new Event(CHANGE_EVENT))
-}
+// The running rest timer, shared between the active workout page (which owns
+// the countdown while mounted) and the global rest bar (which takes over the
+// moment you navigate away).
+const slot = createPersistedSlot('callahan_rest_timer', 'callahan-rest-timer-changed')
 
-export function loadRestTimer() {
-  const raw = localStorage.getItem(KEY)
-  if (!raw) return null
-  try {
-    return JSON.parse(raw)
-  } catch {
-    return null
-  }
-}
-
-export function clearRestTimer() {
-  localStorage.removeItem(KEY)
-  window.dispatchEvent(new Event(CHANGE_EVENT))
-}
-
-export function onRestTimerChange(callback) {
-  window.addEventListener(CHANGE_EVENT, callback)
-  return () => window.removeEventListener(CHANGE_EVENT, callback)
-}
+export const saveRestTimer = slot.save
+export const loadRestTimer = slot.load
+export const clearRestTimer = slot.clear
+export const onRestTimerChange = slot.onChange

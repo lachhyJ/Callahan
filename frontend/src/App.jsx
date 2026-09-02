@@ -5,6 +5,7 @@ import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeepNow } from './audio'
 import { getHealth } from './api/client'
+import { formatClock } from './utils/format'
 import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
@@ -48,11 +49,6 @@ function showsBackLink(pathname) {
     || pathname.startsWith('/tournaments/')
 }
 
-function formatCountdown(totalSeconds) {
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
 
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuth()
@@ -187,7 +183,7 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
     <button type="button" className="global-rest-bar" onClick={() => navigate(`/workout/${restTimer.templateId}`)}>
       <span className="resting-dot" />
       <span className="global-rest-bar-label">Resting — {restTimer.exerciseName}</span>
-      <span className="rest-countdown-mini">{formatCountdown(remainingSeconds)}</span>
+      <span className="rest-countdown-mini">{formatClock(remainingSeconds)}</span>
     </button>
   )
 }

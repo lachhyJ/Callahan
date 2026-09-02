@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import { getMonthlyReports } from '../api/client'
 import { ChevronRightIcon } from '../icons'
 import { reportProgressTag } from '../utils/reportStatus'
+import { MONTH_NAMES } from '../utils/format'
 
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export default function ReportsPage() {
   const [reports, setReports] = useState(null)

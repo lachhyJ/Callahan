@@ -1,9 +1,7 @@
 import { Link } from 'react-router-dom'
 import { LIFT_BASIS, basisNote, formatSet } from '../liftSets'
+import { formatWeight } from '../utils/format'
 
-function formatWeight(v) {
-  return Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)
-}
 
 function formatMonth(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })

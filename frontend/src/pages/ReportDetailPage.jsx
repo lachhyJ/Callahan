@@ -4,9 +4,9 @@ import { getMonthlyReport, markMonthlyReportViewed } from '../api/client'
 import { formatDateLong, formatDateMedium } from '../dateUtils'
 import { DIRECTION_CLASS, formatMetricValue } from '../wellnessMetrics'
 import { reportProgressNote } from '../utils/reportStatus'
+import { MONTH_NAMES } from '../utils/format'
 import { formatDelta, formatSet } from '../liftSets'
 
-const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 const DIRECTION_LABEL = { below: 'below baseline', above: 'above baseline', in_line: 'in line' }
 

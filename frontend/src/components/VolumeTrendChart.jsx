@@ -1,4 +1,5 @@
 import { niceStep } from '../utils/chartScale'
+import { formatVolume } from '../utils/format'
 
 const WIDTH = 320
 const HEIGHT = 90
@@ -6,10 +7,6 @@ const PAD_LEFT = 34
 const PAD_TOP = 8
 const BAR_GAP = 8
 
-function formatVolume(v) {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
-  return String(Math.round(v))
-}
 
 function formatMonth(iso) {
   return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })
