@@ -21,7 +21,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getState", returnType: CAPPluginReturnPromise)
     ]
 
     private var currentActivity: Any?
@@ -66,6 +67,35 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// What the native side currently believes about the rest timer.
+    ///
+    /// While the app is backgrounded the Live Activity's buttons are the only way
+    /// to change the timer, and they cannot reach the webview's localStorage — so
+    /// JS asks for this on resume and adopts it. `revision` increments on every
+    /// native mutation, which distinguishes "nothing happened" from "adjusted and
+    /// landed back on the same value".
+    @objc func getState(_ call: CAPPluginCall) {
+        guard #available(iOS 16.2, *) else {
+            call.resolve(["active": false, "revision": 0])
+            return
+        }
+        Task {
+            let endAt = await RestTimerStore.shared.endAt
+            let total = await RestTimerStore.shared.totalSeconds
+            let revision = await RestTimerStore.shared.revision
+            if let endAt {
+                call.resolve([
+                    "active": true,
+                    "endAt": endAt.timeIntervalSince1970 * 1000,
+                    "totalSeconds": total,
+                    "revision": revision
+                ])
+            } else {
+                call.resolve(["active": false, "revision": revision])
+            }
+        }
+    }
+
     @objc func sync(_ call: CAPPluginCall) {
         guard #available(iOS 16.2, *) else {
             call.resolve(["started": false, "reason": "unsupported"])
@@ -82,11 +112,14 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
+        let sessionStartedAtMs = call.getDouble("sessionStartedAt") ?? Date().timeIntervalSince1970 * 1000
         let attributes = RestActivityAttributes(
             exerciseName: call.getString("exerciseName") ?? "Rest",
             targetReps: call.getString("targetReps") ?? "",
+            targetWeight: call.getString("targetWeight") ?? "",
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
-            totalSets: call.getInt("totalSets") ?? 1
+            totalSets: call.getInt("totalSets") ?? 1,
+            sessionStartedAt: Date(timeIntervalSince1970: sessionStartedAtMs / 1000)
         )
         let endAt = Date(timeIntervalSince1970: endAtMs / 1000)
         let state = RestActivityAttributes.ContentState(
@@ -94,6 +127,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             totalSeconds: call.getInt("totalSeconds") ?? 0
         )
         self.currentEndAt = endAt
+        let totalSeconds = call.getInt("totalSeconds") ?? 0
+        Task { await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds) }
 
         Task {
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
@@ -108,6 +143,14 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.currentEndAt = nil
             }
             do {
+                // currentActivity only knows about activities this process
+                // started, so after a relaunch mid-rest the previous launch's
+                // activity is still live and invisible to us — requesting another
+                // stacks a second card on the Lock Screen, one per restart. Clear
+                // any strays first so there is exactly one.
+                for stray in Activity<RestActivityAttributes>.activities {
+                    await stray.end(nil, dismissalPolicy: .immediate)
+                }
                 let activity = try Activity.request(
                     attributes: attributes,
                     content: ActivityContent(state: state, staleDate: endAt),
@@ -127,6 +170,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         Task {
+            await RestTimerStore.shared.clear()
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil
