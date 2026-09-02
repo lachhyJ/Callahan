@@ -398,3 +398,22 @@ export function markMonthlyReportViewed(year, month) {
 export function syncGarmin(wellness = false) {
   return apiFetch(`/api/sync/garmin?wellness=${wellness ? 'true' : 'false'}`, { method: 'POST' })
 }
+
+// Usage tracking. Deliberately does not go through apiFetch: a fire-and-forget
+// telemetry POST should never surface an error, and must not trip apiFetch's
+// 401 handling, which clears the token and logs the athlete out. keepalive so a
+// flush started on page-hide still completes.
+export function recordUsage(events) {
+  const token = localStorage.getItem('callahan_token')
+  if (!token || events.length === 0) return
+  try {
+    fetch(`${API_BASE}/api/usage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ events }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // Never let measurement break the thing being measured.
+  }
+}

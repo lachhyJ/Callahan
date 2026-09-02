@@ -6,6 +6,7 @@ import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeepNow } from './audio'
 import { getHealth } from './api/client'
 import { formatClock } from './utils/format'
+import { startUsageTracking, trackAction, trackRoute } from './usage'
 import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
@@ -81,8 +82,10 @@ function TopBar() {
     // bfcached page from before a deploy. Route to an explicit parent
     // instead of popping the document in that case.
     if (window.history.state?.idx === 0) {
+      trackAction('back', 'fallback-dashboard')
       navigate('/dashboard')
     } else {
+      trackAction('back', 'history-pop')
       navigate(-1)
     }
   }
@@ -96,7 +99,7 @@ function TopBar() {
       </div>
       <div className="top-bar-right">
         {showResume && (
-          <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link">
+          <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link" onClick={() => trackAction('resume-workout')}>
             <PlayIcon /> Resume
           </NavLink>
         )}
@@ -119,7 +122,7 @@ function BottomTabBar() {
   return (
     <nav className="bottom-tab-bar">
       {tabs.map(({ to, label, Icon, end }) => (
-        <NavLink key={label} to={to} end={end} className="tab-link">
+        <NavLink key={label} to={to} end={end} className="tab-link" onClick={() => trackAction('bottom-tab', label)}>
           <Icon />
           <span>{label}</span>
         </NavLink>
@@ -180,7 +183,7 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
   const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now) / 1000))
 
   return (
-    <button type="button" className="global-rest-bar" onClick={() => navigate(`/workout/${restTimer.templateId}`)}>
+    <button type="button" className="global-rest-bar" onClick={() => { trackAction('rest-bar-tap'); navigate(`/workout/${restTimer.templateId}`) }}>
       <span className="resting-dot" />
       <span className="global-rest-bar-label">Resting — {restTimer.exerciseName}</span>
       <span className="rest-countdown-mini">{formatClock(remainingSeconds)}</span>
@@ -188,9 +191,19 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
   )
 }
 
+// One place that sees every navigation, rather than instrumenting each Link.
+function useRouteTracking(isAuthenticated) {
+  const location = useLocation()
+  useEffect(() => startUsageTracking(), [])
+  useEffect(() => {
+    if (isAuthenticated) trackRoute(location.pathname)
+  }, [location.pathname, isAuthenticated])
+}
+
 function AppRoutes() {
   const { isAuthenticated } = useAuth()
   const { restTimer, isTicking, now } = useGlobalRestTimer()
+  useRouteTracking(isAuthenticated)
   const showBottomNav = isAuthenticated
   const contentClassName = ['app-content', showBottomNav && 'with-bottom-nav', isTicking && 'with-rest-bar']
     .filter(Boolean).join(' ')

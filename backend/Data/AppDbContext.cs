@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<ActivityTrack> ActivityTracks => Set<ActivityTrack>();
     public DbSet<Tournament> Tournaments => Set<Tournament>();
     public DbSet<Season> Seasons => Set<Season>();
+    public DbSet<UsageEvent> UsageEvents => Set<UsageEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
