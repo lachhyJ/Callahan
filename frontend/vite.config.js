@@ -7,4 +7,11 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
   },
+  test: {
+    // Plain node — everything under test is pure logic. Component tests would
+    // need jsdom; there aren't any yet, and the bugs worth catching here have
+    // been in date maths and formatting rather than in rendering.
+    environment: 'node',
+    include: ['src/**/*.test.{js,jsx}'],
+  },
 })

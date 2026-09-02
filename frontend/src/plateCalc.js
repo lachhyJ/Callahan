@@ -22,6 +22,12 @@ export const BAR_PRESETS = {
 // Greedy fill: takes as many of the biggest plate as fit, then the next
 // size down, etc. Only wrong when the target can't be hit exactly with the
 // available denominations, which the leftover-weight readout covers.
+//
+// The `+ 1e-9` is insurance, not live behaviour: with every current plate size
+// exactly representable in binary and `remaining` re-rounded to 2dp each pass,
+// a sweep of 0-300 in 0.01 steps found no input where removing it changes the
+// answer (2026-09-02). It would start mattering if a non-representable plate
+// (1.1kg) were ever added, so it stays.
 export function calculatePlates(perSideWeight, availablePlates) {
   let remaining = Math.round(perSideWeight * 100) / 100
   const breakdown = []

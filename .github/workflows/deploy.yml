@@ -13,6 +13,35 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      # Tests gate a push, but deliberately NOT a workflow_dispatch. Manual
+      # dispatch is the rollback path, and it exists for exactly the case where
+      # main is broken — gating it on main's tests would block the fix. A
+      # rollback also deploys a specific old SHA, which these tests (run against
+      # the checked-out main) would not be testing anyway.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+
+      - uses: actions/setup-dotnet@v4
+        if: github.event_name == 'push'
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Backend tests
+        if: github.event_name == 'push'
+        run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
+
+      - uses: actions/setup-node@v4
+        if: github.event_name == 'push'
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Frontend tests
+        if: github.event_name == 'push'
+        run: npm ci && npm test
+        working-directory: frontend
+
       - uses: tailscale/github-action@v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
