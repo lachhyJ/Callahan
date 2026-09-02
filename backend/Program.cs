@@ -4,6 +4,7 @@ using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -51,7 +52,17 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+// Deny by default. Every data controller already carries [Authorize], but that
+// made protection a convention: a new controller added without the attribute
+// would have been silently public. The fallback policy inverts that, so opting
+// *out* now takes an explicit [AllowAnonymous] (Auth and Health, both of which
+// have to be reachable before a token exists).
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
 builder.Services.AddRateLimiter(options =>
 {
@@ -112,7 +123,7 @@ if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Aut
         }
 
         return Results.Ok(new LoginResponse(tokenService.GenerateToken(username)));
-    });
+    }).AllowAnonymous();
 }
 
 app.Run();

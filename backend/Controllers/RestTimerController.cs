@@ -29,9 +29,21 @@ public class RestTimerController : ControllerBase
         _pushLeadSeconds = config.GetValue("RestTimer:PushLeadSeconds", 3.0);
     }
 
+    // A rest timer is minutes, not hours. Unbounded, a negative duration made
+    // Math.Clamp below throw (max < min) inside a fire-and-forget task where
+    // nothing observes it, and a huge one parked a CancellationTokenSource in
+    // the static dictionary indefinitely.
+    private const int MinDurationSeconds = 5;
+    private const int MaxDurationSeconds = 3600;
+
     [HttpPost("schedule")]
     public ActionResult<RestTimerScheduleResponse> Schedule(RestTimerScheduleRequest request)
     {
+        if (request.DurationSeconds < MinDurationSeconds || request.DurationSeconds > MaxDurationSeconds)
+        {
+            return BadRequest(new { error = $"DurationSeconds must be between {MinDurationSeconds} and {MaxDurationSeconds}." });
+        }
+
         var timerId = Guid.NewGuid().ToString("N");
         var cts = new CancellationTokenSource();
         PendingTimers[timerId] = cts;

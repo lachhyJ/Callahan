@@ -17,6 +17,10 @@ services:
       context: ./frontend
       args:
         VITE_API_BASE: http://localhost:8080
+        # Local dev only: app on :8081 calling the API on :8080 is cross-origin,
+        # so the CSP must name it. Production builds leave this at its 'self'
+        # default (see frontend/Dockerfile) and never ship the localhost origin.
+        CSP_CONNECT_SRC: "'self' http://localhost:8080"
         VITE_VAPID_PUBLIC_KEY: BNdG1ygvo2x1yrr86vLjAbIlejJrQ9eN_YlILa_BEqNPAwN4JbBIIvzxQpaQAJ-WnAAQyreh4hVv4wlWyz8uNSA
     ports:
       - "8081:80"

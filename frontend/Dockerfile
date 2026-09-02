@@ -10,6 +10,13 @@ ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 RUN npm run build
 
 FROM nginx:alpine AS runtime
+# Same-origin in production (the app is served through this nginx, which proxies
+# /api/). The local docker-dev stack overrides it because there the app is on
+# :8081 and the API on :8080 — a cross-origin call the CSP has to allow.
+ARG CSP_CONNECT_SRC="'self'"
 COPY --from=build /src/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY security-headers.conf /etc/nginx/security-headers.conf
+RUN sed -i "s|__CSP_CONNECT_SRC__|${CSP_CONNECT_SRC}|" /etc/nginx/security-headers.conf \
+    && grep -q "__CSP_CONNECT_SRC__" /etc/nginx/security-headers.conf && exit 1 || true
 EXPOSE 80

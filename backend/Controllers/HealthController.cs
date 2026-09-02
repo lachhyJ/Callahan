@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Callahan.Api.Data;
@@ -5,6 +6,7 @@ using Callahan.Api.Data;
 namespace Callahan.Api.Controllers;
 
 [ApiController]
+[AllowAnonymous]
 [Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
@@ -30,11 +32,15 @@ public class HealthController : ControllerBase
             var conn = _db.Database.GetDbConnection();
             await conn.OpenAsync();
             await conn.CloseAsync();
-            return Ok(new { status = "ok", database = "connected", version = BuildVersion });
+            return Ok(new { status = "ok", version = BuildVersion });
         }
         catch (Exception)
         {
-            return StatusCode(503, new { status = "ok", database = "unreachable", version = BuildVersion });
+            // Was reporting status "ok" on the failure path, which is what a
+            // liveness check reads. Callers get the version either way — the
+            // frontend's stale-bundle self-heal depends on it — but the reason
+            // for the failure stays off an unauthenticated response.
+            return StatusCode(503, new { status = "unavailable", version = BuildVersion });
         }
     }
 }
