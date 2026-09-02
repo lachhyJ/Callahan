@@ -46,6 +46,22 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
+        reapOrphanedActivities()
+    }
+
+    /// A card whose rest period finished while the app was not running has
+    /// nothing left to count and no way to be ended by JS. Clear it on launch.
+    private func reapOrphanedActivities() {
+        guard #available(iOS 16.2, *) else { return }
+        Task {
+            let storedEnd = await RestTimerStore.shared.endAt
+            let expired = storedEnd == nil || storedEnd! <= Date()
+            guard expired else { return }
+            await RestTimerStore.shared.clear()
+            for activity in Activity<RestActivityAttributes>.activities {
+                await activity.end(nil, dismissalPolicy: .immediate)
+            }
+        }
     }
 
     @objc private func handleBecomeActive() {
@@ -131,26 +147,30 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         Task { await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds) }
 
         Task {
-            if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
-                if existing.attributes == attributes {
-                    await existing.update(ActivityContent(state: state, staleDate: endAt))
-                    call.resolve(["started": true, "updated": true])
-                    return
-                }
-                // Different set or exercise — this activity is finished.
-                await existing.end(nil, dismissalPolicy: .immediate)
-                self.currentActivity = nil
-                self.currentEndAt = nil
+            // Exactly one activity, always.
+            //
+            // currentActivity is in-memory, so it is empty after every app
+            // relaunch — but ActivityKit keeps the activity itself alive across
+            // relaunches, which is the whole point of it. Trusting currentActivity
+            // alone therefore starts a second card per restart. Ask the system
+            // what actually exists instead, adopt it if it still describes this
+            // set, and end anything left over.
+            let live = Activity<RestActivityAttributes>.activities
+            let adopted = live.first { $0.attributes == attributes }
+            for stray in live where stray.id != adopted?.id {
+                await stray.end(nil, dismissalPolicy: .immediate)
             }
+
+            if let existing = adopted {
+                // Adopting rather than recreating keeps the original card, so the
+                // progress bar and elapsed readout do not restart on relaunch.
+                await existing.update(ActivityContent(state: state, staleDate: endAt))
+                self.currentActivity = existing
+                call.resolve(["started": true, "updated": true])
+                return
+            }
+
             do {
-                // currentActivity only knows about activities this process
-                // started, so after a relaunch mid-rest the previous launch's
-                // activity is still live and invisible to us — requesting another
-                // stacks a second card on the Lock Screen, one per restart. Clear
-                // any strays first so there is exactly one.
-                for stray in Activity<RestActivityAttributes>.activities {
-                    await stray.end(nil, dismissalPolicy: .immediate)
-                }
                 let activity = try Activity.request(
                     attributes: attributes,
                     content: ActivityContent(state: state, staleDate: endAt),

@@ -36,8 +36,11 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
     /// header. Counts up while the rest timer counts down.
     var sessionStartedAt: Date
 
-    /// "Next: set 3 of 5 · 115 kg × 6"
+    /// "Next: set 3 of 5 · 115 kg × 6", or a completion note once the last set
+    /// is done — the app counts nextSetNumber past totalSets at that point, and
+    /// "Next: set 6 of 5" is nonsense to read on a lock screen.
     var nextSetLine: String {
+        guard nextSetNumber <= totalSets else { return "Last set done" }
         var line = "Next: set \(nextSetNumber) of \(totalSets)"
         let detail = [targetWeight, targetReps.isEmpty ? "" : "\(targetReps) reps"]
             .filter { !$0.isEmpty }
