@@ -138,8 +138,11 @@ export default function TrendsPage() {
 
       <MuscleBalanceSection />
 
-      {/* Kept at the bottom deliberately — largely superseded by the season
-          strength chart above; candidate for removal (see project backlog). */}
+      {/* Bottom of the page deliberately, but kept: the season strength chart
+          above is richer per lift, yet only covers program-template lifts.
+          This is the only all-lifts view — every lift with history, sorted by
+          movement over the window. Reviewed and kept 2026-09-02; not a
+          removal candidate. */}
       {months && hasAnyData && liftTrends && liftTrends.length > 0 && (
         <div className="section-gap">
           <h2 className="trend-chart-title">Lift trends</h2>
