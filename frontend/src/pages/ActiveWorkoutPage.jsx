@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { endRestActivity, syncRestActivity } from '../restActivity'
+import { endRestActivity, readNativeRestState, syncRestActivity } from '../restActivity'
 import { playBeepNow, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
@@ -288,12 +288,12 @@ export default function ActiveWorkoutPage() {
       // Dynamic Island countdown. Every path that changes the timer — start,
       // ±15s, skip, expiry — already flows through here, so the Live Activity
       // stays in step without four separate call sites.
-      syncRestActivity(restTimer)
+      syncRestActivity(restTimer, { sessionStartedAt: startedAt.getTime() })
     } else {
       clearRestTimerStore()
       endRestActivity()
     }
-  }, [restTimer, sessionKey])
+  }, [restTimer, sessionKey, startedAt])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -445,6 +445,9 @@ export default function ActiveWorkoutPage() {
       timerId: null,
       exerciseName: exercise.exerciseName,
       targetReps: exercise.targetReps,
+      // Weight already carried into the set you are about to do, so the Live
+      // Activity can read "115 kg x 6" rather than just the rep target.
+      targetWeightKg: exercise.sets[nextSetNumber - 1]?.weightKg,
       nextSetNumber,
       totalSets: exercise.sets.length,
     })
@@ -479,6 +482,31 @@ export default function ActiveWorkoutPage() {
     )
     if (nowCompleting) startRestTimer(exercise, set.setOrder + 2)
   }
+
+  // The Live Activity's buttons mutate the timer natively while this webview is
+  // suspended, so on every return to the foreground take native's word for it.
+  // Skip clears the timer outright; -15s/+15s just move endAt.
+  useEffect(() => {
+    let cancelled = false
+    async function reconcile() {
+      const native = await readNativeRestState()
+      if (cancelled || !native) return
+      setRestTimer((prev) => {
+        if (!prev) return prev
+        if (!native.active) return null
+        if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
+          return { ...prev, endAt: native.endAt, timerId: null }
+        }
+        return prev
+      })
+    }
+    reconcile()
+    document.addEventListener('visibilitychange', reconcile)
+    return () => {
+      cancelled = true
+      document.removeEventListener('visibilitychange', reconcile)
+    }
+  }, [])
 
   function adjustRest(deltaSeconds) {
     if (!restTimer) return
