@@ -54,7 +54,7 @@ struct RestActivityWidget: Widget {
             } compactTrailing: {
                 if !context.isStale {
                     Countdown(context: context, font: .caption2.monospacedDigit())
-                        .frame(minWidth: 40, alignment: .trailing)
+                        .frame(width: 46, alignment: .trailing)
                 }
             } minimal: {
                 Image(systemName: context.isStale ? "checkmark" : "timer")
@@ -100,7 +100,10 @@ private struct ElapsedLabel: View {
             .foregroundStyle(.secondary)
             .lineLimit(1)
             .layoutPriority(1)
-            .frame(minWidth: 68, alignment: .trailing)
+            // A definite width, not minWidth: minWidth floors the resulting frame
+            // but does not raise the width *proposed* to the Text, so the timer
+            // still lays out against the squeezed proposal and renders "22:--".
+            .frame(width: 76, alignment: .trailing)
     }
 }
 
@@ -169,9 +172,9 @@ private struct ControlRow: View {
                     .foregroundStyle(RestActivityWidget.accent)
             } else {
                 Countdown(context: context,
-                          font: .system(size: 22, weight: .semibold, design: .rounded))
+                          font: .system(size: 21, weight: .semibold, design: .rounded))
                     .layoutPriority(1)
-                    .frame(minWidth: 100)
+                    .frame(width: 118, alignment: .center)
             }
             Spacer(minLength: 0)
 
