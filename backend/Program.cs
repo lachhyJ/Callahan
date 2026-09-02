@@ -104,6 +104,15 @@ app.UseRateLimiter();
 
 app.MapControllers();
 
+// The fallback policy above also applies to requests that match no endpoint at
+// all, which turns every unknown /api/* path into a 401 rather than a 404. The
+// frontend's apiFetch treats any 401 as an expired session — it clears the
+// stored token and dispatches callahan-unauthorized — so without this a stale
+// bundle calling a route that no longer exists would silently log the athlete
+// out instead of surfacing an error. MapFallback registers at the lowest
+// possible precedence, so it can never shadow a real controller route.
+app.MapFallback("/api/{**rest}", () => Results.NotFound()).AllowAnonymous();
+
 // Dev-only login bypass for tooling (e.g. Claude Code browser checks) that needs to
 // authenticate without knowing the real password. Two independent gates, both
 // required: the route is only registered at all when IsDevelopment() (false for the
