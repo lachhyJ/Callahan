@@ -6,6 +6,9 @@ services:
     env_file:
       - backend.env
     environment:
+      # Match production (see docker-compose.prod.yml) — without it local dev
+      # runs UTC and every date-boundary behaviour differs from the NAS.
+      - TZ=Australia/Melbourne
       - Cors__AllowedOrigins__0=http://localhost:8081
       - ASPNETCORE_ENVIRONMENT=Development
       - Auth__AllowDevLogin=true

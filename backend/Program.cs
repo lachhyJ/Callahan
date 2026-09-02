@@ -87,6 +87,17 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// This was wrong in production for months without a symptom anyone could trace
+// back to it: no TZ on the container meant DateTime.Now was UTC, so every
+// "today" the app computed was a day behind for the first 10-11 hours of each
+// local day. Logged at startup so the next regression is one container-log line
+// away rather than a subtle wrongness in taper phases and streak weeks.
+app.Logger.LogInformation(
+    "Server time zone: {TimeZone} (UTC{Offset:+00;-00}). Local now: {LocalNow:yyyy-MM-dd HH:mm}",
+    TimeZoneInfo.Local.Id,
+    TimeZoneInfo.Local.GetUtcOffset(DateTime.UtcNow).TotalHours,
+    DateTime.Now);
+
 Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "App_Data"));
 
 using (var scope = app.Services.CreateScope())

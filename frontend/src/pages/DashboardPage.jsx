@@ -7,6 +7,7 @@ import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 import { MONTH_NAMES } from '../utils/format'
+import { trackAction } from '../usage'
 import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
 
@@ -161,6 +162,7 @@ export default function DashboardPage() {
 
   function dismissUnviewedReport() {
     if (!unviewedReport) return
+    trackAction('report-banner', 'dismiss')
     markMonthlyReportViewed(unviewedReport.year, unviewedReport.month).catch(() => {})
     setUnviewedReport(null)
   }
@@ -231,6 +233,7 @@ export default function DashboardPage() {
 
   function toggleCalendarView() {
     const next = isMonthView ? 'rolling' : 'month'
+    trackAction('calendar-view', next)
     setSelectedDate(null)
     if (next === 'month') setCursor({ year: now.getFullYear(), month: now.getMonth() })
     setCalendarView(next)
@@ -333,7 +336,7 @@ export default function DashboardPage() {
                 key={iso}
                 type="button"
                 className={`calendar-cell calendar-cell-active${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
-                onClick={() => setSelectedDate(isSelected ? null : iso)}
+                onClick={() => { trackAction('calendar-day', isSelected ? 'deselect' : 'select'); setSelectedDate(isSelected ? null : iso) }}
               >
                 {dayNumber}
                 <span className="calendar-dots">
@@ -352,7 +355,7 @@ export default function DashboardPage() {
               type="button"
               className="calendar-week-gutter"
               aria-label={`View sessions for the week of ${weekStartIso}`}
-              onClick={() => navigate(`/history?week=${weekStartIso}`)}
+              onClick={() => { trackAction('calendar-gutter', weekStartIso); navigate(`/history?week=${weekStartIso}`) }}
             >
               {monthTag && <span className="calendar-gutter-month">{monthTag}</span>}
               <ChevronRightIcon />
@@ -371,7 +374,7 @@ export default function DashboardPage() {
 
       <div className="quick-links-grid section-gap">
         {QUICK_LINKS.map(({ to, label, Icon }) => (
-          <Link key={to} to={to} className="quick-link-tile">
+          <Link key={to} to={to} className="quick-link-tile" onClick={() => trackAction('quick-link', to)}>
             <Icon />
             <span>{label}</span>
           </Link>
@@ -380,7 +383,7 @@ export default function DashboardPage() {
 
       {unviewedReport && (
         <div className="save-confirmation section-gap" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Link to={`/reports/${unviewedReport.year}/${unviewedReport.month}`}>
+          <Link to={`/reports/${unviewedReport.year}/${unviewedReport.month}`} onClick={() => trackAction('report-banner', 'open')}>
             {MONTH_NAMES[unviewedReport.month - 1]} {unviewedReport.year} report is ready — {unviewedReport.headlineVerdict}
           </Link>
           <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>

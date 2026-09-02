@@ -3,6 +3,7 @@ using System;
 using Callahan.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Callahan.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902071008_AddUsageEvents")]
+    partial class AddUsageEvents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -44,8 +47,8 @@ namespace Callahan.Api.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<double?>("DistanceKm")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("DistanceKm")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("DurationSeconds")
                         .HasColumnType("INTEGER");
@@ -59,8 +62,8 @@ namespace Callahan.Api.Migrations
                     b.Property<string>("GarminActivityId")
                         .HasColumnType("TEXT");
 
-                    b.Property<double?>("HighSpeedDistanceM")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("HighSpeedDistanceM")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("LapClassifierMethod")
                         .HasColumnType("TEXT");
@@ -68,8 +71,8 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("LapClassifierVersion")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("LivePlayDistanceM")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("LivePlayDistanceM")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("LivePlaySeconds")
                         .HasColumnType("INTEGER");
@@ -83,14 +86,14 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("OffFieldSeconds")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("OnFieldDistanceM")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("OnFieldDistanceM")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("OnFieldSeconds")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("OnFieldSpeedThresholdMps")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("OnFieldSpeedThresholdMps")
+                        .HasColumnType("TEXT");
 
                     b.Property<int?>("PointsPlayed")
                         .HasColumnType("INTEGER");
@@ -132,14 +135,14 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("AvgHeartRate")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("AvgSpeedMps")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("AvgSpeedMps")
+                        .HasColumnType("TEXT");
 
-                    b.Property<double?>("DistanceM")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("DistanceM")
+                        .HasColumnType("TEXT");
 
-                    b.Property<double?>("DurationSeconds")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("DurationSeconds")
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("FieldState")
                         .HasColumnType("TEXT");
@@ -153,11 +156,11 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("MaxHeartRate")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("MaxSpeedMps")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("MaxSpeedMps")
+                        .HasColumnType("TEXT");
 
-                    b.Property<double?>("MovingDurationSeconds")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("MovingDurationSeconds")
+                        .HasColumnType("TEXT");
 
                     b.Property<DateTime?>("StartTimeGmt")
                         .HasColumnType("TEXT");
@@ -258,8 +261,8 @@ namespace Callahan.Api.Migrations
                     b.Property<int>("ActivityId")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double?>("MedianSpacingSec")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("MedianSpacingSec")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("SampleCount")
                         .HasColumnType("INTEGER");
@@ -654,8 +657,8 @@ namespace Callahan.Api.Migrations
                     b.Property<int>("SetType")
                         .HasColumnType("INTEGER");
 
-                    b.Property<double>("WeightKg")
-                        .HasColumnType("REAL");
+                    b.Property<decimal>("WeightKg")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("WorkoutSessionId")
                         .HasColumnType("INTEGER");
@@ -892,8 +895,8 @@ namespace Callahan.Api.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("TEXT");
 
-                    b.Property<double?>("PlannedReductionPercent")
-                        .HasColumnType("REAL");
+                    b.Property<decimal?>("PlannedReductionPercent")
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("TaperDays")
                         .HasColumnType("INTEGER");
