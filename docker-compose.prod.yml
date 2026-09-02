@@ -2,6 +2,14 @@ services:
   backend:
     build: ./backend
     restart: unless-stopped
+    # The backend derives "today" from DateTime.Now in ~15 places (streaks,
+    # taper phase, the monthly-report lock, trend windows, wellness). Without
+    # this the container runs UTC, so "today" was a day behind for the first
+    # 10-11 hours of every local day, and TaperReminderService's 20:00 gate —
+    # whose comment already said "20:00 local - see docker-compose TZ note" —
+    # fired at 06:00 the next morning. tzdata is present in the aspnet image.
+    environment:
+      - TZ=Australia/Melbourne
     env_file:
       - backend.prod.env
     volumes:

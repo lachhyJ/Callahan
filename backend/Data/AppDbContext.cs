@@ -33,6 +33,28 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Every decimal is stored as REAL, not TEXT.
+        //
+        // EF's SQLite default maps decimal to TEXT to preserve exactness, which
+        // gives the column TEXT affinity — so server-side comparisons are
+        // lexicographic, not numeric. On real data `WeightKg > 9` matched 21
+        // rows where `CAST(WeightKg AS REAL) > 9` matched 1211, because '10'
+        // sorts before '9'. Nothing was wrong, because every comparison in the
+        // app materialises first (see the warning on ExerciseSet.WeightKg), but
+        // that is a rule a future query can break silently.
+        //
+        // Applied across the model rather than per-property on purpose: a
+        // decimal column added later inherits the fix instead of quietly
+        // reintroducing the trap. Verified against a copy of the production
+        // database — no stored value changes; weights are all .0/.25/.5/.75 and
+        // exact in float64, and GPS distances round-trip to the same decimal.
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+                     .SelectMany(t => t.GetProperties())
+                     .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
+        {
+            property.SetProviderClrType(typeof(double));
+        }
+
         // Soft delete: everywhere in the app queries through these DbSets (or
         // through a navigation/join to them) automatically excludes anything
         // pending its 7-day recovery window, with no per-query .Where() needed.
