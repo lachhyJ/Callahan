@@ -130,6 +130,13 @@
   margin: 0 auto;
 }
 
+.app-content.no-top-bar {
+  /* The TopBar is only rendered when authenticated, so the login page has no
+     header to sit under — its h1 would render beneath the status bar in the
+     native shell. Safari's chrome hid this in the PWA, same as .top-bar.idle. */
+  padding-top: var(--safe-top);
+}
+
 .page.with-rest-bar {
   /* The active workout page's own .rest-bar now floats above the bottom tab
      bar (already accounted for by .app-content.with-bottom-nav) — grow this

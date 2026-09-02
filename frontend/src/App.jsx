@@ -205,8 +205,10 @@ function AppRoutes() {
   const { restTimer, isTicking, now } = useGlobalRestTimer()
   useRouteTracking(isAuthenticated)
   const showBottomNav = isAuthenticated
-  const contentClassName = ['app-content', showBottomNav && 'with-bottom-nav', isTicking && 'with-rest-bar']
-    .filter(Boolean).join(' ')
+  // Without a TopBar there is nothing holding content clear of the status bar,
+  // so the wrapper has to carry the safe-area inset itself (see .no-top-bar).
+  const contentClassName = ['app-content', showBottomNav && 'with-bottom-nav', isTicking && 'with-rest-bar',
+    !isAuthenticated && 'no-top-bar'].filter(Boolean).join(' ')
 
   return (
     <>
