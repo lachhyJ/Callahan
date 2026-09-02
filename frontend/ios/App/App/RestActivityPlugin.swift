@@ -29,57 +29,38 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     private var currentEndAt: Date?
 
     override public func load() {
-        // Ending is driven from JS, but iOS suspends the webview once the app is
-        // backgrounded, so a rest timer that runs out while you are elsewhere
-        // strands its activity until you come back. Clearing it on return is the
-        // best that can be done without push updates.
+        // The activity's lifetime is the workout's, and JS owns both ends of that.
+        // All this does is tidy the countdown when a rest expired while the app
+        // was suspended, before JS gets a chance to re-sync.
         //
-        // Do NOT try to pre-empt this by ending the activity on willResignActive
-        // with dismissalPolicy .after(endAt): measured on iOS 26.5, that dismisses
-        // immediately rather than at the date, so the countdown vanishes from both
-        // the Dynamic Island and the Lock Screen the instant you leave the app —
-        // which removes the feature exactly when it is meant to be useful. The
-        // staleDate below is what stops a finished activity showing a dead 0:00.
+        // Do NOT try to retire a finished rest by ending the activity on
+        // willResignActive with dismissalPolicy .after(endAt): measured on iOS
+        // 26.5, that dismisses immediately rather than at the date, so the card
+        // vanishes from both the Dynamic Island and the Lock Screen the instant
+        // you leave the app — removing the feature exactly when it is useful.
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleBecomeActive),
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
-        reapOrphanedActivities()
     }
 
-    /// A card whose rest period finished while the app was not running has
-    /// nothing left to count and no way to be ended by JS. Clear it on launch.
-    private func reapOrphanedActivities() {
-        guard #available(iOS 16.2, *) else { return }
-        Task {
-            let storedEnd = await RestTimerStore.shared.endAt
-            let expired = storedEnd == nil || storedEnd! <= Date()
-            guard expired else { return }
-            await RestTimerStore.shared.clear()
-            for activity in Activity<RestActivityAttributes>.activities {
-                await activity.end(nil, dismissalPolicy: .immediate)
-            }
-        }
-    }
-
+    /// An expired rest zeroes the countdown; it does not retire the card, which
+    /// belongs to the workout and stands until the session is finished or
+    /// discarded. JS re-syncs on resume anyway — this just avoids showing a dead
+    /// countdown in the gap before it does.
     @objc private func handleBecomeActive() {
         guard #available(iOS 16.2, *) else { return }
         guard let endAt = currentEndAt, endAt <= Date() else { return }
-        let activity = currentActivity as? Activity<RestActivityAttributes>
-        currentActivity = nil
         currentEndAt = nil
         Task {
-            await activity?.end(nil, dismissalPolicy: .immediate)
-        }
-    }
-
-    @objc func isSupported(_ call: CAPPluginCall) {
-        if #available(iOS 16.2, *) {
-            call.resolve(["supported": ActivityAuthorizationInfo().areActivitiesEnabled])
-        } else {
-            call.resolve(["supported": false])
+            await RestTimerStore.shared.clear()
+            guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else { return }
+            var state = activity.content.state
+            state.endAt = nil
+            state.totalSeconds = 0
+            await activity.update(ActivityContent(state: state, staleDate: nil))
         }
     }
 
@@ -123,28 +104,33 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             call.resolve(["started": false, "reason": "disabled"])
             return
         }
-        guard let endAtMs = call.getDouble("endAt") else {
-            call.reject("endAt is required")
-            return
-        }
+        // endAt is optional now: the activity belongs to the workout, so it
+        // stays up between sets with the countdown zeroed rather than being torn
+        // down and rebuilt every time you finish resting.
+        let endAt = call.getDouble("endAt").map { Date(timeIntervalSince1970: $0 / 1000) }
+        let totalSeconds = call.getInt("totalSeconds") ?? 0
 
         let sessionStartedAtMs = call.getDouble("sessionStartedAt") ?? Date().timeIntervalSince1970 * 1000
         let attributes = RestActivityAttributes(
-            exerciseName: call.getString("exerciseName") ?? "Rest",
+            sessionStartedAt: Date(timeIntervalSince1970: sessionStartedAtMs / 1000)
+        )
+        let state = RestActivityAttributes.ContentState(
+            endAt: endAt,
+            totalSeconds: totalSeconds,
+            exerciseName: call.getString("exerciseName") ?? "Workout",
             targetReps: call.getString("targetReps") ?? "",
             targetWeight: call.getString("targetWeight") ?? "",
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
-            totalSets: call.getInt("totalSets") ?? 1,
-            sessionStartedAt: Date(timeIntervalSince1970: sessionStartedAtMs / 1000)
-        )
-        let endAt = Date(timeIntervalSince1970: endAtMs / 1000)
-        let state = RestActivityAttributes.ContentState(
-            endAt: endAt,
-            totalSeconds: call.getInt("totalSeconds") ?? 0
+            totalSets: call.getInt("totalSets") ?? 1
         )
         self.currentEndAt = endAt
-        let totalSeconds = call.getInt("totalSeconds") ?? 0
-        Task { await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds) }
+        Task {
+            if let endAt {
+                await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds)
+            } else {
+                await RestTimerStore.shared.clear()
+            }
+        }
 
         Task {
             // Exactly one activity, always.

@@ -49,15 +49,15 @@ struct RestActivityWidget: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                Image(systemName: context.isStale ? "checkmark" : "timer")
+                Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
                     .foregroundStyle(Self.accent)
             } compactTrailing: {
-                if !context.isStale {
+                if context.state.isResting && !context.isStale {
                     Countdown(context: context, font: .caption2.monospacedDigit())
                         .frame(width: 46, alignment: .trailing)
                 }
             } minimal: {
-                Image(systemName: context.isStale ? "checkmark" : "timer")
+                Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
                     .foregroundStyle(Self.accent)
             }
             .keylineTint(Self.accent)
@@ -76,34 +76,47 @@ private struct Countdown: View {
     var font: Font
 
     var body: some View {
-        Text(timerInterval: context.state.startAt...context.state.endAt, countsDown: true)
-            .font(font)
-            .monospacedDigit()
-            .lineLimit(1)
-            .foregroundStyle(RestActivityWidget.accent)
+        Group {
+            if let endAt = context.state.endAt {
+                Text(timerInterval: context.state.startAt...endAt, countsDown: true)
+                    .monospacedDigit()
+            } else {
+                // No rest running, but the workout is still open — Hevy shows a
+                // zeroed clock here rather than dropping the card.
+                Text("0:00")
+            }
+        }
+        .font(font)
+        .lineLimit(1)
+        .foregroundStyle(RestActivityWidget.accent)
     }
 }
 
-/// Counts up from the start of the workout, the way Hevy shows session elapsed.
+/// Session elapsed, the way Hevy shows it.
+///
+/// Deliberately not a live `Text(timerInterval:)`: past a few minutes iOS elides
+/// the seconds on a counting-up timer and it renders as "38:--", which reads as
+/// broken however much width it is given. A value computed at update time is
+/// accurate whenever the card changes — which is every set — and looks
+/// intentional in between. Hevy shows a coarse elapsed for the same reason.
 @available(iOS 16.2, *)
 private struct ElapsedLabel: View {
     let since: Date
 
     var body: some View {
-        // The range span decides how much width the view reserves: an 8-hour
-        // range lays out for "h:mm:ss" and then renders "1:--" in the space a
-        // header line can spare. An hour is plenty for a gym session's elapsed
-        // readout and keeps it to "m:ss".
-        Text(timerInterval: since...since.addingTimeInterval(60 * 60), countsDown: false)
+        Text(text)
             .font(.caption)
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .lineLimit(1)
-            .layoutPriority(1)
-            // A definite width, not minWidth: minWidth floors the resulting frame
-            // but does not raise the width *proposed* to the Text, so the timer
-            // still lays out against the squeezed proposal and renders "22:--".
-            .frame(width: 76, alignment: .trailing)
+    }
+
+    private var text: String {
+        let seconds = max(0, Int(Date().timeIntervalSince(since)))
+        if seconds < 60 { return "\(seconds) sec" }
+        let minutes = seconds / 60
+        if minutes < 60 { return "\(minutes) min" }
+        return "\(minutes / 60)h \(minutes % 60)m"
     }
 }
 
@@ -124,11 +137,11 @@ private struct ExerciseRow: View {
             .frame(width: 34, height: 34)
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(context.attributes.exerciseName)
+                Text(context.state.exerciseName)
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                Text(context.attributes.nextSetLine)
+                Text(context.state.nextSetLine)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -144,9 +157,15 @@ private struct ProgressBar: View {
     let context: ActivityViewContext<RestActivityAttributes>
 
     var body: some View {
-        ProgressView(timerInterval: context.state.startAt...context.state.endAt,
-                     countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
-            .tint(RestActivityWidget.accent)
+        Group {
+            if let endAt = context.state.endAt {
+                ProgressView(timerInterval: context.state.startAt...endAt,
+                             countsDown: true) { EmptyView() } currentValueLabel: { EmptyView() }
+            } else {
+                ProgressView(value: 0)
+            }
+        }
+        .tint(RestActivityWidget.accent)
     }
 }
 
@@ -157,7 +176,7 @@ private struct ControlRow: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            if #available(iOS 17.0, *) {
+            if #available(iOS 17.0, *), context.state.isResting {
                 Button(intent: AdjustRestIntent(deltaSeconds: -15)) {
                     Text("-15s").font(.caption.weight(.medium))
                 }
@@ -174,11 +193,11 @@ private struct ControlRow: View {
                 Countdown(context: context,
                           font: .system(size: 21, weight: .semibold, design: .rounded))
                     .layoutPriority(1)
-                    .frame(width: 118, alignment: .center)
+                    .frame(width: 142, alignment: .center)
             }
             Spacer(minLength: 0)
 
-            if #available(iOS 17.0, *) {
+            if #available(iOS 17.0, *), context.state.isResting {
                 Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
                     Text("+15s").font(.caption.weight(.medium))
                 }
