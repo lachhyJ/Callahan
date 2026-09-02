@@ -45,16 +45,26 @@ struct RestActivityWidget: Widget {
                         .frame(minWidth: 64, alignment: .trailing)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(context.attributes.exerciseName)
-                            .font(.headline)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                    // Two rows, not three: the expanded region has a tight height
+                    // budget and a third stacked line clips the set label against
+                    // the bottom edge of the island. The set label rides alongside
+                    // the exercise name instead.
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(alignment: .firstTextBaseline, spacing: 8) {
+                            Text(context.attributes.exerciseName)
+                                .font(.subheadline.weight(.semibold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                            Spacer(minLength: 4)
+                            Text(setLabel(context))
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                                .layoutPriority(1)
+                        }
                         progressBar(context)
-                        Text(setLabel(context))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
                     }
+                    .padding(.top, 2)
                 }
             } compactLeading: {
                 Image(systemName: "timer").foregroundStyle(Self.accent)
