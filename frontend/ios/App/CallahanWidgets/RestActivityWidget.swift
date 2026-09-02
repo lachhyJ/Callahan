@@ -113,12 +113,17 @@ private struct LockScreenView: View {
                 // renders as "1:--", and no fixed width, or it floats mid-card.
                 Spacer(minLength: 8)
 
+                // layoutPriority matters: without it the exercise name claims the
+                // width first, the timer is squeezed under its ideal size, and it
+                // renders "2:--" instead of shrinking. The name absorbs the squeeze
+                // instead — it has lineLimit(1) and minimumScaleFactor to do so.
                 Text(timerInterval: context.state.startAt...context.state.endAt,
                      countsDown: true)
-                    .font(.system(size: 34, weight: .semibold, design: .rounded).monospacedDigit())
+                    .font(.system(size: 32, weight: .semibold, design: .rounded).monospacedDigit())
                     .foregroundStyle(RestActivityWidget.accent)
                     .lineLimit(1)
-                    .frame(minWidth: 104, alignment: .trailing)
+                    .layoutPriority(1)
+                    .frame(minWidth: 96, alignment: .trailing)
             }
 
             ProgressView(timerInterval: context.state.startAt...context.state.endAt,
