@@ -18,10 +18,10 @@ jobs:
       # main is broken — gating it on main's tests would block the fix. A
       # rollback also deploys a specific old SHA, which these tests (run against
       # the checked-out main) would not be testing anyway.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         if: github.event_name == 'push'
 
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v6
         if: github.event_name == 'push'
         with:
           dotnet-version: '10.0.x'
@@ -30,7 +30,7 @@ jobs:
         if: github.event_name == 'push'
         run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         if: github.event_name == 'push'
         with:
           node-version: '22'
