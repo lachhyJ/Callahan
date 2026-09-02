@@ -18,7 +18,10 @@
   justify-content: space-between;
   align-items: center;
   gap: var(--space-md);
-  padding: var(--space-md) var(--space-lg);
+  /* Top inset matters in the native shell: with viewport-fit=cover there is no
+     browser chrome to push this clear of the status bar, so Logout renders over
+     the clock and battery. Safari's own chrome hid this in the PWA. */
+  padding: calc(var(--space-md) + var(--safe-top)) var(--space-lg) var(--space-md);
   background: var(--bg);
   border-bottom: 1px solid var(--border-subtle);
 
@@ -54,7 +57,9 @@
 }
 
 .top-bar.idle {
-  padding: var(--space-xs) var(--space-lg);
+  /* Overrides .top-bar's padding, so it must carry the safe-area inset too —
+     without it this variant renders Logout under the status bar on iOS. */
+  padding: calc(var(--space-xs) + var(--safe-top)) var(--space-lg) var(--space-xs);
 }
 
 .top-bar-left,
@@ -73,7 +78,7 @@
   display: flex;
   background: var(--surface-raised);
   border-top: 1px solid var(--border);
-  padding-bottom: max(0px, env(safe-area-inset-bottom) - 6px);
+  padding-bottom: max(0px, var(--safe-bottom) - 6px);
 }
 
 .tab-link {
@@ -743,7 +748,7 @@ td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--space-xs) + env(safe-area-inset-top)) var(--space-lg) var(--space-xs);
+  padding: calc(var(--space-xs) + var(--safe-top)) var(--space-lg) var(--space-xs);
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
@@ -929,7 +934,7 @@ td {
   z-index: var(--z-sticky);
   display: flex;
   align-items: stretch;
-  padding: var(--space-xs) 0 var(--space-xs) calc(var(--space-md) + env(safe-area-inset-left));
+  padding: var(--space-xs) 0 var(--space-xs) calc(var(--space-md) + var(--safe-left));
 }
 
 .weight-input-toolbar-calc {
@@ -2432,7 +2437,7 @@ td {
   border-top: 1px solid var(--border);
   border-radius: var(--radius-xl) var(--radius-xl) 0 0;
   box-shadow: var(--elevation-raised), var(--shadow);
-  padding: var(--space-md) var(--space-lg) calc(var(--space-lg) + env(safe-area-inset-bottom));
+  padding: var(--space-md) var(--space-lg) calc(var(--space-lg) + var(--safe-bottom));
   transform: translateY(100%);
   transition: transform var(--duration-normal) var(--ease-out);
 
