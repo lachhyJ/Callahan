@@ -1,14 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createActivity } from '../api/client'
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { trainingDayIso } from '../dateUtils'
 
 export default function LogActivityPage() {
   const [type, setType] = useState('Running')
-  const [date, setDate] = useState(todayIso())
+  // Defaults to the training day (see trainingDayIso) — a run started just
+  // after midnight belongs to the day before. The field stays visible and
+  // editable, so the rare post-midnight Ultimate entry is a one-tap change.
+  const [date, setDate] = useState(() => trainingDayIso())
   const [distanceKm, setDistanceKm] = useState('')
   const [minutes, setMinutes] = useState('')
   const [seconds, setSeconds] = useState('')

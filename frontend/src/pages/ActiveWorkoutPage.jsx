@@ -7,6 +7,7 @@ import { playBeepNow, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
+import { trainingDayIso } from '../dateUtils'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 
 const SET_TYPE_LABELS = { Warmup: 'W', Normal: '', Failure: 'F', Drop: 'D' }
@@ -35,10 +36,6 @@ function useKeyboardInset() {
     }
   }, [])
   return inset
-}
-
-function todayIso() {
-  return new Date().toISOString().slice(0, 10)
 }
 
 function formatDuration(ms) {
@@ -151,7 +148,7 @@ export default function ActiveWorkoutPage() {
   const sessionKey = isCustom ? 'custom' : Number(templateId)
   const [templateName, setTemplateName] = useState('')
   const [templateSubtitle, setTemplateSubtitle] = useState('')
-  const [date, setDate] = useState(todayIso())
+  const [date, setDate] = useState(() => trainingDayIso())
   const [sessionNotes, setSessionNotes] = useState('')
   const [exercises, setExercises] = useState(null)
   const [finishers, setFinishers] = useState([])
@@ -623,7 +620,7 @@ export default function ActiveWorkoutPage() {
         .map((ex) => ({ exerciseId: ex.exerciseId, notes: ex.notes.trim() }))
 
       await createWorkoutSession({
-        date: isCustom ? date : todayIso(),
+        date: isCustom ? date : trainingDayIso(startedAt),
         notes: isCustom ? (sessionNotes.trim() || null) : null,
         workoutTemplateId: isCustom ? null : Number(templateId),
         startedAt: startedAt.toISOString(),
@@ -711,7 +708,7 @@ export default function ActiveWorkoutPage() {
           {isCustom && (
             <label className="custom-workout-date">
               Date
-              <input type="date" value={date} max={todayIso()} onChange={(e) => setDate(e.target.value)} />
+              <input type="date" value={date} max={trainingDayIso()} onChange={(e) => setDate(e.target.value)} />
             </label>
           )}
         </div>

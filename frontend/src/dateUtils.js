@@ -8,6 +8,24 @@ export function isoDate(d) {
   return `${year}-${month}-${day}`
 }
 
+// The calendar day a session belongs to, which is not always the calendar day
+// the clock says. A gym session started at 00:30 is the tail of the previous
+// day's training, not the start of a new one — so anything begun before 3am
+// counts for the day before. 3am rather than 1am deliberately: at a 1am cutoff
+// a session started at 00:55 and one started at 01:05 land on different days,
+// which is a ten-minute swing deciding a date.
+//
+// Always pass the session's *start* time, never "now at save time" — a session
+// begun at 00:30 and finished at 01:45 belongs to the earlier day, and reading
+// the clock at the end would silently undo the rule.
+const TRAINING_DAY_CUTOFF_HOUR = 3
+
+export function trainingDayIso(startedAt = new Date()) {
+  const day = new Date(startedAt)
+  if (startedAt.getHours() < TRAINING_DAY_CUTOFF_HOUR) day.setDate(day.getDate() - 1)
+  return isoDate(day)
+}
+
 // Monday-first week, matching the Calendar page's grid convention.
 export function startOfWeek(d) {
   const day = (d.getDay() + 6) % 7 // Mon=0 ... Sun=6

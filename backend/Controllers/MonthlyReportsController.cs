@@ -27,7 +27,13 @@ public class MonthlyReportsController : ControllerBase
     // Bump whenever MonthlyReportDto's shape or a section's meaning changes.
     // Any stored snapshot below this is rebuilt in place on the next read,
     // keeping its row and its ViewedAt.
-    private const int CurrentReportSchemaVersion = 1;
+    //
+    // 2: the underlying session dates changed, not the report shape. 31 gym
+    // sessions logged in the morning had been attributed to the previous day
+    // (a UTC off-by-one, since fixed by trainingDayIso on the client), so every
+    // snapshot from Sep 2025 through Jul 2026 was counting them under the wrong
+    // month or day. Their stored JSON is stale even though the DTO is unchanged.
+    private const int CurrentReportSchemaVersion = 2;
 
     public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder)
     {
