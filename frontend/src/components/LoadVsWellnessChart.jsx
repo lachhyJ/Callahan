@@ -1,4 +1,5 @@
 import { niceStep } from '../utils/chartScale'
+import ChartGridLines from './ChartGridLines'
 import { formatVolume } from '../utils/format'
 
 const WIDTH = 320
@@ -75,14 +76,15 @@ export default function LoadVsWellnessChart({ weeks }) {
         role="img"
         aria-label="Weekly gym volume with mean readiness overlaid"
       >
-        {volTicks.map((t) => (
-          <g key={`v${t}`}>
-            <line x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} y1={yVol(t)} y2={yVol(t)} className="chart-gridline" />
-            <text x={PAD_LEFT - 4} y={yVol(t)} className="chart-tick-label" textAnchor="end" dominantBaseline="middle">
-              {formatVolume(t)}
-            </text>
-          </g>
-        ))}
+        <ChartGridLines
+          ticks={volTicks}
+          y={yVol}
+          x1={PAD_LEFT}
+          x2={WIDTH - PAD_RIGHT}
+          label={formatVolume}
+          labelOffset={4}
+          keyPrefix="v"
+        />
 
         {weeks.map((w, i) =>
           w.isTournamentWeek ? (

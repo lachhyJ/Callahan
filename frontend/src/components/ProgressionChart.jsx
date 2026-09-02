@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { niceStep } from '../utils/chartScale'
+import { buildTicks, niceStep } from '../utils/chartScale'
+import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 320
 const HEIGHT = 160
@@ -26,8 +27,7 @@ export default function ProgressionChart({ points }) {
   const yMax = rawMax + pad
 
   const step = niceStep(yMax - yMin)
-  const ticks = []
-  for (let t = Math.ceil(yMin / step) * step; t <= yMax; t += step) ticks.push(Math.round(t * 10) / 10)
+  const ticks = buildTicks(yMin, yMax, step, 1)
 
   const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
@@ -73,14 +73,7 @@ export default function ProgressionChart({ points }) {
         onPointerLeave={() => setActiveIdx(points.length - 1)}
         onTouchMove={handlePointerMove}
       >
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} className="chart-gridline" />
-            <text x={PAD_LEFT - 6} y={yFor(t)} className="chart-tick-label" textAnchor="end" dominantBaseline="middle">
-              {t}
-            </text>
-          </g>
-        ))}
+        <ChartGridLines ticks={ticks} y={yFor} x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} />
 
         <path d={areaPath} className="chart-area" />
         <path d={linePath} className="chart-line" />

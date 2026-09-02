@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { niceStep } from '../utils/chartScale'
+import { buildTicks, niceStep } from '../utils/chartScale'
+import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 340
 const HEIGHT = 168
@@ -88,10 +89,7 @@ export default function SeasonStrengthChart({ data }) {
   const yMinPct = rawMin - pctPad
   const yMaxPct = rawMax + pctPad
   const pctStep = niceStep(yMaxPct - yMinPct)
-  const pctTicks = []
-  for (let t = Math.ceil(yMinPct / pctStep) * pctStep; t <= yMaxPct + 1e-9; t += pctStep) {
-    pctTicks.push(Math.round(t))
-  }
+  const pctTicks = buildTicks(yMinPct, yMaxPct, pctStep, 0)
   const yPct = (v) => bottom - ((v - yMinPct) / (yMaxPct - yMinPct)) * plotHeight
 
   // Right axis — run km per month, zero-based.
@@ -156,20 +154,16 @@ export default function SeasonStrengthChart({ data }) {
         })}
 
         {/* percent gridlines + left ticks */}
-        {pctTicks.map((t) => (
-          <g key={`p${t}`}>
-            <line
-              x1={PAD_LEFT}
-              x2={WIDTH - PAD_RIGHT}
-              y1={yPct(t)}
-              y2={yPct(t)}
-              className={t === 0 ? 'chart-baseline' : 'chart-gridline'}
-            />
-            <text x={PAD_LEFT - 4} y={yPct(t)} className="chart-tick-label" textAnchor="end" dominantBaseline="middle">
-              {t > 0 ? `+${t}` : t}
-            </text>
-          </g>
-        ))}
+        <ChartGridLines
+          ticks={pctTicks}
+          y={yPct}
+          x1={PAD_LEFT}
+          x2={WIDTH - PAD_RIGHT}
+          label={(t) => (t > 0 ? `+${t}` : t)}
+          labelOffset={4}
+          lineClassName={(t) => (t === 0 ? 'chart-baseline' : 'chart-gridline')}
+          keyPrefix="p"
+        />
 
         {/* run distance — right axis, teal, deliberately recessive */}
         {anyRun && (

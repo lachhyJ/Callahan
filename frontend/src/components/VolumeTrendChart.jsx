@@ -1,5 +1,6 @@
-import { niceStep } from '../utils/chartScale'
-import { formatVolume } from '../utils/format'
+import { buildTicks, niceStep } from '../utils/chartScale'
+import { formatMonthShort, formatVolume } from '../utils/format'
+import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 320
 const HEIGHT = 90
@@ -7,17 +8,11 @@ const PAD_LEFT = 34
 const PAD_TOP = 8
 const BAR_GAP = 8
 
-
-function formatMonth(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })
-}
-
 export default function VolumeTrendChart({ months }) {
   const maxVolume = Math.max(...months.map((m) => m.volumeKg), 1)
   const step = niceStep(maxVolume)
   const yMax = Math.ceil(maxVolume / step) * step || step
-  const ticks = []
-  for (let t = 0; t <= yMax; t += step) ticks.push(t)
+  const ticks = buildTicks(0, yMax, step, 2)
 
   const plotWidth = WIDTH - PAD_LEFT
   const barWidth = (plotWidth - BAR_GAP * (months.length - 1)) / months.length
@@ -26,17 +21,13 @@ export default function VolumeTrendChart({ months }) {
     <div className="trend-chart">
       <h2 className="trend-chart-title">Volume</h2>
       <svg viewBox={`0 0 ${WIDTH} ${PAD_TOP + HEIGHT + 16}`} className="trend-chart-svg" role="img" aria-label="Monthly training volume, in kilograms lifted">
-        {ticks.map((t) => {
-          const y = PAD_TOP + HEIGHT - (t / yMax) * HEIGHT
-          return (
-            <g key={t}>
-              <line x1={PAD_LEFT} x2={WIDTH} y1={y} y2={y} className="chart-gridline" />
-              <text x={PAD_LEFT - 6} y={y} className="chart-tick-label" textAnchor="end" dominantBaseline="middle">
-                {formatVolume(t)}
-              </text>
-            </g>
-          )
-        })}
+        <ChartGridLines
+          ticks={ticks}
+          y={(t) => PAD_TOP + HEIGHT - (t / yMax) * HEIGHT}
+          x1={PAD_LEFT}
+          x2={WIDTH}
+          label={formatVolume}
+        />
         {months.map((m, i) => {
           const barHeight = Math.max(2, (m.volumeKg / yMax) * HEIGHT)
           const x = PAD_LEFT + i * (barWidth + BAR_GAP)
@@ -52,7 +43,7 @@ export default function VolumeTrendChart({ months }) {
                 className={isLast ? 'trend-bar current' : 'trend-bar'}
               />
               <text x={x + barWidth / 2} y={PAD_TOP + HEIGHT + 12} textAnchor="middle" className="trend-chart-axis-label">
-                {formatMonth(m.monthStart)}
+                {formatMonthShort(m.monthStart)}
               </text>
             </g>
           )

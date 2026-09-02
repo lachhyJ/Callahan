@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { niceStep } from '../utils/chartScale'
+import { buildTicks, niceStep } from '../utils/chartScale'
+import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 320
 const HEIGHT = 150
@@ -27,8 +28,7 @@ export default function TournamentGameChart({ points, unitLabel, caption }) {
   const step = niceStep(rawMax || 1)
   const yMax = Math.max(step, Math.ceil(rawMax / step) * step)
 
-  const ticks = []
-  for (let t = 0; t <= yMax + 1e-9; t += step) ticks.push(Math.round(t * 10) / 10)
+  const ticks = buildTicks(0, yMax, step, 1)
 
   const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
@@ -73,14 +73,7 @@ export default function TournamentGameChart({ points, unitLabel, caption }) {
         onPointerLeave={() => setActiveIdx(points.length - 1)}
         onTouchMove={handlePointerMove}
       >
-        {ticks.map((t) => (
-          <g key={t}>
-            <line x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} y1={yFor(t)} y2={yFor(t)} className="chart-gridline" />
-            <text x={PAD_LEFT - 6} y={yFor(t)} className="chart-tick-label" textAnchor="end" dominantBaseline="middle">
-              {t}
-            </text>
-          </g>
-        ))}
+        <ChartGridLines ticks={ticks} y={yFor} x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} />
 
         <path d={areaPath} className="chart-area" />
         <path d={linePath} className="chart-line" />

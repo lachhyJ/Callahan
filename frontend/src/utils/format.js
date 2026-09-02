@@ -32,3 +32,10 @@ export function formatClock(totalSeconds) {
   const seconds = totalSeconds % 60
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
+
+// "Sep" — the short month for a chart axis or a trend row, from an ISO date.
+// Locale-default deliberately (unlike the pinned en-AU date formatters): a
+// bare month abbreviation reads correctly in any of them.
+export function formatMonthShort(iso) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })
+}

@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom'
 import { LIFT_BASIS, basisNote, formatSet } from '../liftSets'
-import { formatWeight } from '../utils/format'
+import { formatMonthShort, formatWeight } from '../utils/format'
 
-
-function formatMonth(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString(undefined, { month: 'short' })
-}
 
 // The headline figure is the percent change on whatever basis the exercise
 // supports. Assisted lifts have no percentage (see LiftProgress), so they
@@ -35,7 +31,7 @@ export default function LiftTrendsList({ trends }) {
             <div className="lift-trend-name">
               <span>{t.exerciseName}</span>
               <span className="lift-trend-range">
-                {formatMonth(t.earliestMonth)} → {formatMonth(t.latestMonth)} · {formatSet(t.latest, t.basis)}{basisNote(t.basis)}
+                {formatMonthShort(t.earliestMonth)} → {formatMonthShort(t.latestMonth)} · {formatSet(t.latest, t.basis)}{basisNote(t.basis)}
               </span>
             </div>
             <span className={d.up ? 'lift-trend-delta up' : 'lift-trend-delta down'}>{d.text}</span>
