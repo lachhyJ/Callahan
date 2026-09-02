@@ -41,7 +41,7 @@ struct RestActivityWidget: Widget {
                 Image(systemName: "timer").foregroundStyle(Self.accent)
             } compactTrailing: {
                 countdown(context, font: .caption2.monospacedDigit())
-                    .fixedSize()
+                    .frame(maxWidth: 52)
             } minimal: {
                 Image(systemName: "timer").foregroundStyle(Self.accent)
             }
@@ -64,7 +64,7 @@ struct RestActivityWidget: Widget {
             .font(font)
             .monospacedDigit()
             .multilineTextAlignment(.trailing)
-            .fixedSize()
+            .lineLimit(1)
     }
 }
 
@@ -84,12 +84,17 @@ private struct LockScreenView: View {
                         .lineLimit(1)
                 }
                 Spacer()
-                // Text(timerInterval:) lays out for the widest digits it may need
-                // to show; too tight a frame renders as "1:--" rather than shrinking.
+                // Text(timerInterval:) lays out for the widest digits it may need,
+                // so too tight a frame renders as "1:--" rather than shrinking — 96pt
+                // was too tight at .title. Do NOT use .fixedSize() here: inside the
+                // ProgressView's GeometryReader it trips a SwiftUI layout assertion
+                // and takes the whole widget process down (EXC_BREAKPOINT in
+                // LayoutSubview.place), which silently kills the lock-screen card.
                 Text(timerInterval: context.state.startAt...context.state.endAt, countsDown: true)
                     .font(.system(.title, design: .rounded).monospacedDigit())
                     .foregroundStyle(RestActivityWidget.accent)
-                    .fixedSize()
+                    .lineLimit(1)
+                    .frame(width: 132, alignment: .trailing)
             }
 
             ProgressView(timerInterval: context.state.startAt...context.state.endAt,
