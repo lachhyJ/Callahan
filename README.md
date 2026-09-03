@@ -7,10 +7,12 @@ Self-hosted training tracker — gym workouts and running sessions, replacing He
 - Frontend: React (Vite), plain CSS with a token spine (`frontend/src/index.css`)
 - Auth: single credential + JWT (deliberately not ASP.NET Identity — single-user app)
 - Hosting: Docker Compose on a home NAS, behind a Cloudflare tunnel
+- Native: the same build wrapped as an iOS app (Capacitor 8) with a SwiftUI widget extension — see "The native iOS app"
 
 ## Features
 - Workout templates (3-day program, seeded from a program PDF) with per-exercise target sets/reps/rest/tempo and a persistent per-slot "cue" note
-- Active workout flow: tick-to-complete sets, warmup/failure/drop set types, rest timers with background push notifications, per-session exercise notes
+- Active workout flow: tick-to-complete sets, warmup/failure/drop set types, rest timers with background alerts, per-session exercise notes
+- On iOS (native build): a Live Activity for the open workout — lock screen and Dynamic Island, with working -15s / +15s / Skip — and a rest beep that plays through the silent switch, ducks your music rather than stopping it, and fires while backgrounded
 - Finishers (optional bonus exercises), live session duration/volume header
 - History list and a full per-session detail page
 - Dashboard: month calendar grid (workouts + runs, tap a day for a bottom-sheet detail view) plus a quick-links grid to Muscle Balance, Exercises, Streaks, Trends, and Program
@@ -51,6 +53,46 @@ docker compose up --build
 `ASPNETCORE_ENVIRONMENT=Development` and `Auth__AllowDevLogin=true`, which together
 enable `POST /api/auth/dev-login` — see "Verifying UI changes without a password"
 below.
+
+## The native iOS app
+
+The same React build also ships as a native iOS app (Capacitor 8, `frontend/ios/`).
+It exists for things a PWA cannot do on iOS: a Live Activity rest timer on the lock
+screen and Dynamic Island, and a beep that is audible through the hardware silent
+switch, ducks your music instead of stopping it, and still fires while the phone is
+backgrounded and locked.
+
+**The webview loads the live site**, not a bundled copy of `dist/` — `server.url` in
+`frontend/capacitor.config.json` points at `https://callahan.ljlab.online`. So a push
+to `main` updates the PWA *and* the native app together, and Xcode is only needed
+when the Swift changes. The trade is no offline support, which this app never had
+anyway (every screen reads from the API).
+
+### A fresh checkout needs a sync before Xcode will build
+
+`capacitor.config.json`, `config.xml` and `public/` inside `ios/App/App/` are
+generated and gitignored, so a clean clone has an Xcode project with no web assets
+and fails at link time with `Command Ld failed`. Run this first:
+
+```bash
+cd frontend && npm install && npm run build && npx cap sync ios
+```
+
+Then open `frontend/ios/App/App.xcodeproj` (SwiftPM — there is no `.xcworkspace`).
+
+### Signing
+
+Both the **App** and **CallahanWidgets** targets need a development team; the build
+fails on the widget target if only the app is set. On a free Apple ID the install
+expires after 7 days and needs a re-run of ⌘R (wireless once the device is paired).
+
+### Working on it
+
+- Web/UI changes: push to `main`. No rebuild.
+- Swift changes: ⌘R.
+- `npx cap sync ios` rewrites `packageClassList` from the installed npm plugins, so
+  app-target plugins are registered in `MainViewController.capacitorDidLoad()`
+  instead — never by hand-editing the generated config.
 
 ## Verifying UI changes without a password
 
