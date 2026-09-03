@@ -28,6 +28,9 @@ export const BAR_PRESETS = {
 // a sweep of 0-300 in 0.01 steps found no input where removing it changes the
 // answer (2026-09-02). It would start mattering if a non-representable plate
 // (1.1kg) were ever added, so it stays.
+// Also serves 'added' mode (plates hung from a dip belt), where the whole
+// target is one stack: pass the total rather than a per-side figure and the
+// same greedy fill applies unchanged.
 export function calculatePlates(perSideWeight, availablePlates) {
   let remaining = Math.round(perSideWeight * 100) / 100
   const breakdown = []
@@ -150,7 +153,10 @@ export function clearCustomEquipment(exerciseId) {
 // Name-based guess at what kind of equipment an exercise is loaded on —
 // 'barbell' (bar/sled + plates), 'dumbbell' (fixed-weight, logged as
 // combined weight across both hands), or 'hidden' (cable stacks, machines,
-// bodyweight — nothing to load or calculate). Not perfect (a DB/Cable
+// bodyweight — nothing to load or calculate). 'added' (plates hung from a
+// dip belt) is deliberately never guessed: pull-ups and chin-ups are
+// unweighted far more often than not, so they keep guessing 'hidden' and
+// 'added' is reached by the per-exercise override, which then sticks. Not perfect (a DB/Cable
 // naming convention only helps for exercises tagged that way, and moves
 // like "Lunges" or "Single Leg Hamstring Curl" carry no equipment hint at
 // all) — those fall through to 'barbell' rather than 'hidden', since a
@@ -172,15 +178,17 @@ export function guessEquipmentType(exerciseName) {
   return 'barbell'
 }
 
+export const EQUIPMENT_TYPES = ['barbell', 'dumbbell', 'added', 'hidden']
+
 // Per-exercise override on top of the name guess above — 'barbell' /
-// 'dumbbell' / 'hidden' when the athlete has corrected it for a specific
-// exercise, absent when left on the automatic guess.
+// 'dumbbell' / 'added' / 'hidden' when the athlete has corrected it for a
+// specific exercise, absent when left on the automatic guess.
 const EQUIPMENT_TYPE_PREFIX = 'callahan.plateCalc.equipmentType.'
 
 export function getEquipmentTypeOverride(exerciseId) {
   try {
     const value = localStorage.getItem(EQUIPMENT_TYPE_PREFIX + exerciseId)
-    return value === 'barbell' || value === 'dumbbell' || value === 'hidden' ? value : null
+    return EQUIPMENT_TYPES.includes(value) ? value : null
   } catch {
     return null
   }

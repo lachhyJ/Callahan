@@ -77,7 +77,29 @@ function BarDiagram({ breakdown, maxPlate, barWeightKg }) {
   )
 }
 
-const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', hidden: 'Hide' }
+// Shared by barbell and added-weight modes — both load from the same gym
+// plate set, so the picker is one component rather than two copies.
+function PlatesYouHave({ available, onToggle }) {
+  return (
+    <div className="plate-calc-sheet-bars">
+      <span className="plate-calc-sheet-label">Plates you have (kg)</span>
+      <div className="plate-calc-chip-row">
+        {PLATE_SETS.kg.map((plate) => (
+          <button
+            key={plate}
+            type="button"
+            className={available.includes(plate) ? 'plate-calc-chip active' : 'plate-calc-chip'}
+            onClick={() => onToggle(plate)}
+          >
+            {plate}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added', hidden: 'Hide' }
 
 export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined
@@ -206,6 +228,10 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const result = equipmentType === 'barbell' && hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
   const maxPlate = Math.max(...(availablePlates.length > 0 ? availablePlates : PLATE_SETS.kg))
 
+  // Added weight hangs off a belt as a single stack: the logged weight is the
+  // added load itself, so there is no bar to subtract and no halving.
+  const addedResult = equipmentType === 'added' && hasTarget && target > 0 ? calculatePlates(target, availablePlates) : null
+
   const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
   const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
 
@@ -303,21 +329,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                   )}
                 </div>
 
-                <div className="plate-calc-sheet-bars">
-                  <span className="plate-calc-sheet-label">Plates you have (kg)</span>
-                  <div className="plate-calc-chip-row">
-                    {PLATE_SETS.kg.map((plate) => (
-                      <button
-                        key={plate}
-                        type="button"
-                        className={availablePlates.includes(plate) ? 'plate-calc-chip active' : 'plate-calc-chip'}
-                        onClick={() => togglePlateAvailable(plate)}
-                      >
-                        {plate}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <PlatesYouHave available={availablePlates} onToggle={togglePlateAvailable} />
               </>
             )}
 
@@ -363,6 +375,37 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                     ))}
                   </div>
                 </div>
+              </>
+            )}
+
+            {equipmentType === 'added' && (
+              <>
+                {!hasTarget && (
+                  <p className="plate-calc-popover-hint">Enter the added weight on the set to see what to hang.</p>
+                )}
+                {hasTarget && target === 0 && (
+                  <p className="plate-calc-popover-hint">Bodyweight only — nothing to hang.</p>
+                )}
+                {addedResult && (
+                  <>
+                    <p className="plate-calc-sheet-perside">{target}kg on the belt</p>
+                    {addedResult.breakdown.length > 0 && (
+                      <ul className="plate-calc-breakdown">
+                        {addedResult.breakdown.map(({ plate, count }) => (
+                          <li key={plate}>
+                            <span className="plate-calc-plate">{plate}kg</span>
+                            <span>× {count}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {addedResult.remainder > 0 && (
+                      <p className="error">Can't hit that exactly with your available plates — {addedResult.remainder}kg short.</p>
+                    )}
+                  </>
+                )}
+
+                <PlatesYouHave available={availablePlates} onToggle={togglePlateAvailable} />
               </>
             )}
 
