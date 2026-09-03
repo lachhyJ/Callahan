@@ -55,9 +55,9 @@ export const isNativeAudio = isNative
 // Arm the beep for a rest that ends at `endAt` (ms epoch). Native only — on the
 // web the countdown effect plays it on the tick instead, and a backgrounded
 // phone relies on the push notification.
-export function scheduleBeep(endAt) {
+export function scheduleBeep(endAt, { title, body } = {}) {
   if (!isNative) return
-  RestAudio.schedule({ endAt }).catch(() => {})
+  RestAudio.schedule({ endAt, title, body }).catch(() => {})
 }
 
 export function cancelScheduledBeep() {

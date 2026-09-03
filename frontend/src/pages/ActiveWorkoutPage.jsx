@@ -121,6 +121,15 @@ function taperSetSuggestion(ex, taper) {
   return Math.max(1, Math.round(ex.targetSets * taper.gymTargetPct))
 }
 
+// Body text for the native rest-over notification: "Trap Bar Deadlift · set 4 of 5".
+function nextSetLabel(rest) {
+  const parts = [rest.exerciseName]
+  if (rest.nextSetNumber && rest.totalSets && rest.nextSetNumber <= rest.totalSets) {
+    parts.push(`set ${rest.nextSetNumber} of ${rest.totalSets}`)
+  }
+  return parts.filter(Boolean).join(' · ') || 'Next set.'
+}
+
 // What the Live Activity should describe when no rest is running: the first
 // exercise that still has an unticked set. Keeps the card meaningful for the
 // whole session rather than only in the gap after a set.
@@ -319,7 +328,10 @@ export default function ActiveWorkoutPage() {
     // timer starts or moves, and stand it down when it clears.
     if (restTimer) {
       lastRestRef.current = restTimer
-      scheduleBeep(restTimer.endAt)
+      scheduleBeep(restTimer.endAt, {
+        title: 'Rest over',
+        body: nextSetLabel(restTimer),
+      })
     } else {
       cancelScheduledBeep()
     }
@@ -471,8 +483,10 @@ export default function ActiveWorkoutPage() {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
     const duration = exercise.restSeconds || 90
-    // Unlock the beep element inside this tap so the countdown effect can sound
-    // it later. (No scheduling — a backgrounded phone relies on the push.)
+    // Web: unlock the beep element inside this tap so the countdown effect can
+    // sound it later, and a backgrounded phone falls back to the server push.
+    // Native: no unlock needed, and the beep and notification are both armed
+    // below from the rest-timer effect.
     unlockAudio()
     setRestTimer({
       endAt: Date.now() + duration * 1000,
@@ -486,6 +500,10 @@ export default function ActiveWorkoutPage() {
       nextSetNumber,
       totalSets: exercise.sets.length,
     })
+    // Native schedules its own local notification in scheduleBeep, which fires
+    // on the device clock instead of arriving over APNs a few seconds late.
+    // Booking the server push too would double the alert.
+    if (isNativeAudio) return
     try {
       const { timerId } = await scheduleRestTimer(duration, exercise.exerciseName, exercise.targetReps, nextSetNumber, exercise.sets.length)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
