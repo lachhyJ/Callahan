@@ -24,7 +24,7 @@ public class ExerciseSet
     // every comparison in this codebase runs in memory after ToListAsync,
     // which is why nothing is currently wrong. Keep it that way: materialise
     // first, or CAST explicitly in raw SQL. Applies to all 12 decimal columns
-    // (Activities.DistanceKm, ActivityLaps.*, TaperEvents.*, ...).
+    // (Activities.DistanceKm, ActivityLaps.*, Tournaments.*, ...).
     public decimal WeightKg { get; set; }
     public int SetOrder { get; set; }
     public SetType SetType { get; set; } = SetType.Normal;

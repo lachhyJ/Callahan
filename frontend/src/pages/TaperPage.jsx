@@ -140,6 +140,9 @@ export default function TaperPage() {
   const [error, setError] = useState(null)
 
   const [date, setDate] = useState('')
+  // Optional: a tournament that runs more than one day. Blank means it ends
+  // the day it starts. The taper always counts down to `date` either way.
+  const [endDate, setEndDate] = useState('')
   const [name, setName] = useState('')
   const [taperDays, setTaperDays] = useState(10)
   const [saving, setSaving] = useState(false)
@@ -196,8 +199,9 @@ export default function TaperPage() {
     setError(null)
     setSaving(true)
     try {
-      await createTaperEvent({ date, name, taperDays: Number(taperDays) || 10 })
+      await createTaperEvent({ date, endDate, name, taperDays: Number(taperDays) || 10 })
       setDate('')
+      setEndDate('')
       setName('')
       setTaperDays(10)
       refresh()
@@ -208,8 +212,11 @@ export default function TaperPage() {
     }
   }
 
+  // Removes the taper, not the tournament: since the two were merged the same
+  // row also groups the games played at it, and those outlive the taper. To
+  // delete the tournament itself, use the Ultimate page.
   async function handleDelete(id, label) {
-    if (!window.confirm(`Delete ${label}?`)) return
+    if (!window.confirm(`Stop tapering for ${label}? The tournament itself stays on the Ultimate page.`)) return
     try {
       await deleteTaperEvent(id)
       refresh()
@@ -289,6 +296,7 @@ export default function TaperPage() {
           </div>
           <TournamentsTab
             date={date} setDate={setDate} name={name} setName={setName}
+            endDate={endDate} setEndDate={setEndDate}
             taperDays={taperDays} setTaperDays={setTaperDays} saving={saving}
             handleCreate={handleCreate} events={events} handleDelete={handleDelete}
           />
@@ -453,7 +461,8 @@ export default function TaperPage() {
           {tab === 'tournaments' && (
             <TournamentsTab
               date={date} setDate={setDate} name={name} setName={setName}
-              taperDays={taperDays} setTaperDays={setTaperDays} saving={saving}
+              endDate={endDate} setEndDate={setEndDate}
+            taperDays={taperDays} setTaperDays={setTaperDays} saving={saving}
               handleCreate={handleCreate} events={events} handleDelete={handleDelete}
             />
           )}
@@ -463,7 +472,7 @@ export default function TaperPage() {
   )
 }
 
-function TournamentsTab({ date, setDate, name, setName, taperDays, setTaperDays, saving, handleCreate, events, handleDelete }) {
+function TournamentsTab({ date, setDate, endDate, setEndDate, name, setName, taperDays, setTaperDays, saving, handleCreate, events, handleDelete }) {
   return (
     <>
       <h2 className="section-gap">Add a tournament</h2>
@@ -471,6 +480,10 @@ function TournamentsTab({ date, setDate, name, setName, taperDays, setTaperDays,
         <label>
           Date
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+        </label>
+        <label>
+          End date (optional)
+          <input type="date" value={endDate} min={date} onChange={(e) => setEndDate(e.target.value)} />
         </label>
         <label>
           Name (optional)
@@ -482,6 +495,10 @@ function TournamentsTab({ date, setDate, name, setName, taperDays, setTaperDays,
         </label>
         <button type="submit" disabled={saving || !date}>{saving ? 'Saving…' : 'Add tournament'}</button>
       </form>
+      <p className="trend-chart-caption section-gap">
+        This adds a real tournament, not just a taper — it'll appear on the Ultimate page and
+        pick up the games you play there.
+      </p>
 
       {events && events.length > 0 && (
         <div className="section-gap">
@@ -495,7 +512,7 @@ function TournamentsTab({ date, setDate, name, setName, taperDays, setTaperDays,
                     {formatDateLong(ev.date)} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
                   </div>
                 </div>
-                <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id, ev.name || 'this tournament')}>Delete</button>
+                <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id, ev.name || 'this tournament')}>End taper</button>
               </div>
             ))}
           </div>

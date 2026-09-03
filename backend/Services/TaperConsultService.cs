@@ -25,7 +25,7 @@ public class TaperConsultService
         _logger = logger;
     }
 
-    public async Task<(string Answer, bool ComparedToPriorTaper)> AskAsync(TaperEvent taperEvent, string question)
+    public async Task<(string Answer, bool ComparedToPriorTaper)> AskAsync(Tournament taperEvent, string question)
     {
         var apiKey = _config["Anthropic:ApiKey"];
         if (string.IsNullOrWhiteSpace(apiKey))
@@ -97,27 +97,27 @@ public class TaperConsultService
         return (answer, comparedToPriorTaper);
     }
 
-    private async Task<(string SystemPrompt, bool ComparedToPriorTaper)> BuildSystemPromptAsync(TaperEvent taperEvent, DateOnly today)
+    private async Task<(string SystemPrompt, bool ComparedToPriorTaper)> BuildSystemPromptAsync(Tournament taperEvent, DateOnly today)
     {
-        var daysUntil = (taperEvent.Date.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days;
-        var phase = TaperPhaseCalculator.Compute(daysUntil, taperEvent.TaperDays, taperEvent.Name);
+        var daysUntil = (taperEvent.StartDate.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days;
+        var phase = TaperPhaseCalculator.Compute(daysUntil, taperEvent.TaperDays!.Value, taperEvent.Name);
 
-        var (windowStart, windowEnd) = TaperPhaseCalculator.CheckInWindow(taperEvent.Date, taperEvent.TaperDays);
+        var (windowStart, windowEnd) = TaperPhaseCalculator.CheckInWindow(taperEvent.StartDate, taperEvent.TaperDays!.Value);
 
         var thisTaperCheckIns = await _db.TaperCheckIns
-            .Where(c => c.TaperEventId == taperEvent.Id)
+            .Where(c => c.TournamentId == taperEvent.Id)
             .OrderBy(c => c.Date)
             .ToListAsync();
 
-        var tapersCompleted = await _db.TaperEvents
-            .CountAsync(e => e.Id != taperEvent.Id && e.Date < today);
+        var tapersCompleted = await _db.Tournaments
+            .CountAsync(t => t.TaperDays != null && t.Id != taperEvent.Id && t.StartDate < today);
 
         var sb = new StringBuilder();
         sb.AppendLine("You are a taper-coaching assistant for a competitive Ultimate Frisbee athlete using their own personal training tracker.");
         sb.AppendLine("You draw on established taper-research knowledge (progressive volume reduction while holding intensity/frequency steady), applied to this athlete's own real data below.");
         sb.AppendLine("Never contradict the deterministic taper phase/target guidance already shown to the athlete elsewhere in the app — you are explanatory, personalized context alongside it, not a replacement for it.");
         sb.AppendLine();
-        sb.AppendLine($"Tournament: {taperEvent.Name ?? "unnamed"} on {taperEvent.Date:yyyy-MM-dd}. Taper length: {taperEvent.TaperDays} days.");
+        sb.AppendLine($"Tournament: {taperEvent.Name ?? "unnamed"} on {taperEvent.StartDate:yyyy-MM-dd}. Taper length: {taperEvent.TaperDays} days.");
         sb.AppendLine($"Current phase: {phase.Phase}. Deterministic guidance: {phase.Message}");
         sb.AppendLine();
 
@@ -129,33 +129,33 @@ public class TaperConsultService
 
         sb.AppendLine();
         sb.AppendLine("This taper's daily check-ins (energy/soreness/motivation are 1-5 scales; dates after the tournament date are post-event debrief entries; \"missing\" means no check-in was recorded for that date — treat a gap as meaningful, e.g. busy/unmotivated/forgot, never as a neutral or good day):");
-        sb.AppendLine(FormatCheckInWindow(windowStart, windowEnd, taperEvent.Date, thisTaperCheckIns));
+        sb.AppendLine(FormatCheckInWindow(windowStart, windowEnd, taperEvent.StartDate, thisTaperCheckIns));
 
         var comparedToPriorTaper = false;
         if (tapersCompleted > 0)
         {
-            var priorEvent = await _db.TaperEvents
-                .Where(e => e.Id != taperEvent.Id && e.Date < today)
-                .OrderByDescending(e => e.Date)
+            var priorEvent = await _db.Tournaments
+                .Where(t => t.TaperDays != null && t.Id != taperEvent.Id && t.StartDate < today)
+                .OrderByDescending(t => t.StartDate)
                 .FirstOrDefaultAsync();
 
             if (priorEvent is not null)
             {
                 var priorCheckIns = await _db.TaperCheckIns
-                    .Where(c => c.TaperEventId == priorEvent.Id)
+                    .Where(c => c.TournamentId == priorEvent.Id)
                     .OrderBy(c => c.Date)
                     .ToListAsync();
 
                 if (priorCheckIns.Count > 0)
                 {
                     comparedToPriorTaper = true;
-                    var (priorWindowStart, priorWindowEnd) = TaperPhaseCalculator.CheckInWindow(priorEvent.Date, priorEvent.TaperDays);
+                    var (priorWindowStart, priorWindowEnd) = TaperPhaseCalculator.CheckInWindow(priorEvent.StartDate, priorEvent.TaperDays!.Value);
 
                     sb.AppendLine();
-                    sb.AppendLine($"Most recent completed taper for comparison ({priorEvent.Name ?? "unnamed"}, {priorEvent.Date:yyyy-MM-dd}):");
-                    sb.AppendLine(FormatCheckInWindow(priorWindowStart, priorWindowEnd, priorEvent.Date, priorCheckIns));
+                    sb.AppendLine($"Most recent completed taper for comparison ({priorEvent.Name ?? "unnamed"}, {priorEvent.StartDate:yyyy-MM-dd}):");
+                    sb.AppendLine(FormatCheckInWindow(priorWindowStart, priorWindowEnd, priorEvent.StartDate, priorCheckIns));
 
-                    var withData = priorCheckIns.Where(c => c.Date <= priorEvent.Date).ToList();
+                    var withData = priorCheckIns.Where(c => c.Date <= priorEvent.StartDate).ToList();
                     if (withData.Count > 0)
                     {
                         sb.AppendLine($"Prior taper averages (daily check-ins only, excludes debrief): energy {withData.Average(c => c.Energy):F1}, soreness {withData.Average(c => c.Soreness):F1}, motivation {withData.Average(c => c.Motivation):F1}.");

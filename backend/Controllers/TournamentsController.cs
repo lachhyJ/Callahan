@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -20,14 +21,49 @@ public class TournamentsController : ControllerBase
     }
 
     private static TournamentDto ToDto(Tournament t, int gameCount) =>
-        new(t.Id, t.Name, t.StartDate, t.EndDate, gameCount);
+        new(t.Id, t.Name, t.StartDate, t.EndDate, gameCount, t.SeasonId, t.TaperDays);
+
+    // Applies a requested taper length, keeping PlannedReductionPercent in step:
+    // set together, cleared together. Re-stamps the planned figure only when the
+    // length actually changes, so editing a tournament's name or dates doesn't
+    // silently move the number a finished taper is measured against.
+    private static void ApplyTaperDays(Tournament t, int? requested)
+    {
+        var taperDays = requested is > 0 ? requested : null;
+        if (taperDays == t.TaperDays) return;
+
+        t.TaperDays = taperDays;
+        t.PlannedReductionPercent = taperDays is null
+            ? null
+            : TaperPhaseCalculator.PlannedReduction(taperDays.Value, t.Name);
+    }
+
+    // Links every Ultimate activity in [StartDate, EndDate] that isn't already
+    // attached to a tournament. Shared by Create, Update and the explicit
+    // attach-games endpoint - see the comment on AttachGames for why it only
+    // ever claims unattached games.
+    private async Task<int> AttachGamesAsync(Tournament tournament)
+    {
+        var candidates = await _db.Activities
+            .Where(a => a.Type == ActivityType.Ultimate
+                && a.TournamentId == null
+                && a.Date >= tournament.StartDate
+                && a.Date <= tournament.EndDate)
+            .ToListAsync();
+
+        foreach (var activity in candidates)
+        {
+            activity.TournamentId = tournament.Id;
+        }
+        return candidates.Count;
+    }
 
     [HttpGet]
     public async Task<ActionResult<List<TournamentDto>>> GetAll()
     {
         var tournaments = await _db.Tournaments
             .OrderByDescending(t => t.StartDate)
-            .Select(t => new TournamentDto(t.Id, t.Name, t.StartDate, t.EndDate, t.Activities.Count))
+            .Select(t => new TournamentDto(t.Id, t.Name, t.StartDate, t.EndDate, t.Activities.Count, t.SeasonId, t.TaperDays))
             .ToListAsync();
 
         return Ok(tournaments);
@@ -46,7 +82,9 @@ public class TournamentsController : ControllerBase
             Name = request.Name,
             StartDate = request.StartDate,
             EndDate = request.EndDate,
+            SeasonId = request.SeasonId,
         };
+        ApplyTaperDays(tournament, request.TaperDays);
         _db.Tournaments.Add(tournament);
         await _db.SaveChangesAsync();
 
@@ -64,9 +102,24 @@ public class TournamentsController : ControllerBase
         var tournament = await _db.Tournaments.FirstOrDefaultAsync(t => t.Id == id);
         if (tournament is null) return NotFound();
 
+        var datesChanged = tournament.StartDate != request.StartDate || tournament.EndDate != request.EndDate;
+
         tournament.Name = request.Name;
         tournament.StartDate = request.StartDate;
         tournament.EndDate = request.EndDate;
+        tournament.SeasonId = request.SeasonId;
+        ApplyTaperDays(tournament, request.TaperDays);
+
+        if (datesChanged)
+        {
+            // Widening the window picks up games that now fall inside it. Games
+            // that fall OUTSIDE the new window are deliberately left attached:
+            // the date range is a convenience for finding games, not a rule
+            // about which ones belong, and silently detaching a game (losing a
+            // manual assignment made on its detail page) is the worse failure.
+            await AttachGamesAsync(tournament);
+        }
+
         await _db.SaveChangesAsync();
 
         var gameCount = await _db.Activities.CountAsync(a => a.TournamentId == id);
@@ -81,7 +134,9 @@ public class TournamentsController : ControllerBase
 
         // OnDelete(DeleteBehavior.SetNull) on Activity.TournamentId detaches
         // its games rather than deleting them - a Tournament is a grouping
-        // label, not the owner of the Activity rows it groups.
+        // label, not the owner of the Activity rows it groups. Its taper
+        // check-ins and reminder logs DO cascade: those are the tournament's
+        // own records and mean nothing without it.
         _db.Tournaments.Remove(tournament);
         await _db.SaveChangesAsync();
         return NoContent();
@@ -99,19 +154,9 @@ public class TournamentsController : ControllerBase
         var tournament = await _db.Tournaments.FirstOrDefaultAsync(t => t.Id == id);
         if (tournament is null) return NotFound();
 
-        var candidates = await _db.Activities
-            .Where(a => a.Type == ActivityType.Ultimate
-                && a.TournamentId == null
-                && a.Date >= tournament.StartDate
-                && a.Date <= tournament.EndDate)
-            .ToListAsync();
-
-        foreach (var activity in candidates)
-        {
-            activity.TournamentId = tournament.Id;
-        }
+        var attached = await AttachGamesAsync(tournament);
         await _db.SaveChangesAsync();
 
-        return Ok(new AttachGamesResponse(candidates.Count));
+        return Ok(new AttachGamesResponse(attached));
     }
 }

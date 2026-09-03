@@ -2925,6 +2925,18 @@ td {
   &:focus-visible {
     background: var(--accent-bg);
   }
+
+  /* The card is a flex row, so a two-word action ("End taper") wraps and
+     grows the card while the label beside it clips. One-word actions never
+     showed this. Let the text block absorb the squeeze instead. */
+  > .secondary-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  > div {
+    min-width: 0;
+  }
 }
 
 .streak-label {

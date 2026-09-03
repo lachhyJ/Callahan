@@ -48,7 +48,7 @@ public class MonthlyReportBuilder
         var trailingWorkouts = workouts.Where(w => w.Date >= trailingStart && w.Date < trailingEndExclusive).ToList();
         var trailingActivities = runsAndUltimate.Where(a => a.Date >= trailingStart && a.Date < trailingEndExclusive).ToList();
 
-        var taperEvents = await _db.TaperEvents.ToListAsync();
+        var taperEvents = await _db.Tournaments.Where(t => t.TaperDays != null).ToListAsync();
 
         var wellnessRows = (await _db.DailyWellness
                 .Where(w => w.Date >= trailingStart && w.Date <= monthEnd)
@@ -325,12 +325,12 @@ public class MonthlyReportBuilder
 
     private static ContextSectionDto BuildContext(
         List<WorkoutSession> monthWorkouts, List<Activity> monthActivities,
-        List<TaperEvent> taperEvents, DateOnly monthStart, DateOnly monthEnd)
+        List<Tournament> taperEvents, DateOnly monthStart, DateOnly monthEnd)
     {
         var tournaments = taperEvents
-            .Where(e => e.Date >= monthStart && e.Date <= monthEnd)
-            .OrderBy(e => e.Date)
-            .Select(e => e.Name ?? $"Event on {e.Date:yyyy-MM-dd}")
+            .Where(e => e.StartDate >= monthStart && e.StartDate <= monthEnd)
+            .OrderBy(e => e.StartDate)
+            .Select(e => e.Name)
             .ToList();
 
         var allDates = monthWorkouts.Select(w => w.Date).Concat(monthActivities.Select(a => a.Date)).Distinct().OrderBy(d => d).ToList();
@@ -351,14 +351,14 @@ public class MonthlyReportBuilder
         return new ContextSectionDto(tournaments, longestGap, gapStart, gapEnd);
     }
 
-    private async Task<List<TaperSectionDto>> BuildTaperOverlapsAsync(List<TaperEvent> taperEvents, DateOnly monthStart, DateOnly monthEnd)
+    private async Task<List<TaperSectionDto>> BuildTaperOverlapsAsync(List<Tournament> taperEvents, DateOnly monthStart, DateOnly monthEnd)
     {
         var results = new List<TaperSectionDto>();
 
         foreach (var ev in taperEvents)
         {
-            var taperStart = ev.Date.AddDays(-ev.TaperDays);
-            var taperEnd = ev.Date;
+            var taperStart = ev.StartDate.AddDays(-ev.TaperDays!.Value);
+            var taperEnd = ev.StartDate;
             // No overlap with the report month at all — omit entirely.
             if (taperEnd < monthStart || taperStart > monthEnd) continue;
 
@@ -415,12 +415,12 @@ public class MonthlyReportBuilder
                 ? (1m - taperWeeklyVolume / baselineWeeklyVolume) * 100m
                 : null;
 
-            var (checkInWindowStart, checkInWindowEnd) = TaperPhaseCalculator.CheckInWindow(ev.Date, ev.TaperDays);
+            var (checkInWindowStart, checkInWindowEnd) = TaperPhaseCalculator.CheckInWindow(ev.StartDate, ev.TaperDays!.Value);
             var expectedCheckInDays = checkInWindowEnd.DayNumber - checkInWindowStart.DayNumber + 1;
-            var actualCheckIns = await _db.TaperCheckIns.CountAsync(c => c.TaperEventId == ev.Id);
+            var actualCheckIns = await _db.TaperCheckIns.CountAsync(c => c.TournamentId == ev.Id);
 
             results.Add(new TaperSectionDto(
-                ev.Name ?? $"Event on {ev.Date:yyyy-MM-dd}", ev.Date, overlap,
+                ev.Name, ev.StartDate, overlap,
                 ev.PlannedReductionPercent * 100m, actualReduction.HasValue ? Math.Round(actualReduction.Value, 1) : null,
                 actualCheckIns, expectedCheckInDays,
                 Math.Round(rawSessionsPerWeek, 2), Math.Round(exclSessionsPerWeek, 2)));

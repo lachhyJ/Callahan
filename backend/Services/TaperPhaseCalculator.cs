@@ -39,6 +39,15 @@ public static class TaperPhaseCalculator
             $"Early taper — {daysUntil} days out. Aim for around 75% of your usual weekly volume this week.");
     }
 
+    // The deepest planned cut for a taper of this length (the "sharpen" phase,
+    // always reached before game day regardless of taper length) expressed as a
+    // reduction - 1 - TargetPct. Fixed at the moment TaperDays is set so a
+    // finished taper keeps a stable planned figure to compare actuals against,
+    // rather than one that would keep changing with "days until" if recomputed
+    // live. One definition, shared by both controllers that can set TaperDays.
+    public static decimal PlannedReduction(int taperDays, string? eventName) =>
+        1m - (Compute(2, taperDays, eventName).TargetPct ?? 0.25m);
+
     // Check-in/debrief window: taper start through 3 days after the event
     // (covers daily check-ins plus the day+1/day+3 debrief touchpoints).
     // One definition shared by TaperController, TaperConsultService, and

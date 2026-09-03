@@ -20,7 +20,6 @@ public class AppDbContext : DbContext
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
     public DbSet<ActivitySessionType> ActivitySessionTypes => Set<ActivitySessionType>();
-    public DbSet<TaperEvent> TaperEvents => Set<TaperEvent>();
     public DbSet<TaperCheckIn> TaperCheckIns => Set<TaperCheckIn>();
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
     public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
@@ -68,11 +67,11 @@ public class AppDbContext : DbContext
             .HasFilter("[GarminActivityId] IS NOT NULL");
 
         modelBuilder.Entity<TaperCheckIn>()
-            .HasIndex(c => new { c.TaperEventId, c.Date })
+            .HasIndex(c => new { c.TournamentId, c.Date })
             .IsUnique();
 
         modelBuilder.Entity<TaperReminderLog>()
-            .HasIndex(r => new { r.TaperEventId, r.Date })
+            .HasIndex(r => new { r.TournamentId, r.Date })
             .IsUnique();
 
         modelBuilder.Entity<MonthlyReport>()
@@ -105,6 +104,20 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Tournament>()
             .HasIndex(t => t.StartDate);
+        // Taper check-ins and reminder logs ARE owned by the tournament, so
+        // these cascade - the opposite of Activity below, which merely
+        // references it. Deleting a tournament you tapered for should take the
+        // taper's own records with it; there is nothing left for them to mean.
+        modelBuilder.Entity<TaperCheckIn>()
+            .HasOne(c => c.Tournament)
+            .WithMany(t => t.TaperCheckIns)
+            .HasForeignKey(c => c.TournamentId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<TaperReminderLog>()
+            .HasOne(r => r.Tournament)
+            .WithMany()
+            .HasForeignKey(r => r.TournamentId)
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<Activity>()
             .HasOne(a => a.Tournament)
             .WithMany(t => t.Activities)

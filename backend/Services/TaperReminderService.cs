@@ -65,9 +65,11 @@ public class TaperReminderService : BackgroundService
         // expressed as a single translatable EF Core predicate since it's a
         // shared C# helper, so the AddDays calls here must still mirror it by
         // hand; kept inline rather than loading every event into memory to
-        // filter client-side.
-        var candidates = await db.TaperEvents
-            .Where(e => today >= e.Date.AddDays(-e.TaperDays) && today <= e.Date.AddDays(3))
+        // filter client-side. Only tournaments with a taper planned qualify.
+        var candidates = await db.Tournaments
+            .Where(t => t.TaperDays != null
+                && today >= t.StartDate.AddDays(-t.TaperDays!.Value)
+                && today <= t.StartDate.AddDays(3))
             .ToListAsync();
 
         if (candidates.Count == 0) return;
@@ -76,24 +78,24 @@ public class TaperReminderService : BackgroundService
 
         foreach (var taperEvent in candidates)
         {
-            var hasCheckIn = await db.TaperCheckIns.AnyAsync(c => c.TaperEventId == taperEvent.Id && c.Date == today);
+            var hasCheckIn = await db.TaperCheckIns.AnyAsync(c => c.TournamentId == taperEvent.Id && c.Date == today);
             if (hasCheckIn) continue;
 
-            var alreadySent = await db.TaperReminderLogs.AnyAsync(r => r.TaperEventId == taperEvent.Id && r.Date == today);
+            var alreadySent = await db.TaperReminderLogs.AnyAsync(r => r.TournamentId == taperEvent.Id && r.Date == today);
             if (alreadySent) continue;
 
             subscriptions ??= await db.PushSubscriptions.ToListAsync();
             if (subscriptions.Count == 0) continue;
 
-            var isDebrief = today > taperEvent.Date;
+            var isDebrief = today > taperEvent.StartDate;
             var title = isDebrief ? "Taper debrief" : "Taper check-in";
             var body = isDebrief
-                ? $"Haven't logged your debrief for {taperEvent.Name ?? "your tournament"} yet — how'd it go?"
-                : $"Haven't logged today's taper check-in for {taperEvent.Name ?? "your tournament"} yet.";
+                ? $"Haven't logged your debrief for {taperEvent.Name} yet — how'd it go?"
+                : $"Haven't logged today's taper check-in for {taperEvent.Name} yet.";
 
             await pushService.SendToAllAsync(subscriptions, title, body);
 
-            db.TaperReminderLogs.Add(new TaperReminderLog { TaperEventId = taperEvent.Id, Date = today });
+            db.TaperReminderLogs.Add(new TaperReminderLog { TournamentId = taperEvent.Id, Date = today });
             await db.SaveChangesAsync();
         }
     }

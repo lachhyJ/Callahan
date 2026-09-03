@@ -3,8 +3,8 @@ namespace Callahan.Api.Models;
 public class TaperCheckIn
 {
     public int Id { get; set; }
-    public int TaperEventId { get; set; }
-    public TaperEvent TaperEvent { get; set; } = null!;
+    public int TournamentId { get; set; }
+    public Tournament Tournament { get; set; } = null!;
 
     public DateOnly Date { get; set; }
     public int Energy { get; set; }

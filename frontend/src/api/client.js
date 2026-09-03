@@ -149,13 +149,18 @@ export function getTaperRecommendation() {
   return apiFetch('/api/taper/recommendation')
 }
 
-export function createTaperEvent({ date, name, taperDays }) {
+// Creates a real tournament with a taper attached - the same row the games
+// list groups activities under. endDate is optional; omitted, the tournament
+// ends the day it starts.
+export function createTaperEvent({ date, endDate, name, taperDays }) {
   return apiFetch('/api/taper/events', {
     method: 'POST',
-    body: JSON.stringify({ date, name: name || null, taperDays }),
+    body: JSON.stringify({ date, endDate: endDate || null, name: name || null, taperDays }),
   })
 }
 
+// Clears the taper, leaving the tournament itself (and any games grouped under
+// it) in place. Deleting the tournament outright is deleteTournament.
 export function deleteTaperEvent(id) {
   return apiFetch(`/api/taper/events/${id}`, { method: 'DELETE' })
 }
@@ -338,11 +343,36 @@ export function getTournaments() {
   return apiFetch('/api/tournaments')
 }
 
-export function createTournament({ name, startDate, endDate }) {
+export function createTournament({ name, startDate, endDate, seasonId, taperDays }) {
   return apiFetch('/api/tournaments', {
     method: 'POST',
-    body: JSON.stringify({ name, startDate, endDate }),
+    body: JSON.stringify({
+      name,
+      startDate,
+      endDate,
+      seasonId: seasonId ?? null,
+      // null means "not a taper target" - the normal state for a tournament
+      // added here rather than from the taper page.
+      taperDays: taperDays ?? null,
+    }),
   })
+}
+
+export function updateTournament(id, { name, startDate, endDate, seasonId, taperDays }) {
+  return apiFetch(`/api/tournaments/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      name,
+      startDate,
+      endDate,
+      seasonId: seasonId ?? null,
+      taperDays: taperDays ?? null,
+    }),
+  })
+}
+
+export function deleteTournament(id) {
+  return apiFetch(`/api/tournaments/${id}`, { method: 'DELETE' })
 }
 
 export function attachTournamentGames(id) {

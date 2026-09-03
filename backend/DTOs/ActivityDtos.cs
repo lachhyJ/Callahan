@@ -133,11 +133,11 @@ public record UpdateConeDistanceRequest(int? ConeDistanceM);
 
 public record UpdateActivityTournamentRequest(int? TournamentId);
 
-public record TournamentDto(int Id, string Name, DateOnly StartDate, DateOnly EndDate, int GameCount);
+public record TournamentDto(int Id, string Name, DateOnly StartDate, DateOnly EndDate, int GameCount, int? SeasonId, int? TaperDays);
 
-public record CreateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate);
+public record CreateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays);
 
-public record UpdateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate);
+public record UpdateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays);
 
 // Response from the date-range attach sweep - how many previously-unlinked
 // Ultimate activities in [StartDate, EndDate] got linked to this tournament.
