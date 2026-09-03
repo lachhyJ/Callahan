@@ -236,6 +236,14 @@
   }
 }
 
+html {
+  /* iOS inflates text (and, on rotation, the whole layout) unless autosizing
+     is pinned. Without this, rotating to landscape zooms the page and coming
+     back to portrait leaves it stuck at the landscape layout width. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
 }
