@@ -57,8 +57,17 @@ struct RestActivityWidget: Widget {
                         .frame(width: 46, alignment: .trailing)
                 }
             } minimal: {
-                Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
-                    .foregroundStyle(Self.accent)
+                // When another app also has a Live Activity up — music, usually —
+                // iOS demotes one of them to this. There is no API to claim the
+                // compact slot or the whole island, so the only lever is making
+                // the demoted presentation still worth reading: the time left,
+                // not a glyph that says "there is a timer somewhere".
+                if context.state.isResting && !context.isStale {
+                    Countdown(context: context, font: .system(size: 12, weight: .semibold).monospacedDigit())
+                } else {
+                    Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
+                        .foregroundStyle(Self.accent)
+                }
             }
             .keylineTint(Self.accent)
         }
@@ -105,7 +114,7 @@ private struct ElapsedLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.caption)
+            .font(.subheadline)
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -131,21 +140,21 @@ private struct ExerciseRow: View {
             ZStack {
                 Circle().fill(RestActivityWidget.accent.opacity(0.18))
                 Image(systemName: "dumbbell.fill")
-                    .font(.system(size: 15))
+                    .font(.system(size: 18))
                     .foregroundStyle(RestActivityWidget.accent)
             }
-            .frame(width: 34, height: 34)
+            .frame(width: 40, height: 40)
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(context.state.exerciseName)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.headline.weight(.semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
                 Text(context.state.nextSetLine)
-                    .font(.caption2)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .minimumScaleFactor(0.7)
             }
             Spacer(minLength: 0)
         }
@@ -169,16 +178,26 @@ private struct ProgressBar: View {
     }
 }
 
-/// -15s · countdown · +15s · Skip, matching Hevy's control row.
+/// Two shapes, because the card is useful for two different moments.
+///
+/// While the rest runs: -15s · countdown · +15s · Skip, matching Hevy's control
+/// row. Once it is over the adjust buttons have nothing to adjust, so the row
+/// becomes the thing you actually want at that point — tick the set you just did
+/// and start the next rest, without unlocking the phone.
 @available(iOS 16.2, *)
 private struct ControlRow: View {
     let context: ActivityViewContext<RestActivityAttributes>
 
+    /// The rest has run out, or there was never one running — either way the next
+    /// thing to happen is a set, not an adjustment.
+    private var restOver: Bool { !context.state.isResting || context.isStale }
+    private var hasSetsLeft: Bool { context.state.nextSetNumber <= context.state.totalSets }
+
     var body: some View {
         HStack(spacing: 8) {
-            if #available(iOS 17.0, *), context.state.isResting {
+            if #available(iOS 17.0, *), !restOver {
                 Button(intent: AdjustRestIntent(deltaSeconds: -15)) {
-                    Text("-15s").font(.caption.weight(.medium))
+                    Text("-15s").font(.subheadline.weight(.medium))
                 }
                 .buttonStyle(.bordered)
                 .tint(.gray)
@@ -187,28 +206,39 @@ private struct ControlRow: View {
             Spacer(minLength: 0)
             if context.isStale {
                 Text("Go")
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: 26, weight: .semibold, design: .rounded))
                     .foregroundStyle(RestActivityWidget.accent)
             } else {
                 Countdown(context: context,
-                          font: .system(size: 21, weight: .semibold, design: .rounded))
+                          font: .system(size: 26, weight: .semibold, design: .rounded))
                     .layoutPriority(1)
-                    .frame(width: 142, alignment: .center)
+                    .frame(width: restOver ? 90 : 150, alignment: .center)
             }
             Spacer(minLength: 0)
 
-            if #available(iOS 17.0, *), context.state.isResting {
-                Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
-                    Text("+15s").font(.caption.weight(.medium))
-                }
-                .buttonStyle(.bordered)
-                .tint(.gray)
+            if #available(iOS 17.0, *) {
+                if restOver {
+                    if hasSetsLeft {
+                        Button(intent: CompleteSetIntent()) {
+                            Label("Set done", systemImage: "checkmark")
+                                .font(.subheadline.weight(.semibold))
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .tint(RestActivityWidget.accent)
+                    }
+                } else {
+                    Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
+                        Text("+15s").font(.subheadline.weight(.medium))
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(.gray)
 
-                Button(intent: SkipRestIntent()) {
-                    Text("Skip").font(.caption.weight(.semibold))
+                    Button(intent: SkipRestIntent()) {
+                        Text("Skip").font(.subheadline.weight(.semibold))
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(RestActivityWidget.accent)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(RestActivityWidget.accent)
             }
         }
     }
@@ -223,8 +253,8 @@ private struct LockScreenView: View {
             HStack {
                 HStack(spacing: 6) {
                     Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.caption)
-                    Text("Workout").font(.caption)
+                        .font(.subheadline)
+                    Text("Workout").font(.subheadline)
                 }
                 .foregroundStyle(.secondary)
                 Spacer()

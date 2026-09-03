@@ -24,6 +24,9 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         var targetWeight: String
         var nextSetNumber: Int
         var totalSets: Int
+        /// Rest length for the set the card is describing, so the Tick button can
+        /// start the next rest without waking the webview to ask.
+        var restSeconds: Int
 
         var isResting: Bool { endAt != nil }
 
