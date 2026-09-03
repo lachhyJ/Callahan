@@ -194,7 +194,15 @@ textarea {
 
 button {
   font: inherit;
-  padding: var(--space-xs) var(--space-md);
+  /* 10px, not var(--space-xs)'s 8px: the label is ~25px, so 10px a side clears
+     the 44px touch minimum. Every button in the app inheriting this rule
+     measured 41px before - fine with a mouse, a miss on a phone, which is
+     where this app is actually used. Buttons that override padding to reset
+     their chrome (.back-link, .trend-legend-item, .row-delete-btn,
+     .activity-classify-btn, .logout-btn) are unaffected by this and are still
+     short; each needs its own fix, since snapping an inline text control to
+     44px moves the layout around it. */
+  padding: 10px var(--space-md);
   border-radius: var(--radius-md);
   border: none;
   background: var(--accent);
@@ -628,7 +636,9 @@ td {
 
 .taper-tab {
   flex: 1;
-  padding: var(--space-xs) var(--space-sm);
+  /* 10px vertical clears the 44px touch minimum at --text-sm; see the base
+     button rule. */
+  padding: 10px var(--space-sm);
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -1064,7 +1074,11 @@ td {
   border: 1px solid var(--border);
   color: var(--text-h);
   font-size: var(--text-sm);
-  padding: var(--space-xs) var(--space-sm);
+  /* 10px vertical clears the 44px touch minimum at --text-sm; see the base
+     button rule. min-width covers the short labels - a "5" chip was 35px
+     wide. */
+  padding: 10px var(--space-sm);
+  min-width: 44px;
   border-radius: var(--radius-full);
 
   &:hover,
@@ -2014,6 +2028,12 @@ td {
 }
 
 .calendar-nav-btn {
+  /* A single glyph, so padding alone leaves a 34x28 target. These are the
+     week/month steppers on the dashboard and trends - tapped constantly on a
+     phone - so they get an explicit 44x44 box. The centred label between them
+     has its own min-width, so growing the arrows doesn't move it. */
+  min-width: 44px;
+  min-height: 44px;
   padding: var(--space-2xs) var(--space-sm);
   font-size: var(--text-lg);
   line-height: 1;
