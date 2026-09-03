@@ -11,5 +11,6 @@ import UIKit
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(RestActivityPlugin())
+        bridge?.registerPluginInstance(RestAudioPlugin())
     }
 }
