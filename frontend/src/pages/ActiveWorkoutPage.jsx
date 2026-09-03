@@ -4,7 +4,7 @@ import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
-import { playBeepNow, unlockAudio } from '../audio'
+import { cancelScheduledBeep, isNativeAudio, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import { getEquipmentType } from '../plateCalc'
@@ -292,9 +292,11 @@ export default function ActiveWorkoutPage() {
     // remaining time is always correct rather than having drifted.
     const remaining = Math.round((restTimer.endAt - now.getTime()) / 1000)
     if (remaining <= 0) {
-      // In-app beep. Foreground only — this effect only advances while the tab
-      // is visible; a backgrounded / locked phone gets the push notification.
-      playBeepNow()
+      // Web only: this effect advances just while the tab is visible, so a
+      // backgrounded phone relies on the push. Natively the beep was armed on
+      // the audio clock when the rest started and has already sounded — playing
+      // again here would double it.
+      if (!isNativeAudio) playBeepNow()
       setRestTimer(null)
     }
   }, [now, restTimer])
@@ -313,7 +315,14 @@ export default function ActiveWorkoutPage() {
     // creating and destroying it: between sets it stays up with the countdown
     // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
     // keeps the exercise/set line populated once the rest has ended.
-    if (restTimer) lastRestRef.current = restTimer
+    // Same choke point as the Live Activity: arm the native beep whenever the
+    // timer starts or moves, and stand it down when it clears.
+    if (restTimer) {
+      lastRestRef.current = restTimer
+      scheduleBeep(restTimer.endAt)
+    } else {
+      cancelScheduledBeep()
+    }
     syncWorkoutActivity({
       rest: restTimer,
       lastSet: nextSetDescriptor(exercises) ?? lastRestRef.current,

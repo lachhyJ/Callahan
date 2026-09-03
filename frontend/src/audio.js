@@ -1,4 +1,10 @@
-// Rest-timer alert beep, foreground only.
+import { Capacitor, registerPlugin } from '@capacitor/core'
+
+// Rest-timer alert beep.
+//
+// Native (Capacitor) schedules it on the audio clock and it sounds backgrounded
+// and through the silent switch — see the native path below. On the web it is
+// foreground-only, for the reasons recorded here.
 //
 // Backgrounded audio on iOS Safari / an installed PWA turned out to be a dead
 // end for this use: the only audio session that plays through the hardware
@@ -28,6 +34,37 @@
 // guaranteed; the reliable fix is a native AVAudioSession with
 // mixWithOthers/duckOthers.
 
+// ── Native path ──
+// The Capacitor wrap exists for exactly the two problems described above. A
+// native AVAudioSession can be `.playback` (audible through the silent switch)
+// AND `.mixWithOthers` + `.duckOthers` (music dips and comes back) at the same
+// time, which no web audio session can. And with UIBackgroundModes: audio plus
+// a player armed on the audio clock, the beep sounds while the app is
+// backgrounded — the case the web version could never cover, because iOS
+// suspends the webview's JS.
+//
+// Everything below the native branch is the web/PWA implementation, unchanged.
+
+const RestAudio = registerPlugin('RestAudio')
+const isNative = Capacitor.isNativePlatform()
+
+/// Whether the native beep path is in play — the countdown effect uses this to
+/// avoid sounding a second beep on top of the scheduled one.
+export const isNativeAudio = isNative
+
+// Arm the beep for a rest that ends at `endAt` (ms epoch). Native only — on the
+// web the countdown effect plays it on the tick instead, and a backgrounded
+// phone relies on the push notification.
+export function scheduleBeep(endAt) {
+  if (!isNative) return
+  RestAudio.schedule({ endAt }).catch(() => {})
+}
+
+export function cancelScheduledBeep() {
+  if (!isNative) return
+  RestAudio.cancel().catch(() => {})
+}
+
 const BEEP_SRC = '/beep.m4a'
 
 let beepEl = null
@@ -55,6 +92,12 @@ function releaseEl() {
 // element and primes it with a volume-0 play so the countdown-tick effect can
 // call play() later without a user gesture of its own.
 export function unlockAudio() {
+  if (isNative) {
+    // No gesture unlock needed natively; just make sure the session category is
+    // set before anything tries to play.
+    RestAudio.prepare().catch(() => {})
+    return
+  }
   if (!beepEl) {
     beepEl = new Audio()
     beepEl.preload = 'auto'
@@ -76,6 +119,10 @@ export function unlockAudio() {
 // (which only advances while the tab is foregrounded) and from the workout
 // screen's test button. releaseEl runs on 'ended'.
 export function playBeepNow() {
+  if (isNative) {
+    RestAudio.beepNow().catch(() => {})
+    return
+  }
   unlockAudio()
   if (!beepEl) return
   try {
