@@ -25,7 +25,14 @@ for (const { name, path } of SCREENS) {
     // Let route-level data fetches settle before the shot; these are read screens,
     // not the mid-input states the "no live-preview" learned constraint is about.
     await page.waitForLoadState('networkidle')
-    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true })
+    await expect(page).toHaveScreenshot(`${name}.png`, {
+      fullPage: true,
+      // The TopBar's build stamp (App.jsx's .build-tag) bakes in the worktree name and
+      // commit hash — visible on every authenticated screen and different on every
+      // commit, which would invalidate every baseline regardless of any real UI change.
+      // Masked, not asserted on: this suite verifies layout/styling, not that stamp.
+      mask: [page.locator('.build-tag')],
+    })
   })
 }
 
