@@ -218,11 +218,11 @@ public class AppDbContext : DbContext
 
         // Session classification, shared by Running and Ultimate (an
         // ActivityType discriminator, not two parallel tables — see
-        // moxie-vault/30-projects/callahan/decisions.md for why). Running's
+        // docs/decisions.md for the storage conventions behind that). Running's
         // rows are the Ultimate Athlete Training Program's Run 1/2/3, in the
         // program's own priority order (Run 1 highest — most
         // frisbee-specific — if a week only fits two sessions). Ultimate's
-        // rows are the kinds of session Lachlan actually plays.
+        // rows are the kinds of session actually played.
         modelBuilder.Entity<ActivitySessionType>().HasData(
             new ActivitySessionType { Id = 1, Name = "High Speed Intervals", ActivityType = ActivityType.Running, SortOrder = 1 },
             new ActivitySessionType { Id = 2, Name = "Speed & Acceleration", ActivityType = ActivityType.Running, SortOrder = 2 },

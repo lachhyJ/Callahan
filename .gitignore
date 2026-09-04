@@ -25,6 +25,10 @@ backend.prod.env
 !backend.env.example
 !backend.prod.env.example
 
+# Compose variable interpolation (host paths, not secrets) — see .env.example
+.env
+!.env.example
+
 # OS
 .DS_Store
 

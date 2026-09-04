@@ -69,6 +69,16 @@
   gap: var(--space-md);
 }
 
+/* Which git worktree/branch/commit built the bundle currently loaded — a
+   diagnostic, not a feature, so it stays at micro-badge size and never
+   competes with Resume/Logout for attention. */
+.build-tag {
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 .bottom-tab-bar {
   position: fixed;
   bottom: 0;

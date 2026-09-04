@@ -30,6 +30,9 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet } = {}) {
     targetWeight: formatWeight(detail.targetWeightKg),
     nextSetNumber: detail.nextSetNumber ?? 1,
     totalSets: detail.totalSets ?? 1,
+    // Lets the card's "Set done" button start the next rest itself, without
+    // waking this webview to ask how long it should be.
+    restSeconds: detail.restSeconds ?? rest?.totalSeconds ?? 0,
     sessionStartedAt: sessionStartedAt ?? Date.now(),
   }).catch(() => {
     // A Live Activity is a nicety on top of the push notification — if the user
@@ -53,4 +56,12 @@ export async function readNativeRestState() {
   } catch {
     return null
   }
+}
+
+// Tell native that `count` sets ticked from the card have been folded into the
+// app's own state. Acknowledged by count rather than cleared outright, so a
+// press that lands while the app is waking survives.
+export function ackNativeCompletions(count) {
+  if (!available || !count) return
+  RestActivity.ackCompletions({ count }).catch(() => {})
 }

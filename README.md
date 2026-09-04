@@ -2,6 +2,17 @@
 
 Self-hosted training tracker — gym workouts and running sessions, replacing Hevy's history paywall. Live at `callahan.ljlab.online`.
 
+## Documentation
+
+- **[docs/decisions.md](docs/decisions.md)** — the design decisions behind the app and the
+  reasoning for each: why on/off-field classification uses position geometry rather than
+  speed, why a metric that fires every month is measuring the wrong thing, why the test
+  suite was mutation-checked before it was trusted, and what the native iOS wrap exists
+  for. This is the most interesting file in the repo.
+- **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the four
+  containers, the request path, the backend layers, and the data model.
+- **[docs/program-sync.md](docs/program-sync.md)** — the training-program document sync.
+
 ## Stack
 - Backend: C# ASP.NET Core Web API (.NET 10), EF Core + SQLite
 - Frontend: React (Vite), plain CSS with a token spine (`frontend/src/index.css`)

@@ -15,31 +15,33 @@ scratch each time.
 ## Where the source file lives
 
 `ultimate_athlete_program.pdf` is authored and stored in Nextcloud, not the
-repo — the app serves a synced copy (path configured via `ProgramPdf:Path`
-in the backend's prod env file, not committed). On Lachlan's Mac it's
-reachable locally at:
+repo — the app serves a synced copy, mounted read-only at `/app/ProgramDocs`
+and pointed at by `ProgramPdf:Path` in the backend's prod env file. The host
+directory behind that mount is a personal Nextcloud folder, so it's set per
+host in an untracked `.env` (`PROGRAM_DOCS_HOST_PATH` — see `.env.example`)
+rather than committed here.
 
-```
-/Users/lachlanjansen/Library/CloudStorage/Nextcloud-nextcloud.ljlab.online-lachlan/FilingCabinet/Personal Archive/Fris Resources/ultimate_athlete_program.pdf
-```
+The same folder syncs to the desktop Nextcloud client, so it's readable
+locally too; the local path is recorded in the machine-level
+`~/.claude/CLAUDE.md` rather than in this repo.
 
-Useful when a conversation needs to read the actual program content (exercise
-lists, rep ranges, run session protocols) rather than just being told about a
-change — read it directly from there instead of guessing or asking Lachlan to
-transcribe it.
+Worth reading directly when a conversation needs the actual program content
+(exercise lists, rep ranges, run session protocols) rather than just being
+told what changed — read the PDF instead of guessing or asking for a
+transcription.
 
 ## The trigger
 
-A NAS-side cron job (`/mnt/tank/callahan-data/check_program_pdf.sh`,
-TrueNAS Cron Jobs id 4, "callahan-pdf-watch") checks the program PDF's
-mtime daily and pings Telegram when it's changed. That's the cue to say
-"sync the PDF" or describe the change directly — no need to wait for or
-rely on the notification if you already know what changed.
+A cron job on the NAS (`check_program_pdf.sh`, in the app's data directory)
+checks the program PDF's mtime daily and sends a notification when it has
+changed. That's the cue to say "sync the PDF" or describe the change
+directly — no need to wait for or rely on the notification if you already
+know what changed.
 
 ## What actually gets touched
 
-Three tables, all in the SQLite DB at `/mnt/tank/callahan-data/callahan.db`
-on the NAS:
+Three tables, all in the SQLite DB on the NAS's data volume (the host side of
+the `/app/App_Data` mount in `docker-compose.prod.yml`):
 
 - **`WorkoutTemplates`** — the three program days (Id, Name, SortOrder).
   Renaming one is the only likely edit here; adding/removing a whole
@@ -71,8 +73,8 @@ the template slot, so editing a template never touches history.
 Same pattern used for every direct-DB change so far (the Hevy import,
 exercise merges, tempo backfill, notes backfill):
 
-1. Pull a fresh copy of the live DB down locally
-   (`ssh truenas "sudo cat /mnt/tank/callahan-data/callahan.db" > copy.db`).
+1. Pull a fresh copy of the live DB down locally over SSH
+   (`ssh <nas> "sudo cat <data-dir>/callahan.db" > copy.db`).
 2. Write the SQL, run it against the **local copy** first.
 3. `PRAGMA foreign_key_check` on the copy, plus a spot-check query
    (`SELECT` the changed rows back out, read them, confirm they say what

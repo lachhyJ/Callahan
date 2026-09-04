@@ -22,7 +22,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "getState", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "getState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "ackCompletions", returnType: CAPPluginReturnPromise)
     ]
 
     private var currentActivity: Any?
@@ -80,16 +81,37 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             let endAt = await RestTimerStore.shared.endAt
             let total = await RestTimerStore.shared.totalSeconds
             let revision = await RestTimerStore.shared.revision
+            let pending = await RestTimerStore.shared.pendingCompletions
             if let endAt {
                 call.resolve([
                     "active": true,
                     "endAt": endAt.timeIntervalSince1970 * 1000,
                     "totalSeconds": total,
-                    "revision": revision
+                    "revision": revision,
+                    "pendingCompletions": pending
                 ])
             } else {
-                call.resolve(["active": false, "revision": revision])
+                call.resolve([
+                    "active": false,
+                    "revision": revision,
+                    "pendingCompletions": pending
+                ])
             }
+        }
+    }
+
+    /// JS has folded `count` card-ticked sets into its own state. Subtracting
+    /// rather than zeroing means a press that lands while the app is waking is
+    /// not swallowed by the acknowledgement of the ones before it.
+    @objc func ackCompletions(_ call: CAPPluginCall) {
+        guard #available(iOS 16.2, *) else {
+            call.resolve()
+            return
+        }
+        let count = call.getInt("count") ?? 0
+        Task {
+            await RestTimerStore.shared.acknowledgeCompletions(count)
+            call.resolve()
         }
     }
 
@@ -121,7 +143,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             targetReps: call.getString("targetReps") ?? "",
             targetWeight: call.getString("targetWeight") ?? "",
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
-            totalSets: call.getInt("totalSets") ?? 1
+            totalSets: call.getInt("totalSets") ?? 1,
+            restSeconds: call.getInt("restSeconds") ?? 0
         )
         self.currentEndAt = endAt
         Task {
