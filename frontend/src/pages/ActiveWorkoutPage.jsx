@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
-import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
+import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
+import ConfirmSheet from '../components/ConfirmSheet'
 import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock } from '../utils/format'
@@ -142,6 +143,7 @@ function nextSetDescriptor(exercises) {
       exerciseName: ex.exerciseName,
       targetReps: ex.targetReps,
       targetWeightKg: ex.sets[idx].weightKg,
+      enteredReps: ex.sets[idx].reps,
       nextSetNumber: idx + 1,
       totalSets: ex.sets.length,
       restSeconds: ex.restSeconds || 90,
@@ -188,6 +190,7 @@ function restTimerFromNative(exercises, native) {
     exerciseName: detail.exerciseName,
     targetReps: detail.targetReps,
     targetWeightKg: detail.targetWeightKg,
+    enteredReps: detail.enteredReps,
     nextSetNumber: detail.nextSetNumber,
     totalSets: detail.totalSets,
     restSeconds: detail.restSeconds,
@@ -227,9 +230,21 @@ export default function ActiveWorkoutPage() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
-  const [startedAt, setStartedAt] = useState(() => new Date())
+  // Seeded from the persisted slot, not from `new Date()`.
+  //
+  // The restore effect below also sets this, but it runs a commit later — so
+  // for one render the session believes it started now. Any path that reads
+  // `startedAt` before that effect lands (or that remounts this page without
+  // the effect matching) banks a start time of "whenever the webview last
+  // came up" instead of when the workout actually began. A session logged
+  // from 23:43 to 01:10 was saved with a start time of 01:07 and a duration
+  // of under three minutes; the header clock read 0:27 rather than 85:xx.
+  const [startedAt, setStartedAt] = useState(() => restoreStartedAt(sessionKey))
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
+  // Which confirmation sheet is up, if any: 'discard' or 'gaps'. Replaces two
+  // window.confirm calls that rendered as the same OS alert (see ConfirmSheet).
+  const [confirming, setConfirming] = useState(null)
   // Restored from the shared store on mount so a rest timer started here
   // keeps counting (and stays visible via the global mini bar) if the
   // athlete navigates away to check the dashboard/program and comes back.
@@ -280,7 +295,7 @@ export default function ActiveWorkoutPage() {
       setTemplateName(saved.templateName)
       setTemplateSubtitle(saved.templateSubtitle ?? '')
       setExercises(saved.exercises)
-      setStartedAt(new Date(saved.startedAt))
+      setStartedAt(restoreStartedAt(sessionKey))
       if (saved.date) setDate(saved.date)
       if (saved.sessionNotes) setSessionNotes(saved.sessionNotes)
     } else if (isCustom) {
@@ -327,7 +342,15 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     if (!exercises) return
-    saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: startedAt.toISOString(), date, sessionNotes })
+    // A session's start time only ever moves earlier, never later. The seed
+    // above fixes the ordering hole this effect used to fall through, but this
+    // is the guard that makes a late start time impossible rather than merely
+    // unlikely: whatever remounts, reloads or reconciles happen mid-workout,
+    // none of them can push the banked start forward and shrink the recorded
+    // duration. Wall-clock start times are only ever wrong in one direction.
+    const earlier = earliestStartedAt(sessionKey, startedAt)
+    if (earlier.getTime() !== startedAt.getTime()) setStartedAt(earlier)
+    saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: earlier.toISOString(), date, sessionNotes })
   }, [exercises, templateName, templateSubtitle, sessionKey, startedAt, date, sessionNotes])
 
   useEffect(() => {
@@ -397,8 +420,10 @@ export default function ActiveWorkoutPage() {
       rest: restTimer,
       lastSet: nextSetDescriptor(exercises) ?? lastRestRef.current,
       sessionStartedAt: startedAt.getTime(),
+      templateName,
+      templateSubtitle,
     })
-  }, [restTimer, startedAt, exercises])
+  }, [restTimer, startedAt, exercises, templateName, templateSubtitle])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -555,6 +580,7 @@ export default function ActiveWorkoutPage() {
       // Weight already carried into the set you are about to do, so the Live
       // Activity can read "115 kg x 6" rather than just the rep target.
       targetWeightKg: exercise.sets[nextSetNumber - 1]?.weightKg,
+      enteredReps: exercise.sets[nextSetNumber - 1]?.reps,
       nextSetNumber,
       totalSets: exercise.sets.length,
       restSeconds: duration,
@@ -758,14 +784,25 @@ export default function ActiveWorkoutPage() {
     ])
   }
 
-  async function handleSave() {
-    const gaps = missedSetGaps(exercises)
-    if (gaps.length > 0) {
-      const summary = gaps.map((g) => `${g.name} ×${g.missing}`).join(', ')
-      if (!window.confirm(`Some planned sets weren't logged: ${summary}. Save anyway?`)) return
+  // The finish button: asks first if planned sets were left blank, otherwise
+  // goes straight through. Confirming in the sheet calls saveSession directly.
+  function handleSave() {
+    if (missedSetGaps(exercises).length > 0) {
+      setConfirming('gaps')
+      return
     }
+    saveSession()
+  }
+
+  async function saveSession() {
+    setConfirming(null)
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
+    // Explicitly, not via the rest-timer effect's teardown: neither ending path
+    // sets restTimer to null before navigating away, so that effect's else
+    // branch never runs and the natively-armed beep stayed live. It then went
+    // off minutes later, after the session had already been saved.
+    cancelScheduledBeep()
     setError(null)
     setSaving(true)
     try {
@@ -802,13 +839,29 @@ export default function ActiveWorkoutPage() {
   }
 
   function handleDiscard() {
-    if (!window.confirm('Discard this workout? All logged sets will be lost.')) return
+    setConfirming('discard')
+  }
+
+  function discardSession() {
+    setConfirming(null)
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
+    // Explicitly, not via the rest-timer effect's teardown: neither ending path
+    // sets restTimer to null before navigating away, so that effect's else
+    // branch never runs and the natively-armed beep stayed live. It then went
+    // off minutes later, after the session had already been saved.
+    cancelScheduledBeep()
     clearActiveWorkout()
     endWorkoutActivity()
     navigate('/')
   }
+
+  // Spelled out rather than summarised: "all logged sets will be lost" reads
+  // very differently when it is 24 of them across five exercises.
+  const gaps = exercises ? missedSetGaps(exercises) : []
+  const gapDetail = gaps.map((g) => `${g.name} ×${g.missing}`).join(' · ') || null
+  const discardDetail =
+    stats.setCount > 0 ? `${formatDuration(now - startedAt)} elapsed · ${stats.volume.toLocaleString()} kg total volume` : null
 
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading workout…</p></main>
@@ -1240,6 +1293,34 @@ export default function ActiveWorkoutPage() {
         exerciseName={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseName : null}
         targetWeightKg={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].weightKg : ''}
         onClose={() => setOpenPlateCalc(null)}
+      />
+
+      <ConfirmSheet
+        open={confirming === 'discard'}
+        variant="danger"
+        title="Discard this workout?"
+        body={
+          stats.setCount > 0
+            ? `${stats.setCount} logged ${stats.setCount === 1 ? 'set' : 'sets'} will be permanently deleted. This cannot be undone.`
+            : 'Nothing has been logged yet, so nothing will be lost.'
+        }
+        detail={discardDetail}
+        confirmLabel="Discard workout"
+        cancelLabel="Keep logging"
+        onConfirm={discardSession}
+        onCancel={() => setConfirming(null)}
+      />
+
+      <ConfirmSheet
+        open={confirming === 'gaps'}
+        variant="caution"
+        title="Save with unfinished sets?"
+        body="Some planned sets weren't logged. They'll be left out of the session — nothing already logged is affected."
+        detail={gapDetail}
+        confirmLabel="Save anyway"
+        cancelLabel="Keep logging"
+        onConfirm={saveSession}
+        onCancel={() => setConfirming(null)}
       />
     </main>
   )

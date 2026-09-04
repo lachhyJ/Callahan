@@ -30,12 +30,7 @@ struct RestActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "figure.strengthtraining.traditional")
-                            .font(.caption)
-                        Text("Workout").font(.caption)
-                    }
-                    .foregroundStyle(.secondary)
+                    SessionLabel(context: context, font: .caption)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ElapsedLabel(since: context.attributes.sessionStartedAt)
@@ -118,6 +113,15 @@ private struct ElapsedLabel: View {
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .lineLimit(1)
+            // Safe to fixedSize here in a way a Text(timerInterval:) is not (see
+            // the sizing rules on the Widget): this is a plain string computed at
+            // update time, so it has one true width and asking for it cannot make
+            // the system reserve room for digits it might show later. Without it
+            // the session name next to this wins the width negotiation and the
+            // elapsed readout gets its last character clipped by the card edge —
+            // "0 sec" rendering as "0 se".
+            .fixedSize(horizontal: true, vertical: false)
+            .layoutPriority(1)
     }
 
     private var text: String {
@@ -126,6 +130,29 @@ private struct ElapsedLabel: View {
         let minutes = seconds / 60
         if minutes < 60 { return "\(minutes) min" }
         return "\(minutes / 60)h \(minutes % 60)m"
+    }
+}
+
+/// The header label: which session this is, not that it is a session.
+///
+/// Truncates rather than pushing the elapsed readout off the card — the elapsed
+/// time is a fixed short string and the session name is the elastic one, so the
+/// name is what gives way when a long template subtitle meets a narrow island.
+@available(iOS 16.2, *)
+private struct SessionLabel: View {
+    let context: ActivityViewContext<RestActivityAttributes>
+    var font: Font
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "figure.strengthtraining.traditional")
+                .font(font)
+            Text(context.attributes.sessionLabel)
+                .font(font)
+                .lineLimit(1)
+                .truncationMode(.tail)
+        }
+        .foregroundStyle(.secondary)
     }
 }
 
@@ -205,9 +232,11 @@ private struct ControlRow: View {
 
             Spacer(minLength: 0)
             if context.isStale {
-                Text("Go")
-                    .font(.system(size: 26, weight: .semibold, design: .rounded))
-                    .foregroundStyle(RestActivityWidget.accent)
+                // The rest is over, so a countdown has nothing left to say. What
+                // you want at arm's length is what the next set is loaded to —
+                // which used to be buried in the small grey line while this slot
+                // said "Go", a label that looked like a button and did nothing.
+                LoadedSet(context: context)
             } else {
                 Countdown(context: context,
                           font: .system(size: 26, weight: .semibold, design: .rounded))
@@ -219,12 +248,18 @@ private struct ControlRow: View {
             if #available(iOS 17.0, *) {
                 if restOver {
                     if hasSetsLeft {
+                        // Tick only, no caption. There is exactly one action on
+                        // this card and it sits under a line that already says
+                        // which set is next — "Set done" spent width restating
+                        // that, and width is what the loaded-set readout needs.
                         Button(intent: CompleteSetIntent()) {
-                            Label("Set done", systemImage: "checkmark")
-                                .font(.subheadline.weight(.semibold))
+                            Image(systemName: "checkmark")
+                                .font(.subheadline.weight(.bold))
+                                .frame(minWidth: 24)
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(RestActivityWidget.accent)
+                        .accessibilityLabel("Set done")
                     }
                 } else {
                     Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
@@ -244,27 +279,53 @@ private struct ControlRow: View {
     }
 }
 
+/// What the next set is loaded to — "35 kg × 6" — in the slot the countdown
+/// occupies while a rest is running.
+///
+/// Scales down rather than truncating: an assisted-chin line like "-20 kg × 8"
+/// is longer than a bare countdown ever is, and half a number is worse than a
+/// small one. Falls back to a zeroed clock when there is nothing loaded, which
+/// is what the card showed between sets before any of this existed.
+@available(iOS 16.2, *)
+private struct LoadedSet: View {
+    let context: ActivityViewContext<RestActivityAttributes>
+
+    var body: some View {
+        Group {
+            if context.state.loadedSetLine.isEmpty {
+                Text("0:00")
+            } else {
+                Text(context.state.loadedSetLine)
+            }
+        }
+        .font(.system(size: 26, weight: .semibold, design: .rounded))
+        .monospacedDigit()
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
+        .foregroundStyle(RestActivityWidget.accent)
+        .layoutPriority(1)
+    }
+}
+
 @available(iOS 16.2, *)
 private struct LockScreenView: View {
     let context: ActivityViewContext<RestActivityAttributes>
 
     var body: some View {
         VStack(spacing: 10) {
-            HStack {
-                HStack(spacing: 6) {
-                    Image(systemName: "figure.strengthtraining.traditional")
-                        .font(.subheadline)
-                    Text("Workout").font(.subheadline)
-                }
-                .foregroundStyle(.secondary)
-                Spacer()
+            HStack(spacing: 8) {
+                SessionLabel(context: context, font: .subheadline)
+                Spacer(minLength: 4)
                 ElapsedLabel(since: context.attributes.sessionStartedAt)
             }
             ExerciseRow(context: context)
             ProgressBar(context: context)
             ControlRow(context: context)
         }
-        .padding(.horizontal, 16)
+        // 16pt was on top of the padding the system already applies to the Lock
+        // Screen presentation, which pushed the header row wider than the card
+        // and clipped the elapsed readout against its right edge.
+        .padding(.horizontal, 12)
         .padding(.vertical, 14)
     }
 }
