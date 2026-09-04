@@ -1439,6 +1439,57 @@ td {
   overflow-y: auto;
 }
 
+.exercise-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-sm);
+  margin-top: var(--space-xs);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.exercise-create-open {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.exercise-create-label {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.exercise-create-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Same visual language as the plate calculator's chips, deliberately its own
+   class rather than reusing .plate-calc-chip - the two surfaces are unrelated
+   and a shared name would tie them together for no reason. Padding clears the
+   44px touch minimum the way the base button rule does. */
+.exercise-create-category {
+  /* --bg, not --surface-raised: these sit inside the picker sheet, whose own
+     background IS --surface-raised, so a raised chip was invisible against it.
+     The plate calculator's chips get away with --surface-raised because they
+     sit on the page. */
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 11px var(--space-sm);
+  min-width: 44px;
+  color: var(--text-h);
+  font-size: var(--text-sm);
+
+  &.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
 .exercise-picker-group-heading {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
