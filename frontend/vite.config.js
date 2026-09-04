@@ -1,9 +1,40 @@
+import { execFileSync } from 'node:child_process'
+import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+
+// Stamps the bundle with where it was built from — which git worktree
+// (Callahan vs. Callahan-<branch>), which branch, which commit, and whether
+// the tree was clean. Surfaced in the TopBar (see buildInfo.js) so opening the
+// app answers "which version is this" without going anywhere near Xcode or a
+// terminal — the native shell has no equivalent of its own version string
+// that updates per dev build, and CFBundleVersion in Info.plist is a static
+// "1" that nothing bumps.
+function readBuildInfo() {
+  const git = (...args) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+  try {
+    const root = git('rev-parse', '--show-toplevel')
+    const dirty = git('status', '--porcelain').length > 0
+    return {
+      worktree: path.basename(root),
+      branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
+      commit: git('rev-parse', '--short', 'HEAD'),
+      dirty,
+      builtAt: new Date().toISOString(),
+    }
+  } catch {
+    // No git available (e.g. building from a tarball) — the label just won't
+    // render rather than breaking the build over a diagnostic nicety.
+    return null
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
+  define: {
+    __BUILD_INFO__: JSON.stringify(readBuildInfo()),
+  },
   server: {
     port: Number(process.env.PORT) || 5173,
   },

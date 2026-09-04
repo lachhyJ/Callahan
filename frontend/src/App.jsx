@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
+import { buildInfoLabel } from './buildInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeepNow } from './audio'
@@ -98,6 +99,7 @@ function TopBar() {
         )}
       </div>
       <div className="top-bar-right">
+        {buildInfoLabel() && <span className="build-tag">{buildInfoLabel()}</span>}
         {showResume && (
           <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link" onClick={() => trackAction('resume-workout')}>
             <PlayIcon /> Resume
