@@ -9,6 +9,30 @@ on:
         description: "Commit SHA to deploy (rollback). Leave blank to deploy origin/main."
         required: false
 
+# One deploy on the NAS at a time.
+#
+# Two pushes 83s apart on 2026-09-04 overlapped for two minutes, both running
+# `docker compose up -d --build` against the same project. Compose renames the
+# outgoing container to `<hash>_<name>` while recreating it, so the second run
+# recreated callahan-backend-1 out from under the first and the first died on
+# "container name is already in use". The later push deployed fine; the earlier
+# one just failed noisily.
+#
+# cancel-in-progress stays false deliberately. deploy.sh runs compose in the
+# foreground over SSH with no setsid, no flock and no signal trap, so cancelling
+# a run mid-deploy kills the remote command — and if that lands inside compose's
+# rename window it strands the renamed container with nothing coming along to
+# resolve it, which is the same breakage but permanent. `.deployed_sha` is also
+# written after compose, so an interrupted run would leave the checkout on new
+# code while the recorded SHA still claims the old one.
+#
+# Queueing costs almost nothing: GitHub keeps only one pending run per group and
+# cancels older pending ones, so the in-flight deploy finishes safely, the newest
+# push runs next, and anything pushed in between is dropped.
+concurrency:
+  group: deploy-nas
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
