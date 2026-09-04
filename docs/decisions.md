@@ -800,6 +800,30 @@ dropped when the player finishes, because `.duckOthers` on an active session duc
 the moment of activation, which held music down for the entire rest period. Session
 activity and ducking are separate concerns.
 
+### A one-shot timer armed on the audio clock still needs a wall-clock check
+The rest beep is armed with `AVAudioPlayer.play(atTime:)` against `deviceCurrentTime` — the
+only clock that keeps running while the app is suspended, so it has to be the one doing the
+actual timing. But its zero point moves whenever the audio hardware idles, and stopping the
+outgoing player on a re-arm can idle it between reading the clock and arming the next beep.
+On a real workout that showed up as the beep landing a few seconds early, once by eight
+seconds, and once firing twice.
+
+The fix doesn't try to keep the audio clock from drifting — it treats drift as something
+that will happen and catches the symptom instead. `schedule()` became idempotent, so
+re-arming for an end time it's already armed for is a no-op. And the finish callback checks
+the wall clock before accepting a firing as real: one landing more than a second early gets
+discarded and re-armed for whatever time is actually left, rather than being trusted at face
+value.
+
+**How to apply:** a clock chosen because it survives suspension isn't automatically a clock
+you can trust the output of — its own baseline can move for reasons unrelated to the
+timer's logic. Build the fix around the symptom (a firing that arrives too soon) rather than
+a specific theory of why the clock disagreed with reality, so it still holds if the actual
+mechanism turns out to be something else. And keep whatever arms a one-shot native call
+listening only to the state that call actually depends on — an unrelated re-render is enough
+to trigger a bad re-arm if the arming code is reachable from it, which is exactly how this
+one started happening on every keystroke in an unrelated field.
+
 ### Rest alerts are local notifications, not the server push
 The push had to be scheduled server-side, handed to APNs and delivered over the network —
 that was the few seconds of lateness, plus a connection dependency. A local notification
