@@ -802,7 +802,12 @@ td {
   transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 
   button {
-    padding: var(--space-2xs) var(--space-md);
+    /* Hit area, not size - this bar is fixed to the top with its own safe-area
+       padding, so growing Finish for real would deepen the bar over content.
+       Same trick as .logout-btn in the other top bar. */
+    padding: 11px var(--space-md);
+    margin: -7px 0;
+    touch-action: manipulation;
   }
 }
 
@@ -873,7 +878,12 @@ td {
   border: none;
   color: var(--text);
   font-size: var(--text-sm);
-  padding: var(--space-2xs) var(--space-xs);
+  /* Hit area only: the exercise card's header row is 31px and shouldn't grow.
+     Width is already past 44. */
+  padding: 11px var(--space-xs);
+  margin: -7px 0;
+  touch-action: manipulation;
+  user-select: none;
   transition: color var(--duration-fast) var(--ease-out);
 
   &:hover,
@@ -1155,6 +1165,11 @@ td {
 }
 
 .check-btn {
+  /* The visible square stays 32px - it has a border, so padding would change
+     how it looks rather than just how big it is to a thumb. The ::after below
+     casts a transparent 46x46 target over it instead, which costs no layout.
+     This is the most-tapped control in the app: one press per set. */
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -1327,6 +1342,8 @@ td {
 }
 
 .set-number {
+  /* Same fixed-square treatment as .check-btn opposite it in the row. */
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -1334,6 +1351,23 @@ td {
   background: transparent;
   color: var(--text-h);
   font-weight: 600;
+}
+
+/* Transparent tap targets for controls whose visible size is deliberately
+   fixed. inset is negative by slightly more than the shortfall, so each clears
+   44x44 with a pixel to spare rather than landing exactly on it: 32 + 7 + 7,
+   and 23 + 11 + 11 for the test link. */
+.check-btn::after,
+.set-number::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+
+.rest-alert-test-link::after {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
 }
 
 .set-type-warmup {
@@ -1566,6 +1600,9 @@ td {
 
 /* "Test beep" — unobtrusive text button to confirm the in-app alert is audible. */
 .rest-alert-test-link {
+  /* Overlay rather than padding: this sits between two flex siblings 12px
+     apart, and real padding would push them around. */
+  position: relative;
   display: block;
   background: none;
   border: none;
