@@ -29,7 +29,14 @@
     background: transparent;
     border: none;
     color: var(--text-tertiary);
-    padding: var(--space-2xs) 0;
+    /* Hit area, not size: the padding grows the tap target to 44px and the
+       negative margin takes the growth back out of the layout, so the top bar
+       stays 48px and its safe-area padding above keeps working. Growing the
+       button for real would push the bar to 60px on every screen. */
+    padding: 11px 8px;
+    margin: -7px -8px;
+    touch-action: manipulation;
+    user-select: none;
     font-size: var(--text-sm);
     white-space: nowrap;
     transition: color var(--duration-fast) var(--ease-out);
@@ -194,15 +201,16 @@ textarea {
 
 button {
   font: inherit;
-  /* 10px, not var(--space-xs)'s 8px: the label is ~25px, so 10px a side clears
-     the 44px touch minimum. Every button in the app inheriting this rule
+  /* 11px, not var(--space-xs)'s 8px: a plain 16px label is a 23.2px line box,
+     so 11px a side clears the 44px touch minimum (10px left the taper form's
+     submit at 43). Every button in the app inheriting this rule
      measured 41px before - fine with a mouse, a miss on a phone, which is
      where this app is actually used. Buttons that override padding to reset
      their chrome (.back-link, .trend-legend-item, .row-delete-btn,
      .activity-classify-btn, .logout-btn) are unaffected by this and are still
      short; each needs its own fix, since snapping an inline text control to
      44px moves the layout around it. */
-  padding: 10px var(--space-md);
+  padding: 11px var(--space-md);
   border-radius: var(--radius-md);
   border: none;
   background: var(--accent);
@@ -381,7 +389,16 @@ td {
   align-items: center;
   background: transparent;
   border: none;
-  padding: var(--space-2xs);
+  /* A 16px icon in a 26px row - the densest list in the app, so the row can't
+     grow to 44 without stretching all of History. Hit area instead: 14px of
+     padding takes the target to 44x44, -10px of margin keeps the row at 24.
+     Stacked delete buttons sit 56px apart at the closest, so the expanded
+     areas clear each other by 36px - checked, because a tap landing on the
+     wrong row's delete is the one mistake here that costs data. */
+  padding: 14px;
+  margin: -10px;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text-tertiary);
   transition: color var(--duration-fast) var(--ease-out);
 
@@ -1673,7 +1690,11 @@ td {
   gap: var(--space-2xs);
   background: transparent;
   border: none;
-  padding: 0;
+  /* Hit area only - see .logout-btn opposite it in the same 48px top bar. */
+  padding: 11px 8px;
+  margin: -11px -8px;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text);
   font-size: var(--text-sm);
 
@@ -1934,7 +1955,17 @@ td {
 .trend-legend-item.is-toggle {
   background: none;
   border: 0;
-  padding: 0;
+  /* 11px takes the 23px label to a 45px target. Unlike the other hit-area
+     expansions in this file the negative margin is horizontal only: these wrap
+     onto multiple rows 12px apart, so pulling the vertical growth back into
+     the layout would make each row's target overlap the row below it by 9px
+     and let a tap toggle the wrong series. The row-gap below pays for the
+     height instead. No horizontal padding either: the labels already measure
+     60-159px wide, and widening them overlapped the neighbouring toggle by 4px
+     across the 12px column gap. */
+  padding: 11px 0;
+  touch-action: manipulation;
+  user-select: none;
   font: inherit;
   cursor: pointer;
   color: var(--text-tertiary);
@@ -2254,7 +2285,14 @@ td {
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 2px 4px;
+  /* Vertical hit area only. These sit 4px apart horizontally when they come in
+     groups (Save / Cancel / Clear), so widening the target would overlap the
+     neighbour - and they already measure wider than 44. Stacked instances are
+     53px apart, which absorbs the vertical growth. */
+  padding: 11px 4px;
+  margin: -9px 0;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text-tertiary);
   font-size: var(--text-xs);
   cursor: pointer;
@@ -3058,6 +3096,13 @@ td {
   display: flex;
   gap: var(--space-sm);
   margin-bottom: var(--space-xs);
+
+  /* Only the legend whose items are toggles pays for the taller rows - a
+     read-only legend has nothing to tap, so it stays compact. Scoped with
+     :has() rather than a second class so the markup doesn't have to know. */
+  &:has(.is-toggle) {
+    row-gap: 0;
+  }
 }
 
 .trend-legend-item {
