@@ -1,5 +1,6 @@
 using System.Text;
 using System.Threading.RateLimiting;
+using Callahan.Api;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Services;
@@ -143,6 +144,17 @@ if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Aut
         }
 
         return Results.Ok(new LoginResponse(tokenService.GenerateToken(username)));
+    }).AllowAnonymous();
+
+    // Same dev-only gate as above. Wipes and repopulates synthetic session/activity/
+    // wellness/tournament data so local tooling (Playwright visual baselines, manual
+    // UI checks) renders real-looking screens without a copy of real personal data.
+    // See DevSeed.cs — catalog tables (Exercises, WorkoutTemplates, ...) are left
+    // untouched.
+    app.MapPost("/api/dev/seed", async (AppDbContext db) =>
+    {
+        await DevSeed.RunAsync(db);
+        return Results.Ok();
     }).AllowAnonymous();
 }
 
