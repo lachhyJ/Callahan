@@ -79,6 +79,43 @@ comfortably readable.
 
 ## Data modelling and storage
 
+### One tournament is one row, and the taper is a field on it
+**2026-09-04.** A tournament weekend used to be two unrelated rows: a `Tournament`,
+which had a date range and grouped the Ultimate activities played at it, and a
+`TaperEvent`, which had a single date and a taper length and drove the countdown on the
+taper page. Nothing linked them. Every tournament was entered twice and the two names
+were free to drift apart. They are now one entity, with `TaperDays` as a nullable field
+on it.
+
+The merge started as a much smaller task — tournaments had no edit or delete UI, so a
+typo needed a database edit. Looking before building turned up why that gap felt odd in
+isolation: full create-and-delete already existed, just on the other entity.
+
+`TaperDays` is nullable rather than defaulted, and that's the part worth stating. The
+two directions aren't symmetric. Every taper points at a tournament I'll play in, so the
+duplication was pure overhead — but the reverse doesn't hold, because most tournaments
+in the database are backfilled past ones I never tapered for. A sensible-looking default
+of 10 days would have made every one of those appear on the taper page as a taper that
+happened. Null means "not a taper target", and adding a tournament to record its games
+can't silently invent a training plan.
+
+Both pages kept their own form rather than consolidating onto one screen. They're
+different moments — adding an upcoming tournament while planning a taper, versus
+recording a past one while grouping its games — and they now write the same row.
+
+Merging also exposed three bugs that had been invisible while the entities were
+separate: editing a tournament's dates never re-ran the sweep that attaches games to it,
+the games list was built from the games themselves so a tournament with no games yet was
+unreachable in the UI, and the season link wasn't exposed by the API so it couldn't
+survive an edit.
+
+**How to apply:** when two records keep being created in pairs, ask whether they can ever
+legitimately diverge; if they can't, the duplication is the bug. Then check the
+asymmetry before merging — which side implies the other, and which doesn't — because
+that's what decides whether the merged field is nullable or defaulted. Check the child
+tables before writing the migration: this one renamed a foreign key in place, which is
+only correct because the taper tables were verified empty first.
+
 ### A session belongs to a training day, not to a UTC calendar day
 **2026-09-02.** `trainingDayIso(startedAt)` formats the **local** date, then shifts back
 one day if the session started before 3am. It's the only way a session date is stamped,
