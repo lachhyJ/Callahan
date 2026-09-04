@@ -17,6 +17,14 @@ suffix) also exists — that's the **local-dev** compose file (see README's "Run
 locally with Docker"), not used by the NAS at all; don't confuse the two or "clean
 up" the plain one thinking it's dead.
 
+The prod compose file needs an untracked `.env` beside it on the NAS supplying
+`PROGRAM_DOCS_HOST_PATH` (see `.env.example`) — the program-PDF host path is a
+personal directory kept out of the repo. `git reset --hard` doesn't touch untracked
+files, so it survives deploys, but it is **not** created by the deploy: a fresh host
+needs it written by hand or `docker compose up` fails at interpolation with an
+explicit message. That loud failure is deliberate — the alternative is Docker
+creating an empty directory and the Program page silently 404ing.
+
 **Rollback:** run the `Deploy to NAS` workflow manually from the Actions tab
 (`workflow_dispatch`) with a specific commit SHA in the `sha` input; leaving it
 blank deploys `origin/main`. `cat .deployed_sha` in the NAS checkout shows what's

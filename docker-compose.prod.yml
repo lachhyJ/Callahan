@@ -15,9 +15,14 @@ services:
     volumes:
       - /mnt/tank/callahan-data:/app/App_Data
       # Read-only: the program PDF lives in Nextcloud, not this repo — that's
-      # the actual authoring surface (see docs/program-sync.md). Path here
-      # must match ProgramPdf__Path in backend.prod.env.
-      - "/mnt/tank/nextcloud-data/lachlan/files/FilingCabinet/Personal Archive/Fris Resources:/app/ProgramDocs:ro"
+      # the actual authoring surface (see docs/program-sync.md). The host path
+      # is a personal directory, so it's kept out of the repo in an untracked
+      # .env beside this file (see .env.example); `git reset --hard` in
+      # deploy.sh leaves untracked files alone, so it survives deploys. The
+      # container side must stay /app/ProgramDocs to match ProgramPdf__Path in
+      # backend.prod.env. Unset fails the deploy loudly rather than silently
+      # mounting an empty directory and 404ing the PDF.
+      - "${PROGRAM_DOCS_HOST_PATH:?set PROGRAM_DOCS_HOST_PATH in .env beside docker-compose.prod.yml}:/app/ProgramDocs:ro"
 
   frontend:
     build:
