@@ -4,7 +4,7 @@ import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHisto
 import { clearActiveWorkout, loadActiveWorkout, saveActiveWorkout } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
+import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
@@ -145,9 +145,54 @@ function nextSetDescriptor(exercises) {
       targetWeightKg: ex.sets[idx].weightKg,
       nextSetNumber: idx + 1,
       totalSets: ex.sets.length,
+      restSeconds: ex.restSeconds || 90,
     }
   }
   return null
+}
+
+// Fold sets ticked from the Live Activity into the workout's own state.
+//
+// The card can only bank a count — it has no access to the set rows — so this
+// walks forward from wherever the workout is now, ticking the next unticked set
+// once per press. A set confirmed from a locked phone has no typed reps, so the
+// programmed target stands in; that is what the athlete was being asked to do
+// and what the card was showing them when they pressed it. Sets with neither a
+// typed nor a target rep count are left alone rather than saved as a blank.
+function applyNativeCompletions(exercises, count) {
+  if (!exercises || count <= 0) return null
+  const next = exercises.map((ex) => ({ ...ex, sets: ex.sets.map((set) => ({ ...set })) }))
+  let applied = 0
+  outer: for (const ex of next) {
+    for (const set of ex.sets) {
+      if (applied >= count) break outer
+      if (set.completed) continue
+      const reps = set.reps !== '' ? set.reps : (ex.targetReps ?? '')
+      if (reps === '' || reps == null) break outer
+      set.reps = String(reps)
+      set.completed = true
+      applied += 1
+    }
+  }
+  return applied > 0 ? { exercises: next, applied } : null
+}
+
+// A rest the card started while this webview was suspended: native owns endAt,
+// and the descriptor is rebuilt from wherever the workout has now got to.
+function restTimerFromNative(exercises, native) {
+  const detail = nextSetDescriptor(exercises)
+  if (!detail) return null
+  return {
+    endAt: native.endAt,
+    totalSeconds: native.totalSeconds || detail.restSeconds,
+    timerId: null,
+    exerciseName: detail.exerciseName,
+    targetReps: detail.targetReps,
+    targetWeightKg: detail.targetWeightKg,
+    nextSetNumber: detail.nextSetNumber,
+    totalSets: detail.totalSets,
+    restSeconds: detail.restSeconds,
+  }
 }
 
 function completedSetsFor(ex) {
@@ -216,6 +261,9 @@ export default function ActiveWorkoutPage() {
   // Last rest period's exercise/set, so the card still says what you just did
   // once the countdown has finished.
   const lastRestRef = useRef(null)
+  // Read by the native-reconcile effect, which is registered once and so cannot
+  // close over the live `exercises` value.
+  const exercisesRef = useRef(null)
   const headerRef = useRef(null)
   const keyboardInset = useKeyboardInset()
 
@@ -285,6 +333,10 @@ export default function ActiveWorkoutPage() {
   }, [exercises])
 
   useEffect(() => {
+    exercisesRef.current = exercises
+  }, [exercises])
+
+  useEffect(() => {
     if (!exercises) return
     saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: startedAt.toISOString(), date, sessionNotes })
   }, [exercises, templateName, templateSubtitle, sessionKey, startedAt, date, sessionNotes])
@@ -325,33 +377,39 @@ export default function ActiveWorkoutPage() {
   // into a setState updater) so the global mini bar can pick it up on other
   // pages — a stray call here previously fired setState on GlobalRestBar
   // synchronously mid-render of this component.
+  // Deliberately does NOT depend on `exercises`. The beep is armed on the audio
+  // hardware clock (the only clock that survives suspension), and re-arming
+  // re-anchors on a baseline that moves whenever that hardware idles — so a
+  // re-arm mid-rest can land the beep seconds early, or twice. `exercises`
+  // changes on every keystroke in a weight field, which was doing exactly that
+  // during real workouts. The activity sync below still tracks it; the beep
+  // tracks only the timer that owns it.
   useEffect(() => {
     if (restTimer) {
       saveRestTimer({ ...restTimer, templateId: sessionKey })
-    } else {
-      clearRestTimerStore()
-    }
-    // The activity belongs to the workout, so this updates it rather than
-    // creating and destroying it: between sets it stays up with the countdown
-    // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
-    // keeps the exercise/set line populated once the rest has ended.
-    // Same choke point as the Live Activity: arm the native beep whenever the
-    // timer starts or moves, and stand it down when it clears.
-    if (restTimer) {
       lastRestRef.current = restTimer
       scheduleBeep(restTimer.endAt, {
         title: 'Rest over',
         body: nextSetLabel(restTimer),
       })
     } else {
+      clearRestTimerStore()
       cancelScheduledBeep()
     }
+  }, [restTimer, sessionKey])
+
+  // The activity belongs to the workout, so this updates it rather than
+  // creating and destroying it: between sets it stays up with the countdown
+  // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
+  // keeps the exercise/set line populated once the rest has ended — the effect
+  // above sets it, and effects run in declaration order.
+  useEffect(() => {
     syncWorkoutActivity({
       rest: restTimer,
       lastSet: nextSetDescriptor(exercises) ?? lastRestRef.current,
       sessionStartedAt: startedAt.getTime(),
     })
-  }, [restTimer, sessionKey, startedAt, exercises])
+  }, [restTimer, startedAt, exercises])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -510,6 +568,7 @@ export default function ActiveWorkoutPage() {
       targetWeightKg: exercise.sets[nextSetNumber - 1]?.weightKg,
       nextSetNumber,
       totalSets: exercise.sets.length,
+      restSeconds: duration,
     })
     // Native schedules its own local notification in scheduleBeep, which fires
     // on the device clock instead of arriving over APNs a few seconds late.
@@ -555,9 +614,31 @@ export default function ActiveWorkoutPage() {
     async function reconcile() {
       const native = await readNativeRestState()
       if (cancelled || !native) return
+
+      // Sets ticked from the card come back as a count. Apply them before the
+      // timer below, so the rest native started is described by the set the
+      // workout has actually advanced to.
+      let current = exercisesRef.current
+      const pending = native.pendingCompletions || 0
+      if (pending > 0) {
+        const result = applyNativeCompletions(current, pending)
+        if (result) {
+          current = result.exercises
+          exercisesRef.current = current
+          setExercises(current)
+          ackNativeCompletions(result.applied)
+        } else {
+          // Nothing could be applied (no sets left, or no rep target to stand
+          // in). Drop them rather than replaying the same press every resume.
+          ackNativeCompletions(pending)
+        }
+      }
+
       setRestTimer((prev) => {
-        if (!prev) return prev
-        if (!native.active) return null
+        if (!native.active) return prev ? null : prev
+        // A rest that started from the card while there was no local timer —
+        // "Set done" on a locked phone is exactly this case.
+        if (!prev) return restTimerFromNative(current, native)
         if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
           return { ...prev, endAt: native.endAt, timerId: null }
         }
