@@ -768,6 +768,38 @@ fix.
 
 ---
 
+## Interface and interaction
+
+The app is read one-handed, mid-set, on a phone. That's the only viewport whose details
+get argued about.
+
+### 44px is a hit-area target, not a chrome target
+**2026-09-05.** After an audit raised every button to the 44px touch minimum, the Finish
+button in the workout screen's sticky top bar looked wrong — too heavy for the thin bar it
+sat in. Measured, it was exactly 44pt. Nothing was oversized, which meant size was not what
+had gone wrong.
+
+What had gone wrong was the classification. Two controls had been grouped together because
+they share a constraint: both sit in a fixed top bar that can't get deeper, so neither can
+simply grow. The fix applied to both was padding plus an equal negative margin — the target
+reaches 44px, the layout contribution stays put. That is correct for a transparent text
+button, where padding grows an invisible hit area and nothing about the control's
+appearance changes. Finish is a solid accent block, so the same padding grew visible
+chrome, and the negative margin then pushed the enlarged block past the bar's own padding:
+a 44px button in a 47px bar, edge to edge.
+
+The container tells you not to use plain padding. It does not tell you that negative margin
+is the answer — the control's *fill* decides that. Filled and bordered controls get their
+chrome sized deliberately and their touch target cast by a transparent overlay instead,
+with the container's own padding restoring the clearance the negative margin had eaten.
+
+**How to apply:** sort short controls by fill before sorting them by container. And when
+something meets a numeric minimum and still reads as wrong, the minimum is not the thing to
+adjust — going below it just restores the original defect in a form nobody will notice
+until they're wearing gloves.
+
+---
+
 ## The native iOS wrap
 
 The same React build ships as a native iOS app. It exists for exactly one class of thing
