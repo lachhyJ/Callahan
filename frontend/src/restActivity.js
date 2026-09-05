@@ -19,15 +19,23 @@ function formatWeight(weightKg) {
 // The activity belongs to the workout, not to a rest period: it goes up when a
 // session starts and comes down when it is finished or discarded, so Skip zeroes
 // the countdown instead of tearing the card down. `rest` is null between sets.
-export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet } = {}) {
+export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateName, templateSubtitle } = {}) {
   if (!available) return
   const detail = rest ?? lastSet ?? {}
   RestActivity.sync({
+    // Fixed for the whole session — the card's header reads these instead of a
+    // generic "Workout". Blank for an ad-hoc session, which falls back natively.
+    templateName: templateName ?? '',
+    templateSubtitle: templateSubtitle ?? '',
     endAt: rest ? rest.endAt : undefined,
     totalSeconds: rest ? rest.totalSeconds : 0,
     exerciseName: detail.exerciseName ?? 'Workout',
     targetReps: detail.targetReps == null ? '' : String(detail.targetReps),
     targetWeight: formatWeight(detail.targetWeightKg),
+    // What is actually typed into the next set's reps box, as opposed to the
+    // programmed target, which is often a range. The card shows this in the slot
+    // the countdown vacates when the rest ends.
+    enteredReps: detail.enteredReps == null ? '' : String(detail.enteredReps),
     nextSetNumber: detail.nextSetNumber ?? 1,
     totalSets: detail.totalSets ?? 1,
     // Lets the card's "Set done" button start the next rest itself, without

@@ -134,7 +134,9 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
         let sessionStartedAtMs = call.getDouble("sessionStartedAt") ?? Date().timeIntervalSince1970 * 1000
         let attributes = RestActivityAttributes(
-            sessionStartedAt: Date(timeIntervalSince1970: sessionStartedAtMs / 1000)
+            sessionStartedAt: Date(timeIntervalSince1970: sessionStartedAtMs / 1000),
+            templateName: call.getString("templateName") ?? "",
+            templateSubtitle: call.getString("templateSubtitle") ?? ""
         )
         let state = RestActivityAttributes.ContentState(
             endAt: endAt,
@@ -144,7 +146,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             targetWeight: call.getString("targetWeight") ?? "",
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
             totalSets: call.getInt("totalSets") ?? 1,
-            restSeconds: call.getInt("restSeconds") ?? 0
+            restSeconds: call.getInt("restSeconds") ?? 0,
+            enteredReps: call.getString("enteredReps") ?? ""
         )
         self.currentEndAt = endAt
         Task {
@@ -199,7 +202,10 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
         Task {
-            await RestTimerStore.shared.clear()
+            // standDown, not clear: this is the workout ending, so the armed beep
+            // has to be told to stand down too rather than being left to sound
+            // after the session is already saved.
+            await RestTimerStore.shared.standDown()
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil

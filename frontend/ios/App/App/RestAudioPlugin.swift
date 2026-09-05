@@ -49,6 +49,13 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private var player: AVAudioPlayer?
     private var sessionActive = false
     private var duckTimer: Timer?
+    /// Backstop for the ducking window. Ducking is normally lifted by the player
+    /// finishing, which means any path where the beep does not arrive — it was
+    /// cancelled, the player failed to load, the session was torn down from
+    /// under it — used to leave the user's music held down indefinitely. Seen in
+    /// a real workout: ducking came on late and stayed on for the rest of the
+    /// session. Nothing legitimately needs it for more than a beep's length.
+    private var duckWatchdog: Timer?
 
     /// Wall-clock time the armed beep is meant to sound. The audio clock is what
     /// actually fires it; this is what we check that firing against.
@@ -65,6 +72,11 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// How early a beep may land before we treat it as the audio clock having
     /// slipped rather than as the rest genuinely being over.
     private static let earlyToleranceSeconds: TimeInterval = 1.0
+    /// Longest ducking may ever stay on, measured from when it is switched on.
+    /// Comfortably longer than the beep plus its lead-in, far shorter than a
+    /// rest period — so a missed un-duck costs a second of quiet music, not a
+    /// whole set of it.
+    private static let duckMaxSeconds: TimeInterval = 3.0
     private static let notificationID = "callahan.rest.over"
 
     override public func load() {
@@ -114,8 +126,20 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 try AVAudioSession.sharedInstance().setActive(true)
                 sessionActive = true
             }
+            if ducking { armDuckWatchdog() }
         } catch {
             CAPLog.print("RestAudio: could not activate session — \(error.localizedDescription)")
+        }
+    }
+
+    /// Ducking is a momentary thing around a beep. If it is still on well after
+    /// the beep should have come and gone, something did not run — lift it
+    /// anyway rather than leaving the music down.
+    private func armDuckWatchdog() {
+        duckWatchdog?.invalidate()
+        duckWatchdog = Timer.scheduledTimer(withTimeInterval: Self.duckMaxSeconds,
+                                            repeats: false) { [weak self] _ in
+            self?.stopDucking()
         }
     }
 
@@ -136,6 +160,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private func deactivate() {
         duckTimer?.invalidate()
         duckTimer = nil
+        duckWatchdog?.invalidate()
+        duckWatchdog = nil
         guard sessionActive else { return }
         sessionActive = false
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
@@ -146,6 +172,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private func stopDucking() {
         duckTimer?.invalidate()
         duckTimer = nil
+        duckWatchdog?.invalidate()
+        duckWatchdog = nil
         try? configureSession(ducking: false)
     }
 
@@ -214,22 +242,46 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return true
         }
 
-        let seconds = endAt.timeIntervalSinceNow
-        guard seconds > 0.25 else {
+        guard endAt.timeIntervalSinceNow > 0.25 else {
             // Too close to arm reliably — just sound it.
             playImmediately()
             return false
         }
 
-        player?.stop()
+        // Ordering here is the whole fix for beeps landing early.
+        //
+        // `deviceCurrentTime` only advances while the audio hardware is running,
+        // and its zero point is wherever the hardware last started. The previous
+        // version stopped the outgoing player *first*, which can idle the
+        // hardware, then activated the session and read the baseline — so the
+        // baseline had moved between the stop and the read, and the beep landed
+        // early by however long the hardware had been up. Measured at 3s and 8s
+        // early in a real workout, and once as a double beep.
+        //
+        // So: bring the session and the new player up while the old one is still
+        // holding the hardware open, read the baseline and the wall clock
+        // together at the last possible moment, arm, and only then stop the
+        // outgoing player. The hardware never idles across the re-arm, so the
+        // clock the arm is expressed in cannot shift under it.
+        let previous = player
         activate(ducking: false)
         guard let p = loadPlayer() else { return false }
         p.volume = Self.beepVolume
-        p.prepareToPlay()
         p.delegate = self
+        p.prepareToPlay()
+
+        let baseline = p.deviceCurrentTime
+        let seconds = endAt.timeIntervalSinceNow
+        guard seconds > 0.05 else {
+            previous?.stop()
+            playImmediately()
+            return false
+        }
+
         player = p
         armedEndAt = endAt
-        let ok = p.play(atTime: p.deviceCurrentTime + seconds)
+        let ok = p.play(atTime: baseline + seconds)
+        previous?.stop()
         scheduleDuck(inSeconds: seconds)
         scheduleLocalNotification(inSeconds: seconds, title: armedTitle, body: armedBody)
         return ok

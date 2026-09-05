@@ -112,6 +112,18 @@ actor RestTimerStore {
         UserDefaults.standard.removeObject(forKey: totalKey)
     }
 
+    /// Clear the timer *and* tell the audio plugin about it.
+    ///
+    /// Plain `clear()` is silent, which is right for the callers that announce
+    /// separately — but the workout-ended path used it directly, so an armed
+    /// beep survived the session it belonged to and sounded after the workout
+    /// had been saved. Anything that ends a rest for good should use this.
+    func standDown() {
+        clear()
+        bumpRevision()
+        announce(endAt: nil)
+    }
+
     /// Called once JS has folded the ticked sets into its own state. Subtracts
     /// rather than zeroing, so a press that lands while the app is waking is not
     /// swallowed by the acknowledgement of the ones before it.

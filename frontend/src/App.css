@@ -1173,6 +1173,16 @@ td {
   width: 32px;
   height: 32px;
   padding: 0;
+  /* Not `baseline` (the default): this button is empty until the set is ticked,
+     and an empty inline-flex box has no baseline of its own, so one is
+     synthesised from its bottom margin edge. That sits it 4px lower than the
+     same button containing the tick, which stretched the row's line box and
+     made every row visibly shrink the moment it was completed — the page
+     jumped under your thumb mid-workout. `middle` makes the alignment
+     independent of whether there's anything inside. The `vertical-align:
+     middle` on `.set-row td` does not cover this: that aligns the cell's
+     content box, not an inline-level child within it. */
+  vertical-align: middle;
   border-radius: var(--radius-md);
   background: transparent;
   border: 1px solid var(--border);
@@ -3598,4 +3608,112 @@ td {
   td {
     font-size: var(--text-base);
   }
+}
+
+/* Confirm sheet — see components/ConfirmSheet.jsx.
+
+   The variant colour is carried on a top rule and the confirm button rather
+   than as a wash over the whole sheet: a red-tinted panel at 1am in a dark gym
+   is hard to read, and the point is to make the *decision* legible, not to
+   shout. Reuses .sheet-backdrop from the day-detail sheet. */
+.confirm-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  background: var(--surface-raised);
+  border-top: 3px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  box-shadow: var(--elevation-raised), var(--shadow);
+  padding: var(--space-lg) var(--space-lg) calc(var(--space-lg) + var(--safe-bottom));
+  transform: translateY(100%);
+  transition: transform var(--duration-normal) var(--ease-out);
+  visibility: hidden;
+
+  &.open {
+    transform: translateY(0);
+    visibility: visible;
+  }
+}
+
+.confirm-sheet-danger {
+  border-top-color: var(--error-text);
+}
+
+.confirm-sheet-caution {
+  border-top-color: var(--warning-text);
+}
+
+.confirm-sheet-title {
+  color: var(--text-h);
+  font-size: var(--text-lg);
+}
+
+.confirm-sheet-danger .confirm-sheet-title {
+  color: var(--error-text);
+}
+
+.confirm-sheet-body {
+  margin: 0;
+  color: var(--text);
+}
+
+/* The specifics — which sets, how many. Kept visually quieter than the body
+   so the sheet still reads in one glance, but present, because "all logged
+   sets will be lost" means something different when it is 24 of them. */
+.confirm-sheet-detail {
+  margin: 0;
+  color: var(--text-h);
+  font-size: var(--text-sm);
+  background: var(--surface-overlay);
+  border-radius: var(--radius-md);
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.confirm-sheet-actions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+
+  button {
+    flex: 1;
+    /* Comfortably over the 44px touch minimum — these are the two buttons in
+       the app where a mis-tap costs the most. */
+    min-height: 48px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+  }
+}
+
+.confirm-sheet-cancel {
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+/* Destructive: the confirm is red and the cancel is the visually heavier of
+   the two, so the resting state of the sheet nudges away from discarding. */
+.confirm-sheet-danger {
+  .confirm-sheet-confirm {
+    background: var(--error-text);
+    border: 1px solid var(--error-text);
+    color: white;
+  }
+
+  .confirm-sheet-cancel {
+    background: var(--surface-raised);
+    border-color: var(--text-h);
+  }
+}
+
+/* Cautionary: saving with gaps is a normal thing to do, so the confirm is the
+   ordinary accent action and nothing about it reads as a warning. */
+.confirm-sheet-caution .confirm-sheet-confirm {
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  color: white;
 }
