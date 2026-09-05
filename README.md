@@ -5,15 +5,6 @@ games, with wellness data pulled from Garmin Connect. It started as a way around
 history paywall and grew into the thing that measures my season. Live at
 `callahan.ljlab.online`.
 
-A game's GPS track is fit to the field's own geometry to work out when I was on the
-field, how many points I played, and how much of the clock was live play — position
-rather than speed thresholds, for
-[reasons](docs/decisions.md#onoff-field-comes-from-position-geometry-not-speed).
-
-![On-field timeline for one game — alternating on-field and off-field bands across 90 minutes](docs/screenshots/field-timeline-dark.png)
-
-<sub>One game, 95 minutes, orange = on the field. Real GPS, real classifier output.</sub>
-
 | Dashboard | Ultimate | Wellness | Trends |
 |---|---|---|---|
 | <img src="docs/screenshots/dashboard-dark.png" alt="Month calendar of workouts, runs and games" width="200"> | <img src="docs/screenshots/games-dark.png" alt="Tournaments and games with points played and live-play share" width="200"> | <img src="docs/screenshots/wellness-dark.png" alt="Per-metric wellness charts against a trailing baseline" width="200"> | <img src="docs/screenshots/trends-dark.png" alt="Consistency, volume and strength charted over the season" width="200"> |
@@ -55,10 +46,18 @@ weekly streak definitions with current/best runs and a per-week drill-down; and 
 page charting consistency and volume over six months alongside the exercises that moved
 most.
 
-**Ultimate Frisbee.** Beyond the on/off-field classification described above, games
+**Ultimate Frisbee.** A game's GPS track is fit to the field's own geometry to work out
+when I was on the field, how many points I played, and how much of the clock was live
+play — position rather than speed thresholds, for
+[reasons](docs/decisions.md#onoff-field-comes-from-position-geometry-not-speed). Games
 group into tournaments and seasons, and a tournament carries a step-taper that the Taper
 page computes deterministically (with an optional LLM consult strictly alongside the
 numbers, never gating them).
+
+![On-field timeline for one game — alternating on-field and off-field bands across 90 minutes](docs/screenshots/field-timeline-dark.png)
+
+<sub>One game, 95 minutes, orange = on the field. Real GPS, real classifier output —
+unlike the screenshots above, which are seed data.</sub>
 
 **Wellness and reports.** Nightly Garmin sync fills a daily wellness record — sleep, HRV,
 body battery, resting HR — surfaced as per-metric comparisons against a trailing 28-day
