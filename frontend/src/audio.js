@@ -60,6 +60,18 @@ export function scheduleBeep(endAt, { title, body } = {}) {
   RestAudio.schedule({ endAt, title, body }).catch(() => {})
 }
 
+// Temporary instrumentation for the rest-timer ducking (added 2026-09-05).
+// Returns the native side's event diary so a backgrounded rest can be read back
+// after the fact — see RestAudioPlugin's Diary section for why. Remove with it.
+export async function restAudioDiagnostics({ clear = false } = {}) {
+  if (!isNative) return null
+  try {
+    return await RestAudio.diagnostics({ clear })
+  } catch {
+    return null
+  }
+}
+
 export function cancelScheduledBeep() {
   if (!isNative) return
   RestAudio.cancel().catch(() => {})
