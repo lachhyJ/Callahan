@@ -1,6 +1,7 @@
 import AVFoundation
 import Capacitor
 import Foundation
+import UIKit
 import UserNotifications
 
 /// The rest-timer beep, natively.
@@ -67,8 +68,59 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "prepare", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "schedule", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "beepNow", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "beepNow", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "diagnostics", returnType: CAPPluginReturnPromise)
     ]
+
+    // MARK: - Diary
+    //
+    // Temporary instrumentation, added 2026-09-05 after two fixes shipped on
+    // reasoning alone and the symptom stayed intermittent — the same backgrounded
+    // rest ducked correctly once and not the next time. Guessing again would cost
+    // another workout per attempt, and the whole question reduces to one bit: did
+    // the duck timer fire while backgrounded? If it did, the app was alive and the
+    // fault is in the session; if it did not, the keep-alive is not holding the
+    // process and the fault is there. Nothing observable from outside the device
+    // distinguishes those, so record it instead.
+    //
+    // Written to UserDefaults so it survives the app being backgrounded and read
+    // back on the workout screen. Remove once the behaviour is settled.
+    private let diaryKey = "callahan.rest.diary"
+
+    private func record(_ event: String) {
+        let stamp = Self.diaryClock.string(from: Date())
+        let state: String
+        switch UIApplication.shared.applicationState {
+        case .active: state = "fg"
+        case .inactive: state = "inactive"
+        case .background: state = "bg"
+        @unknown default: state = "?"
+        }
+        var diary = UserDefaults.standard.stringArray(forKey: diaryKey) ?? []
+        diary.append("\(stamp) [\(state)] \(event)")
+        // One rest's worth; older entries are noise by the time anyone looks.
+        if diary.count > 40 { diary.removeFirst(diary.count - 40) }
+        UserDefaults.standard.set(diary, forKey: diaryKey)
+    }
+
+    private static let diaryClock: DateFormatter = {
+        let f = DateFormatter()
+        f.dateFormat = "HH:mm:ss.SSS"
+        return f
+    }()
+
+    @objc func diagnostics(_ call: CAPPluginCall) {
+        let diary = UserDefaults.standard.stringArray(forKey: diaryKey) ?? []
+        if call.getBool("clear") == true {
+            UserDefaults.standard.removeObject(forKey: diaryKey)
+        }
+        call.resolve([
+            "diary": diary,
+            "keepAlivePlaying": keepAlive?.isPlaying ?? false,
+            "sessionActive": sessionActive,
+            "armedEndAt": armedEndAt.map { $0.timeIntervalSince1970 * 1000 } as Any
+        ])
+    }
 
     private var player: AVAudioPlayer?
     /// Loops for the duration of the rest so the app is never suspended — see the
@@ -261,7 +313,13 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         duckTimer?.invalidate()
         let lead = max(0, seconds - Self.duckLeadSeconds)
         duckTimer = Timer.scheduledTimer(withTimeInterval: lead, repeats: false) { [weak self] _ in
-            self?.activate(ducking: true)
+            guard let self else { return }
+            // THE decisive line. If this appears at roughly endAt-0.35 the app was
+            // alive and the keep-alive is doing its job; if it appears late, or
+            // only once the app is reopened, the process was suspended.
+            let late = self.armedEndAt.map { Date().timeIntervalSince($0.addingTimeInterval(-Self.duckLeadSeconds)) } ?? 0
+            self.record(String(format: "duck timer fired (%+.2fs vs target)", late))
+            self.activate(ducking: true)
         }
     }
 
@@ -313,8 +371,9 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         p.numberOfLoops = -1
         p.volume = 1.0   // the file itself is silent; volume is not the mechanism
         p.prepareToPlay()
-        p.play()
+        let started = p.play()
         keepAlive = p
+        record("keepAlive start -> \(started)")
     }
 
     private func stopKeepAlive() {
@@ -430,6 +489,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         player = p
         armedEndAt = endAt
         let ok = p.play(atTime: baseline + seconds)
+        record(String(format: "armed beep for +%.1fs (keepAlive=%@)",
+                      seconds, keepAlive?.isPlaying == true ? "playing" : "NOT PLAYING"))
         // Same rule as standDown: never cut a tone that is already audible. A
         // superseded player is left to finish on its own; the delegate ignores it
         // because it is no longer `self.player`. This is the -15s case — each
@@ -477,6 +538,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Letting a beep you no longer strictly need finish is a third of a second;
     /// a truncated one sounds broken.
     private func standDown() {
+        record("standDown (beepSounding=\(beepIsSounding))")
         cancelLocalNotification()
         armedEndAt = nil
         duckTimer?.invalidate()
@@ -531,6 +593,8 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
         // beep that superseded it.
         guard player === self.player else { return }
 
+        record(String(format: "beep finished (success=%@, keepAlive=%@)",
+                      flag ? "y" : "n", keepAlive?.isPlaying == true ? "playing" : "stopped"))
         if let target = armedEndAt,
            Date() < target.addingTimeInterval(-Self.earlyToleranceSeconds) {
             // Let the music back up for the gap, then re-arm on the remainder.

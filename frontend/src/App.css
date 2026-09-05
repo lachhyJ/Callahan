@@ -3751,3 +3751,30 @@ td {
   border: 1px solid var(--accent);
   color: white;
 }
+
+/* Temporary rest-audio diagnostics (see ActiveWorkoutPage / RestAudioPlugin's
+   Diary section). Deliberately plain — it exists to be read once and removed. */
+.audio-diary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2xs);
+
+  pre {
+    width: 100%;
+    margin: 0;
+    padding: var(--space-xs);
+    background: var(--surface-overlay);
+    border-radius: var(--radius-md);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}
+
+.audio-diary-state {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text);
+}

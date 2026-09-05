@@ -5,7 +5,7 @@ import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, restoreStarte
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
-import { cancelScheduledBeep, isNativeAudio, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
+import { cancelScheduledBeep, isNativeAudio, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
@@ -286,6 +286,10 @@ export default function ActiveWorkoutPage() {
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
   const [taper, setTaper] = useState(null)
+  // Temporary: native rest-audio event diary, shown under "Test beep" so a
+  // backgrounded rest can be read back without Xcode. Remove with the plugin's
+  // Diary section once the ducking behaviour is settled.
+  const [audioDiary, setAudioDiary] = useState(null)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
   // Last rest period's exercise/set, so the card still says what you just did
@@ -1106,6 +1110,34 @@ export default function ActiveWorkoutPage() {
       >
         Test beep
       </button>
+
+      {isNativeAudio && (
+        <div className="audio-diary">
+          <button
+            type="button"
+            className="rest-alert-test-link"
+            onClick={() => restAudioDiagnostics().then(setAudioDiary)}
+          >
+            Audio log
+          </button>
+          {audioDiary && (
+            <>
+              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
+              <p className="audio-diary-state">
+                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
+                {audioDiary.sessionActive ? 'active' : 'inactive'}
+              </p>
+              <button
+                type="button"
+                className="rest-alert-test-link"
+                onClick={() => restAudioDiagnostics({ clear: true }).then(() => setAudioDiary(null))}
+              >
+                Clear log
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {!pushEnabled && pushSupported() && (
         <div className="push-prompt">
