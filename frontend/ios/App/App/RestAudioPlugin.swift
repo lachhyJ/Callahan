@@ -85,6 +85,18 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// session. Nothing legitimately needs it for more than a beep's length.
     private var duckWatchdog: Timer?
 
+    /// True once the armed beep has actually started making sound, as opposed to
+    /// merely being scheduled.
+    ///
+    /// `isPlaying` alone cannot tell the two apart — a player armed with
+    /// `play(atTime:)` reports playing from the moment it is armed, minutes before
+    /// it makes any noise. `currentTime` is the discriminator: it stays at 0 until
+    /// the scheduled start actually arrives.
+    private var beepIsSounding: Bool {
+        guard let p = player else { return false }
+        return p.isPlaying && p.currentTime > 0
+    }
+
     /// Wall-clock time the armed beep is meant to sound. The audio clock is what
     /// actually fires it; this is what we check that firing against.
     private var armedEndAt: Date?
@@ -418,7 +430,14 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         player = p
         armedEndAt = endAt
         let ok = p.play(atTime: baseline + seconds)
-        previous?.stop()
+        // Same rule as standDown: never cut a tone that is already audible. A
+        // superseded player is left to finish on its own; the delegate ignores it
+        // because it is no longer `self.player`. This is the -15s case — each
+        // press re-arms, and adjust() pins endAt to now+1s once you run it down,
+        // so presses start landing while the beep is sounding.
+        if previous?.isPlaying != true || previous?.currentTime == 0 {
+            previous?.stop()
+        }
         scheduleDuck(inSeconds: seconds)
         scheduleLocalNotification(inSeconds: seconds, title: armedTitle, body: armedBody)
         return ok
@@ -445,13 +464,31 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve(["scheduled": ok, "inSeconds": endAt.timeIntervalSinceNow])
     }
 
+    /// Stop waiting for the beep. Does not cut one that is already sounding.
+    ///
+    /// Every teardown path calls this — JS cancelling on resume, the rest being
+    /// skipped or cleared, the workout ending — and they can all land in the
+    /// ~300ms while the beep is audible. Stopping the player then chops the tone
+    /// in half, which is what "half of the alert noise" and "half of half of one
+    /// tone" were: not a synthesis or encoding problem, just teardown arriving
+    /// mid-sound. Deactivating the session would cut it just as effectively, so
+    /// that has to wait too.
+    ///
+    /// Letting a beep you no longer strictly need finish is a third of a second;
+    /// a truncated one sounds broken.
     private func standDown() {
+        cancelLocalNotification()
+        armedEndAt = nil
+        duckTimer?.invalidate()
+        duckTimer = nil
+        guard !beepIsSounding else {
+            // The delegate finishes the teardown when the tone ends.
+            return
+        }
         player?.stop()
         player = nil
-        armedEndAt = nil
         stopKeepAlive()
         deactivate()
-        cancelLocalNotification()
     }
 
     @objc func cancel(_ call: CAPPluginCall) {
@@ -465,7 +502,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func playImmediately() {
-        player?.stop()
+        if !beepIsSounding { player?.stop() }
         // Nothing is pending after an immediate beep, so the finish delegate must
         // not mistake this for an armed one arriving early.
         armedEndAt = nil
@@ -489,6 +526,11 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
     /// the clock slipping, and the right response is to re-arm for what is
     /// genuinely left rather than to call the rest done.
     public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        // A player we have already replaced finishing its tone. It must not run
+        // the teardown, which would deactivate the session out from under the
+        // beep that superseded it.
+        guard player === self.player else { return }
+
         if let target = armedEndAt,
            Date() < target.addingTimeInterval(-Self.earlyToleranceSeconds) {
             // Let the music back up for the gap, then re-arm on the remainder.
@@ -497,9 +539,11 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
             return
         }
         armedEndAt = nil
+        self.player = nil
         // Drop ducking immediately so music comes back, then stand the session
         // down — the rest is over, so nothing needs the audio clock any more, and
-        // nothing needs the app kept alive either.
+        // nothing needs the app kept alive either. This also completes the
+        // teardown standDown() deferred when it found the beep already sounding.
         stopDucking()
         stopKeepAlive()
         deactivate()
