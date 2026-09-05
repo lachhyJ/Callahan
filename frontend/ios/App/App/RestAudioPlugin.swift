@@ -28,6 +28,30 @@ import UserNotifications
 /// and the beep lands early by however long the hardware had been up. Measured in
 /// a real workout: beeps 3s and 8s early, and one rest that beeped twice.
 ///
+/// ## Why the app has to keep playing something
+///
+/// `UIBackgroundModes: audio` does not mean "this app may run in the background".
+/// It means "do not suspend this app *while it is playing audio*". iOS decides
+/// that at the moment the app leaves the foreground: already playing, and it keeps
+/// running; merely holding an armed `play(atTime:)` player, and it is suspended
+/// like anything else.
+///
+/// Suspended, the audio hardware still honours the scheduled start — which is why
+/// the beep lands on time — but no code in this process runs. So the ducking,
+/// which is a `Timer`, did not fire until something else woke the app. Measured on
+/// device 2026-09-05: ducking arriving several seconds late, or not until the app
+/// was opened, identically whether the phone was locked or idle on the home
+/// screen. The header above reasoned correctly that a suspended process's timers
+/// do not fire, and then left the duck timer sitting next to the beep relying on
+/// exactly that.
+///
+/// The fix is to make the premise true: a silent track loops for the length of the
+/// rest, starting while the app is still foregrounded, so the app is genuinely
+/// playing audio when the screen locks and is never suspended to begin with. The
+/// duck timer then fires on time because there is a run loop to fire it. It also
+/// keeps the audio hardware running end to end, which removes the moving
+/// `deviceCurrentTime` baseline described below.
+///
 /// Two defences, because the audio clock is the only clock that survives
 /// suspension and so cannot simply be replaced with a wall-clock timer:
 ///   • `schedule` is idempotent — re-arming for an `endAt` we are already armed
@@ -47,6 +71,10 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     ]
 
     private var player: AVAudioPlayer?
+    /// Loops for the duration of the rest so the app is never suspended — see the
+    /// background-audio discussion on the type. Silent, so it is inaudible to the
+    /// user and mixes with whatever they are listening to.
+    private var keepAlive: AVAudioPlayer?
     private var sessionActive = false
     private var duckTimer: Timer?
     /// Backstop for the ducking window. Ducking is normally lifted by the player
@@ -90,6 +118,60 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             name: .callahanRestTimerChanged,
             object: nil
         )
+
+        // A call, a Siri request or an alarm deactivates our session and stops
+        // both players. Nothing re-arms on its own, so without this the rest that
+        // was interrupted simply never beeps — and the keep-alive is gone too, so
+        // the app is suspended again and even the ducking would not recover.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleInterruption(_:)),
+            name: AVAudioSession.interruptionNotification,
+            object: nil
+        )
+
+        // Unplugging headphones / AirPods going away pauses playback. Same
+        // recovery: whatever is left of the rest gets re-armed on the new route.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleRouteChange(_:)),
+            name: AVAudioSession.routeChangeNotification,
+            object: nil
+        )
+    }
+
+    /// Re-arm whatever is left of the rest after the audio stack was taken away.
+    private func recoverArmedRest() {
+        guard let target = armedEndAt else { return }
+        if target.timeIntervalSinceNow > 0.25 {
+            arm(for: target, force: true)
+        } else {
+            // The rest ended while we were interrupted — better late than never;
+            // the local notification will already have landed on time.
+            playImmediately()
+        }
+    }
+
+    @objc private func handleInterruption(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        switch type {
+        case .began:
+            // The session is already gone; just stop tracking it as active so the
+            // recovery below reactivates rather than assuming it is still up.
+            sessionActive = false
+        case .ended:
+            DispatchQueue.main.async { self.recoverArmedRest() }
+        @unknown default:
+            break
+        }
+    }
+
+    @objc private func handleRouteChange(_ note: Notification) {
+        guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: raw),
+              reason == .oldDeviceUnavailable else { return }
+        DispatchQueue.main.async { self.recoverArmedRest() }
     }
 
     @objc private func handleRestTimerChanged(_ note: Notification) {
@@ -175,6 +257,34 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         duckWatchdog?.invalidate()
         duckWatchdog = nil
         try? configureSession(ducking: false)
+    }
+
+    /// Start the silent loop, if it is not already running.
+    ///
+    /// Must happen while the app can still run — i.e. at arm time, not at some
+    /// scheduled point later. Once iOS has suspended the process, a player
+    /// starting on the audio clock does not bring it back; the decision not to
+    /// suspend is made on the way out of the foreground, based on whether audio is
+    /// playing *then*.
+    private func startKeepAlive() {
+        guard keepAlive == nil || keepAlive?.isPlaying != true else { return }
+        guard let url = Bundle.main.url(forResource: "silence", withExtension: "m4a") else {
+            // Not fatal: the beep is armed on the audio clock and still sounds on
+            // time. Only the ducking degrades back to firing late.
+            CAPLog.print("RestAudio: silence.m4a missing — ducking may fire late in the background")
+            return
+        }
+        guard let p = try? AVAudioPlayer(contentsOf: url) else { return }
+        p.numberOfLoops = -1
+        p.volume = 1.0   // the file itself is silent; volume is not the mechanism
+        p.prepareToPlay()
+        p.play()
+        keepAlive = p
+    }
+
+    private func stopKeepAlive() {
+        keepAlive?.stop()
+        keepAlive = nil
     }
 
     private func loadPlayer() -> AVAudioPlayer? {
@@ -265,6 +375,10 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // clock the arm is expressed in cannot shift under it.
         let previous = player
         activate(ducking: false)
+        // Before anything else that matters: this is what stops the app being
+        // suspended the moment the screen locks, and therefore what lets the duck
+        // timer below fire at all.
+        startKeepAlive()
         guard let p = loadPlayer() else { return false }
         p.volume = Self.beepVolume
         p.delegate = self
@@ -312,6 +426,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         player?.stop()
         player = nil
         armedEndAt = nil
+        stopKeepAlive()
         deactivate()
         cancelLocalNotification()
     }
@@ -360,8 +475,10 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
         }
         armedEndAt = nil
         // Drop ducking immediately so music comes back, then stand the session
-        // down — the rest is over, so nothing needs the audio clock any more.
+        // down — the rest is over, so nothing needs the audio clock any more, and
+        // nothing needs the app kept alive either.
         stopDucking()
+        stopKeepAlive()
         deactivate()
     }
 }

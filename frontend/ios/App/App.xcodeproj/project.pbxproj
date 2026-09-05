@@ -24,6 +24,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */; };
 		9BEB3E25E8DB7B0E8E4C0B47 /* beep.m4a in Resources */ = {isa = PBXBuildFile; fileRef = ED0042C8CE174983D3AFC33E /* beep.m4a */; };
+		9BEB3E25E8DB7B0E8E4C0B48 /* silence.m4a in Resources */ = {isa = PBXBuildFile; fileRef = ED0042C8CE174983D3AFC33F /* silence.m4a */; };
 		AF470A054137040203D78B1B /* RestActivityPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */; };
 		C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */; };
 		C135D385858A2372F326A722 /* RestAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */; };
@@ -76,6 +77,7 @@
 		D64EE7F6A6B5E55DCBDA2DF1 /* RestActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityIntents.swift; sourceTree = "<group>"; };
 		D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
 		ED0042C8CE174983D3AFC33E /* beep.m4a */ = {isa = PBXFileReference; includeInIndex = 1; path = beep.m4a; sourceTree = "<group>"; };
+		ED0042C8CE174983D3AFC33F /* silence.m4a */ = {isa = PBXFileReference; includeInIndex = 1; path = silence.m4a; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -144,6 +146,7 @@
 				7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */,
 				AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */,
 				ED0042C8CE174983D3AFC33E /* beep.m4a */,
+				ED0042C8CE174983D3AFC33F /* silence.m4a */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -265,6 +268,7 @@
 				504EC30D1FED79650016851F /* Main.storyboard in Resources */,
 				2FAD9763203C412B000D30F8 /* config.xml in Resources */,
 				9BEB3E25E8DB7B0E8E4C0B47 /* beep.m4a in Resources */,
+				9BEB3E25E8DB7B0E8E4C0B48 /* silence.m4a in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
