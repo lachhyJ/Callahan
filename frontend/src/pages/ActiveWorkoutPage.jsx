@@ -866,6 +866,47 @@ export default function ActiveWorkoutPage() {
   const discardDetail =
     stats.setCount > 0 ? `${formatDuration(now - startedAt)} elapsed · ${stats.volume.toLocaleString()} kg total volume` : null
 
+  // Rendered from BOTH returns below, not just the main one.
+  //
+  // Save and Discard live on the summary screen, which is its own early return
+  // — so sheets rendered only in the main return are not in the tree when those
+  // buttons are pressed, and the buttons do nothing at all. window.confirm did
+  // not have this failure mode because it is imperative and does not need to be
+  // mounted; a declarative dialog has to be somewhere the current branch
+  // actually renders. Any new early return added to this component needs these
+  // too.
+  const confirmSheets = (
+    <>
+      <ConfirmSheet
+        open={confirming === 'discard'}
+        variant="danger"
+        title="Discard this workout?"
+        body={
+          stats.setCount > 0
+            ? `${stats.setCount} logged ${stats.setCount === 1 ? 'set' : 'sets'} will be permanently deleted. This cannot be undone.`
+            : 'Nothing has been logged yet, so nothing will be lost.'
+        }
+        detail={discardDetail}
+        confirmLabel="Discard workout"
+        cancelLabel="Keep logging"
+        onConfirm={discardSession}
+        onCancel={() => setConfirming(null)}
+      />
+
+      <ConfirmSheet
+        open={confirming === 'gaps'}
+        variant="caution"
+        title="Save with unfinished sets?"
+        body="Some planned sets weren't logged. They'll be left out of the session — nothing already logged is affected."
+        detail={gapDetail}
+        confirmLabel="Save anyway"
+        cancelLabel="Keep logging"
+        onConfirm={saveSession}
+        onCancel={() => setConfirming(null)}
+      />
+    </>
+  )
+
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading workout…</p></main>
 
@@ -873,7 +914,6 @@ export default function ActiveWorkoutPage() {
     const exercisesWithCompletedSets = exercises
       .map((ex) => ({ ex, sets: completedSetsFor(ex) }))
       .filter(({ sets }) => sets.length > 0)
-    const gaps = missedSetGaps(exercises)
 
     return (
       <main className="page">
@@ -910,6 +950,7 @@ export default function ActiveWorkoutPage() {
           </button>
           <button type="button" className="discard-btn" onClick={handleDiscard}>Discard workout</button>
         </div>
+        {confirmSheets}
       </main>
     )
   }
@@ -1298,33 +1339,7 @@ export default function ActiveWorkoutPage() {
         onClose={() => setOpenPlateCalc(null)}
       />
 
-      <ConfirmSheet
-        open={confirming === 'discard'}
-        variant="danger"
-        title="Discard this workout?"
-        body={
-          stats.setCount > 0
-            ? `${stats.setCount} logged ${stats.setCount === 1 ? 'set' : 'sets'} will be permanently deleted. This cannot be undone.`
-            : 'Nothing has been logged yet, so nothing will be lost.'
-        }
-        detail={discardDetail}
-        confirmLabel="Discard workout"
-        cancelLabel="Keep logging"
-        onConfirm={discardSession}
-        onCancel={() => setConfirming(null)}
-      />
-
-      <ConfirmSheet
-        open={confirming === 'gaps'}
-        variant="caution"
-        title="Save with unfinished sets?"
-        body="Some planned sets weren't logged. They'll be left out of the session — nothing already logged is affected."
-        detail={gapDetail}
-        confirmLabel="Save anyway"
-        cancelLabel="Keep logging"
-        onConfirm={saveSession}
-        onCancel={() => setConfirming(null)}
-      />
+      {confirmSheets}
     </main>
   )
 }
