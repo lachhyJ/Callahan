@@ -792,7 +792,11 @@ td {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: calc(var(--space-xs) + var(--safe-top)) var(--space-lg) var(--space-xs);
+  /* 4px, not 8px: the Finish button below is sized as chrome now, so the bar's
+     own padding is what gives it breathing room rather than a negative margin
+     pulling it past the edges. 4 + 36 + 4 keeps the bar at its previous ~47px
+     depth over the content it floats above. */
+  padding: calc(var(--space-2xs) + var(--safe-top)) var(--space-lg) var(--space-2xs);
   background: var(--surface-raised);
   border-bottom: 1px solid var(--border);
   font-variant-numeric: tabular-nums;
@@ -804,10 +808,29 @@ td {
   button {
     /* Hit area, not size - this bar is fixed to the top with its own safe-area
        padding, so growing Finish for real would deepen the bar over content.
-       Same trick as .logout-btn in the other top bar. */
-    padding: 11px var(--space-md);
-    margin: -7px 0;
+       Unlike .logout-btn this one is a filled button, so the base rule's 11px
+       padding grew visible chrome rather than an invisible hit area: a 44px
+       accent block inside a 47px bar, edge to edge. The padding here sizes the
+       chrome instead (36px), and the overlay below carries the touch target
+       past the bar's own padding. Same technique as the bordered controls -
+       measure it by probing outward with elementFromPoint, not by reading the
+       element's own box. */
+    position: relative;
+    padding: 8px var(--space-sm);
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 500;
     touch-action: manipulation;
+    user-select: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: -4px;
+      bottom: -4px;
+      left: 0;
+      right: 0;
+    }
   }
 }
 
