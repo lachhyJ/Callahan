@@ -53,6 +53,15 @@ export function getPickableExercises() {
   return apiFetch('/api/exercises/pickable')
 }
 
+// Category is required by the API (it's an enum, not free text) - see
+// ExerciseCategory in the backend for the accepted values.
+export function createExercise({ name, category }) {
+  return apiFetch('/api/exercises', {
+    method: 'POST',
+    body: JSON.stringify({ name, category }),
+  })
+}
+
 export function getExerciseStats(exerciseId) {
   return apiFetch(`/api/exercises/${exerciseId}/stats`)
 }

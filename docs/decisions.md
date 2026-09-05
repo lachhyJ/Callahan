@@ -636,6 +636,21 @@ mutant is a question, not a verdict — it says the tests and the code disagree 
 matters, and the code is as likely to be the party in the wrong. Unreachable branches want
 documentation or deletion, not tests.
 
+### A sweep only proves what it could reach
+**2026-09-05.** Auditing the app for touch targets under 44px, I claimed three times that
+every button cleared it. The sweep enumerated routes, which silently excluded every screen
+needing a particular state to render — including the active workout screen, where the set
+checkbox is pressed once per set and measured 32x32.
+
+The fixes then broke the measurement. Enlarging a bordered control without changing how it
+looks means a transparent overlay that deliberately leaves the element's own box alone, so
+reading that box reports the old size forever. The check moved to what a thumb actually
+hits: probe outward with `elementFromPoint` until the point stops resolving to the control.
+
+**How to apply:** an audit's blind spots are set by how it enumerates, so state the
+enumeration before trusting the result. And when a fix is defined by *not* changing a
+measurement, that measurement has stopped being the check.
+
 ### A behaviour-preserving refactor is proven by diffing the output
 **2026-09-02.** Extracting shared chart rendering was validated by rendering all seven
 components to static markup with fixture data before and after the change, and diffing.

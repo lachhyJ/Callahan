@@ -29,7 +29,14 @@
     background: transparent;
     border: none;
     color: var(--text-tertiary);
-    padding: var(--space-2xs) 0;
+    /* Hit area, not size: the padding grows the tap target to 44px and the
+       negative margin takes the growth back out of the layout, so the top bar
+       stays 48px and its safe-area padding above keeps working. Growing the
+       button for real would push the bar to 60px on every screen. */
+    padding: 11px 8px;
+    margin: -7px -8px;
+    touch-action: manipulation;
+    user-select: none;
     font-size: var(--text-sm);
     white-space: nowrap;
     transition: color var(--duration-fast) var(--ease-out);
@@ -204,15 +211,16 @@ textarea {
 
 button {
   font: inherit;
-  /* 10px, not var(--space-xs)'s 8px: the label is ~25px, so 10px a side clears
-     the 44px touch minimum. Every button in the app inheriting this rule
+  /* 11px, not var(--space-xs)'s 8px: a plain 16px label is a 23.2px line box,
+     so 11px a side clears the 44px touch minimum (10px left the taper form's
+     submit at 43). Every button in the app inheriting this rule
      measured 41px before - fine with a mouse, a miss on a phone, which is
      where this app is actually used. Buttons that override padding to reset
      their chrome (.back-link, .trend-legend-item, .row-delete-btn,
      .activity-classify-btn, .logout-btn) are unaffected by this and are still
      short; each needs its own fix, since snapping an inline text control to
      44px moves the layout around it. */
-  padding: 10px var(--space-md);
+  padding: 11px var(--space-md);
   border-radius: var(--radius-md);
   border: none;
   background: var(--accent);
@@ -391,7 +399,16 @@ td {
   align-items: center;
   background: transparent;
   border: none;
-  padding: var(--space-2xs);
+  /* A 16px icon in a 26px row - the densest list in the app, so the row can't
+     grow to 44 without stretching all of History. Hit area instead: 14px of
+     padding takes the target to 44x44, -10px of margin keeps the row at 24.
+     Stacked delete buttons sit 56px apart at the closest, so the expanded
+     areas clear each other by 36px - checked, because a tap landing on the
+     wrong row's delete is the one mistake here that costs data. */
+  padding: 14px;
+  margin: -10px;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text-tertiary);
   transition: color var(--duration-fast) var(--ease-out);
 
@@ -785,7 +802,12 @@ td {
   transition: opacity var(--duration-fast) var(--ease-out), transform var(--duration-fast) var(--ease-out);
 
   button {
-    padding: var(--space-2xs) var(--space-md);
+    /* Hit area, not size - this bar is fixed to the top with its own safe-area
+       padding, so growing Finish for real would deepen the bar over content.
+       Same trick as .logout-btn in the other top bar. */
+    padding: 11px var(--space-md);
+    margin: -7px 0;
+    touch-action: manipulation;
   }
 }
 
@@ -856,7 +878,12 @@ td {
   border: none;
   color: var(--text);
   font-size: var(--text-sm);
-  padding: var(--space-2xs) var(--space-xs);
+  /* Hit area only: the exercise card's header row is 31px and shouldn't grow.
+     Width is already past 44. */
+  padding: 11px var(--space-xs);
+  margin: -7px 0;
+  touch-action: manipulation;
+  user-select: none;
   transition: color var(--duration-fast) var(--ease-out);
 
   &:hover,
@@ -1138,6 +1165,11 @@ td {
 }
 
 .check-btn {
+  /* The visible square stays 32px - it has a border, so padding would change
+     how it looks rather than just how big it is to a thumb. The ::after below
+     casts a transparent 46x46 target over it instead, which costs no layout.
+     This is the most-tapped control in the app: one press per set. */
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -1320,6 +1352,8 @@ td {
 }
 
 .set-number {
+  /* Same fixed-square treatment as .check-btn opposite it in the row. */
+  position: relative;
   width: 32px;
   height: 32px;
   padding: 0;
@@ -1327,6 +1361,29 @@ td {
   background: transparent;
   color: var(--text-h);
   font-weight: 600;
+}
+
+/* Transparent tap targets for controls whose visible size is deliberately
+   fixed. inset is negative by slightly more than the shortfall, so each clears
+   44x44 with a pixel to spare rather than landing exactly on it: 32 + 7 + 7,
+   and 23 + 11 + 11 for the test link. */
+.sheet-close-btn::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
+.check-btn::after,
+.set-number::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+
+.rest-alert-test-link::after {
+  content: '';
+  position: absolute;
+  inset: -11px 0;
 }
 
 .set-type-warmup {
@@ -1442,6 +1499,57 @@ td {
   overflow-y: auto;
 }
 
+.exercise-create {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  padding-top: var(--space-sm);
+  margin-top: var(--space-xs);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.exercise-create-open {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.exercise-create-label {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
+.exercise-create-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+/* Same visual language as the plate calculator's chips, deliberately its own
+   class rather than reusing .plate-calc-chip - the two surfaces are unrelated
+   and a shared name would tie them together for no reason. Padding clears the
+   44px touch minimum the way the base button rule does. */
+.exercise-create-category {
+  /* --bg, not --surface-raised: these sit inside the picker sheet, whose own
+     background IS --surface-raised, so a raised chip was invisible against it.
+     The plate calculator's chips get away with --surface-raised because they
+     sit on the page. */
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  padding: 11px var(--space-sm);
+  min-width: 44px;
+  color: var(--text-h);
+  font-size: var(--text-sm);
+
+  &.active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+}
+
 .exercise-picker-group-heading {
   font-size: var(--text-sm);
   color: var(--text-tertiary);
@@ -1508,6 +1616,9 @@ td {
 
 /* "Test beep" — unobtrusive text button to confirm the in-app alert is audible. */
 .rest-alert-test-link {
+  /* Overlay rather than padding: this sits between two flex siblings 12px
+     apart, and real padding would push them around. */
+  position: relative;
   display: block;
   background: none;
   border: none;
@@ -1693,7 +1804,11 @@ td {
   gap: var(--space-2xs);
   background: transparent;
   border: none;
-  padding: 0;
+  /* Hit area only - see .logout-btn opposite it in the same 48px top bar. */
+  padding: 11px 8px;
+  margin: -11px -8px;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text);
   font-size: var(--text-sm);
 
@@ -1954,7 +2069,17 @@ td {
 .trend-legend-item.is-toggle {
   background: none;
   border: 0;
-  padding: 0;
+  /* 11px takes the 23px label to a 45px target. Unlike the other hit-area
+     expansions in this file the negative margin is horizontal only: these wrap
+     onto multiple rows 12px apart, so pulling the vertical growth back into
+     the layout would make each row's target overlap the row below it by 9px
+     and let a tap toggle the wrong series. The row-gap below pays for the
+     height instead. No horizontal padding either: the labels already measure
+     60-159px wide, and widening them overlapped the neighbouring toggle by 4px
+     across the 12px column gap. */
+  padding: 11px 0;
+  touch-action: manipulation;
+  user-select: none;
   font: inherit;
   cursor: pointer;
   color: var(--text-tertiary);
@@ -2274,7 +2399,14 @@ td {
   background: transparent;
   border: none;
   border-radius: 0;
-  padding: 2px 4px;
+  /* Vertical hit area only. These sit 4px apart horizontally when they come in
+     groups (Save / Cancel / Clear), so widening the target would overlap the
+     neighbour - and they already measure wider than 44. Stacked instances are
+     53px apart, which absorbs the vertical growth. */
+  padding: 11px 4px;
+  margin: -9px 0;
+  touch-action: manipulation;
+  user-select: none;
   color: var(--text-tertiary);
   font-size: var(--text-xs);
   cursor: pointer;
@@ -2509,6 +2641,11 @@ td {
   background: transparent;
   border: none;
   padding: 0;
+  /* Fixed 28px square with its own hover circle, so the tap target is cast by
+     the ::after overlay below rather than by padding - same treatment as
+     .check-btn. Used by every sheet in the app, so this is the close affordance
+     for the picker, the day detail and the confirm sheets alike. */
+  position: relative;
   width: 28px;
   height: 28px;
   line-height: 1;
@@ -3078,6 +3215,13 @@ td {
   display: flex;
   gap: var(--space-sm);
   margin-bottom: var(--space-xs);
+
+  /* Only the legend whose items are toggles pays for the taller rows - a
+     read-only legend has nothing to tap, so it stays compact. Scoped with
+     :has() rather than a second class so the markup doesn't have to know. */
+  &:has(.is-toggle) {
+    row-gap: 0;
+  }
 }
 
 .trend-legend-item {

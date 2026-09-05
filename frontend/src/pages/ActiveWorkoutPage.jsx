@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
+import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
 import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
+import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, playBeepNow, scheduleBeep, unlockAudio } from '../audio'
@@ -209,6 +210,9 @@ function missedSetGaps(exercises) {
     .filter((g) => g.missing > 0)
 }
 
+// Mirrors ExerciseCategory in the backend - the API rejects anything else.
+const EXERCISE_CATEGORIES = ['Push', 'Pull', 'Legs', 'Core', 'Cardio', 'Other']
+
 export default function ActiveWorkoutPage() {
   const { templateId } = useParams()
   // No :templateId in the route means the "empty workout" entry point
@@ -227,6 +231,13 @@ export default function ActiveWorkoutPage() {
   const [pickableExercises, setPickableExercises] = useState(null)
   const [showExercisePicker, setShowExercisePicker] = useState(false)
   const [exercisePickerQuery, setExercisePickerQuery] = useState('')
+  // Creating a brand-new exercise from inside the picker. The category starts
+  // unset and Create stays disabled until one is picked - defaulting it to
+  // "Other" just meant every exercise created in a hurry landed there.
+  const [creatingNewExercise, setCreatingNewExercise] = useState(false)
+  const [newExerciseCategory, setNewExerciseCategory] = useState(null)
+  const [creatingExercise, setCreatingExercise] = useState(false)
+  const [createExerciseError, setCreateExerciseError] = useState(null)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
@@ -757,6 +768,9 @@ export default function ActiveWorkoutPage() {
   function openExercisePicker() {
     setShowExercisePicker(true)
     setExercisePickerQuery('')
+    setCreatingNewExercise(false)
+    setNewExerciseCategory(null)
+    setCreateExerciseError(null)
     if (pickableExercises === null) {
       getPickableExercises().then(setPickableExercises).catch(() => setPickableExercises([]))
     }
@@ -785,6 +799,23 @@ export default function ActiveWorkoutPage() {
         previousSets,
       }),
     ])
+  }
+
+  // Creates the exercise, then adds it to this workout in the same tap - the
+  // picker is only ever open because something is about to be logged, so
+  // stopping at "created" would leave the user to find it again.
+  async function handleCreateExercise(name) {
+    setCreateExerciseError(null)
+    setCreatingExercise(true)
+    try {
+      const created = await createExercise({ name, category: newExerciseCategory })
+      setPickableExercises((prev) => [...(prev ?? []), { ...created, templateNames: [] }])
+      await addAdHocExercise(created)
+    } catch (err) {
+      setCreateExerciseError(err.message)
+    } finally {
+      setCreatingExercise(false)
+    }
   }
 
   // The finish button: asks first if planned sets were left blank, otherwise
@@ -1235,6 +1266,13 @@ export default function ActiveWorkoutPage() {
         )
         const fromOtherTemplates = options.filter((e) => e.templateNames.length > 0)
         const rest = options.filter((e) => e.templateNames.length === 0)
+        // Offer to create only once the search has ruled the name out.
+        // `pickableExercises` is the whole catalog, including anything already
+        // added to this workout (which only `options` filters out), so it's the
+        // right list to check against - see shouldOfferCreate for why the match
+        // is case- and whitespace-insensitive.
+        const typedName = exercisePickerQuery.trim()
+        const offerCreate = shouldOfferCreate(exercisePickerQuery, pickableExercises)
 
         return (
           <>
@@ -1275,8 +1313,50 @@ export default function ActiveWorkoutPage() {
                     ))}
                   </>
                 )}
-                {pickableExercises !== null && options.length === 0 && <p>No matching exercises.</p>}
+                {pickableExercises !== null && options.length === 0 && !offerCreate && <p>No matching exercises.</p>}
               </div>
+
+              {offerCreate && (
+                <div className="exercise-create">
+                  {!creatingNewExercise ? (
+                    <button
+                      type="button"
+                      className="exercise-create-open"
+                      onClick={() => setCreatingNewExercise(true)}
+                    >
+                      + Create "{typedName}"
+                    </button>
+                  ) : (
+                    <>
+                      <p className="exercise-create-label">
+                        New exercise "{typedName}" — pick a category
+                      </p>
+                      <div className="exercise-create-categories">
+                        {EXERCISE_CATEGORIES.map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            className={c === newExerciseCategory
+                              ? 'exercise-create-category active'
+                              : 'exercise-create-category'}
+                            onClick={() => setNewExerciseCategory(c)}
+                          >
+                            {c}
+                          </button>
+                        ))}
+                      </div>
+                      {createExerciseError && <p className="error">{createExerciseError}</p>}
+                      <button
+                        type="button"
+                        disabled={creatingExercise || newExerciseCategory === null}
+                        onClick={() => handleCreateExercise(typedName)}
+                      >
+                        {creatingExercise ? 'Creating…' : `Create and add`}
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )
