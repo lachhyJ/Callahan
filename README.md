@@ -10,13 +10,19 @@ field's own geometry to work out when I was on the field, how many points I play
 how much of the clock was live play — position, not speed thresholds, and
 [here's why](docs/decisions.md#onoff-field-comes-from-position-geometry-not-speed).
 
+![On-field timeline for one game — alternating on-field and off-field bands across 90 minutes](docs/screenshots/field-timeline-dark.png)
+
+<sub>One real game, 95 minutes, orange = on the field. This is the classifier's actual
+output on a real GPS track — the only image here drawn from real data; the four below
+are synthetic seed data.</sub>
+
 | Dashboard | Ultimate | Wellness | Trends |
 |---|---|---|---|
 | <img src="docs/screenshots/dashboard-dark.png" alt="Month calendar of workouts, runs and games" width="200"> | <img src="docs/screenshots/games-dark.png" alt="Tournaments and games with points played and live-play share" width="200"> | <img src="docs/screenshots/wellness-dark.png" alt="Per-metric wellness charts against a trailing baseline" width="200"> | <img src="docs/screenshots/trends-dark.png" alt="Consistency, volume and strength charted over the season" width="200"> |
 
 <sub>Captured at phone width (440×956) against synthetic seed data
-(`backend/DevSeed.cs`), never real training data — regenerate with `npm run shots`
-in `frontend/`.</sub>
+(`backend/DevSeed.cs`), never real training history. Regenerate all of the above with
+`npm run shots` in `frontend/`.</sub>
 
 ## Documentation
 
