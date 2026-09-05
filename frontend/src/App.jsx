@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
-import { buildInfoLabel } from './buildInfo'
+import { getNativeStatus } from './nativeInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeepNow } from './audio'
@@ -99,7 +99,6 @@ function TopBar() {
         )}
       </div>
       <div className="top-bar-right">
-        {buildInfoLabel() && <span className="build-tag">{buildInfoLabel()}</span>}
         {showResume && (
           <NavLink to={`/workout/${activeWorkout.templateId}`} className="resume-link" onClick={() => trackAction('resume-workout')}>
             <PlayIcon /> Resume
@@ -193,6 +192,58 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
   )
 }
 
+// Days until the free-provisioning profile stops letting the app launch at
+// all. The local notification (AppInfoPlugin.swift) is the half that
+// actually reaches Lachlan once that happens — this banner is only visible
+// in the days before, while the app can still be opened.
+const BANNER_WINDOW_DAYS = 3
+const BANNER_DISMISS_KEY = 'callahan_provisioning_banner_dismissed_on'
+
+function daysUntil(isoDate) {
+  const ms = new Date(isoDate).getTime() - Date.now()
+  return Math.ceil(ms / (24 * 60 * 60 * 1000))
+}
+
+function ProvisioningBanner() {
+  const [nativeStatus, setNativeStatus] = useState(null)
+  const [dismissedOn, setDismissedOn] = useState(() => {
+    try {
+      return localStorage.getItem(BANNER_DISMISS_KEY)
+    } catch {
+      return null
+    }
+  })
+
+  useEffect(() => { getNativeStatus().then(setNativeStatus) }, [])
+
+  const expiresAt = nativeStatus?.provisioningExpiresAt
+  if (!expiresAt) return null
+
+  const days = daysUntil(expiresAt)
+  if (days > BANNER_WINDOW_DAYS) return null
+
+  const today = new Date().toDateString()
+  if (dismissedOn === today) return null
+
+  function dismiss() {
+    try {
+      localStorage.setItem(BANNER_DISMISS_KEY, today)
+    } catch {
+      /* ignore — worst case the banner reappears sooner than intended */
+    }
+    setDismissedOn(today)
+  }
+
+  const whenText = days <= 0 ? 'today' : days === 1 ? 'in 1 day' : `in ${days} days`
+
+  return (
+    <div className="provisioning-banner">
+      <span>Free-provisioning signing expires {whenText} — rebuild from Xcode (⌘R) to keep it running.</span>
+      <button type="button" className="secondary-btn" onClick={dismiss}>Dismiss</button>
+    </div>
+  )
+}
+
 // One place that sees every navigation, rather than instrumenting each Link.
 function useRouteTracking(isAuthenticated) {
   const location = useLocation()
@@ -215,6 +266,7 @@ function AppRoutes() {
   return (
     <>
       {isAuthenticated && <TopBar />}
+      {isAuthenticated && <ProvisioningBanner />}
       <div className={contentClassName}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />

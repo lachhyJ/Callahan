@@ -6,6 +6,7 @@ import { isoDate, startOfWeek } from '../dateUtils'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
+import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
 import { trackAction } from '../usage'
 import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
@@ -397,6 +398,8 @@ export default function DashboardPage() {
       )}
 
       <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
+
+      <BuildFooter />
     </main>
   )
 }

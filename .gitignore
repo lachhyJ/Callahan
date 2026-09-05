@@ -9,6 +9,9 @@ tests/**/obj/
 frontend/node_modules/
 frontend/dist/
 
+# Xcode — regenerated on every build by generate_build_info.sh
+frontend/ios/App/App/BuildInfo.generated.swift
+
 # Playwright — run artifacts, not the baseline snapshots (those are committed:
 # frontend/e2e/**/*-snapshots/)
 frontend/test-results/

@@ -29,6 +29,8 @@
 		C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */; };
 		C135D385858A2372F326A722 /* RestAudioPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */; };
 		C982D0FB66D4541452164C2D /* RestActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64EE7F6A6B5E55DCBDA2DF1 /* RestActivityIntents.swift */; };
+		A447722A8EB89C6D98FEE8EB /* AppInfoPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */; };
+		51A7CE0DDE537DBD7D788C16 /* BuildInfo.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -73,6 +75,8 @@
 		9582B6822FE993A50072D4E8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestAudioPlugin.swift; sourceTree = "<group>"; };
+		0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppInfoPlugin.swift; sourceTree = "<group>"; };
+		CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = BuildInfo.generated.swift; sourceTree = "<group>"; };
 		BF5D4A7B1991C13E7B3ACB5A /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		D64EE7F6A6B5E55DCBDA2DF1 /* RestActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityIntents.swift; sourceTree = "<group>"; };
 		D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
@@ -145,6 +149,8 @@
 				D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */,
 				7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */,
 				AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */,
+				0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */,
+				CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */,
 				ED0042C8CE174983D3AFC33E /* beep.m4a */,
 				ED0042C8CE174983D3AFC33F /* silence.m4a */,
 			);
@@ -183,6 +189,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
 			buildPhases = (
+				0045F6A85047C461B977FD45 /* Generate Build Info */,
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
@@ -281,6 +288,29 @@
 		};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		0045F6A85047C461B977FD45 /* Generate Build Info */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Build Info";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/App/BuildInfo.generated.swift",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/generate_build_info.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -293,6 +323,8 @@
 				6815188AB51945020424F39A /* MainViewController.swift in Sources */,
 				C982D0FB66D4541452164C2D /* RestActivityIntents.swift in Sources */,
 				C135D385858A2372F326A722 /* RestAudioPlugin.swift in Sources */,
+				A447722A8EB89C6D98FEE8EB /* AppInfoPlugin.swift in Sources */,
+				51A7CE0DDE537DBD7D788C16 /* BuildInfo.generated.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

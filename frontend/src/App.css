@@ -76,14 +76,41 @@
   gap: var(--space-md);
 }
 
-/* Which git worktree/branch/commit built the bundle currently loaded — a
-   diagnostic, not a feature, so it stays at micro-badge size and never
-   competes with Resume/Logout for attention. */
+/* Which git worktree/branch/commit built the web bundle and (native shell
+   only) the Xcode checkout — a diagnostic, not a feature, tucked at the
+   bottom of the Dashboard rather than the TopBar so it doesn't compete for
+   attention on every screen. */
+.build-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding-top: var(--space-md);
+}
+
 .build-tag {
   font-family: var(--mono);
   font-size: var(--text-2xs);
   color: var(--text-tertiary);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* Free-provisioning re-sign nudge, directly under the TopBar so it can't be
+   missed — the local notification (AppInfoPlugin.swift) is the half that
+   actually reaches Lachlan once the profile lapses and the app can no
+   longer open at all; this is only reachable in the days before that. */
+.provisioning-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  padding: var(--space-xs) var(--space-lg);
+  font-size: var(--text-sm);
 }
 
 .bottom-tab-bar {
