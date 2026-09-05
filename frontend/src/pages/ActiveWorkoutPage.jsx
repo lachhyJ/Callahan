@@ -202,6 +202,15 @@ function completedSetsFor(ex) {
   return ex.sets.filter((s) => s.completed && s.reps !== '')
 }
 
+// The logged sets on one exercise, spelled out for a confirmation sheet.
+// "3 sets will be deleted" is abstract; "60kg × 8 · 85kg × 8 · 85kg × 8" is the
+// thing you are actually about to lose.
+function loggedSummary(ex) {
+  const done = completedSetsFor(ex)
+  if (done.length === 0) return null
+  return done.map((s) => `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`).join(' · ')
+}
+
 // Planned sets never marked done — flagged on the finish screen so it's not
 // easy to walk away from a preset session having silently missed a set.
 function missedSetGaps(exercises) {
@@ -255,8 +264,12 @@ export default function ActiveWorkoutPage() {
   const [startedAt, setStartedAt] = useState(() => restoreStartedAt(sessionKey))
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
-  // Which confirmation sheet is up, if any: 'discard' or 'gaps'. Replaces two
-  // window.confirm calls that rendered as the same OS alert (see ConfirmSheet).
+  // The pending destructive action, or null: { kind, exIdx?, setIdx? }.
+  //
+  // Every confirmation on this screen used to be a window.confirm, which the OS
+  // renders identically whether you are discarding an hour of logged sets or
+  // dropping an empty planned row. One sheet, driven by this, so the weight of
+  // the dialog matches the weight of what it is about to do.
   const [confirming, setConfirming] = useState(null)
   // Restored from the shared store on mount so a rest timer started here
   // keeps counting (and stays visible via the global mini bar) if the
@@ -721,10 +734,11 @@ export default function ActiveWorkoutPage() {
   }
 
   function removeSet(exIdx, setIdx) {
-    const ex = exercises[exIdx]
-    const set = ex.sets[setIdx]
-    const warning = set.completed ? ' This set is already marked complete.' : ''
-    if (!window.confirm(`Remove set ${set.setOrder + 1} of ${ex.exerciseName}?${warning}`)) return
+    setConfirming({ kind: 'removeSet', exIdx, setIdx })
+  }
+
+  function confirmRemoveSet(exIdx, setIdx) {
+    setConfirming(null)
     setExercises((prev) => {
       const target = prev[exIdx]
       const remainingSets = target.sets.filter((_, j) => j !== setIdx).map((s, j) => ({ ...s, setOrder: j }))
@@ -737,10 +751,11 @@ export default function ActiveWorkoutPage() {
   }
 
   function removeExercise(exIdx) {
-    const ex = exercises[exIdx]
-    const completedCount = completedSetsFor(ex).length
-    const warning = completedCount > 0 ? ` This removes ${completedCount} already-completed set${completedCount === 1 ? '' : 's'}.` : ''
-    if (!window.confirm(`Remove ${ex.exerciseName}?${warning}`)) return
+    setConfirming({ kind: 'removeExercise', exIdx })
+  }
+
+  function confirmRemoveExercise(exIdx) {
+    setConfirming(null)
     setExercises((prev) => prev.filter((_, i) => i !== exIdx))
     setOpenTypeMenu(null)
   }
@@ -822,7 +837,7 @@ export default function ActiveWorkoutPage() {
   // goes straight through. Confirming in the sheet calls saveSession directly.
   function handleSave() {
     if (missedSetGaps(exercises).length > 0) {
-      setConfirming('gaps')
+      setConfirming({ kind: 'gaps' })
       return
     }
     saveSession()
@@ -873,7 +888,7 @@ export default function ActiveWorkoutPage() {
   }
 
   function handleDiscard() {
-    setConfirming('discard')
+    setConfirming({ kind: 'discard' })
   }
 
   function discardSession() {
@@ -897,45 +912,99 @@ export default function ActiveWorkoutPage() {
   const discardDetail =
     stats.setCount > 0 ? `${formatDuration(now - startedAt)} elapsed · ${stats.volume.toLocaleString()} kg total volume` : null
 
+  // One sheet for every destructive action on this screen, described by the
+  // pending action rather than hardcoded per call site.
+  //
+  // Variant tracks the real consequence, not the verb. Dropping a planned row
+  // you never filled in is a `caution` — "+ Add set" puts it straight back.
+  // Dropping one you already ticked destroys logged work and gets `danger`,
+  // same as discarding the session. A dialog that shouts equally at both is a
+  // dialog you stop reading, which is how an accidental discard happens.
+  const confirmSpec = (() => {
+    if (!confirming) return null
+    if (confirming.kind === 'discard') {
+      return {
+        variant: 'danger',
+        title: 'Discard this workout?',
+        body:
+          stats.setCount > 0
+            ? `${stats.setCount} logged ${stats.setCount === 1 ? 'set' : 'sets'} will be permanently deleted. This cannot be undone.`
+            : 'Nothing has been logged yet, so nothing will be lost.',
+        detail: discardDetail,
+        confirmLabel: 'Discard workout',
+        onConfirm: discardSession,
+      }
+    }
+    if (confirming.kind === 'gaps') {
+      return {
+        variant: 'caution',
+        title: 'Save with unfinished sets?',
+        body: "Some planned sets weren't logged. They'll be left out of the session — nothing already logged is affected.",
+        detail: gapDetail,
+        confirmLabel: 'Save anyway',
+        onConfirm: saveSession,
+      }
+    }
+    if (confirming.kind === 'removeExercise') {
+      const ex = exercises?.[confirming.exIdx]
+      if (!ex) return null
+      const done = completedSetsFor(ex).length
+      return {
+        variant: done > 0 ? 'danger' : 'caution',
+        title: `Remove ${ex.exerciseName}?`,
+        body:
+          done > 0
+            ? `${done} logged ${done === 1 ? 'set' : 'sets'} on this exercise will be permanently deleted. This cannot be undone.`
+            : 'Nothing has been logged on this exercise yet, so nothing will be lost.',
+        detail: done > 0 ? loggedSummary(ex) : null,
+        confirmLabel: 'Remove exercise',
+        onConfirm: () => confirmRemoveExercise(confirming.exIdx),
+      }
+    }
+    if (confirming.kind === 'removeSet') {
+      const ex = exercises?.[confirming.exIdx]
+      const set = ex?.sets?.[confirming.setIdx]
+      if (!ex || !set) return null
+      // Removing the last remaining set takes the whole exercise with it — say
+      // so, rather than letting the card vanish as a surprise.
+      const lastOne = ex.sets.length === 1
+      return {
+        variant: set.completed ? 'danger' : 'caution',
+        title: `Remove set ${confirming.setIdx + 1} of ${ex.exerciseName}?`,
+        body: set.completed
+          ? `This set is already logged${lastOne ? ', and it is the only one — removing it removes the exercise too' : ''}. This cannot be undone.`
+          : lastOne
+            ? 'This is the only set, so removing it removes the exercise from the session too.'
+            : "This set hasn't been logged — you can add it back with “+ Add set”.",
+        detail: set.completed ? `${set.weightKg === '' ? 0 : set.weightKg}kg × ${set.reps}` : null,
+        confirmLabel: 'Remove set',
+        onConfirm: () => confirmRemoveSet(confirming.exIdx, confirming.setIdx),
+      }
+    }
+    return null
+  })()
+
   // Rendered from BOTH returns below, not just the main one.
   //
   // Save and Discard live on the summary screen, which is its own early return
-  // — so sheets rendered only in the main return are not in the tree when those
+  // — so a sheet rendered only in the main return is not in the tree when those
   // buttons are pressed, and the buttons do nothing at all. window.confirm did
   // not have this failure mode because it is imperative and does not need to be
   // mounted; a declarative dialog has to be somewhere the current branch
-  // actually renders. Any new early return added to this component needs these
+  // actually renders. Any new early return added to this component needs this
   // too.
   const confirmSheets = (
-    <>
-      <ConfirmSheet
-        open={confirming === 'discard'}
-        variant="danger"
-        title="Discard this workout?"
-        body={
-          stats.setCount > 0
-            ? `${stats.setCount} logged ${stats.setCount === 1 ? 'set' : 'sets'} will be permanently deleted. This cannot be undone.`
-            : 'Nothing has been logged yet, so nothing will be lost.'
-        }
-        detail={discardDetail}
-        confirmLabel="Discard workout"
-        cancelLabel="Keep logging"
-        onConfirm={discardSession}
-        onCancel={() => setConfirming(null)}
-      />
-
-      <ConfirmSheet
-        open={confirming === 'gaps'}
-        variant="caution"
-        title="Save with unfinished sets?"
-        body="Some planned sets weren't logged. They'll be left out of the session — nothing already logged is affected."
-        detail={gapDetail}
-        confirmLabel="Save anyway"
-        cancelLabel="Keep logging"
-        onConfirm={saveSession}
-        onCancel={() => setConfirming(null)}
-      />
-    </>
+    <ConfirmSheet
+      open={!!confirmSpec}
+      variant={confirmSpec?.variant ?? 'caution'}
+      title={confirmSpec?.title ?? ''}
+      body={confirmSpec?.body ?? ''}
+      detail={confirmSpec?.detail ?? null}
+      confirmLabel={confirmSpec?.confirmLabel ?? 'Confirm'}
+      cancelLabel="Keep logging"
+      onConfirm={() => confirmSpec?.onConfirm?.()}
+      onCancel={() => setConfirming(null)}
+    />
   )
 
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
