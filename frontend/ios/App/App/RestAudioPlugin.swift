@@ -201,13 +201,30 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         )
     }
 
+    /// Note the unconditional `setActive(true)`.
+    ///
+    /// `.duckOthers` is applied when a session is *activated*, not when the
+    /// category carrying it is set. This used to skip activation whenever the
+    /// session was already up — which, for the whole length of a rest, it always
+    /// is — so `configureSession(ducking: true)` set the option and nothing ever
+    /// re-evaluated it. The music never dipped.
+    ///
+    /// What made it look like a timing bug: re-entering the app makes iOS
+    /// reactivate the session, at which point the long-pending `.duckOthers`
+    /// finally takes effect. So the duck appeared to "fire late", or to fire on
+    /// opening the app, when in truth it had never fired at all and app
+    /// activation was the only thing re-applying it. Confirmed on device
+    /// 2026-09-05: idle in the *foreground*, where the timer definitely runs,
+    /// there was no ducking whatsoever.
+    ///
+    /// Reactivating an already-active session is legal and is what re-asserts the
+    /// interruption to other apps. It is also safe while our own players are
+    /// running — the keep-alive is silent, so any glitch is inaudible.
     private func activate(ducking: Bool) {
         do {
             try configureSession(ducking: ducking)
-            if !sessionActive {
-                try AVAudioSession.sharedInstance().setActive(true)
-                sessionActive = true
-            }
+            try AVAudioSession.sharedInstance().setActive(true)
+            sessionActive = true
             if ducking { armDuckWatchdog() }
         } catch {
             CAPLog.print("RestAudio: could not activate session — \(error.localizedDescription)")
@@ -226,8 +243,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     /// Opens the ducking window just before the armed beep. If this never fires
-    /// — the app suspended despite the audio session — the beep still sounds, it
-    /// just plays over the music instead of through a dip.
+    /// the beep still sounds, it just plays over the music instead of through a
+    /// dip — the keep-alive exists so that it does fire while backgrounded.
     private func scheduleDuck(inSeconds seconds: TimeInterval) {
         duckTimer?.invalidate()
         let lead = max(0, seconds - Self.duckLeadSeconds)
@@ -257,6 +274,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         duckWatchdog?.invalidate()
         duckWatchdog = nil
         try? configureSession(ducking: false)
+        // Same reason as activate(): dropping the option only takes effect on
+        // activation. Without this the duck would persist until the session is
+        // torn down at the end of the rest.
+        if sessionActive {
+            try? AVAudioSession.sharedInstance().setActive(true)
+        }
     }
 
     /// Start the silent loop, if it is not already running.
