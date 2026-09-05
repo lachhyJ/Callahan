@@ -11,7 +11,8 @@
     "test": "TZ=Australia/Melbourne vitest run",
     "test:watch": "TZ=Australia/Melbourne vitest",
     "test:visual": "playwright test",
-    "test:visual:update": "playwright test --update-snapshots"
+    "test:visual:update": "playwright test --update-snapshots",
+    "shots": "playwright test --config playwright.shots.config.js"
   },
   "dependencies": {
     "@capacitor/cli": "^8.5.1",

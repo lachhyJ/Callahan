@@ -1,6 +1,22 @@
 # Callahan
 
-Self-hosted training tracker — gym workouts and running sessions, replacing Hevy's history paywall. Live at `callahan.ljlab.online`.
+Self-hosted training tracker — gym workouts, running, and GPS-analysed Ultimate Frisbee
+games, with wellness data pulled from Garmin Connect. It started as a way around Hevy's
+history paywall and grew into the thing that measures my season. Live at
+`callahan.ljlab.online`.
+
+The part worth reading about is the Ultimate analysis: a game's GPS track is fit to the
+field's own geometry to work out when I was on the field, how many points I played, and
+how much of the clock was live play — position, not speed thresholds, and
+[here's why](docs/decisions.md#onoff-field-comes-from-position-geometry-not-speed).
+
+| Dashboard | Ultimate | Wellness | Trends |
+|---|---|---|---|
+| <img src="docs/screenshots/dashboard-dark.png" alt="Month calendar of workouts, runs and games" width="200"> | <img src="docs/screenshots/games-dark.png" alt="Tournaments and games with points played and live-play share" width="200"> | <img src="docs/screenshots/wellness-dark.png" alt="Per-metric wellness charts against a trailing baseline" width="200"> | <img src="docs/screenshots/trends-dark.png" alt="Consistency, volume and strength charted over the season" width="200"> |
+
+<sub>Captured at phone width (440×956) against synthetic seed data
+(`backend/DevSeed.cs`), never real training data — regenerate with `npm run shots`
+in `frontend/`.</sub>
 
 ## Documentation
 
@@ -11,30 +27,54 @@ Self-hosted training tracker — gym workouts and running sessions, replacing He
   for. This is the most interesting file in the repo.
 - **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the four
   containers, the request path, the backend layers, and the data model.
-- **[docs/program-sync.md](docs/program-sync.md)** — the training-program document sync.
+- **[docs/program-sync.md](docs/program-sync.md)** — how program and template changes get
+  applied, and why there's no in-app editor by design.
+- **`.ui-craft/brief.md`** — the design brief and the UI constraints learned along the way.
 
 ## Stack
 - Backend: C# ASP.NET Core Web API (.NET 10), EF Core + SQLite
 - Frontend: React (Vite), plain CSS with a token spine (`frontend/src/index.css`)
 - Auth: single credential + JWT (deliberately not ASP.NET Identity — single-user app)
+- Sync: a Python sidecar + nightly cron pulling activities and wellness from Garmin Connect
 - Hosting: Docker Compose on a home NAS, behind a Cloudflare tunnel
 - Native: the same build wrapped as an iOS app (Capacitor 8) with a SwiftUI widget extension — see "The native iOS app"
 
 ## Features
-- Workout templates (3-day program, seeded from a program PDF) with per-exercise target sets/reps/rest/tempo and a persistent per-slot "cue" note
-- Active workout flow: tick-to-complete sets, warmup/failure/drop set types, rest timers with background alerts, per-session exercise notes
-- On iOS (native build): a Live Activity for the open workout — lock screen and Dynamic Island, with working -15s / +15s / Skip — and a rest beep that plays through the silent switch, ducks your music rather than stopping it, and fires while backgrounded
-- Finishers (optional bonus exercises), live session duration/volume header
-- History list and a full per-session detail page
-- Dashboard: month calendar grid (workouts + runs, tap a day for a bottom-sheet detail view) plus a quick-links grid to Muscle Balance, Exercises, Streaks, Trends, and Program
-- Streaks: three weekly consistency definitions (2+ gym sessions, 3+ total sessions, 3 gym + a run), each with current/best run length; drill into a week to see what was actually logged and whether it qualified
-- Trends: consistency and volume charted over 6 months (vs. the Dashboard's 8-week glance chart), plus a "Lift trends" list of the exercises with the biggest earliest-vs-latest movement in that window
-- Program: the training PDF (sourced from Nextcloud, not the repo) opened via the browser's own PDF viewer
-- Per-exercise stats page: progression chart, PRs (heaviest weight, est. 1RM, best set/session volume), paginated session history
-- Muscle-group tagging per exercise (primary + secondary) with a weekly Muscle Balance page: bar chart + front/back heatmap
-- Running session logging (distance + duration), launched from a button on the Workout page
-- Session display names: the workout template's name where one's associated, otherwise a summary of the exercise categories actually done (Push/Pull/Legs/etc.) — most imported history predates any template association
-- Historical data imported from a Hevy CSV export (76 sessions, notes/tempo backfilled from the program doc; template association backfilled separately from Apr 28, 2026 onward, once the program had settled into its current form)
+
+**Gym.** Workout templates (a 3-day program seeded from a program PDF) with per-exercise
+target sets/reps/rest/tempo and a persistent per-slot cue note. The active workout flow is
+tick-to-complete sets, warmup/failure/drop set types, rest timers with background alerts,
+per-session exercise notes, optional finishers, and a live duration/volume header. Plus a
+history list, full per-session detail, a plate calculator, and a recently-deleted view.
+
+**Analysis.** A per-exercise stats page (progression chart, PRs, paginated history);
+muscle-group tagging with a weekly Muscle Balance bar chart and front/back heatmap; three
+weekly streak definitions with current/best runs and a per-week drill-down; and a Trends
+page charting consistency and volume over six months alongside the exercises that moved
+most.
+
+**Ultimate Frisbee.** Beyond the on/off-field classification described above, games
+group into tournaments and seasons, and a tournament carries a step-taper that the Taper
+page computes deterministically (with an optional LLM consult strictly alongside the
+numbers, never gating them).
+
+**Wellness and reports.** Nightly Garmin sync fills a daily wellness record — sleep, HRV,
+body battery, resting HR — surfaced as per-metric comparisons against a trailing 28-day
+baseline. Monthly reports snapshot a period and make a call on it (Strong / Steady / Down),
+100% deterministically.
+
+**Dashboard.** A month calendar grid of workouts, runs and games — tap a day for a
+bottom-sheet detail — plus a quick-links grid into the pages above.
+
+**Data.** Historical gym data imported from a Hevy CSV export (76 sessions, notes and tempo
+backfilled from the program doc; template association backfilled from Apr 28, 2026 onward,
+once the program had settled). Session display names use the template's name where one is
+associated, otherwise a summary of the exercise categories actually done — most imported
+history predates any template.
+
+**iOS.** On the native build: a Live Activity for the open workout on the lock screen and
+Dynamic Island with working -15s / +15s / Skip, and a rest beep that plays through the
+silent switch, ducks your music rather than stopping it, and fires while backgrounded.
 
 ## Running locally (without Docker)
 
@@ -127,7 +167,3 @@ Automatic: `.github/workflows/deploy.yml` deploys to the NAS on every push to `m
 run the `Deploy to NAS` workflow manually from the Actions tab with a commit SHA.
 
 EF Core migrations apply automatically on backend startup. Direct DB changes (data backfills, program syncs) follow the procedure in `docs/program-sync.md`.
-
-## Docs
-- `docs/program-sync.md` — how program/template changes get applied (there's no in-app editor by design)
-- `.ui-craft/brief.md` — design brief and learned UI constraints
