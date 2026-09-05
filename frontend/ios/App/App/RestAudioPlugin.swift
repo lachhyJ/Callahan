@@ -295,14 +295,49 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// Every timer in this file has to be created on the main run loop.
+    ///
+    /// `Timer.scheduledTimer` adds to the *current* thread's run loop. Capacitor
+    /// dispatches plugin methods on a background queue, so `schedule()` -> `arm()`
+    /// -> `scheduleDuck()` was creating the duck timer on a GCD worker thread —
+    /// whose run loop is never run. It could not fire, in any app state, ever.
+    ///
+    /// This is what the diary caught on 2026-09-05: no "duck timer fired" line at
+    /// all, while "beep finished" was tagged [bg] with the keep-alive still
+    /// playing. The app was demonstrably alive and running delegate callbacks in
+    /// the background; the timer just did not exist on any run loop that runs.
+    ///
+    /// It also explains the intermittency that made this look like a suspension
+    /// problem. `handleRestTimerChanged` — the Live Activity's ±15s / Set done
+    /// path — already hops to main, so a rest touched from the lock screen armed
+    /// its timer on the main run loop and ducked correctly, while the same rest
+    /// left alone did not.
+    private func onMain(_ work: @escaping () -> Void) {
+        if Thread.isMainThread { work() } else { DispatchQueue.main.async(execute: work) }
+    }
+
+    /// Invalidating a Timer must happen on the run loop it was added to, which for
+    /// all of these is main — same reason as the scheduling above.
+    private func cancelTimers() {
+        onMain { [weak self] in
+            self?.duckTimer?.invalidate()
+            self?.duckTimer = nil
+            self?.duckWatchdog?.invalidate()
+            self?.duckWatchdog = nil
+        }
+    }
+
     /// Ducking is a momentary thing around a beep. If it is still on well after
     /// the beep should have come and gone, something did not run — lift it
     /// anyway rather than leaving the music down.
     private func armDuckWatchdog() {
-        duckWatchdog?.invalidate()
-        duckWatchdog = Timer.scheduledTimer(withTimeInterval: Self.duckMaxSeconds,
-                                            repeats: false) { [weak self] _ in
-            self?.stopDucking()
+        onMain { [weak self] in
+            guard let self else { return }
+            self.duckWatchdog?.invalidate()
+            self.duckWatchdog = Timer.scheduledTimer(withTimeInterval: Self.duckMaxSeconds,
+                                                     repeats: false) { [weak self] _ in
+                self?.stopDucking()
+            }
         }
     }
 
@@ -310,9 +345,11 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// the beep still sounds, it just plays over the music instead of through a
     /// dip — the keep-alive exists so that it does fire while backgrounded.
     private func scheduleDuck(inSeconds seconds: TimeInterval) {
-        duckTimer?.invalidate()
         let lead = max(0, seconds - Self.duckLeadSeconds)
-        duckTimer = Timer.scheduledTimer(withTimeInterval: lead, repeats: false) { [weak self] _ in
+        onMain { [weak self] in
+            guard let self else { return }
+            self.duckTimer?.invalidate()
+            self.duckTimer = Timer.scheduledTimer(withTimeInterval: lead, repeats: false) { [weak self] _ in
             guard let self else { return }
             // THE decisive line. If this appears at roughly endAt-0.35 the app was
             // alive and the keep-alive is doing its job; if it appears late, or
@@ -320,6 +357,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             let late = self.armedEndAt.map { Date().timeIntervalSince($0.addingTimeInterval(-Self.duckLeadSeconds)) } ?? 0
             self.record(String(format: "duck timer fired (%+.2fs vs target)", late))
             self.activate(ducking: true)
+            }
         }
     }
 
@@ -327,10 +365,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// interruption is over, so it un-ducks promptly rather than waiting for iOS
     /// to notice.
     private func deactivate() {
-        duckTimer?.invalidate()
-        duckTimer = nil
-        duckWatchdog?.invalidate()
-        duckWatchdog = nil
+        cancelTimers()
         guard sessionActive else { return }
         sessionActive = false
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
@@ -339,10 +374,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Drop ducking but keep the session up, for the gap between one beep and
     /// the next rest — the music comes back without tearing down the session.
     private func stopDucking() {
-        duckTimer?.invalidate()
-        duckTimer = nil
-        duckWatchdog?.invalidate()
-        duckWatchdog = nil
+        cancelTimers()
         try? configureSession(ducking: false)
         // Same reason as activate(): dropping the option only takes effect on
         // activation. Without this the duck would persist until the session is
@@ -541,8 +573,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         record("standDown (beepSounding=\(beepIsSounding))")
         cancelLocalNotification()
         armedEndAt = nil
-        duckTimer?.invalidate()
-        duckTimer = nil
+        cancelTimers()
         guard !beepIsSounding else {
             // The delegate finishes the teardown when the tone ends.
             return
