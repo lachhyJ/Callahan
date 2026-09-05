@@ -194,6 +194,14 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             object: nil
         )
 
+        // Marks the foreground boundary in the diary, so "this happened when I
+        // opened the app" stops being an inference from timestamps.
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            self?.record("--- app became active ---")
+        }
+
         // Unplugging headphones / AirPods going away pauses playback. Same
         // recovery: whatever is left of the rest gets re-armed on the new route.
         NotificationCenter.default.addObserver(
@@ -221,10 +229,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
               let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
         switch type {
         case .began:
+            record("interruption began")
             // The session is already gone; just stop tracking it as active so the
             // recovery below reactivates rather than assuming it is still up.
             sessionActive = false
         case .ended:
+            record("interruption ended (armed=\(armedEndAt != nil))")
             DispatchQueue.main.async { self.recoverArmedRest() }
         @unknown default:
             break
@@ -285,6 +295,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// interruption to other apps. It is also safe while our own players are
     /// running — the keep-alive is silent, so any glitch is inaudible.
     private func activate(ducking: Bool) {
+        record("activate(ducking: \(ducking))")
         do {
             try configureSession(ducking: ducking)
             try AVAudioSession.sharedInstance().setActive(true)
@@ -366,7 +377,11 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// to notice.
     private func deactivate() {
         cancelTimers()
-        guard sessionActive else { return }
+        guard sessionActive else {
+            record("deactivate (no-op, already inactive)")
+            return
+        }
+        record("deactivate")
         sessionActive = false
         try? AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
     }
@@ -374,6 +389,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Drop ducking but keep the session up, for the gap between one beep and
     /// the next rest — the music comes back without tearing down the session.
     private func stopDucking() {
+        record("stopDucking (sessionActive=\(sessionActive))")
         cancelTimers()
         try? configureSession(ducking: false)
         // Same reason as activate(): dropping the option only takes effect on
@@ -424,6 +440,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     // MARK: - API
 
     @objc func prepare(_ call: CAPPluginCall) {
+        record("prepare")
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         do {
             try configureSession(ducking: false)
@@ -595,6 +612,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     private func playImmediately() {
+        record("playImmediately")
         if !beepIsSounding { player?.stop() }
         // Nothing is pending after an immediate beep, so the finish delegate must
         // not mistake this for an armed one arriving early.
