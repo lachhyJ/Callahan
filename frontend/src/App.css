@@ -1367,6 +1367,12 @@ td {
    fixed. inset is negative by slightly more than the shortfall, so each clears
    44x44 with a pixel to spare rather than landing exactly on it: 32 + 7 + 7,
    and 23 + 11 + 11 for the test link. */
+.sheet-close-btn::after {
+  content: '';
+  position: absolute;
+  inset: -9px;
+}
+
 .check-btn::after,
 .set-number::after {
   content: '';
@@ -2635,6 +2641,11 @@ td {
   background: transparent;
   border: none;
   padding: 0;
+  /* Fixed 28px square with its own hover circle, so the tap target is cast by
+     the ::after overlay below rather than by padding - same treatment as
+     .check-btn. Used by every sheet in the app, so this is the close affordance
+     for the picker, the day detail and the confirm sheets alike. */
+  position: relative;
   width: 28px;
   height: 28px;
   line-height: 1;
