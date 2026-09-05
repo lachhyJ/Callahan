@@ -14,15 +14,15 @@ export const onActiveWorkoutChange = slot.onChange
 // A session's start time only ever moves earlier, never later.
 //
 // The page seeds its `startedAt` from here rather than from `new Date()`, and
-// re-checks against the slot on every persist. Both exist because a start time
-// banked as "whenever the webview last came up" silently truncates the session:
-// a workout logged 23:43 → 01:10 was saved as starting 01:07, three minutes
-// long. Remounts, webview reloads and native reconciles all happen mid-workout;
-// none of them may push the start forward.
+// re-checks against the slot on every persist. Defensive: a start time that
+// drifts forward silently shortens the recorded session, and nothing surfaces
+// that except the header clock. No path is known to do it today — this is here
+// so one cannot appear unnoticed.
 //
 // Tolerates a slot written by an older build (no `startedAt`) and a corrupted
-// value, both of which used to yield an Invalid Date that then threw out of the
-// persist effect on `.toISOString()`.
+// value, both of which would otherwise yield an Invalid Date that throws out of
+// the persist effect on `.toISOString()`. Note `new Date(null)` is the epoch,
+// which is *valid* — so emptiness needs its own check, not just a NaN guard.
 export function restoreStartedAt(sessionKey, fallback = new Date()) {
   const saved = slot.load()
   if (!saved || saved.templateId !== sessionKey || !saved.startedAt) return fallback

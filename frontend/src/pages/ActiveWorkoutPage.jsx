@@ -230,15 +230,17 @@ export default function ActiveWorkoutPage() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
-  // Seeded from the persisted slot, not from `new Date()`.
+  // Seeded from the persisted slot rather than `new Date()`.
   //
-  // The restore effect below also sets this, but it runs a commit later — so
-  // for one render the session believes it started now. Any path that reads
-  // `startedAt` before that effect lands (or that remounts this page without
-  // the effect matching) banks a start time of "whenever the webview last
-  // came up" instead of when the workout actually began. A session logged
-  // from 23:43 to 01:10 was saved with a start time of 01:07 and a duration
-  // of under three minutes; the header clock read 0:27 rather than 85:xx.
+  // Hardening, not a fix for an observed bug. The restore effect below sets
+  // this too, but a commit later — so on the first render of a resumed session
+  // this holds "now" instead of the real start. Nothing persists a wrong value
+  // from that window (the persist effect is gated on `exercises`, which the
+  // same effect populates), but the activity-sync effect is not gated, so it
+  // fires once with the wrong sessionStartedAt and, because that lives in the
+  // Live Activity's *attributes*, the native side tears the card down and
+  // starts a fresh one a moment later. Seeding from the slot removes the
+  // window rather than relying on every future reader to be gated.
   const [startedAt, setStartedAt] = useState(() => restoreStartedAt(sessionKey))
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
@@ -342,12 +344,13 @@ export default function ActiveWorkoutPage() {
 
   useEffect(() => {
     if (!exercises) return
-    // A session's start time only ever moves earlier, never later. The seed
-    // above fixes the ordering hole this effect used to fall through, but this
-    // is the guard that makes a late start time impossible rather than merely
-    // unlikely: whatever remounts, reloads or reconciles happen mid-workout,
-    // none of them can push the banked start forward and shrink the recorded
-    // duration. Wall-clock start times are only ever wrong in one direction.
+    // A session's start time only ever moves earlier, never later.
+    //
+    // Belt-and-braces on top of the seed above: a start time that drifts
+    // forward silently shortens the recorded session, and the header clock is
+    // the only place you would notice. Cheap to enforce, and it means a future
+    // remount/reload/reconcile path cannot reintroduce the window without
+    // anyone noticing. No such path is known today.
     const earlier = earliestStartedAt(sessionKey, startedAt)
     if (earlier.getTime() !== startedAt.getTime()) setStartedAt(earlier)
     saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: earlier.toISOString(), date, sessionNotes })
