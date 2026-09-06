@@ -26,6 +26,7 @@ import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
 import ProgramPage from './pages/ProgramPage'
 import RoutinesPage from './pages/RoutinesPage'
+import PlanPage from './pages/PlanPage'
 import TaperPage from './pages/TaperPage'
 import WellnessPage from './pages/WellnessPage'
 import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
@@ -289,6 +290,7 @@ function AppRoutes() {
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
           <Route path="/routines" element={<ProtectedRoute><RoutinesPage /></ProtectedRoute>} />
+          <Route path="/plan" element={<ProtectedRoute><PlanPage /></ProtectedRoute>} />
           <Route path="/taper" element={<ProtectedRoute><TaperPage /></ProtectedRoute>} />
           <Route path="/wellness" element={<ProtectedRoute><WellnessPage /></ProtectedRoute>} />
           <Route path="/recently-deleted" element={<ProtectedRoute><RecentlyDeletedPage /></ProtectedRoute>} />

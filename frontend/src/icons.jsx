@@ -100,6 +100,15 @@ export function ListIcon(props) {
   )
 }
 
+export function CalendarIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <rect x="3" y="4.5" width="14" height="13" rx="2" />
+      <path d="M3 8.5h14M7 2.5v4M13 2.5v4" />
+    </svg>
+  )
+}
+
 export function FlameIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

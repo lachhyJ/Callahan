@@ -3987,3 +3987,197 @@ td {
 .routine-notes li {
   margin-bottom: var(--space-2xs);
 }
+
+/* --- Weekly plan ----------------------------------------------------------
+   The program's week, movable per week. Read on a Sunday while planning around
+   shifts, and glanced at mid-week to see what's outstanding. */
+
+.plan-weeknav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
+.plan-weeknav button {
+  min-height: 44px;
+  padding: var(--space-2xs) var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.plan-warnings {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+  background: var(--surface-raised);
+  border-left: 3px solid var(--chart-series-3);
+  border-radius: var(--radius-md);
+  text-wrap: pretty;
+}
+
+.plan-warnings p { margin: var(--space-2xs) 0; }
+
+.ankle-strip {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.ankle-strip-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.ankle-strip-head h2 { margin: 0; font-size: var(--text-sm); font-weight: 600; }
+.ankle-strip-head span { font-size: var(--text-xs); color: var(--text-tertiary); }
+
+.ankle-strip-days { display: flex; gap: var(--space-2xs); }
+
+/* Seven across a 440px screen: each lands ~46px, over the 44px minimum. */
+.ankle-day {
+  flex: 1;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.ankle-day-done {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+  font-weight: 600;
+}
+
+.plan-day {
+  margin-bottom: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.plan-day-today { border-color: var(--accent-border); }
+
+.plan-day header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-2xs);
+}
+
+.plan-day-name { font-size: var(--text-sm); font-weight: 600; }
+.plan-day-date { font-size: var(--text-xs); color: var(--text-tertiary); }
+.plan-day-empty { margin: 0; font-size: var(--text-sm); color: var(--text-tertiary); }
+
+.plan-slot { padding: var(--space-2xs) 0; }
+.plan-slot + .plan-slot { border-top: 1px solid var(--border-subtle); }
+
+.plan-slot-rest { font-size: var(--text-sm); color: var(--text-tertiary); }
+
+.plan-slot-main {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  /* The whole row is the disclosure control, so it carries the 44px target
+     rather than adding a separate chevron button beside the label. */
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.plan-slot-label { font-size: var(--text-sm); }
+
+.plan-slot-moved {
+  margin-left: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.plan-slot-state { font-size: var(--text-xs); white-space: nowrap; }
+.plan-slot-done .plan-slot-state { color: var(--accent); }
+
+/* Missed is stated plainly and not coloured like an error: a dropped session in
+   a short week is the program working, not a failure. */
+.plan-slot-missed .plan-slot-state { color: var(--text-tertiary); }
+.plan-slot-skipped .plan-slot-label { color: var(--text-tertiary); }
+
+.plan-slot-actions {
+  display: flex;
+  gap: var(--space-2xs);
+  align-items: center;
+  margin-top: var(--space-2xs);
+}
+
+/* App.css has no [hidden]{display:none} reset (unlike an artifact skeleton),
+   so the plain `display: flex` above would otherwise outrank the attribute
+   and render controls the component thinks it hid. */
+.plan-slot-actions[hidden] {
+  display: none;
+}
+
+.plan-slot-actions select,
+.plan-slot-actions button {
+  min-width: 44px;
+  min-height: 44px;
+  padding: var(--space-2xs) var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.plan-rules {
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.plan-rules h2 { font-size: var(--text-sm); font-weight: 600; margin: 0 0 var(--space-sm); }
+
+.plan-rules ul {
+  margin: 0;
+  padding-left: var(--space-md);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-secondary);
+}
+
+.plan-rules li { margin-bottom: var(--space-xs); text-wrap: pretty; }
+
+.plan-rules-note {
+  margin-top: var(--space-md);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  text-wrap: pretty;
+}
