@@ -147,19 +147,14 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },
-            new Exercise { Id = 2, Name = "Overhead Press", Category = ExerciseCategory.Push },
-            new Exercise { Id = 3, Name = "Push-up", Category = ExerciseCategory.Push },
             new Exercise { Id = 4, Name = "Deadlift", Category = ExerciseCategory.Pull },
-            new Exercise { Id = 5, Name = "Pull-up", Category = ExerciseCategory.Pull },
+            new Exercise { Id = 5, Name = "Pull-up", Category = ExerciseCategory.Pull, IsAssisted = true },
             new Exercise { Id = 6, Name = "Barbell Row", Category = ExerciseCategory.Pull },
-            new Exercise { Id = 7, Name = "Squat", Category = ExerciseCategory.Legs },
             new Exercise { Id = 8, Name = "Leg Press", Category = ExerciseCategory.Legs },
-            new Exercise { Id = 9, Name = "Lunges", Category = ExerciseCategory.Legs },
-            new Exercise { Id = 10, Name = "Plank", Category = ExerciseCategory.Core },
 
             // Ultimate Athlete Training Program
             new Exercise { Id = 11, Name = "Trap Bar Deadlift", Category = ExerciseCategory.Pull },
-            new Exercise { Id = 12, Name = "Bulgarian Split Squat (DB)", Category = ExerciseCategory.Legs },
+            new Exercise { Id = 12, Name = "Bulgarian Split Squat (Barbell)", Category = ExerciseCategory.Legs },
             new Exercise { Id = 13, Name = "Single Leg Hamstring Curl", Category = ExerciseCategory.Legs },
             new Exercise { Id = 14, Name = "Incline DB Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 15, Name = "Cable Row", Category = ExerciseCategory.Pull },
@@ -169,7 +164,7 @@ public class AppDbContext : DbContext
             new Exercise { Id = 19, Name = "Barbell Squat", Category = ExerciseCategory.Legs },
             new Exercise { Id = 20, Name = "Single Leg RDL (DB)", Category = ExerciseCategory.Legs },
             new Exercise { Id = 21, Name = "Push Press", Category = ExerciseCategory.Push },
-            new Exercise { Id = 22, Name = "Chin-Ups", Category = ExerciseCategory.Pull },
+            new Exercise { Id = 22, Name = "Chin-Ups", Category = ExerciseCategory.Pull, IsAssisted = true },
             new Exercise { Id = 23, Name = "Pallof Press", Category = ExerciseCategory.Core },
             new Exercise { Id = 24, Name = "Box Jump", Category = ExerciseCategory.Legs },
 

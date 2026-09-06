@@ -21,7 +21,11 @@ public class WorkoutTemplatesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<WorkoutTemplateSummaryDto>>> GetAll()
     {
+        // Retired templates are hidden here and nowhere else - Start() below
+        // still serves them, so an old session's template can always be
+        // reopened by Id.
         var templates = await _db.WorkoutTemplates
+            .Where(t => !t.IsRetired)
             .OrderBy(t => t.SortOrder)
             .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle))
             .ToListAsync();
