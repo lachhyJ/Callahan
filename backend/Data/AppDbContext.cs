@@ -29,6 +29,9 @@ public class AppDbContext : DbContext
     public DbSet<Tournament> Tournaments => Set<Tournament>();
     public DbSet<Season> Seasons => Set<Season>();
     public DbSet<UsageEvent> UsageEvents => Set<UsageEvent>();
+    public DbSet<Routine> Routines => Set<Routine>();
+    public DbSet<RoutineItem> RoutineItems => Set<RoutineItem>();
+    public DbSet<RoutineCompletion> RoutineCompletions => Set<RoutineCompletion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -228,6 +231,77 @@ public class AppDbContext : DbContext
             new ActivitySessionType { Id = 7, Name = "Club Training", ActivityType = ActivityType.Ultimate, SortOrder = 4 },
             new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5 }
         );
+
+        // One completion per routine per day. The API upserts against this
+        // rather than letting a second tap create a duplicate row.
+        modelBuilder.Entity<RoutineCompletion>()
+            .HasIndex(rc => new { rc.RoutineId, rc.Date })
+            .IsUnique();
+
+        // Routine and RoutineItem are seeded content - these are brand-new
+        // tables and HasData genuinely does describe what a fresh database
+        // should hold, which is not true of Exercises or WorkoutTemplates any
+        // more. RoutineCompletion is never seeded: it is entirely runtime-owned.
+        modelBuilder.Entity<Routine>().HasData(
+            new Routine
+            {
+                Id = 1,
+                Name = "Daily Ankle Circuit",
+                Purpose = "Proprioceptive work for the ankle - the foundation of the program",
+                Cadence = "Every day, including rest days. Five minutes.",
+                SortOrder = 1,
+                Notes =
+                    "This is not an accessory block. Three years of recurrence with no structural diagnosis; "
+                    + "the working assumption is functional instability, which responds to proprioceptive and "
+                    + "balance work. Highest value, lowest cost thing in the program.\n\n"
+                    + "Progression ladder - move up when the current level feels easy, roughly every 2-3 weeks:\n"
+                    + "- Eyes open, firm ground\n"
+                    + "- Eyes closed, firm ground\n"
+                    + "- Unstable surface (pillow, folded mat)\n"
+                    + "- Unstable surface + ball toss against a wall\n"
+                    + "- Single-leg hop and stick, multi-directional\n\n"
+                    + "Keep the braces for games and pod sessions. Braces and neuromuscular work are "
+                    + "complementary, not alternatives."
+            },
+            new Routine
+            {
+                Id = 2,
+                Name = "Jump Block",
+                Purpose = "Vertical work - the number one priority, kept out of the gym",
+                Cadence = "2x weekly, 15 mins - before Gym 1 and Gym 3",
+                SortOrder = 2,
+                Notes =
+                    "Not a gym session. These need overhead space, a run-up, or somewhere you can land hard, "
+                    + "which a commercial gym floor isn't. Do them at home, in a driveway, a park, or anywhere "
+                    + "with a basketball ring, then head to the gym. Pogos and skater bounds stay in the gym - "
+                    + "they're low, quiet and nobody looks twice.\n\n"
+                    + "Introduce it over 3 weeks, not in one go:\n"
+                    + "- Week 1: CMJ 2x3 only. No depth drops.\n"
+                    + "- Week 2: CMJ 3x3 + depth drops 2x3 from a low step.\n"
+                    + "- Week 3: full prescription.\n"
+                    + "- Progress depth-drop height only after 4 weeks of clean, silent landings.\n\n"
+                    + "One-leg approach jumps stay in Field 1, where they already are. They need a real run-up "
+                    + "and a high target, and Field 1 is the only place you're genuinely fresh. Don't add them "
+                    + "here as well - one-leg landing volume is the thing you least want to spike with a "
+                    + "three-year ankle history.\n\n"
+                    + "The adherence risk: a 15-minute thing that happens before you leave the house is the "
+                    + "easiest thing in this program to skip. Tie it to leaving, not to a time."
+            });
+
+        modelBuilder.Entity<RoutineItem>().HasData(
+            // Daily Ankle Circuit
+            new RoutineItem { Id = 1, RoutineId = 1, ItemOrder = 1, Name = "Single-leg balance, eyes open", Prescription = "45 secs/side" },
+            new RoutineItem { Id = 2, RoutineId = 1, ItemOrder = 2, Name = "Single-leg balance, eyes closed", Prescription = "30 secs/side" },
+            new RoutineItem { Id = 3, RoutineId = 1, ItemOrder = 3, Name = "Single-leg balance + head turns", Prescription = "20 secs/side" },
+            new RoutineItem { Id = 4, RoutineId = 1, ItemOrder = 4, Name = "Banded ankle eversion", Prescription = "15/side" },
+            new RoutineItem { Id = 5, RoutineId = 1, ItemOrder = 5, Name = "Tibialis raises", Prescription = "20" },
+            new RoutineItem { Id = 6, RoutineId = 1, ItemOrder = 6, Name = "Single-leg calf raise, slow", Prescription = "12/side" },
+
+            // Jump Block
+            new RoutineItem { Id = 7, RoutineId = 2, ItemOrder = 1, Name = "Ankle circuit (abbreviated)", Prescription = "", Cue = "Balance + calf raise. Warm the ankle before you land on it." },
+            new RoutineItem { Id = 8, RoutineId = 2, ItemOrder = 2, Name = "Pogo hops", Prescription = "2x10", Cue = "Warm-up, low" },
+            new RoutineItem { Id = 9, RoutineId = 2, ItemOrder = 3, Name = "Countermovement jump to target", Prescription = "4x3", Cue = "Measure weekly. Mark a fixed point - a wall, a doorframe, a ring. Full recovery." },
+            new RoutineItem { Id = 10, RoutineId = 2, ItemOrder = 4, Name = "Depth drop to stick landing", Prescription = "3x5", Cue = "A low step to start (~30cm). Absorb, freeze, hold 2 secs." });
 
         modelBuilder.Entity<Finisher>().HasData(
             new Finisher { Id = 1, ExerciseId = 25, SortOrder = 1, TargetSets = 3, TargetReps = "8/side", RestSeconds = 60 },
