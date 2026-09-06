@@ -250,6 +250,21 @@ export function startWorkoutTemplate(id) {
   return apiFetch(`/api/workouttemplates/${id}/start`)
 }
 
+export function getRoutines() {
+  return apiFetch('/api/routines')
+}
+
+export function markRoutineDone(id, { date = null, notes = null } = {}) {
+  return apiFetch(`/api/routines/${id}/completions`, {
+    method: 'POST',
+    body: JSON.stringify({ date, notes }),
+  })
+}
+
+export function undoRoutineDone(id, date) {
+  return apiFetch(`/api/routines/${id}/completions/${date}`, { method: 'DELETE' })
+}
+
 export function getFinishers() {
   return apiFetch('/api/finishers')
 }

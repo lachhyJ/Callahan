@@ -3805,3 +3805,185 @@ td {
   font-size: var(--text-xs);
   color: var(--text);
 }
+
+/* --- Routines -------------------------------------------------------------
+   The program's non-session work: the daily ankle circuit and the Jump Block.
+   Card-per-routine, with the prescription always visible and the longer
+   instructions behind a toggle — the table is what you read mid-session, the
+   prose is what you read once. */
+
+.page-lead {
+  margin: calc(-1 * var(--space-xs)) 0 var(--space-lg);
+  font-size: var(--text-sm);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+  text-wrap: pretty;
+}
+
+.routine-card {
+  margin-bottom: var(--space-lg);
+  padding: var(--space-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* Done reads as a state on the card, not just on the button — the card is what
+   you glance at, and an accent edge survives a quick look better than a label. */
+.routine-card-done {
+  border-color: var(--accent-border);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.routine-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-sm);
+}
+
+.routine-title h2 {
+  margin: 0;
+  font-size: var(--text-lg);
+}
+
+.routine-purpose {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.routine-cadence {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+/* 44px minimum touch target, reached with padding rather than min-height so the
+   label keeps its own vertical rhythm inside the card header. */
+.routine-tick {
+  flex-shrink: 0;
+  padding: var(--space-sm) var(--space-md);
+  min-height: 44px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.routine-tick-done {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: var(--accent-border);
+}
+
+.routine-tick:disabled {
+  opacity: 0.6;
+}
+
+.routine-last {
+  margin: var(--space-xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.routine-items {
+  width: 100%;
+  margin-top: var(--space-md);
+  border-collapse: collapse;
+}
+
+.routine-items th {
+  padding: var(--space-2xs) 0;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--text-primary);
+  text-align: left;
+}
+
+.routine-items td.routine-dose {
+  padding: var(--space-2xs) 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.routine-cues {
+  margin: var(--space-sm) 0 0;
+  padding-left: var(--space-md);
+  font-size: var(--text-xs);
+  line-height: var(--leading-snug);
+  color: var(--text-tertiary);
+}
+
+.routine-cues li {
+  margin-bottom: var(--space-2xs);
+}
+
+.routine-cues strong {
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.routine-note-field {
+  display: block;
+  margin-top: var(--space-md);
+}
+
+.routine-note-field span {
+  display: block;
+  margin-bottom: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.routine-note-field input {
+  width: 100%;
+  padding: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.routine-toggle {
+  margin-top: var(--space-md);
+  padding: var(--space-2xs) 0;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.routine-notes {
+  font-size: var(--text-sm);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  text-wrap: pretty;
+}
+
+.routine-notes p {
+  margin: 0 0 var(--space-sm);
+}
+
+.routine-notes ul {
+  margin: 0 0 var(--space-sm);
+  padding-left: var(--space-md);
+}
+
+.routine-notes li {
+  margin-bottom: var(--space-2xs);
+}
