@@ -1,6 +1,6 @@
 ---
 name: schema-change-verification
-description: Verify a generated EF Core migration actually contains the operations it should, before building on it or committing. Use when scaffolding or reviewing a migration, adding an entity or column, or when a table appears empty/missing at runtime despite a migration having deployed. Also covers checking what signal remains when a write path is deliberately made non-fatal. Trigger on "add migration", "dotnet ef", "schema change", "new table", "why is this table empty", "--no-build".
+description: Verify a generated EF Core migration actually contains the operations it should, before building on it or committing. Use when scaffolding or reviewing a migration, adding an entity or column, adding rows to a seed-managed (HasData) table, or when a table appears empty/missing at runtime despite a migration having deployed. Also covers checking what signal remains when a write path is deliberately made non-fatal. Trigger on "add migration", "dotnet ef", "schema change", "new table", "HasData", "seed data", "reference table", "primary key collision", "why is this table empty", "--no-build".
 ---
 
 # Schema Change Verification
@@ -75,6 +75,55 @@ copy: catch so tracking can't break the app it measures, log at error level,
 **and return 500 rather than a success status**, with a comment saying why. The
 client ignores the response; the log and the status code do not.
 
+## Rule 4 — a seed-managed table that later takes runtime writes has drifted three ways
+
+`HasData` seeding assumes the framework is the only writer. Once an import or a
+user-facing create flow writes to the same table, the seed block becomes a
+partial, stale view of production — and the model snapshot diverges in ways that
+are invisible from reading either the seed block or the migrations:
+
+1. **Rows** — production has rows the seed block doesn't (import, UI creates).
+2. **Columns** — a feature shipped later mutates a column at runtime that the
+   seed block still declares a fixed value for.
+3. **The ID counter** — the dangerous one. Seeded IDs stop at 30 in the
+   snapshot; production has allocated up to 92. A newly seeded row is assigned
+   an ID that already exists in production, and the migration **fails on a
+   primary-key collision at deploy time** — after passing every local check.
+
+Before adding seeded rows to any table that also accepts runtime writes:
+
+```bash
+# against a scratch copy of the prod DB, per seeded table
+sqlite3 scratch.db "SELECT MAX(Id), COUNT(*) FROM <Table>;"
+```
+
+Compare `MAX(Id)` against the highest ID in the seed block and choose new IDs
+above the *production* ceiling, never the seed-block ceiling. Then classify each
+drifted column as **seed-owned** (reconcile to the seed block), **runtime-owned**
+(remove from seed ownership — reconciling it silently resets the user's tuned
+values on the next migration), or **unmanaged**. Never infer the ID ceiling from
+the seed block.
+
+## Rule 5 — a data migration needs a fresh-database gate, not only a production-copy gate
+
+A migration that inserts rows *referencing existing rows* (wiring new program
+templates to exercise rows, say) has an inverted failure mode: if the referenced
+rows arrived via a historical import rather than the seed block, the migration
+passes against a copy of production and **fails in every other environment** —
+local dev, CI, a rebuilt host — because those are built from the seed block
+alone. Production is fine; a new contributor or a disaster rebuild hits the
+break. Seen here only because a mistyped connection-string key accidentally
+pointed the run at the seeded dev DB.
+
+- Run any row-inserting data migration against **both** a production copy and an
+  empty database freshly migrated from the seed block. Both must pass.
+- Where a referenced row might be absent, make the insert idempotent —
+  `INSERT OR IGNORE`, or a guarded `INSERT ... WHERE NOT EXISTS` — so the
+  migration is a no-op where the row exists and a backfill where it doesn't.
+- Before trusting that a run targeted the database you meant, echo the resolved
+  connection target (or confirm a known-distinct row count) — a silently
+  redirected connection string is how the wrong-DB pass happens.
+
 ## Pre-flight
 
 - [ ] No skip-build flag was passed to the scaffolder.
@@ -84,5 +133,11 @@ client ignores the response; the log and the status code do not.
 - [ ] `AppDbContextModelSnapshot.cs` updated.
 - [ ] Any new swallowed-exception path logs at error level and does not return
       a success status.
+- [ ] For seeded rows added to a table that also takes runtime writes:
+      production `MAX(Id)` was queried and new IDs chosen above it; each
+      drifted column classified seed-owned / runtime-owned / unmanaged.
+- [ ] A row-inserting data migration was run against both a production copy
+      **and** an empty seed-built database; inserts referencing existing rows
+      are idempotent; the resolved connection target was echoed before trust.
 - [ ] Migration applied against a scratch copy of the DB and the table/column
       confirmed to exist — never first applied on the NAS.

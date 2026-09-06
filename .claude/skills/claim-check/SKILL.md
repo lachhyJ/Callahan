@@ -1,6 +1,6 @@
 ---
 name: claim-check
-description: Check the claims a piece of work rests on, and the claims it produces, before acting on either. Use when a plan or backlog item asserts something about this codebase that heavier work depends on ("this needs a migration", "extend the existing script"); when running a parameter sweep or diagnostic over the Ultimate stream data; when tuning anything against the committed fixtures; when asked whether a displayed metric is meaningful or indicates a problem; when verifying that a migration, backup, or data repair preserved state; and always before presenting a measured number or root cause as a finding — including a negative one ("not worth it") or a retraction. Trigger on "why is X wrong", "diagnose", "sweep", "tune", "root cause", "is this stat useful", "did this change anything", or any conclusion about the app derived from a measurement rather than read directly.
+description: Check the claims a piece of work rests on, and the claims it produces, before acting on either. Use when a plan or backlog item asserts something about this codebase that heavier work depends on ("this needs a migration", "extend the existing script"); when acting on a plan or prompt authored outside the current session; when running a parameter sweep or diagnostic over the Ultimate stream data; when tuning anything against the committed fixtures; when asked whether a displayed metric is meaningful or indicates a problem; when verifying that a migration, backup, or data repair preserved state; when a user reports symptoms in prose and asks why (even without the words "diagnose" or "root cause"); when a user attributes an observed UI effect to a specific cause ("why does marking it complete change the row height"); when a user asserts a factual premise about their own data or system state while asking for something else ("the import added junk", "nothing uses this", "that field is always empty"); and always before presenting a measured number or root cause as a finding — including a negative one ("not worth it") or a retraction. Trigger on "why is X wrong", "why did X happen", "why does X change Y", "X still fired after I stopped it", "diagnose", "sweep", "tune", "root cause", "is this stat useful", "did this change anything", or any conclusion about the app derived from a measurement rather than read directly.
 ---
 
 # Claim Check
@@ -27,6 +27,36 @@ that catches this, which is why it has to happen at the inputs.
 And it's most likely exactly when the result is most satisfying — a finding
 that contradicts everyone gets scrutinised by reflex; one that confirms the
 stated hunch gets reported.
+
+## The request often won't announce itself as a diagnosis
+
+The trigger words ("diagnose", "root cause") are the case that's easy to
+catch. The ones that get missed:
+
+**A prose symptom report is a diagnosis request.** "The beep went early and
+fired twice" — no trigger word, but the deliverable is a root-cause claim
+and a fix built on it. An iOS rest-timer session produced exactly that with
+claim-check never loaded; the diagnosis mixed a claim readable from the code
+(a React effect dep array re-firing a native call) with an unmeasurable
+inference about CoreAudio clock semantics, and only separated them because
+the agent happened to notice. When a user describes observed behaviour and
+expects an explanation, that's the trigger — react to the shape, not the
+vocabulary.
+
+**A user's premise about their own data is a claim, not a given.** "Did the
+import add a bunch of exercises I've never done — can we delete them?" The
+premise was stated confidently and was backwards: one aggregate query showed
+every imported row had logged history, and the only zero-history rows were
+from the original hand-curated seed. Acting directly would have deleted
+exactly the wrong set. The user is authoritative about intent and
+priorities, not about what's in the database. When the justification for a
+destructive action is an empirical claim and the claim is cheap to check,
+check it first and report the inversion.
+
+**A user attributing an effect to a cause has given you a hypothesis, not
+evidence.** "Why does marking it complete change the row height?" names
+`.completed` as the cause. Treat the *effect* as the claim and the *cause*
+as untested — see the layout case in Phase 2.
 
 ## Phase 1 — claims arriving from a plan or backlog item
 
@@ -73,6 +103,18 @@ problem was only the in-app beep, and the whole first analysis aimed at the
 wrong symptom. Restate the *current* observed behaviour with Lachlan before
 diagnosing: "the notes say X is the problem — is that still exactly what
 you're seeing?" A stored problem description is a hypothesis about the past.
+
+**A pasted external prompt carries a timestamp its text doesn't show.** A
+hand-written migration prompt's #1 gating question — "build the add-exercise
+UI, or seed a one-off migration?" — was written against a backlog item that
+had shipped the day before. One grep of `backlog.md` showed it closed and
+deployed; following the prompt literally would have spent the first phase
+reasoning about a decision that no longer existed. Any plan or prompt
+authored outside the current session is a Phase 1 source: before acting on
+its steps, verify every repo-state claim in it (open backlog item, missing
+endpoint, absent UI) against the live repo, and report the stale ones before
+planning. The claims it builds its whole structure on are usually the
+cheapest to check.
 
 ## Phase 2 — while measuring
 
@@ -138,6 +180,39 @@ open the backup and integrity-check it before relying on it. An unverified
 backup turns a reversible action irreversible while looking like the
 opposite.
 
+**"Why does X change the layout of Y" is measured, not read.** A user asked
+why marking a row complete changed the bar's height, with before/after
+screenshots. Reading the `.completed` rules showed only `background` and
+`color` toggling — nothing dimensional — and three plausible-but-wrong
+hypotheses came out of source reading alone. The real cause: an *empty*
+`inline-flex` button has no baseline, so one is synthesised from its bottom
+margin edge, making the row 4px taller than the same button with an icon in
+it. Invisible in the stylesheet, because the trigger was the conditional
+*content* of a sibling, not the class the user pointed at. An isolated
+harness — real stylesheets, real markup, `getBoundingClientRect` before and
+after, then toggling one attribute at a time — found it in three tool calls.
+Build the smallest reproduction of the two states, measure both, bisect by
+applying one candidate change at a time. A cause that's invisible in the
+obvious source location is exactly where reading harder converges on a
+confident wrong answer.
+
+**Cleanup correctness is a property of the exit paths, not the cleanup
+code.** An alarm sounded minutes after the user had saved and left the
+screen. The teardown call that cancels it existed and read correctly — but
+it lived in the `else` branch of an effect keyed on the resource's own
+state, and neither exit path (save, discard) set that state to null before
+navigating away, so the branch never ran. A second copy of the same bug sat
+one layer down in native code: the workout-ended handler called a silent
+`clear()` where every other caller used the variant that also notified the
+subsystem holding the resource. For any "X fired / ran / held on after it
+should have stopped": enumerate every path out of the owning scope (save,
+discard, navigate-away, unmount) and confirm the teardown is reached on each
+— do not verify by reading the teardown site, which looks correct in every
+one of these bugs. Conditionally-reached cleanup (an effect's else branch, a
+state-transition handler, a guard-gated block) is suspect by default: it
+only runs when something else remembered to change the state that triggers
+it.
+
 ## Phase 3 — before reporting anything measured
 
 Write this out. Don't do it in your head — the whole point is that the
@@ -187,6 +262,22 @@ measure was built after hearing it, that's not corroboration; the measure
 was built by someone who knew the target. Name the extra check the match
 earned. Agreement is a reason to look harder.
 
+**Provenance of a document cited as evidence.** Asked what would justify a
+different training-split structure, the answer leaned partly on the
+rationale written in the program document — a document produced by earlier
+sessions with the same user, i.e. a record of conclusions already jointly
+reached. Lachlan flagged it: "you reasoned from the program document — which
+is our own conclusions written down, so the agreement wasn't independent."
+It reads like an external authority (structured, confident, reasoned) while
+being a transcript of prior agreement; quoting it back produced the
+appearance of corroboration with none of the substance. When a
+user-supplied document is used as *evidence* rather than as *specification*,
+establish whether it's an independent source or this collaboration's own
+output. If the latter, cite it for what was decided, never for whether the
+decision was right — and derive the actual evaluation from primary material
+(the underlying data, schedule, or code), saying explicitly which parts are
+independent.
+
 **Instantiate it.** A claim that a fixed narrow rep range makes an
 estimated-1RM metric redundant was presented as evidence-backed — the rep
 ranges had been queried and confirmed. The premise was right and the
@@ -210,6 +301,28 @@ match a defect signature, query for records that fit the precondition but
 not the prediction and explain every one before acting — that's where a
 wrong model shows itself, and in a repair it's the rows a confident fix
 damages.
+
+**A repair verified before its fix is live is a snapshot with an expiry.**
+A date-attribution bug was confirmed, the code fixed on a feature branch,
+the 31 damaged rows repaired — and because the repo deploys on merge to
+`main` and the branch wasn't merged, the repair landed while production was
+still running the buggy code. Every new row written in that window is
+re-corrupted in exactly the class just repaired, and a "31 fixed, 0
+remaining" check run then reads clean while fresh bad rows arrive. A data
+repair and the code fix that prevents it are one change with an ordering
+constraint: deploy the fix *first*, or if the repair must lead, state the
+window's length and re-run the verification query *after* the deploy lands,
+not before. Any "N corrected, 0 remaining" taken before the fix is live is
+reported with its expiry attached.
+
+**Classify each claim in the finding by how it was established.** A
+root-cause finding usually bundles claims of very different strength — one
+read straight from the code (a dep array re-firing a call), one inferred
+from documented behaviour (a clock-semantics assumption), one measured. Tag
+each as read / inferred / measured before presenting. A fix built on an
+inferred mechanism carries different risk than one built on a verified one,
+and if the claims are presented as one block the weakest inherits the
+credibility of the strongest.
 
 **Verdict** — report as hypothesis unless every line is clean. "One
 candidate explanation, here's what would confirm it" costs a sentence.
@@ -283,7 +396,7 @@ Re-read this file and confirm:
 
 1. Every claim that pulled in the heavier path (migration, db backup) was
    checked against the live model, not the plan's description of it —
-   including a plan written this session.
+   including a plan written this session or pasted in from outside it.
 2. Every file named as the thing to modify was opened, or its README read.
 3. Sweeps passed their parameter explicitly; identical rows were treated
    as a bug first.
@@ -295,5 +408,14 @@ Re-read this file and confirm:
    measurement carries its status code and an expected magnitude.
 8. A metric question was answered from its implementation; a data
    transformation was verified inside the engine, not through text.
+9. A prose symptom report, a UI cause-attribution, or a user premise about
+   their own data was treated as a claim to check — not answered straight.
+   "Why does X change the layout" and "X fired after I stopped it" were
+   measured against a reproduction, not reasoned from source.
+10. Each claim in a root-cause finding is tagged read / inferred / measured.
+11. Any document cited as evidence (not spec) was checked for independent
+    provenance — our own prior conclusions don't corroborate.
+12. Any data-repair verification was taken *after* the preventing fix went
+    live, or is reported with the re-corruption window stated.
 
 If one is unmet, fix it before delivering, and say what was missed.

@@ -45,22 +45,38 @@ sweep of every input at 0.01 resolution across the whole plausible range found
 **zero** inputs where the epsilon changed the result — the branch is unreachable
 given the data, because every value involved is exactly representable in binary.
 
-So when a mutation survives, establish reachability *before* writing anything:
+So when a mutation survives, derive the input set on which the mutated and
+original code actually diverge *before* writing anything:
 
-1. Can any realistic input reach the mutated branch? Sweep the input space if
-   it is small enough to brute-force — it usually is for pure logic.
-2. If reachable → the test gap is real. Write the test.
-3. If unreachable → **do not write a test.** A test for an unreachable branch
-   manufactures false coverage: it will pass forever regardless of the code.
-   The correct outputs are documentation changes, and possibly deletion of the
-   dead guard.
+1. What inputs make the mutant and the original produce different results?
+   Sweep the input space if it is small enough to brute-force — it usually is
+   for pure logic.
+2. If that set is empty → the branch is unreachable given the data. **Do not
+   write a test.** A test for an unreachable branch manufactures false
+   coverage: it will pass forever regardless of the code. The correct outputs
+   are documentation changes, and possibly deletion of the dead guard.
+3. If that set is non-empty → those exact inputs are the missing test — and
+   they are disproportionately likely to be a **real bug**, because by
+   construction they are the cases nobody thought about. Run them through the
+   *original* code and check the output is actually what it should be before
+   assuming the mutant is the only thing wrong.
 
-In this case the fixes were: rename the existing test, whose name claimed to
-cover floating-point drift when it covered ordinary behaviour, and amend the
-source comment that implied the epsilon was load-bearing.
+**The near-duplicate-guard trap.** When a mutant deletes one of two guards
+that look redundant (an emptiness check next to a validity check), they
+usually diverge on exactly one sentinel: `null` vs `NaN`, zero vs absent,
+`""` vs undefined. Seen here: deleting a `!saved.startedAt` emptiness guard
+survived because a sibling Invalid-Date guard caught the same test inputs —
+but `new Date(null)` is the epoch, a *valid* date the NaN guard passes, so a
+null value would have silently pinned the record to 1970 and a monotonic
+"earliest wins" rule would have kept it there permanently. The surviving
+mutant was pointing at an untested input class, not at dead code.
 
-A surviving mutant says the tests and the code disagree about what matters —
-and **the code is as likely to be the party in the wrong.**
+In the epsilon case the fixes were: rename the existing test, whose name
+claimed to cover floating-point drift when it covered ordinary behaviour, and
+amend the source comment that implied the epsilon was load-bearing.
+
+A surviving mutant marks the boundary where two pieces of logic disagree with
+nobody watching — and **the code is as likely to be the party in the wrong.**
 
 ## Step 3 — check the test names describe what they assert
 
@@ -74,10 +90,12 @@ because it stops the next person looking.
 - [ ] The suite has been watched to **fail**, not only to pass.
 - [ ] Mutations covered distinct failure classes, applied one at a time, each
       reverted after.
-- [ ] Every surviving mutant was resolved as *reachable → write a test* or
-      *unreachable → document/delete*, never assumed to be a missing test.
-- [ ] Reachability claims came from an actual input sweep, not from reasoning
-      about whether the branch "should" be hit.
+- [ ] Every surviving mutant was resolved by deriving its divergence input
+      set: *empty → document/delete*, *non-empty → those inputs are the test,
+      and were checked against the original code for a real bug first*.
+- [ ] The divergence set came from an actual input sweep, not from reasoning
+      about whether the branch "should" be hit. Near-duplicate guards were
+      checked for the one sentinel they split on (null/NaN, zero/absent).
 - [ ] Test names re-read against what they demonstrably catch.
 - [ ] All mutations reverted; `npm test` green; `git diff` on source files is
       empty except for intended changes.
