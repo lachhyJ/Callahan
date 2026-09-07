@@ -3612,6 +3612,17 @@ td {
   white-space: nowrap;
 }
 
+/* The first tick is centred on the strip's left edge and the last on its right
+   edge, so translateX(-50%) pushes half of each label outside the container and
+   it clips. Anchor the ends inward instead. */
+.field-timeline-tick:first-child {
+  transform: none;
+}
+
+.field-timeline-tick:last-child {
+  transform: translateX(-100%);
+}
+
 .field-timeline-legend {
   display: flex;
   gap: var(--space-md);
