@@ -192,24 +192,11 @@ export function getTaperConsult(eventId, question) {
   })
 }
 
-// Not apiFetch: that always parses JSON, and a PDF has to come back as a
-// blob so it can be handed to an <iframe> via an object URL — a plain
-// <iframe src> can't carry the Bearer token.
-export async function getProgramPdfBlob() {
-  const token = localStorage.getItem('callahan_token')
-  const res = await fetch(`${API_BASE}/api/program/pdf`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  })
-  if (res.status === 401) {
-    localStorage.removeItem('callahan_token')
-    window.dispatchEvent(new Event('callahan-unauthorized'))
-    throw new Error('Not authenticated')
-  }
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? `Request failed (${res.status})`)
-  }
-  return res.blob()
+// The Program page renders this HTML directly. It's the program doc (authored
+// as markdown, server-rendered by ProgramController) — trusted content from our
+// own backend, and the CSP blocks inline script regardless.
+export function getProgramContent() {
+  return apiFetch('/api/program/content')
 }
 
 export function getWorkoutSession(id) {

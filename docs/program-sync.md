@@ -40,8 +40,10 @@ know what changed.
 
 ## What actually gets touched
 
-Three tables, all in the SQLite DB on the NAS's data volume (the host side of
-the `/app/App_Data` mount in `docker-compose.prod.yml`):
+Up to five tables, all in the SQLite DB on the NAS's data volume (the host
+side of the `/app/App_Data` mount in `docker-compose.prod.yml`). The first
+three cover the gym days; the last two cover the non-gym routines (the daily
+ankle circuit and the Jump Block) that the v3 program folded in:
 
 - **`WorkoutTemplates`** — the three program days (Id, Name, SortOrder).
   Renaming one is the only likely edit here; adding/removing a whole
@@ -63,6 +65,20 @@ the `/app/App_Data` mount in `docker-compose.prod.yml`):
   import left some naming inconsistencies (e.g. equipment-suffixed names
   like `"Bench Press (Barbell)"` alongside plain `"Bench Press"`) that
   are worth merging into rather than duplicating further.
+
+- **`Routines`** — one row per non-gym routine (the daily ankle circuit,
+  the Jump Block): `Name`, `Purpose`, `Cadence`, `Notes` (free text, holds
+  the progression ladder and the introduce-over-3-weeks ramp), `SortOrder`.
+  Notes is where most routine-level prose edits land.
+- **`RoutineItems`** — one row per movement within a routine: `RoutineId`,
+  `ItemOrder`, `Name`, `Prescription` (free text like `"45 secs/side"` or
+  `"2x15"`), `Cue` (nullable). Adding, removing or represcribing a routine
+  movement happens here. There is no exercise-catalog link — the `Name` is
+  just text — so nothing upstream needs a row first, and deleting the last
+  item leaves no `ItemOrder` gap to backfill.
+
+`RoutineCompletions` (the per-day tick) is user data, never touched by a
+sync — same standing as `WorkoutSessions`.
 
 Nothing about a session that's already been logged changes — sets are
 tied to `WorkoutSessions`/`ExerciseSets` by `ExerciseId` directly, not to
