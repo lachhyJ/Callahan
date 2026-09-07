@@ -279,6 +279,40 @@ actively leaving. Nothing was lost, but the ordering was discovered rather than 
 not two tasks. Merging to `main` *is* the deploy here, so "the fix is committed" is not
 "the fix is live".
 
+### Seed data describes a fresh database, not a running one
+**2026-09-06.** EF Core's `HasData` mechanism diffs a declared seed block against a
+snapshot of the model and generates migration operations to close the gap — it's built
+on the assumption that the framework is the only thing that ever writes to those rows.
+That assumption holds until an import script or a user-facing edit screen writes to the
+same table, at which point the seed block quietly becomes a fiction, and it goes wrong in
+three specific ways rather than one obvious one.
+
+Rows drift first and most visibly — a historical import or an in-app "create" flow adds
+entries the seed block has never heard of. Columns drift next, and this one is easy to
+miss: a feature shipped later starts writing to a column the seed block still declares a
+fixed value for, so "reconciling" the seed to match production would hand the framework
+ownership of a value the app is actively tuning, and the *next* unrelated migration would
+silently overwrite it. The ID counter drifts last and fails loudest — the seed block's
+highest ID might be 30 while the live table has reached 90 from real usage, so a
+newly-seeded row collides with a row that already exists, and the migration fails at
+deploy time with a plain foreign-key or primary-key error, on the one environment where
+everything else about the change was correct.
+
+I hit this adding new program content to a table that had absorbed months of a real data
+import: three of the new rows referenced entries that existed only in production, not in
+the seed block, so the migration would have applied cleanly there and failed on every
+freshly-created database — local dev, CI, a rebuilt host. It surfaced only because I
+happened to test against a throwaway database as well as a copy of production.
+
+**How to apply:** once a seed-managed table takes any write from outside the framework,
+stop treating the seed block as a description of current state. Query the live
+database's `MAX(Id)` before choosing new seeded IDs — never infer the ceiling from the
+seed block itself — and classify every column that has drifted as either still
+framework-owned (safe to reconcile) or now owned by the running app (leave it alone
+entirely). Test any migration that references existing rows against both a copy of
+production *and* a freshly-seeded database — production alone will pass even when the
+migration is broken everywhere else.
+
 ---
 
 ## Measuring a sport from GPS
