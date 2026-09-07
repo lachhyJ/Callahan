@@ -250,6 +250,18 @@ export function startWorkoutTemplate(id) {
   return apiFetch(`/api/workouttemplates/${id}/start`)
 }
 
+export function getWeekPlan(weekStart) {
+  const q = weekStart ? `?weekStart=${weekStart}` : ''
+  return apiFetch(`/api/plan${q}`)
+}
+
+export function updatePlanSlot(slotId, { weekStart, dayOfWeek = null, status = 'Auto' }) {
+  return apiFetch(`/api/plan/slots/${slotId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ weekStart, dayOfWeek, status }),
+  })
+}
+
 export function getRoutines() {
   return apiFetch('/api/routines')
 }

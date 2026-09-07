@@ -32,6 +32,8 @@ public class AppDbContext : DbContext
     public DbSet<Routine> Routines => Set<Routine>();
     public DbSet<RoutineItem> RoutineItems => Set<RoutineItem>();
     public DbSet<RoutineCompletion> RoutineCompletions => Set<RoutineCompletion>();
+    public DbSet<PlanSlot> PlanSlots => Set<PlanSlot>();
+    public DbSet<PlanSlotWeek> PlanSlotWeeks => Set<PlanSlotWeek>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -229,7 +231,13 @@ public class AppDbContext : DbContext
             new ActivitySessionType { Id = 5, Name = "Throws", ActivityType = ActivityType.Ultimate, SortOrder = 2 },
             new ActivitySessionType { Id = 6, Name = "Pod", ActivityType = ActivityType.Ultimate, SortOrder = 3 },
             new ActivitySessionType { Id = 7, Name = "Club Training", ActivityType = ActivityType.Ultimate, SortOrder = 4 },
-            new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5 }
+            new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5 },
+
+            // The current program's two field sessions. Added alongside the
+            // originals rather than renaming them: "High Speed Intervals" has
+            // real logged history and must keep meaning what it meant.
+            new ActivitySessionType { Id = 9, Name = "Field 1 - Acceleration & Jump Quality", ActivityType = ActivityType.Running, SortOrder = 4 },
+            new ActivitySessionType { Id = 10, Name = "Field 2 - Repeat Effort & COD", ActivityType = ActivityType.Running, SortOrder = 5 }
         );
 
         // One completion per routine per day. The API upserts against this
@@ -302,6 +310,33 @@ public class AppDbContext : DbContext
             new RoutineItem { Id = 8, RoutineId = 2, ItemOrder = 2, Name = "Pogo hops", Prescription = "2x10", Cue = "Warm-up, low" },
             new RoutineItem { Id = 9, RoutineId = 2, ItemOrder = 3, Name = "Countermovement jump to target", Prescription = "4x3", Cue = "Measure weekly. Mark a fixed point - a wall, a doorframe, a ring. Full recovery." },
             new RoutineItem { Id = 10, RoutineId = 2, ItemOrder = 4, Name = "Depth drop to stick landing", Prescription = "3x5", Cue = "A low step to start (~30cm). Absorb, freeze, hold 2 secs." });
+
+        // One deviation row per slot per week.
+        modelBuilder.Entity<PlanSlotWeek>()
+            .HasIndex(w => new { w.PlanSlotId, w.WeekStart })
+            .IsUnique();
+
+        // Deleting a template, session type or routine should never be possible
+        // while a plan slot points at it - the slot would silently stop matching
+        // anything and read as permanently missed.
+        modelBuilder.Entity<PlanSlot>()
+            .HasOne(p => p.WorkoutTemplate).WithMany()
+            .HasForeignKey(p => p.WorkoutTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PlanSlot>()
+            .HasOne(p => p.ActivitySessionType).WithMany()
+            .HasForeignKey(p => p.ActivitySessionTypeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PlanSlot>()
+            .HasOne(p => p.Routine).WithMany()
+            .HasForeignKey(p => p.RoutineId).OnDelete(DeleteBehavior.Restrict);
+
+        // PlanSlot rows are NOT seeded here, deliberately. They point at the
+        // Gym 1/2/3 templates, which live in the program-v3 migration rather
+        // than in this seed block. EnsureCreated applies HasData only, so
+        // seeding slots here references templates that do not exist on a
+        // freshly-created database and fails the entire seed - which is exactly
+        // what it did, taking six unrelated test classes down with it. The
+        // slots are inserted by the AddWeeklyPlanner migration instead, next to
+        // the templates they depend on.
 
         modelBuilder.Entity<Finisher>().HasData(
             new Finisher { Id = 1, ExerciseId = 25, SortOrder = 1, TargetSets = 3, TargetReps = "8/side", RestSeconds = 60 },

@@ -9,7 +9,7 @@ import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
 import { trackAction } from '../usage'
-import { ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
+import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -49,6 +49,7 @@ const QUICK_LINKS = [
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
+  { to: '/plan', label: 'This week', Icon: CalendarIcon },
   { to: '/routines', label: 'Routines', Icon: CheckIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/reports', label: 'Reports', Icon: ReportIcon },
