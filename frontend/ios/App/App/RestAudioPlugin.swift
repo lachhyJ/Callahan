@@ -98,8 +98,12 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
         var diary = UserDefaults.standard.stringArray(forKey: diaryKey) ?? []
         diary.append("\(stamp) [\(state)] \(event)")
-        // One rest's worth; older entries are noise by the time anyone looks.
-        if diary.count > 40 { diary.removeFirst(diary.count - 40) }
+        // A whole workout's worth. The failure this is chasing is intermittent
+        // across a session — "wrong more than half the time over a workout" — so
+        // the log has to survive a workout, not one rest, or every bad rest has
+        // scrolled off by the time the diagnostics panel is opened. ~20 rests at
+        // <10 lines each fits well inside this.
+        if diary.count > 400 { diary.removeFirst(diary.count - 400) }
         UserDefaults.standard.set(diary, forKey: diaryKey)
     }
 
@@ -538,8 +542,17 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         player = p
         armedEndAt = endAt
         let ok = p.play(atTime: baseline + seconds)
-        record(String(format: "armed beep for +%.1fs (keepAlive=%@)",
-                      seconds, keepAlive?.isPlaying == true ? "playing" : "NOT PLAYING"))
+        // `base` is the audio-hardware clock (`deviceCurrentTime`) the beep is
+        // scheduled against; pair it with `dev` in the finish record. If the
+        // hardware was cold at this read the value comes back low and then races
+        // forward once it spins up, firing the beep early — (dev_finish - base)
+        // materially larger than `seconds` is that drift, quantified. The whole
+        // point of the keep-alive is to keep this clock running so `base` is
+        // stable; `keepAlive=NOT PLAYING` here means it is not, and every arm is
+        // a cold arm.
+        record(String(format: "armed beep for +%.1fs @ base=%.3f (keepAlive=%@)",
+                      seconds, baseline,
+                      keepAlive?.isPlaying == true ? "playing" : "NOT PLAYING"))
         // Same rule as standDown: never cut a tone that is already audible. A
         // superseded player is left to finish on its own; the delegate ignores it
         // because it is no longer `self.player`. This is the -15s case — each
@@ -642,8 +655,16 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
         // beep that superseded it.
         guard player === self.player else { return }
 
-        record(String(format: "beep finished (success=%@, keepAlive=%@)",
-                      flag ? "y" : "n", keepAlive?.isPlaying == true ? "playing" : "stopped"))
+        // `dev` is the audio-hardware clock now; against the arm record's `base`,
+        // (dev - base) is how much hardware time the beep took to arm-and-play.
+        // `vs target` is wall-clock: negative means the tone finished before the
+        // rest was actually over, i.e. the hardware clock ran ahead of real time
+        // between the arm and here. A large negative with keepAlive that was NOT
+        // PLAYING at arm is the cold-clock drift this instrumentation is for.
+        let vsTarget = armedEndAt.map { Date().timeIntervalSince($0) } ?? 0
+        record(String(format: "beep finished (success=%@, dev=%.3f, vs target %+.2fs, keepAlive=%@)",
+                      flag ? "y" : "n", player.deviceCurrentTime, vsTarget,
+                      keepAlive?.isPlaying == true ? "playing" : "stopped"))
         if let target = armedEndAt,
            Date() < target.addingTimeInterval(-Self.earlyToleranceSeconds) {
             // Let the music back up for the gap, then re-arm on the remainder.

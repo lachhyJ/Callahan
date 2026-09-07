@@ -290,6 +290,7 @@ export default function ActiveWorkoutPage() {
   // backgrounded rest can be read back without Xcode. Remove with the plugin's
   // Diary section once the ducking behaviour is settled.
   const [audioDiary, setAudioDiary] = useState(null)
+  const [logCopied, setLogCopied] = useState(false)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
   // Last rest period's exercise/set, so the card still says what you just did
@@ -1127,6 +1128,30 @@ export default function ActiveWorkoutPage() {
                 keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
                 {audioDiary.sessionActive ? 'active' : 'inactive'}
               </p>
+              <button
+                type="button"
+                className="rest-alert-test-link"
+                onClick={async () => {
+                  // The failing rests need to be read back later, off-device —
+                  // selecting a scrolling <pre> on a phone mid-workout isn't
+                  // practical. Copy the whole diary plus the live state footer.
+                  const text = [
+                    ...(audioDiary.diary ?? []),
+                    `--- keepAlive ${audioDiary.keepAlivePlaying ? 'playing' : 'stopped'}`
+                      + ` · session ${audioDiary.sessionActive ? 'active' : 'inactive'}`
+                      + ` · armedEndAt ${audioDiary.armedEndAt ?? 'none'}`,
+                  ].join('\n')
+                  try {
+                    await navigator.clipboard.writeText(text)
+                    setLogCopied(true)
+                    setTimeout(() => setLogCopied(false), 1500)
+                  } catch {
+                    /* clipboard blocked — the <pre> above is still selectable */
+                  }
+                }}
+              >
+                {logCopied ? 'Copied' : 'Copy log'}
+              </button>
               <button
                 type="button"
                 className="rest-alert-test-link"
