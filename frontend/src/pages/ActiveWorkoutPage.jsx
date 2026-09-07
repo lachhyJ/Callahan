@@ -1228,7 +1228,6 @@ export default function ActiveWorkoutPage() {
             value={ex.notes}
             onChange={(e) => updateNotes(exIdx, e.target.value)}
           />
-          <div className="table-scroll">
           <table>
             <thead>
               <tr>
@@ -1336,7 +1335,6 @@ export default function ActiveWorkoutPage() {
               })()}
             </tbody>
           </table>
-          </div>
           <button type="button" className="add-set-btn" onClick={() => addSet(exIdx)}>+ Add set</button>
         </div>
         )

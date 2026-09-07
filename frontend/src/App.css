@@ -308,10 +308,6 @@ button {
   }
 }
 
-.table-scroll {
-  overflow-x: auto;
-}
-
 table {
   border-collapse: collapse;
   width: 100%;
