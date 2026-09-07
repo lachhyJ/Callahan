@@ -2,6 +2,47 @@
 // the active workout page — keeps the plate-math and per-exercise bar-weight
 // memory in one place instead of duplicated across both.
 
+import { deletePlateCalcSetting, getPlateCalcSettings, putPlateCalcSetting } from './api/client'
+
+// These preferences live in localStorage for synchronous reads, but the server
+// is the source of truth: the browser evicts localStorage (Safari caps
+// script-writable storage at 7 days for low-engagement sites; a native-app
+// re-sign resets the WKWebView store), and a custom bar weight the athlete had
+// to look up once should not have to be looked up again. Every setter writes
+// localStorage immediately and pushes to the server best-effort; hydrate()
+// pulls the server's copy back into localStorage on app load. The server key is
+// the localStorage key with this shared prefix stripped.
+const SETTINGS_PREFIX = 'callahan.plateCalc.'
+
+function pushSetting(storageKey, value) {
+  putPlateCalcSetting(storageKey.slice(SETTINGS_PREFIX.length), value).catch(() => {})
+}
+
+function dropSetting(storageKey) {
+  deletePlateCalcSetting(storageKey.slice(SETTINGS_PREFIX.length)).catch(() => {})
+}
+
+// Pull the server's plate-calc settings into localStorage. Call once when the
+// app becomes authenticated. Best-effort: offline or a failed request just
+// leaves whatever localStorage already had. equipmentType is stored raw (a bare
+// string, matching getEquipmentTypeOverride's reader); everything else is JSON.
+export async function hydratePlateCalcSettings() {
+  let settings
+  try {
+    settings = await getPlateCalcSettings()
+  } catch {
+    return
+  }
+  for (const [key, value] of Object.entries(settings ?? {})) {
+    try {
+      const raw = typeof value === 'string' ? value : JSON.stringify(value)
+      localStorage.setItem(SETTINGS_PREFIX + key, raw)
+    } catch {
+      // Best-effort.
+    }
+  }
+}
+
 export const PLATE_SETS = {
   kg: [25, 20, 15, 10, 5, 2.5, 1.25],
   lb: [45, 35, 25, 10, 5, 2.5],
@@ -70,6 +111,7 @@ export function setAvailablePlates(unit, plates) {
   } catch {
     // Best-effort.
   }
+  pushSetting(AVAILABLE_PLATES_PREFIX + unit, plates)
 }
 
 // Fixed dumbbell increments the athlete's gym actually racks — device-wide,
@@ -96,6 +138,7 @@ export function setAvailableDumbbells(dumbbells) {
   } catch {
     // Best-effort.
   }
+  pushSetting(AVAILABLE_DUMBBELLS_PREFIX + 'kg', dumbbells)
 }
 
 // Given a target per-dumbbell weight, finds the closest available size(s).
@@ -117,8 +160,9 @@ export function nearestDumbbells(perDumbbellKg, available) {
 // empty) — saved deliberately (not just remembered from last use), so it
 // shows as its own chip only on the exercise it was set for, never bleeding
 // into other exercises' bar lists. Kept in kg (the app's canonical weight
-// unit). localStorage rather than the backend since this is a device-local
-// convenience, not workout data.
+// unit). Backed by the server (see the sync helpers above): some implements
+// have no weight printed on them, so re-entering one because localStorage was
+// evicted means digging through old Hevy logs to find the number again.
 const CUSTOM_EQUIPMENT_PREFIX = 'callahan.plateCalc.customEquipment.'
 
 export function getCustomEquipment(exerciseId) {
@@ -135,11 +179,13 @@ export function getCustomEquipment(exerciseId) {
 }
 
 export function setCustomEquipment(exerciseId, { name, kg }) {
+  const entry = { name: name || '', kg }
   try {
-    localStorage.setItem(CUSTOM_EQUIPMENT_PREFIX + exerciseId, JSON.stringify({ name: name || '', kg }))
+    localStorage.setItem(CUSTOM_EQUIPMENT_PREFIX + exerciseId, JSON.stringify(entry))
   } catch {
     // Best-effort — private browsing / storage-full just means it won't save.
   }
+  pushSetting(CUSTOM_EQUIPMENT_PREFIX + exerciseId, entry)
 }
 
 export function clearCustomEquipment(exerciseId) {
@@ -148,6 +194,7 @@ export function clearCustomEquipment(exerciseId) {
   } catch {
     // Best-effort.
   }
+  dropSetting(CUSTOM_EQUIPMENT_PREFIX + exerciseId)
 }
 
 // Name-based guess at what kind of equipment an exercise is loaded on —
@@ -204,6 +251,7 @@ export function setEquipmentTypeOverride(exerciseId, type) {
   } catch {
     // Best-effort.
   }
+  pushSetting(EQUIPMENT_TYPE_PREFIX + exerciseId, type)
 }
 
 export function clearEquipmentTypeOverride(exerciseId) {
@@ -212,4 +260,5 @@ export function clearEquipmentTypeOverride(exerciseId) {
   } catch {
     // Best-effort.
   }
+  dropSetting(EQUIPMENT_TYPE_PREFIX + exerciseId)
 }

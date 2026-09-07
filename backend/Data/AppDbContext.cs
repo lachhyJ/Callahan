@@ -34,9 +34,13 @@ public class AppDbContext : DbContext
     public DbSet<RoutineCompletion> RoutineCompletions => Set<RoutineCompletion>();
     public DbSet<PlanSlot> PlanSlots => Set<PlanSlot>();
     public DbSet<PlanSlotWeek> PlanSlotWeeks => Set<PlanSlotWeek>();
+    public DbSet<PlateCalcSetting> PlateCalcSettings => Set<PlateCalcSetting>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<PlateCalcSetting>().HasKey(s => s.Key);
+        modelBuilder.Entity<PlateCalcSetting>().Property(s => s.Key).HasMaxLength(100);
+
         // Every decimal is stored as REAL, not TEXT.
         //
         // EF's SQLite default maps decimal to TEXT to preserve exactness, which

@@ -1,7 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const api = vi.hoisted(() => ({
+  getPlateCalcSettings: vi.fn(() => Promise.resolve({})),
+  putPlateCalcSetting: vi.fn(() => Promise.resolve()),
+  deletePlateCalcSetting: vi.fn(() => Promise.resolve()),
+}))
+vi.mock('./api/client', () => api)
+
 import {
   DUMBBELL_STEPS_KG, PLATE_SETS, calculatePlates, getAvailablePlates,
-  getCustomEquipment, getEquipmentType, guessEquipmentType, nearestDumbbells,
+  getCustomEquipment, getEquipmentType, guessEquipmentType, hydratePlateCalcSettings,
+  nearestDumbbells, clearCustomEquipment,
   setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride,
 } from './plateCalc'
 
@@ -172,6 +181,64 @@ describe('storage-backed settings', () => {
     expect(guessEquipmentType('Weighted Pull-Ups')).toBe('hidden')
     setEquipmentTypeOverride(10, 'added')
     expect(getEquipmentType(10, 'Weighted Pull-Ups')).toBe('added')
+  })
+})
+
+describe('server sync', () => {
+  beforeEach(() => {
+    installStorageStub()
+    api.getPlateCalcSettings.mockClear()
+    api.putPlateCalcSetting.mockClear()
+    api.deletePlateCalcSetting.mockClear()
+    api.getPlateCalcSettings.mockResolvedValue({})
+  })
+  afterEach(() => { delete globalThis.localStorage })
+
+  it('pushes each setter to the server under the prefix-stripped key', () => {
+    setAvailablePlates('kg', [25, 20])
+    expect(api.putPlateCalcSetting).toHaveBeenCalledWith('availablePlates.kg', [25, 20])
+
+    setCustomEquipment(11, { name: 'Trap bar', kg: 25 })
+    expect(api.putPlateCalcSetting).toHaveBeenCalledWith('customEquipment.11', { name: 'Trap bar', kg: 25 })
+
+    setEquipmentTypeOverride(11, 'barbell')
+    expect(api.putPlateCalcSetting).toHaveBeenCalledWith('equipmentType.11', 'barbell')
+  })
+
+  it('pushes a delete when custom equipment is cleared', () => {
+    clearCustomEquipment(11)
+    expect(api.deletePlateCalcSetting).toHaveBeenCalledWith('customEquipment.11')
+  })
+
+  it('does not reject when the server call fails', async () => {
+    api.putPlateCalcSetting.mockRejectedValueOnce(new Error('offline'))
+    expect(() => setAvailablePlates('kg', [25])).not.toThrow()
+    await Promise.resolve()
+  })
+
+  it('hydrate writes JSON values and raw strings into localStorage the way the getters read them', async () => {
+    api.getPlateCalcSettings.mockResolvedValue({
+      'availablePlates.kg': [25, 20, 10],
+      'customEquipment.11': { name: 'Trap bar', kg: 25 },
+      'equipmentType.11': 'added',
+    })
+
+    await hydratePlateCalcSettings()
+
+    expect(getAvailablePlates('kg')).toEqual([25, 20, 10])
+    expect(getCustomEquipment(11)).toEqual({ name: 'Trap bar', kg: 25 })
+    expect(localStorage.getItem('callahan.plateCalc.equipmentType.11')).toBe('added')
+    expect(getEquipmentType(11, 'Trap Bar Deadlift')).toBe('added')
+  })
+
+  it('hydrate leaves localStorage untouched when the fetch fails', async () => {
+    setCustomEquipment(11, { name: 'Local only', kg: 22.5 })
+    api.putPlateCalcSetting.mockClear()
+    api.getPlateCalcSettings.mockRejectedValue(new Error('offline'))
+
+    await hydratePlateCalcSettings()
+
+    expect(getCustomEquipment(11)).toEqual({ name: 'Local only', kg: 22.5 })
   })
 })
 

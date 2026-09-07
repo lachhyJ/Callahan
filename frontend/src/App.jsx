@@ -8,6 +8,7 @@ import { playBeepNow } from './audio'
 import { getHealth } from './api/client'
 import { formatClock } from './utils/format'
 import { startUsageTracking, trackAction, trackRoute } from './usage'
+import { hydratePlateCalcSettings } from './plateCalc'
 import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
@@ -259,6 +260,13 @@ function AppRoutes() {
   const { isAuthenticated } = useAuth()
   const { restTimer, isTicking, now } = useGlobalRestTimer()
   useRouteTracking(isAuthenticated)
+
+  // Pull the server's copy of the plate-calc settings into localStorage once
+  // signed in, so a custom bar weight or pared-down plate list survives the
+  // browser evicting local storage.
+  useEffect(() => {
+    if (isAuthenticated) hydratePlateCalcSettings()
+  }, [isAuthenticated])
   const showBottomNav = isAuthenticated
   // Without a TopBar there is nothing holding content clear of the status bar,
   // so the wrapper has to carry the safe-area inset itself (see .no-top-bar).

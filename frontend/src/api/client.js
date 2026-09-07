@@ -281,6 +281,25 @@ export function getFinishers() {
   return apiFetch('/api/finishers')
 }
 
+// Plate-calculator preferences (gym plate/dumbbell inventory, per-exercise bar
+// weights, per-exercise equipment-type overrides). The server is the source of
+// truth; the frontend keeps localStorage as a cache and rehydrates it on load.
+// See plateCalc.js.
+export function getPlateCalcSettings() {
+  return apiFetch('/api/platecalcsettings')
+}
+
+export function putPlateCalcSetting(key, value) {
+  return apiFetch(`/api/platecalcsettings/${encodeURIComponent(key)}`, {
+    method: 'PUT',
+    body: JSON.stringify(value),
+  })
+}
+
+export function deletePlateCalcSetting(key) {
+  return apiFetch(`/api/platecalcsettings/${encodeURIComponent(key)}`, { method: 'DELETE' })
+}
+
 export function subscribeToPush(subscription) {
   return apiFetch('/api/pushsubscriptions', {
     method: 'POST',
