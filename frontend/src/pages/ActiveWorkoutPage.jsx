@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
-import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
+import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -130,27 +130,6 @@ function nextSetLabel(rest) {
     parts.push(`set ${rest.nextSetNumber} of ${rest.totalSets}`)
   }
   return parts.filter(Boolean).join(' · ') || 'Next set.'
-}
-
-// What the Live Activity should describe when no rest is running: the first
-// exercise that still has an unticked set. Keeps the card meaningful for the
-// whole session rather than only in the gap after a set.
-function nextSetDescriptor(exercises) {
-  if (!exercises) return null
-  for (const ex of exercises) {
-    const idx = ex.sets.findIndex((s) => !s.completed)
-    if (idx === -1) continue
-    return {
-      exerciseName: ex.exerciseName,
-      targetReps: ex.targetReps,
-      targetWeightKg: ex.sets[idx].weightKg,
-      enteredReps: ex.sets[idx].reps,
-      nextSetNumber: idx + 1,
-      totalSets: ex.sets.length,
-      restSeconds: ex.restSeconds || 90,
-    }
-  }
-  return null
 }
 
 // Fold sets ticked from the Live Activity into the workout's own state.
@@ -595,11 +574,16 @@ export default function ActiveWorkoutPage() {
     }, 150)
   }
 
-  async function startRestTimer(exercise, nextSetNumber) {
+  // Takes a full rest descriptor ({ exerciseName, targetReps, targetWeightKg,
+  // enteredReps, nextSetNumber, totalSets, restSeconds }) rather than an
+  // exercise + set number, so the caller can describe the next set of a
+  // *different* exercise once one exercise is finished (see
+  // restDescriptorAfterSet).
+  async function startRestTimer(descriptor) {
     if (restTimer?.timerId) {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
-    const duration = exercise.restSeconds || 90
+    const duration = descriptor.restSeconds || 90
     // Web: unlock the beep element inside this tap so the countdown effect can
     // sound it later, and a backgrounded phone falls back to the server push.
     // Native: no unlock needed, and the beep and notification are both armed
@@ -609,14 +593,14 @@ export default function ActiveWorkoutPage() {
       endAt: Date.now() + duration * 1000,
       totalSeconds: duration,
       timerId: null,
-      exerciseName: exercise.exerciseName,
-      targetReps: exercise.targetReps,
+      exerciseName: descriptor.exerciseName,
+      targetReps: descriptor.targetReps,
       // Weight already carried into the set you are about to do, so the Live
       // Activity can read "115 kg x 6" rather than just the rep target.
-      targetWeightKg: exercise.sets[nextSetNumber - 1]?.weightKg,
-      enteredReps: exercise.sets[nextSetNumber - 1]?.reps,
-      nextSetNumber,
-      totalSets: exercise.sets.length,
+      targetWeightKg: descriptor.targetWeightKg,
+      enteredReps: descriptor.enteredReps,
+      nextSetNumber: descriptor.nextSetNumber,
+      totalSets: descriptor.totalSets,
       restSeconds: duration,
     })
     // Native schedules its own local notification in scheduleBeep, which fires
@@ -624,7 +608,7 @@ export default function ActiveWorkoutPage() {
     // Booking the server push too would double the alert.
     if (isNativeAudio) return
     try {
-      const { timerId } = await scheduleRestTimer(duration, exercise.exerciseName, exercise.targetReps, nextSetNumber, exercise.sets.length)
+      const { timerId } = await scheduleRestTimer(duration, descriptor.exerciseName, descriptor.targetReps, descriptor.nextSetNumber, descriptor.totalSets)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
     } catch {
       // Local countdown still works even if the backend push couldn't be scheduled.
@@ -645,14 +629,16 @@ export default function ActiveWorkoutPage() {
     // to track every possible route back into an active workout.
     unlockAudio()
     const nowCompleting = !set.completed
-    setExercises((prev) =>
-      prev.map((ex, i) =>
-        i !== exIdx
-          ? ex
-          : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
-      )
+    // Compute the post-tick array locally: setExercises is async, so
+    // startRestTimer below can't read it back off state in time to decide
+    // whether this was the exercise's last set.
+    const updatedExercises = exercises.map((ex, i) =>
+      i !== exIdx
+        ? ex
+        : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
     )
-    if (nowCompleting) startRestTimer(exercise, set.setOrder + 2)
+    setExercises(updatedExercises)
+    if (nowCompleting) startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
   }
 
   // The Live Activity's buttons mutate the timer natively while this webview is

@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { earliestStartedAt, restoreStartedAt, saveActiveWorkout, clearActiveWorkout } from './activeWorkout'
+import {
+  earliestStartedAt,
+  restoreStartedAt,
+  saveActiveWorkout,
+  clearActiveWorkout,
+  nextSetDescriptor,
+  restDescriptorAfterSet,
+} from './activeWorkout'
 
 // The suite runs on plain node by deliberate choice (see vite.config.js), and
 // the only browser global this module touches is localStorage — so stub that
@@ -110,5 +117,95 @@ describe('clearActiveWorkout', () => {
     bank({ templateId: 3, startedAt: EARLIER.toISOString() })
     clearActiveWorkout()
     expect(earliestStartedAt(3, LATER)).toEqual(LATER)
+  })
+})
+
+// A set row as the page holds it; only the fields the descriptors read.
+function set(weightKg, reps, completed = false) {
+  return { weightKg: String(weightKg), reps: String(reps), completed }
+}
+
+function exercise(name, restSeconds, targetReps, sets) {
+  return { exerciseName: name, restSeconds, targetReps, sets }
+}
+
+describe('restDescriptorAfterSet', () => {
+  // Two exercises, three working sets each. Bench is done bar its last set.
+  function session() {
+    return [
+      exercise('Bench Press', 120, '6', [
+        set(80, 6, true),
+        set(80, 6, true),
+        set(80, 6, false),
+      ]),
+      exercise('Barbell Row', 90, '8', [
+        set(60, 8, false),
+        set(60, 8, false),
+        set(60, 8, false),
+      ]),
+    ]
+  }
+
+  it('points at the next set of the same exercise when one is left', () => {
+    const ex = session()
+    ex[0].sets[1].completed = false // ticking set 2, set 3 still to go
+    const d = restDescriptorAfterSet(ex, 0, 1)
+    expect(d.exerciseName).toBe('Bench Press')
+    expect(d.nextSetNumber).toBe(3)
+    expect(d.totalSets).toBe(3)
+    expect(d.restSeconds).toBe(120)
+  })
+
+  it('rolls over to the first set of the next exercise after the last set', () => {
+    const ex = session()
+    ex[0].sets[2].completed = true // ticking Bench's last set
+    const d = restDescriptorAfterSet(ex, 0, 2)
+    expect(d.exerciseName).toBe('Barbell Row')
+    expect(d.nextSetNumber).toBe(1)
+    expect(d.totalSets).toBe(3)
+    expect(d.targetReps).toBe('8')
+    expect(d.targetWeightKg).toBe('60')
+    // rest length comes from the exercise about to be worked, not the one just finished
+    expect(d.restSeconds).toBe(90)
+  })
+
+  it('returns an over-the-end descriptor after the last set of the last exercise', () => {
+    const ex = session()
+    ex[0].sets = ex[0].sets.map((s) => ({ ...s, completed: true }))
+    ex[1].sets = ex[1].sets.map((s) => ({ ...s, completed: true }))
+    const d = restDescriptorAfterSet(ex, 1, 2)
+    expect(d.exerciseName).toBe('Barbell Row')
+    expect(d.nextSetNumber).toBe(4)
+    expect(d.totalSets).toBe(3)
+    expect(d.nextSetNumber).toBeGreaterThan(d.totalSets) // native renders "Last set done"
+  })
+
+  it('skips a fully-completed exercise to reach the next one with work left', () => {
+    const ex = [
+      exercise('A', 100, '5', [set(50, 5, true)]),
+      exercise('B', 110, '5', [set(55, 5, true)]),
+      exercise('C', 120, '5', [set(60, 5, false), set(60, 5, false)]),
+    ]
+    const d = restDescriptorAfterSet(ex, 0, 0)
+    expect(d.exerciseName).toBe('C')
+    expect(d.nextSetNumber).toBe(1)
+    expect(d.restSeconds).toBe(120)
+  })
+})
+
+describe('nextSetDescriptor', () => {
+  it('returns the first exercise with an unticked set', () => {
+    const ex = [
+      exercise('A', 100, '5', [set(50, 5, true), set(50, 5, false)]),
+      exercise('B', 110, '5', [set(55, 5, false)]),
+    ]
+    const d = nextSetDescriptor(ex)
+    expect(d.exerciseName).toBe('A')
+    expect(d.nextSetNumber).toBe(2)
+  })
+
+  it('returns null when every set is done', () => {
+    const ex = [exercise('A', 100, '5', [set(50, 5, true)])]
+    expect(nextSetDescriptor(ex)).toBeNull()
   })
 })

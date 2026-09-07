@@ -35,3 +35,47 @@ export function earliestStartedAt(sessionKey, candidate) {
   const banked = restoreStartedAt(sessionKey, candidate)
   return banked.getTime() < candidate.getTime() ? banked : candidate
 }
+
+// What the Live Activity should describe when no rest is running: the first
+// exercise that still has an unticked set. Keeps the card meaningful for the
+// whole session rather than only in the gap after a set.
+export function nextSetDescriptor(exercises) {
+  if (!exercises) return null
+  for (const ex of exercises) {
+    const idx = ex.sets.findIndex((s) => !s.completed)
+    if (idx === -1) continue
+    return {
+      exerciseName: ex.exerciseName,
+      targetReps: ex.targetReps,
+      targetWeightKg: ex.sets[idx].weightKg,
+      enteredReps: ex.sets[idx].reps,
+      nextSetNumber: idx + 1,
+      totalSets: ex.sets.length,
+      restSeconds: ex.restSeconds || 90,
+    }
+  }
+  return null
+}
+
+// The rest descriptor to arm after ticking the set at (exIdx, setIdx), given
+// the post-tick `exercises` array. Normally it points at the next set of the
+// same exercise. But when the ticked set was that exercise's last remaining
+// one, it rolls over to the first still-unticked set anywhere in the session so
+// the card shows what's genuinely next rather than a dead "set 4 of 3" line for
+// the whole rest. When nothing is left it falls back to the same-exercise
+// over-the-end descriptor (nextSetNumber > totalSets), which the native card
+// renders as "Last set done".
+export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
+  const ex = exercises[exIdx]
+  const sameExercise = {
+    exerciseName: ex.exerciseName,
+    targetReps: ex.targetReps,
+    targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
+    enteredReps: ex.sets[setIdx + 1]?.reps,
+    nextSetNumber: setIdx + 2,
+    totalSets: ex.sets.length,
+    restSeconds: ex.restSeconds || 90,
+  }
+  if (ex.sets.some((s) => !s.completed)) return sameExercise
+  return nextSetDescriptor(exercises) ?? sameExercise
+}
