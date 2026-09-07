@@ -27,7 +27,7 @@ public class AppInfoPlugin: CAPPlugin, CAPBridgedPlugin {
     /// notice, since once the profile expires the app cannot open at all and
     /// an in-app banner becomes unreachable at exactly the moment it would
     /// matter.
-    private static let warnLeadDays: TimeInterval = 2
+    private static let warnLeadDays: TimeInterval = 1
 
     override public func load() {
         scheduleExpiryNotificationIfNeeded()
@@ -62,7 +62,7 @@ public class AppInfoPlugin: CAPPlugin, CAPBridgedPlugin {
             guard granted else { return }
             let content = UNMutableNotificationContent()
             content.title = "Callahan needs a rebuild soon"
-            content.body = "Free-provisioning signing expires in a couple of days — open Xcode and ⌘R to keep it launching."
+            content.body = "Free-provisioning signing expires tomorrow — open Xcode and ⌘R to keep it launching."
             content.interruptionLevel = .timeSensitive
 
             let request = UNNotificationRequest(

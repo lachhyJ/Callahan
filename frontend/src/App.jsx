@@ -198,7 +198,7 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
 // all. The local notification (AppInfoPlugin.swift) is the half that
 // actually reaches Lachlan once that happens — this banner is only visible
 // in the days before, while the app can still be opened.
-const BANNER_WINDOW_DAYS = 3
+const BANNER_WINDOW_DAYS = 2
 const BANNER_DISMISS_KEY = 'callahan_provisioning_banner_dismissed_on'
 
 function daysUntil(isoDate) {
