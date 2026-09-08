@@ -313,6 +313,37 @@ entirely). Test any migration that references existing rows against both a copy 
 production *and* a freshly-seeded database — production alone will pass even when the
 migration is broken everywhere else.
 
+### An activity holds a set of session-type labels, one of them primary
+**2026-09-08.** An `Activity` (a run or an Ultimate game synced from Garmin) used to
+carry exactly one `ActivitySessionType` — a single classification like "Game" or
+"Club Training". It now carries a set of them through an `ActivitySessionTag` join, with
+one still marked as the primary. The trigger was a real recording habit: a field
+conditioning session and a throwing block done back to back end up as one Garmin
+activity, and it should read as both.
+
+The primary is not just the first tag. Three things need exactly one unambiguous type per
+activity — the text label on every history row, the heuristic that guesses a
+classification from the Garmin event title, and the gate that decides whether to run the
+on/off-field geometry analysis (only real games get it). Keeping a distinguished primary
+column means those callers didn't change at all; the extra tags ride alongside and are
+read only by the places that genuinely want the full set — the month's session-count
+breakdown, which now counts one activity under each of its labels, and the calendar,
+which draws a glyph per label. A fully-flat many-to-many with no primary was the
+alternative, and it fails because "which one is the real type" then has to be
+reconstructed from insertion order or a sort key, which is fragile.
+
+I also considered modelling the throwing block as its own activity spanning a sub-range
+of the recording. That was the wrong shape: nothing derives a metric from a field or a
+throw session type — only games get analysed — so the classification is the entire
+feature. No splitting a recording, no sub-ranges, no detecting throws from the GPS trace.
+
+**How to apply:** SQLite can't translate a correlated, ordered sub-`SELECT` that sits
+inside a scalar projection — it wants SQL APPLY, which the provider doesn't support. The
+list endpoint builds each activity's tag list as a *second* query keyed on the ids it
+just returned and assembles the result in memory, rather than nesting an
+`.OrderBy(...).Select(...).ToList()` inside the main projection. Any "list rows with an
+ordered child collection" read against SQLite has the same limit.
+
 ---
 
 ## Measuring a sport from GPS

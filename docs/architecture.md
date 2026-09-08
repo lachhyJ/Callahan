@@ -111,11 +111,15 @@ time-based movements. A time-based set (a plank, a hold) records a nullable
 `ExerciseSet.DurationSeconds` instead of a rep count, and every volume / e1RM read filters
 those rows out.
 
-**Activities.** `Activity` covers runs and Ultimate games, with `ActivitySessionType` as a
-shared classification table across both. Two child entities hang off it: `ActivityLap`
-(tabular, aggregated) and `ActivityTrack` (one large columnar JSON blob per game, loaded
-only when explicitly included). `Tournament` and `Season` group activities for the
-competitive calendar.
+**Activities.** `Activity` covers runs and Ultimate games. It carries a set of
+`ActivitySessionType` labels through an `ActivitySessionTag` join — one is the primary
+(`Activity.ActivitySessionTypeId`, which drives the row label and the on/off-field
+analysis gate), the rest ride along for the calendar and the monthly breakdown. A session
+type has a `Family` (`Run` / `Field` / `Ultimate`) independent of the activity's own
+Garmin type, so the two field-conditioning types classify on either a run or an Ultimate
+activity. Two child entities hang off `Activity`: `ActivityLap` (tabular, aggregated) and
+`ActivityTrack` (one large columnar JSON blob per game, loaded only when explicitly
+included). `Tournament` and `Season` group activities for the competitive calendar.
 
 **Wellness and derived.** `DailyWellness` holds typed nullable columns per Garmin metric
 plus a raw JSON hedge. `MonthlyReport` snapshots a whole report as JSON with a schema
