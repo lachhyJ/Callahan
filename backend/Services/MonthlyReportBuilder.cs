@@ -40,6 +40,7 @@ public class MonthlyReportBuilder
 
         var runsAndUltimate = await _db.Activities
             .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
             .Where(a => a.Date >= trailingStart && a.Date <= monthEnd)
             .ToListAsync();
 
@@ -95,9 +96,21 @@ public class MonthlyReportBuilder
         {
             byType.Add(new SessionTypeCountDto(g.Key, g.Count(), SessionFamily.Running));
         }
-        foreach (var g in monthActivities.Where(a => a.Type == ActivityType.Ultimate).GroupBy(a => a.ActivitySessionType?.Name ?? "Unspecified"))
+        // An Ultimate activity counts under EVERY tag it carries - a field
+        // session with a throwing block shows in both the "Club Training" and
+        // "Throws" rows - while totalSessions above still counts it once.
+        var ultimateByTag = new Dictionary<string, int>();
+        foreach (var a in monthActivities.Where(a => a.Type == ActivityType.Ultimate))
         {
-            byType.Add(new SessionTypeCountDto(g.Key, g.Count(), SessionFamily.Ultimate));
+            var names = a.SessionTags.Count > 0
+                ? a.SessionTags.Select(t => t.SessionType.Name)
+                : new[] { a.ActivitySessionType?.Name ?? "Unspecified" };
+            foreach (var name in names)
+                ultimateByTag[name] = ultimateByTag.GetValueOrDefault(name) + 1;
+        }
+        foreach (var (name, count) in ultimateByTag)
+        {
+            byType.Add(new SessionTypeCountDto(name, count, SessionFamily.Ultimate));
         }
 
         var buckets = WeeklyConsistencyService.BucketByWeek(

@@ -13,8 +13,18 @@ public class Activity
     public string? Notes { get; set; }
     public string? GarminActivityId { get; set; }
 
+    // The primary session-type label. Extras live in SessionTags; this one
+    // additionally drives activityLabel, the suggestion heuristic and the
+    // "Game" lap-classification gate. Invariant (enforced in the controller,
+    // not the DB): whenever this is non-null it also has a matching row in
+    // SessionTags.
     public int? ActivitySessionTypeId { get; set; }
     public ActivitySessionType? ActivitySessionType { get; set; }
+
+    // Every session-type label on this activity, primary included. One Garmin
+    // recording that was a field session plus a throwing block is tagged with
+    // both here so the calendar and the monthly breakdown show each.
+    public List<ActivitySessionTag> SessionTags { get; set; } = new();
 
     // Which tournament this game belongs to, if any. Ultimate-only in
     // practice (set by the date-range attach sweep or the manual picker) but

@@ -58,6 +58,14 @@ public class MonthlyReportBuilderTests : IDisposable
         _db.Activities.Add(activity);
         _db.SaveChanges();
 
+        // Mirror the controller invariant: the primary is always also a tag row.
+        _db.ActivitySessionTags.Add(new ActivitySessionTag
+        {
+            ActivityId = activity.Id,
+            ActivitySessionTypeId = activity.ActivitySessionTypeId!.Value,
+        });
+        _db.SaveChanges();
+
         for (var i = 0; i < activeLaps; i++)
         {
             _db.ActivityLaps.Add(new ActivityLap
@@ -141,6 +149,17 @@ public class MonthlyReportBuilderTests : IDisposable
         _db.SaveChanges();
     }
 
+    // Add an extra (non-primary) session-type label to an activity.
+    private void AddTag(Activity activity, string sessionTypeName)
+    {
+        _db.ActivitySessionTags.Add(new ActivitySessionTag
+        {
+            ActivityId = activity.Id,
+            ActivitySessionTypeId = SessionType(sessionTypeName, activity.Type).Id,
+        });
+        _db.SaveChanges();
+    }
+
     private Task<DTOs.MonthlyReportDto> Build() => new MonthlyReportBuilder(_db).BuildAsync(2026, 8);
 
     [Fact]
@@ -162,6 +181,24 @@ public class MonthlyReportBuilderTests : IDisposable
         Assert.Equal(1, ultimate["Throws"]);
         // The old single flat "Ultimate" row is gone.
         Assert.DoesNotContain(report.Consistency.SessionsByType, t => t.Label == "Ultimate");
+    }
+
+    [Fact]
+    public async Task MultiTaggedUltimate_CountsUnderEveryTag_ButOnceInTheTotal()
+    {
+        // A field session with a throwing block on the same Garmin recording.
+        var combined = AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Club Training");
+        AddTag(combined, "Throws");
+        AddActivity(Aug.AddDays(7), ActivityType.Ultimate, "Throws");
+
+        var report = await Build();
+        var ultimate = report.Consistency.SessionsByType
+            .Where(t => t.Family == DTOs.SessionFamily.Ultimate)
+            .ToDictionary(t => t.Label, t => t.Count);
+
+        Assert.Equal(1, ultimate["Club Training"]);
+        Assert.Equal(2, ultimate["Throws"]); // combined session + the standalone one
+        Assert.Equal(2, report.Consistency.TotalSessions); // the combined session is one session
     }
 
     [Fact]

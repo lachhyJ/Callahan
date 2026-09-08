@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Callahan.Api.DTOs;
 
 public record ActivityDto(
@@ -41,7 +43,12 @@ public record ActivityDto(
     string? TournamentName = null,
     // Manually-entered final score (null until entered, always as a pair).
     int? FinalScoreFor = null,
-    int? FinalScoreAgainst = null);
+    int? FinalScoreAgainst = null,
+    // Every session-type label on this activity, primary first then by
+    // SortOrder. Contains just the primary for call sites that don't load the
+    // tag set; null only on the pre-classification default. ActivitySessionTypeId
+    // / ...Name above stay as the primary's id/name for existing consumers.
+    IReadOnlyList<ActivitySessionTypeDto>? SessionTypes = null);
 
 // PUT /api/activities/{id}/score body. Both values or neither.
 public record UpdateActivityScoreRequest(int? FinalScoreFor, int? FinalScoreAgainst);
@@ -60,7 +67,12 @@ public record CreateActivityRequest(
     // against fields not modelled yet. Only the Garmin sync sends this.
     string? RawJson = null);
 
-public record UpdateActivitySessionTypeRequest(int? ActivitySessionTypeId);
+// PUT /api/activities/{id}/session-types body. PrimaryId names the primary
+// label (null = clear the whole classification). TypeIds is the full desired
+// set of extra labels; the controller unions PrimaryId in, so callers may send
+// it in TypeIds or not. A non-empty TypeIds with a null PrimaryId is rejected -
+// a classified activity always has a primary.
+public record UpdateActivitySessionTagsRequest(int? PrimaryId, List<int>? TypeIds);
 
 public record ActivitySessionTypeDto(int Id, string Name, string ActivityType);
 

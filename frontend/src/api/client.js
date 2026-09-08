@@ -345,10 +345,13 @@ export function getDeletedActivities() {
   return apiFetch('/api/activities/deleted')
 }
 
-export function updateActivitySessionType(id, activitySessionTypeId) {
-  return apiFetch(`/api/activities/${id}/session-type`, {
+// Replaces the whole tag set. primaryId names the primary label (null clears
+// the classification); typeIds is the full set of extra labels (primaryId is
+// unioned in server-side, so it need not be included here).
+export function updateActivitySessionTags(id, { primaryId, typeIds }) {
+  return apiFetch(`/api/activities/${id}/session-types`, {
     method: 'PUT',
-    body: JSON.stringify({ activitySessionTypeId }),
+    body: JSON.stringify({ primaryId, typeIds }),
   })
 }
 

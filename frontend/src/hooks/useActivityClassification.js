@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getActivitySessionTypes, updateActivitySessionType, updateConeDistance } from '../api/client'
+import { getActivitySessionTypes, updateActivitySessionTags, updateConeDistance } from '../api/client'
 
 // Shared by every place an activity's session type gets classified
 // (SessionList's compact preview, HistoryPage's full log) — same picker-open
@@ -17,9 +17,10 @@ export function useActivityClassification(onUpdate) {
     setOpenPickerId((current) => (current === activityId ? null : activityId))
   }
 
-  async function selectSessionType(activityId, activitySessionTypeId) {
+  // tags: { primaryId, typeIds }. Replaces the activity's whole tag set.
+  async function saveSessionTags(activityId, tags) {
     setOpenPickerId(null)
-    const updated = await updateActivitySessionType(activityId, activitySessionTypeId)
+    const updated = await updateActivitySessionTags(activityId, tags)
     onUpdate(updated)
   }
 
@@ -28,5 +29,5 @@ export function useActivityClassification(onUpdate) {
     onUpdate(updated)
   }
 
-  return { sessionTypes, openPickerId, togglePicker, selectSessionType, setConeDistance }
+  return { sessionTypes, openPickerId, togglePicker, saveSessionTags, setConeDistance }
 }

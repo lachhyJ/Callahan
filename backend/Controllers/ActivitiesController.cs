@@ -62,10 +62,12 @@ public class ActivitiesController : ControllerBase
             query = query.Where(a => a.Type == activityType);
         }
         // By name, not id - callers (the games list) know "Game" the way the
-        // rest of the app does, not the seeded ActivitySessionType.Id.
+        // rest of the app does, not the seeded ActivitySessionType.Id. Matches
+        // on ANY of the activity's tags, so filtering History by "Throws" still
+        // finds a field session that had a throwing block on the same recording.
         if (sessionType is not null)
         {
-            query = query.Where(a => a.ActivitySessionType != null && a.ActivitySessionType.Name == sessionType);
+            query = query.Where(a => a.SessionTags.Any(t => t.SessionType.Name == sessionType));
         }
 
         var activities = await query
@@ -87,7 +89,36 @@ public class ActivitiesController : ControllerBase
                 a.FinalScoreFor, a.FinalScoreAgainst))
             .ToListAsync();
 
-        return Ok(activities);
+        // The tag set is a second query, not part of the projection above: a
+        // correlated, ordered sub-select inside the scalar projection needs SQL
+        // APPLY, which SQLite (dev and prod) doesn't support. Shape it in memory.
+        var ids = activities.Select(d => d.Id).ToList();
+        var tagRows = await _db.ActivitySessionTags
+            .Where(t => ids.Contains(t.ActivityId))
+            .Select(t => new
+            {
+                t.ActivityId,
+                t.ActivitySessionTypeId,
+                t.SessionType.Name,
+                t.SessionType.SortOrder,
+                ActivityType = t.SessionType.ActivityType.ToString(),
+            })
+            .ToListAsync();
+        var tagsByActivity = tagRows.GroupBy(t => t.ActivityId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var withTags = activities.Select(d =>
+        {
+            if (!tagsByActivity.TryGetValue(d.Id, out var ts))
+                return d with { SessionTypes = Array.Empty<ActivitySessionTypeDto>() };
+            var list = ts
+                .OrderByDescending(t => t.ActivitySessionTypeId == d.ActivitySessionTypeId)
+                .ThenBy(t => t.SortOrder)
+                .Select(t => new ActivitySessionTypeDto(t.ActivitySessionTypeId, t.Name, t.ActivityType))
+                .ToList();
+            return d with { SessionTypes = list };
+        }).ToList();
+
+        return Ok(withTags);
     }
 
     [HttpGet("{id}")]
@@ -97,6 +128,7 @@ public class ActivitiesController : ControllerBase
 
         var activity = await _db.Activities
             .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
             .Include(a => a.Laps)
             .Include(a => a.Track)
             .Include(a => a.Tournament)
@@ -158,6 +190,7 @@ public class ActivitiesController : ControllerBase
         {
             var existing = await _db.Activities
                 .Include(a => a.ActivitySessionType)
+                .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
                 .Include(a => a.Laps)
                 .Include(a => a.Track)
                 .Include(a => a.Tournament)
@@ -215,32 +248,53 @@ public class ActivitiesController : ControllerBase
         return Ok(ToDto(activity));
     }
 
-    [HttpPut("{id}/session-type")]
-    public async Task<ActionResult<ActivityDto>> UpdateSessionType(int id, UpdateActivitySessionTypeRequest request)
+    // Set an activity's session-type labels. PrimaryId is the primary label
+    // (null clears the whole classification); TypeIds is the full set of extra
+    // labels, with PrimaryId unioned in. Replaces the whole tag set each call,
+    // same as the picker's "Done" sends it.
+    [HttpPut("{id}/session-types")]
+    public async Task<ActionResult<ActivityDto>> UpdateSessionTypes(int id, UpdateActivitySessionTagsRequest request)
     {
         var activity = await _db.Activities
-            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
-        if (request.ActivitySessionTypeId is not null)
+        var desiredIds = (request.TypeIds ?? new List<int>()).ToHashSet();
+        if (request.PrimaryId is int primary) desiredIds.Add(primary);
+
+        if (request.PrimaryId is null && desiredIds.Count > 0)
+            return BadRequest(new { error = "A classified activity needs a primary session type." });
+
+        // Validate every id: exists and matches this activity's ActivityType.
+        var types = new Dictionary<int, ActivitySessionType>();
+        foreach (var typeId in desiredIds)
         {
-            var sessionType = await _db.ActivitySessionTypes.FirstOrDefaultAsync(t => t.Id == request.ActivitySessionTypeId);
+            var sessionType = await _db.ActivitySessionTypes.FirstOrDefaultAsync(t => t.Id == typeId);
             if (sessionType is null)
-            {
-                return BadRequest(new { error = $"Unknown activity session type '{request.ActivitySessionTypeId}'." });
-            }
+                return BadRequest(new { error = $"Unknown activity session type '{typeId}'." });
             if (sessionType.ActivityType != activity.Type)
-            {
                 return BadRequest(new { error = $"'{sessionType.Name}' is a {sessionType.ActivityType} session type, not valid for a {activity.Type} activity." });
-            }
+            types[typeId] = sessionType;
         }
 
-        activity.ActivitySessionTypeId = request.ActivitySessionTypeId;
+        // Reconcile the tag set: drop what's no longer wanted, add what's new.
+        var toRemove = activity.SessionTags.Where(t => !desiredIds.Contains(t.ActivitySessionTypeId)).ToList();
+        _db.ActivitySessionTags.RemoveRange(toRemove);
+        foreach (var gone in toRemove) activity.SessionTags.Remove(gone);
 
-        // Load the new nav property before classifying - the helper keys off
-        // ActivitySessionType.Name.
-        await _db.Entry(activity).Reference(a => a.ActivitySessionType).LoadAsync();
+        foreach (var typeId in desiredIds)
+        {
+            if (activity.SessionTags.Any(t => t.ActivitySessionTypeId == typeId)) continue;
+            activity.SessionTags.Add(new ActivitySessionTag { ActivitySessionTypeId = typeId, SessionType = types[typeId] });
+        }
+
+        activity.ActivitySessionTypeId = request.PrimaryId;
+        // Keep the primary nav in sync for ToDto / ApplyLapDerivedAggregates
+        // (the classifier keys off ActivitySessionType.Name).
+        activity.ActivitySessionType = request.PrimaryId is int p ? types[p] : null;
 
         // A manual re-classify can turn an activity into a Game (compute the
         // on/off-field split - this is also the path that catches a track that
@@ -287,6 +341,7 @@ public class ActivitiesController : ControllerBase
     {
         var activity = await _db.Activities.IgnoreQueryFilters()
             .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
             .Include(a => a.Laps)
             .Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id && a.DeletedAt != null);
@@ -435,7 +490,10 @@ public class ActivitiesController : ControllerBase
     [HttpPut("{id}/cone-distance")]
     public async Task<ActionResult<ActivityDto>> UpdateConeDistance(int id, UpdateConeDistanceRequest request)
     {
-        var activity = await _db.Activities.Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Tournament).FirstOrDefaultAsync(a => a.Id == id);
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Tournament).FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
         activity.ConeDistanceM = request.ConeDistanceM;
@@ -451,7 +509,9 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityDto>> UpdateScore(int id, UpdateActivityScoreRequest request)
     {
         var activity = await _db.Activities
-            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Tournament)
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
         if (activity.Type != ActivityType.Ultimate)
@@ -477,7 +537,9 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityDto>> UpdateTournament(int id, UpdateActivityTournamentRequest request)
     {
         var activity = await _db.Activities
-            .Include(a => a.ActivitySessionType).Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
@@ -599,5 +661,26 @@ public class ActivitiesController : ControllerBase
         a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
         a.Track?.SampleCount ?? 0,
         a.TournamentId, a.Tournament?.Name,
-        a.FinalScoreFor, a.FinalScoreAgainst);
+        a.FinalScoreFor, a.FinalScoreAgainst,
+        BuildSessionTypeList(a));
+
+    // Primary first, then by SortOrder. Uses the loaded SessionTags when the
+    // caller included them; otherwise falls back to the primary nav alone, so
+    // an endpoint that only Include'd ActivitySessionType still returns a
+    // correct (single-element) list rather than an empty one.
+    private static IReadOnlyList<ActivitySessionTypeDto> BuildSessionTypeList(Activity a)
+    {
+        var types = a.SessionTags
+            .Where(t => t.SessionType != null)
+            .Select(t => t.SessionType)
+            .ToList();
+        if (types.Count == 0 && a.ActivitySessionType != null)
+            types.Add(a.ActivitySessionType);
+
+        return types
+            .OrderByDescending(t => t.Id == a.ActivitySessionTypeId)
+            .ThenBy(t => t.SortOrder)
+            .Select(t => new ActivitySessionTypeDto(t.Id, t.Name, t.ActivityType.ToString()))
+            .ToList();
+    }
 }

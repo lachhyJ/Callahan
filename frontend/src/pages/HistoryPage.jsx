@@ -97,7 +97,7 @@ export default function HistoryPage() {
   const [deletedToast, setDeletedToast] = useState(null)
   const targetRef = useRef(null)
   const hasScrolledToTarget = useRef(false)
-  const { sessionTypes, openPickerId, togglePicker, selectSessionType, setConeDistance } = useActivityClassification(
+  const { sessionTypes, openPickerId, togglePicker, saveSessionTags, setConeDistance } = useActivityClassification(
     (updated) => setItems((current) => current.map((item) => (item.kind === 'activity' && item.id === updated.id ? { ...item, ...updated } : item)))
   )
 
@@ -261,7 +261,7 @@ export default function HistoryPage() {
                                 sessionTypes={sessionTypes}
                                 openPickerId={openPickerId}
                                 onTogglePicker={togglePicker}
-                                onSelect={selectSessionType}
+                                onSave={saveSessionTags}
                                 onConeDistanceChange={setConeDistance}
                               />
                             )}

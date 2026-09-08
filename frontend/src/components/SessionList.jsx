@@ -17,7 +17,7 @@ export function workoutLabel(w) {
 // that can't actually be tagged.
 export default function SessionList({ workouts, runs, onLinkClick }) {
   const [overrides, setOverrides] = useState({})
-  const { sessionTypes, openPickerId, togglePicker, selectSessionType, setConeDistance } = useActivityClassification(
+  const { sessionTypes, openPickerId, togglePicker, saveSessionTags, setConeDistance } = useActivityClassification(
     (updated) => setOverrides((current) => ({ ...current, [updated.id]: updated }))
   )
 
@@ -37,7 +37,7 @@ export default function SessionList({ workouts, runs, onLinkClick }) {
             sessionTypes={sessionTypes}
             openPickerId={openPickerId}
             onTogglePicker={togglePicker}
-            onSelect={selectSessionType}
+            onSave={saveSessionTags}
             onConeDistanceChange={setConeDistance}
           />
         )

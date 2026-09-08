@@ -124,6 +124,7 @@ public static class DevSeed
             if (isRunDay && rng.NextDouble() < 0.7)
             {
                 var distanceKm = Math.Round(4m + (decimal)rng.NextDouble() * 6m, 2);
+                var runType = runTypes.Count > 0 ? runTypes[rng.Next(runTypes.Count)] : null;
                 db.Activities.Add(new Activity
                 {
                     Date = d,
@@ -133,7 +134,11 @@ public static class DevSeed
                     DistanceKm = distanceKm,
                     Calories = (int)(distanceKm * 65m),
                     AvgHeartRate = 140 + rng.Next(-10, 15),
-                    ActivitySessionTypeId = runTypes.Count > 0 ? runTypes[rng.Next(runTypes.Count)].Id : null,
+                    ActivitySessionTypeId = runType?.Id,
+                    // Keep the primary-in-SessionTags invariant true for seed data.
+                    SessionTags = runType is null
+                        ? new()
+                        : new() { new ActivitySessionTag { ActivitySessionTypeId = runType.Id } },
                 });
             }
         }
@@ -164,6 +169,9 @@ public static class DevSeed
                 DurationSeconds = 4200 + rng.Next(-300, 300),
                 Tournament = tournament,
                 ActivitySessionTypeId = gameType?.Id,
+                SessionTags = gameType is null
+                    ? new()
+                    : new() { new ActivitySessionTag { ActivitySessionTypeId = gameType.Id } },
                 FinalScoreFor = 13 + rng.Next(0, 3),
                 FinalScoreAgainst = 9 + rng.Next(0, 6),
                 OnFieldSeconds = 2400,

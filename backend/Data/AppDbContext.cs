@@ -20,6 +20,7 @@ public class AppDbContext : DbContext
     public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
     public DbSet<ExerciseMuscleTarget> ExerciseMuscleTargets => Set<ExerciseMuscleTarget>();
     public DbSet<ActivitySessionType> ActivitySessionTypes => Set<ActivitySessionType>();
+    public DbSet<ActivitySessionTag> ActivitySessionTags => Set<ActivitySessionTag>();
     public DbSet<TaperCheckIn> TaperCheckIns => Set<TaperCheckIn>();
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
     public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
@@ -94,6 +95,20 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ActivityLap>()
             .HasIndex(l => new { l.ActivityId, l.LapIndex })
             .IsUnique();
+
+        // Activity <-> ActivitySessionType many-to-many, as an explicit join so
+        // it's queryable and the backfill migration can populate it directly.
+        // Deleting an activity takes its tags; a session type can't be deleted
+        // while any activity is tagged with it (Restrict) - same protection
+        // PlanSlot already relies on.
+        modelBuilder.Entity<ActivitySessionTag>()
+            .HasKey(t => new { t.ActivityId, t.ActivitySessionTypeId });
+        modelBuilder.Entity<ActivitySessionTag>()
+            .HasOne(t => t.Activity).WithMany(a => a.SessionTags)
+            .HasForeignKey(t => t.ActivityId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ActivitySessionTag>()
+            .HasOne(t => t.SessionType).WithMany()
+            .HasForeignKey(t => t.ActivitySessionTypeId).OnDelete(DeleteBehavior.Restrict);
 
         // SetOrder is assigned server-side per exercise (see
         // WorkoutSessionsController.Create); this makes a duplicate within a

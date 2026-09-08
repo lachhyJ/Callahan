@@ -2649,6 +2649,105 @@ td {
   color: var(--accent);
 }
 
+/* Multi-select variant of the classify menu: a checkbox row per type, one of
+   them marked primary, nothing written until "Done" (so an outside-click via
+   .picker-backdrop discards the draft). */
+.activity-type-menu-multi {
+  min-width: 224px;
+  padding: var(--space-2xs);
+  gap: 1px;
+}
+
+.multi-option {
+  display: flex;
+  flex-direction: row; /* the global label{} rule stacks column */
+  align-items: center;
+  gap: var(--space-2xs);
+  min-height: 44px; /* touch target - the whole row toggles the checkbox */
+  box-sizing: border-box;
+  padding: var(--space-2xs) var(--space-xs);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  color: var(--text-h);
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+}
+
+.multi-option:hover {
+  background: var(--code-bg);
+}
+
+.multi-option input[type='checkbox'] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.multi-option-name {
+  flex: 1 1 auto;
+}
+
+.multi-option .suggested-tag {
+  flex: none;
+}
+
+/* Inline pill — overrides the full-width left-aligned .set-type-menu button. */
+.activity-type-menu-multi .primary-toggle {
+  flex: none;
+  min-height: 36px; /* secondary in-row control; the row itself carries the 44px */
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  background: transparent;
+  text-align: center;
+  touch-action: manipulation;
+}
+
+.activity-type-menu-multi .primary-toggle.is-primary {
+  border-color: transparent;
+  background: var(--info-bg);
+  color: var(--info-text);
+  font-weight: 500;
+}
+
+.multi-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2xs);
+  margin-top: var(--space-2xs);
+  padding-top: var(--space-2xs);
+  border-top: 1px solid var(--border);
+}
+
+.activity-type-menu-multi .multi-actions button {
+  flex: none;
+  min-height: 44px;
+  padding: 11px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+}
+
+.activity-type-menu-multi .multi-done {
+  background: var(--accent);
+  color: white;
+  font-weight: 500;
+}
+
+.activity-type-menu-multi .remove-option {
+  border-top: none; /* .multi-actions already carries the divider */
+  color: var(--error-text);
+}
+
+.activity-classify-extra {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+}
+
 .session-link {
   color: var(--text);
   font-size: var(--text-sm);
