@@ -250,20 +250,24 @@ public class AppDbContext : DbContext
         // frisbee-specific — if a week only fits two sessions). Ultimate's
         // rows are the kinds of session actually played.
         modelBuilder.Entity<ActivitySessionType>().HasData(
-            new ActivitySessionType { Id = 1, Name = "High Speed Intervals", ActivityType = ActivityType.Running, SortOrder = 1 },
-            new ActivitySessionType { Id = 2, Name = "Speed & Acceleration", ActivityType = ActivityType.Running, SortOrder = 2 },
-            new ActivitySessionType { Id = 3, Name = "Easy Aerobic Run", ActivityType = ActivityType.Running, SortOrder = 3 },
-            new ActivitySessionType { Id = 4, Name = "Solo", ActivityType = ActivityType.Ultimate, SortOrder = 1 },
-            new ActivitySessionType { Id = 5, Name = "Throws", ActivityType = ActivityType.Ultimate, SortOrder = 2 },
-            new ActivitySessionType { Id = 6, Name = "Pod", ActivityType = ActivityType.Ultimate, SortOrder = 3 },
-            new ActivitySessionType { Id = 7, Name = "Club Training", ActivityType = ActivityType.Ultimate, SortOrder = 4 },
-            new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5 },
+            new ActivitySessionType { Id = 1, Name = "High Speed Intervals", ActivityType = ActivityType.Running, SortOrder = 1, Family = SessionTypeFamily.Run },
+            new ActivitySessionType { Id = 2, Name = "Speed & Acceleration", ActivityType = ActivityType.Running, SortOrder = 2, Family = SessionTypeFamily.Run },
+            new ActivitySessionType { Id = 3, Name = "Easy Aerobic Run", ActivityType = ActivityType.Running, SortOrder = 3, Family = SessionTypeFamily.Run },
+            new ActivitySessionType { Id = 4, Name = "Solo", ActivityType = ActivityType.Ultimate, SortOrder = 1, Family = SessionTypeFamily.Ultimate },
+            new ActivitySessionType { Id = 5, Name = "Throws", ActivityType = ActivityType.Ultimate, SortOrder = 2, Family = SessionTypeFamily.Ultimate },
+            new ActivitySessionType { Id = 6, Name = "Pod", ActivityType = ActivityType.Ultimate, SortOrder = 3, Family = SessionTypeFamily.Ultimate },
+            new ActivitySessionType { Id = 7, Name = "Club Training", ActivityType = ActivityType.Ultimate, SortOrder = 4, Family = SessionTypeFamily.Ultimate },
+            new ActivitySessionType { Id = 8, Name = "Game", ActivityType = ActivityType.Ultimate, SortOrder = 5, Family = SessionTypeFamily.Ultimate },
 
             // The current program's two field sessions. Added alongside the
             // originals rather than renaming them: "High Speed Intervals" has
-            // real logged history and must keep meaning what it meant.
-            new ActivitySessionType { Id = 9, Name = "Field 1 - Acceleration & Jump Quality", ActivityType = ActivityType.Running, SortOrder = 4 },
-            new ActivitySessionType { Id = 10, Name = "Field 2 - Repeat Effort & COD", ActivityType = ActivityType.Running, SortOrder = 5 }
+            // real logged history and must keep meaning what it meant. ActivityType
+            // stays Running (the running program and the weekly planner's Field
+            // slot resolve through it); Family = Field is what makes them
+            // selectable on an Ultimate activity too - which is how they're
+            // mostly recorded now.
+            new ActivitySessionType { Id = 9, Name = "Field 1 - Acceleration & Jump Quality", ActivityType = ActivityType.Running, SortOrder = 4, Family = SessionTypeFamily.Field },
+            new ActivitySessionType { Id = 10, Name = "Field 2 - Repeat Effort & COD", ActivityType = ActivityType.Running, SortOrder = 5, Family = SessionTypeFamily.Field }
         );
 
         // One completion per routine per day. The API upserts against this

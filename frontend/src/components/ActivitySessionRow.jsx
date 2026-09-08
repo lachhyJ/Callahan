@@ -82,7 +82,9 @@ function ConeDistanceInput({ activity, onConeDistanceChange }) {
 export default function ActivitySessionRow({ activity, sessionTypes, openPickerId, onTogglePicker, onSave, onConeDistanceChange }) {
   const pickerOpen = openPickerId === activity.id
   const needsClassification = activity.source === 'Garmin' && !activity.activitySessionTypeId
-  const typesForActivity = sessionTypes.filter((t) => t.activityType === activity.type)
+  // Field-family types are cross-type: a field session gets recorded sometimes
+  // as a run, sometimes as an Ultimate, so offer them either way.
+  const typesForActivity = sessionTypes.filter((t) => t.activityType === activity.type || t.family === 'Field')
   const suggested = suggestSessionType(activity, typesForActivity)
   const isHighSpeedIntervals = activity.activitySessionTypeName === HIGH_SPEED_INTERVALS_TYPE_NAME
   const teaser = livePlayTeaser(activity)

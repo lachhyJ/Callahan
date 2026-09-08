@@ -74,7 +74,7 @@ public record CreateActivityRequest(
 // a classified activity always has a primary.
 public record UpdateActivitySessionTagsRequest(int? PrimaryId, List<int>? TypeIds);
 
-public record ActivitySessionTypeDto(int Id, string Name, string ActivityType);
+public record ActivitySessionTypeDto(int Id, string Name, string ActivityType, string Family);
 
 public record ActivityLapDto(
     int LapIndex,

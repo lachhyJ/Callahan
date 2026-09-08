@@ -8,6 +8,7 @@ import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
+import { isFieldActivity } from '../utils/fieldSession'
 import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
@@ -28,6 +29,15 @@ const RUNNING_SHAPE_CLASS_BY_TYPE_NAME = {
   'Easy Aerobic Run': 'calendar-dot--disc',
 }
 const RUNNING_MISC_SHAPE = 'calendar-dot--ring' // unclassified or any other run
+
+// Field sessions render in the run lane (blue) whatever Garmin recorded them as
+// — "field workouts take what were the run glyphs". Own shape sub-map so Field 1
+// vs Field 2 still read apart.
+const FIELD_SHAPE_CLASS_BY_TYPE_NAME = {
+  'Field 1 - Acceleration & Jump Quality': 'calendar-dot--triangle',
+  'Field 2 - Repeat Effort & COD': 'calendar-dot--diamond',
+}
+const FIELD_MISC_SHAPE = 'calendar-dot--ring'
 
 const ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME = {
   Solo: 'calendar-dot--disc',
@@ -314,11 +324,16 @@ export default function DashboardPage() {
             const iso = isoDate(date)
             const entry = byDate.get(iso)
             const hasWorkout = entry?.workouts.length > 0
-            const runningActivities = entry?.runs.filter((r) => r.type === 'Running') ?? []
+            const dayActivities = entry?.runs ?? []
+            // Field sessions leave the Ultimate/Running lanes and get their own
+            // blue (run-lane) glyph, whichever Garmin type recorded them.
+            const fieldActivities = dayActivities.filter(isFieldActivity)
+            const hasField = fieldActivities.length > 0
+            const runningActivities = dayActivities.filter((r) => r.type === 'Running' && !isFieldActivity(r))
             const hasRunning = runningActivities.length > 0
-            const ultimateActivities = entry?.runs.filter((r) => r.type === 'Ultimate') ?? []
+            const ultimateActivities = dayActivities.filter((r) => r.type === 'Ultimate' && !isFieldActivity(r))
             const hasUltimate = ultimateActivities.length > 0
-            const hasData = hasWorkout || hasRunning || hasUltimate
+            const hasData = hasWorkout || hasRunning || hasUltimate || hasField
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
 
@@ -344,6 +359,7 @@ export default function DashboardPage() {
                 {dayNumber}
                 <span className="calendar-dots">
                   {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
+                  {hasField && <span className={`calendar-dot calendar-dot-run ${dotShapeClass(fieldActivities, FIELD_SHAPE_CLASS_BY_TYPE_NAME, FIELD_MISC_SHAPE)}`} />}
                   {hasRunning && <span className={`calendar-dot calendar-dot-run ${dotShapeClass(runningActivities, RUNNING_SHAPE_CLASS_BY_TYPE_NAME, RUNNING_MISC_SHAPE)}`} />}
                   {hasUltimate && <span className={`calendar-dot calendar-dot-ultimate ${dotShapeClass(ultimateActivities, ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME, ULTIMATE_MISC_SHAPE)}`} />}
                 </span>

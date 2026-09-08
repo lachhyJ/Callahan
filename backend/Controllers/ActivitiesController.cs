@@ -102,6 +102,7 @@ public class ActivitiesController : ControllerBase
                 t.SessionType.Name,
                 t.SessionType.SortOrder,
                 ActivityType = t.SessionType.ActivityType.ToString(),
+                Family = t.SessionType.Family.ToString(),
             })
             .ToListAsync();
         var tagsByActivity = tagRows.GroupBy(t => t.ActivityId).ToDictionary(g => g.Key, g => g.ToList());
@@ -113,7 +114,7 @@ public class ActivitiesController : ControllerBase
             var list = ts
                 .OrderByDescending(t => t.ActivitySessionTypeId == d.ActivitySessionTypeId)
                 .ThenBy(t => t.SortOrder)
-                .Select(t => new ActivitySessionTypeDto(t.ActivitySessionTypeId, t.Name, t.ActivityType))
+                .Select(t => new ActivitySessionTypeDto(t.ActivitySessionTypeId, t.Name, t.ActivityType, t.Family))
                 .ToList();
             return d with { SessionTypes = list };
         }).ToList();
@@ -268,14 +269,16 @@ public class ActivitiesController : ControllerBase
         if (request.PrimaryId is null && desiredIds.Count > 0)
             return BadRequest(new { error = "A classified activity needs a primary session type." });
 
-        // Validate every id: exists and matches this activity's ActivityType.
+        // Validate every id: exists, and either matches this activity's
+        // ActivityType or is a Field-family type (those are cross-type - a field
+        // session gets recorded sometimes as a run, sometimes as an Ultimate).
         var types = new Dictionary<int, ActivitySessionType>();
         foreach (var typeId in desiredIds)
         {
             var sessionType = await _db.ActivitySessionTypes.FirstOrDefaultAsync(t => t.Id == typeId);
             if (sessionType is null)
                 return BadRequest(new { error = $"Unknown activity session type '{typeId}'." });
-            if (sessionType.ActivityType != activity.Type)
+            if (sessionType.ActivityType != activity.Type && sessionType.Family != SessionTypeFamily.Field)
                 return BadRequest(new { error = $"'{sessionType.Name}' is a {sessionType.ActivityType} session type, not valid for a {activity.Type} activity." });
             types[typeId] = sessionType;
         }
@@ -680,7 +683,7 @@ public class ActivitiesController : ControllerBase
         return types
             .OrderByDescending(t => t.Id == a.ActivitySessionTypeId)
             .ThenBy(t => t.SortOrder)
-            .Select(t => new ActivitySessionTypeDto(t.Id, t.Name, t.ActivityType.ToString()))
+            .Select(t => new ActivitySessionTypeDto(t.Id, t.Name, t.ActivityType.ToString(), t.Family.ToString()))
             .ToList();
     }
 }

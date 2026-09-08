@@ -34,7 +34,7 @@ public class ActivitySessionTypesController : ControllerBase
 
         var types = await query
             .OrderBy(t => t.SortOrder)
-            .Select(t => new ActivitySessionTypeDto(t.Id, t.Name, t.ActivityType.ToString()))
+            .Select(t => new ActivitySessionTypeDto(t.Id, t.Name, t.ActivityType.ToString(), t.Family.ToString()))
             .ToListAsync();
 
         return Ok(types);

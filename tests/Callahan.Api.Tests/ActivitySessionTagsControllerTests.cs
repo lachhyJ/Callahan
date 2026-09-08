@@ -15,11 +15,14 @@ namespace Callahan.Api.Tests;
 public class ActivitySessionTagsControllerTests
 {
     // Seeded ids (AppDbContext.HasData): Ultimate Solo=4, Throws=5, Pod=6,
-    // Club Training=7, Game=8; Running Easy Aerobic Run=3.
+    // Club Training=7, Game=8; Running Easy Aerobic Run=3; Field-family
+    // Field 1=9, Field 2=10.
     private const int Throws = 5;
     private const int ClubTraining = 7;
     private const int Game = 8;
     private const int EasyRun = 3;
+    private const int Field1 = 9;
+    private const int Field2 = 10;
 
     private static AppDbContext NewDb(SqliteConnection conn)
     {
@@ -60,6 +63,7 @@ public class ActivitySessionTagsControllerTests
         Assert.Equal(ClubTraining, dto.ActivitySessionTypeId);
         Assert.Equal("Club Training", dto.ActivitySessionTypeName);
         Assert.Equal(new[] { "Club Training", "Throws" }, dto.SessionTypes!.Select(t => t.Name));
+        Assert.All(dto.SessionTypes!, t => Assert.Equal("Ultimate", t.Family));
         Assert.Equal(2, await db.ActivitySessionTags.CountAsync(t => t.ActivityId == id));
     }
 
@@ -138,9 +142,31 @@ public class ActivitySessionTagsControllerTests
         var id = await AddUltimateActivity(db);
 
         var result = await controller.UpdateSessionTypes(id,
-            new UpdateActivitySessionTagsRequest(EasyRun, null)); // a Running type on an Ultimate activity
+            new UpdateActivitySessionTagsRequest(EasyRun, null)); // a plain Running type on an Ultimate activity
 
         Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task AcceptsAFieldTypeOnAnUltimateActivity_AsPrimaryAndAsExtra()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = NewDb(conn);
+        var controller = new ActivitiesController(db);
+        var id = await AddUltimateActivity(db);
+
+        // Field 1 as the primary on an Ultimate activity - it's ActivityType
+        // Running but Family Field, so it's allowed cross-type.
+        var asPrimary = Ok(await controller.UpdateSessionTypes(id,
+            new UpdateActivitySessionTagsRequest(Field1, null)));
+        Assert.Equal(Field1, asPrimary.ActivitySessionTypeId);
+        Assert.Equal("Field 1 - Acceleration & Jump Quality", asPrimary.ActivitySessionTypeName);
+        Assert.Equal("Field", asPrimary.SessionTypes!.Single().Family);
+
+        // And as an extra alongside a real Ultimate primary.
+        var withExtra = Ok(await controller.UpdateSessionTypes(id,
+            new UpdateActivitySessionTagsRequest(ClubTraining, new List<int> { Field2 })));
+        Assert.Equal(new[] { "Club Training", "Field 2 - Repeat Effort & COD" }, withExtra.SessionTypes!.Select(t => t.Name));
     }
 
     [Fact]

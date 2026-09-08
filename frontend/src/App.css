@@ -2567,17 +2567,24 @@ td {
 
 /* Bright/filled instead of the default outline — this is the state where
    the button itself is the thing that needs pressing, so it should read as
-   the call to action rather than sitting next to a separate badge. */
+   the call to action rather than sitting next to a separate badge. Overrides
+   the base button's square corners / 4px side padding / negative margin /
+   underline so the fill reads as a contained pill, not a cramped box. */
 .activity-classify-btn-needed {
   background: var(--info-bg);
-  border-color: transparent;
+  border: none;
+  border-radius: var(--radius-md);
   color: var(--info-text);
   font-weight: 500;
+  padding: 9px 14px; /* ~44px tall - it's the call to action on this row */
+  margin: 0;
+  text-decoration: none;
 
   &:hover,
   &:focus-visible {
+    background: color-mix(in srgb, var(--blue-400) 32%, transparent);
     color: var(--info-text);
-    border-color: var(--info-text);
+    text-decoration: none;
   }
 }
 

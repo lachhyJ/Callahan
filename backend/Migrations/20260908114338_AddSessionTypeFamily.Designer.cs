@@ -3,6 +3,7 @@ using System;
 using Callahan.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Callahan.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260908114338_AddSessionTypeFamily")]
+    partial class AddSessionTypeFamily
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -420,11 +423,6 @@ namespace Callahan.Api.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<int>("PerSideDelaySeconds")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(8);
-
                     b.HasKey("Id");
 
                     b.ToTable("Exercises");
@@ -437,8 +435,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Bench Press",
-                            PerSideDelaySeconds = 8
+                            Name = "Bench Press"
                         },
                         new
                         {
@@ -447,8 +444,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Deadlift",
-                            PerSideDelaySeconds = 8
+                            Name = "Deadlift"
                         },
                         new
                         {
@@ -457,8 +453,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = true,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Pull-up",
-                            PerSideDelaySeconds = 8
+                            Name = "Pull-up"
                         },
                         new
                         {
@@ -467,8 +462,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Barbell Row",
-                            PerSideDelaySeconds = 8
+                            Name = "Barbell Row"
                         },
                         new
                         {
@@ -477,8 +471,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Leg Press",
-                            PerSideDelaySeconds = 8
+                            Name = "Leg Press"
                         },
                         new
                         {
@@ -487,8 +480,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Trap Bar Deadlift",
-                            PerSideDelaySeconds = 8
+                            Name = "Trap Bar Deadlift"
                         },
                         new
                         {
@@ -497,8 +489,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Bulgarian Split Squat (Barbell)",
-                            PerSideDelaySeconds = 8
+                            Name = "Bulgarian Split Squat (Barbell)"
                         },
                         new
                         {
@@ -507,8 +498,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Single Leg Hamstring Curl",
-                            PerSideDelaySeconds = 8
+                            Name = "Single Leg Hamstring Curl"
                         },
                         new
                         {
@@ -517,8 +507,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Incline DB Press",
-                            PerSideDelaySeconds = 8
+                            Name = "Incline DB Press"
                         },
                         new
                         {
@@ -527,8 +516,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Cable Row",
-                            PerSideDelaySeconds = 8
+                            Name = "Cable Row"
                         },
                         new
                         {
@@ -537,8 +525,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "DB Lateral Raise",
-                            PerSideDelaySeconds = 8
+                            Name = "DB Lateral Raise"
                         },
                         new
                         {
@@ -547,8 +534,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Cable Face Pull",
-                            PerSideDelaySeconds = 8
+                            Name = "Cable Face Pull"
                         },
                         new
                         {
@@ -557,8 +543,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Single Leg Standing Calf Raise",
-                            PerSideDelaySeconds = 8
+                            Name = "Single Leg Standing Calf Raise"
                         },
                         new
                         {
@@ -567,8 +552,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Barbell Squat",
-                            PerSideDelaySeconds = 8
+                            Name = "Barbell Squat"
                         },
                         new
                         {
@@ -577,8 +561,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Single Leg RDL (DB)",
-                            PerSideDelaySeconds = 8
+                            Name = "Single Leg RDL (DB)"
                         },
                         new
                         {
@@ -587,8 +570,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Push Press",
-                            PerSideDelaySeconds = 8
+                            Name = "Push Press"
                         },
                         new
                         {
@@ -597,8 +579,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = true,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Chin-Ups",
-                            PerSideDelaySeconds = 8
+                            Name = "Chin-Ups"
                         },
                         new
                         {
@@ -607,8 +588,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Pallof Press",
-                            PerSideDelaySeconds = 8
+                            Name = "Pallof Press"
                         },
                         new
                         {
@@ -617,8 +597,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Box Jump",
-                            PerSideDelaySeconds = 8
+                            Name = "Box Jump"
                         },
                         new
                         {
@@ -627,8 +606,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Dead Bug",
-                            PerSideDelaySeconds = 8
+                            Name = "Dead Bug"
                         },
                         new
                         {
@@ -637,8 +615,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Cable Woodchop",
-                            PerSideDelaySeconds = 8
+                            Name = "Cable Woodchop"
                         },
                         new
                         {
@@ -647,8 +624,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Hanging Knee Raise",
-                            PerSideDelaySeconds = 8
+                            Name = "Hanging Knee Raise"
                         },
                         new
                         {
@@ -657,8 +633,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Ab Wheel Rollout",
-                            PerSideDelaySeconds = 8
+                            Name = "Ab Wheel Rollout"
                         },
                         new
                         {
@@ -667,8 +642,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Cable Crunch",
-                            PerSideDelaySeconds = 8
+                            Name = "Cable Crunch"
                         },
                         new
                         {
@@ -677,8 +651,7 @@ namespace Callahan.Api.Migrations
                             IsAssisted = false,
                             IsPerSide = false,
                             IsTimeBased = false,
-                            Name = "Side Plank with Reach",
-                            PerSideDelaySeconds = 8
+                            Name = "Side Plank with Reach"
                         });
                 });
 
