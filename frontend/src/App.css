@@ -1037,6 +1037,12 @@ td {
   min-width: 3.5ch;
 }
 
+.hold-countdown.hold-gap {
+  color: var(--text-tertiary);
+  font-weight: 500;
+  min-width: 0;
+}
+
 .hold-side {
   color: var(--text-tertiary);
   font-size: var(--text-2xs);
@@ -1389,6 +1395,33 @@ td {
     &::before {
       background: var(--accent);
     }
+  }
+}
+
+.per-side-delay {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+
+  & input {
+    width: 3ch;
+    padding: 2px 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: var(--text-xs);
+    text-align: center;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+
+  & input::-webkit-outer-spin-button,
+  & input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
   }
 }
 

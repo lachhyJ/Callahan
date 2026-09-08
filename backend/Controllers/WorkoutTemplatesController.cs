@@ -63,7 +63,7 @@ public class WorkoutTemplatesController : ControllerBase
 
                 return new WorkoutTemplateExerciseStartDto(
                     te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
-                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.TargetDurationSeconds, previousSets);
+                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, previousSets);
             })
             .ToList();
 

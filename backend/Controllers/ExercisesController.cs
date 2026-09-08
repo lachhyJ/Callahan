@@ -33,7 +33,8 @@ public class ExercisesController : ControllerBase
                 e.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault(),
                 e.IsAssisted,
                 e.IsTimeBased,
-                e.IsPerSide))
+                e.IsPerSide,
+                e.PerSideDelaySeconds))
             .ToListAsync();
 
         return Ok(exercises);
@@ -53,12 +54,12 @@ public class ExercisesController : ControllerBase
 
         var exercises = await _db.Exercises
             .OrderBy(e => e.Category).ThenBy(e => e.Name)
-            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide })
+            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds })
             .ToListAsync();
 
         var result = exercises
             .Select(e => new PickableExerciseDto(
-                e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide,
+                e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds,
                 templateNamesByExercise.GetValueOrDefault(e.Id, [])))
             .ToList();
 
@@ -77,7 +78,7 @@ public class ExercisesController : ControllerBase
         _db.Exercises.Add(exercise);
         await _db.SaveChangesAsync();
 
-        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide));
+        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds));
     }
 
     [HttpPut("{id}/assisted")]
@@ -96,6 +97,8 @@ public class ExercisesController : ControllerBase
     // set together from the exercise detail screen, next to the assisted toggle.
     // IsPerSide only means anything while IsTimeBased is on, but it's stored
     // independently so turning time-based off and back on doesn't lose it.
+    // PerSideDelaySeconds (the gap before side two auto-starts) rides along on
+    // the same request and is clamped to 0..60.
     [HttpPut("{id}/time-based")]
     public async Task<IActionResult> UpdateTimeBased(int id, UpdateExerciseTimeBasedRequestDto request)
     {
@@ -104,6 +107,7 @@ public class ExercisesController : ControllerBase
 
         exercise.IsTimeBased = request.IsTimeBased;
         exercise.IsPerSide = request.IsPerSide;
+        exercise.PerSideDelaySeconds = Math.Clamp(request.PerSideDelaySeconds, 0, 60);
         await _db.SaveChangesAsync();
 
         return NoContent();
@@ -195,7 +199,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, 0, 0, 0, 0, []));
         }
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
@@ -214,6 +218,6 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
     }
 }

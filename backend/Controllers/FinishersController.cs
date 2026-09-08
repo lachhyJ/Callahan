@@ -46,7 +46,7 @@ public class FinishersController : ControllerBase
                     .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString(), s.DurationSeconds))
                     .ToListAsync();
 
-            result.Add(new FinisherDto(f.ExerciseId, f.Exercise.Name, f.TargetSets, f.TargetReps, f.RestSeconds, f.Exercise.IsAssisted, f.Exercise.IsTimeBased, f.Exercise.IsPerSide, previousSets));
+            result.Add(new FinisherDto(f.ExerciseId, f.Exercise.Name, f.TargetSets, f.TargetReps, f.RestSeconds, f.Exercise.IsAssisted, f.Exercise.IsTimeBased, f.Exercise.IsPerSide, f.Exercise.PerSideDelaySeconds, previousSets));
         }
 
         return Ok(result);

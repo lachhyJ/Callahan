@@ -7,6 +7,7 @@ import {
   isTimeSet,
   nextSetDescriptor,
   restDescriptorAfterSet,
+  advanceHold,
 } from './activeWorkout'
 
 // The suite runs on plain node by deliberate choice (see vite.config.js), and
@@ -219,5 +220,45 @@ describe('nextSetDescriptor', () => {
   it('returns null when every set is done', () => {
     const ex = [exercise('A', 100, '5', [set(50, 5, true)])]
     expect(nextSetDescriptor(ex)).toBeNull()
+  })
+})
+
+describe('advanceHold', () => {
+  const T0 = 1_000_000
+  const perSide = { isPerSide: true }
+  const single = { isPerSide: false }
+  // A side-1 hold, 30s target, 8s configured gap, due now.
+  const side1 = { exIdx: 0, setIdx: 0, phase: 'hold', side: 1, targetSeconds: 30, delaySeconds: 8, endsAt: T0 }
+
+  it('returns null while time remains on the current phase', () => {
+    expect(advanceHold({ ...side1, endsAt: T0 + 5000 }, perSide, T0)).toBeNull()
+  })
+
+  it('side 1 ending on a per-side exercise beeps and opens the gap', () => {
+    const step = advanceHold(side1, perSide, T0)
+    expect(step).toMatchObject({ type: 'advance', beep: true })
+    expect(step.holdTimer).toMatchObject({ phase: 'gap', side: 1, endsAt: T0 + 8000 })
+  })
+
+  it('the gap ending beeps again and starts side 2 for the full target', () => {
+    const gap = { ...side1, phase: 'gap', endsAt: T0 }
+    const step = advanceHold(gap, perSide, T0)
+    expect(step).toMatchObject({ type: 'advance', beep: true })
+    expect(step.holdTimer).toMatchObject({ phase: 'hold', side: 2, endsAt: T0 + 30_000 })
+  })
+
+  it('side 2 ending finishes the set with the target seconds', () => {
+    const step = advanceHold({ ...side1, side: 2, endsAt: T0 }, perSide, T0)
+    expect(step).toEqual({ type: 'finish', beep: true, seconds: 30 })
+  })
+
+  it('a zero delay skips the gap: side 1 goes straight to side 2 with one beep', () => {
+    const step = advanceHold({ ...side1, delaySeconds: 0 }, perSide, T0)
+    expect(step.holdTimer).toMatchObject({ phase: 'hold', side: 2, endsAt: T0 + 30_000 })
+  })
+
+  it('a non-per-side hold just finishes when it hits zero', () => {
+    const step = advanceHold({ ...side1, delaySeconds: 0 }, single, T0)
+    expect(step).toEqual({ type: 'finish', beep: true, seconds: 30 })
   })
 })

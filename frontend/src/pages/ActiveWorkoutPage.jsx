@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
-import { clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -100,6 +100,7 @@ function exerciseFromStart(ex) {
     isAssisted: ex.isAssisted,
     isTimeBased: ex.isTimeBased ?? false,
     isPerSide: ex.isPerSide ?? false,
+    perSideDelaySeconds: ex.perSideDelaySeconds ?? 8,
     targetDurationSeconds: ex.targetDurationSeconds ?? null,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     targetSets: ex.targetSets,
@@ -663,7 +664,15 @@ export default function ActiveWorkoutPage() {
     const seconds = Number(ex.sets[setIdx].durationSeconds) || Number(ex.targetDurationSeconds) || 0
     if (!(seconds > 0)) return
     unlockAudio()
-    setHoldTimer({ exIdx, setIdx, endsAt: Date.now() + seconds * 1000, side: 1, targetSeconds: seconds })
+    setHoldTimer({
+      exIdx,
+      setIdx,
+      endsAt: Date.now() + seconds * 1000,
+      phase: 'hold',
+      side: 1,
+      targetSeconds: seconds,
+      delaySeconds: Math.max(0, Math.round(Number(ex.perSideDelaySeconds) || 0)),
+    })
   }
 
   // Record the hold and mark the set done, then start the rest — same path a
@@ -685,21 +694,21 @@ export default function ActiveWorkoutPage() {
   }
 
   // Drives the hold countdown off the same 1s `now` tick as the rest timer.
-  // On a per-side exercise the first zero re-arms for side two (a beep is the
-  // prompt — the webview can't raise a reliable modal); the second records one
-  // DurationSeconds value, understood as per-side.
+  // On a per-side exercise side one ends with a beep, then a `gap` phase of
+  // `delaySeconds` (set per exercise on its info page) counts down before side
+  // two auto-starts with a second beep. `delaySeconds === 0` collapses the gap
+  // to a single beep. The webview can't raise a reliable modal, so the beeps
+  // are the whole prompt; one DurationSeconds value is recorded, per side.
   useEffect(() => {
     if (!holdTimer) return
-    const remaining = Math.round((holdTimer.endsAt - now.getTime()) / 1000)
-    if (remaining > 0) return
-    const ex = exercises[holdTimer.exIdx]
-    if (ex?.isPerSide && holdTimer.side === 1) {
-      playBeepNow()
-      setHoldTimer((h) => (h ? { ...h, endsAt: Date.now() + h.targetSeconds * 1000, side: 2 } : h))
-      return
+    const step = advanceHold(holdTimer, exercises[holdTimer.exIdx], now.getTime())
+    if (!step) return
+    if (step.beep) playBeepNow()
+    if (step.type === 'advance') {
+      setHoldTimer((h) => (h ? { ...h, ...step.holdTimer } : h))
+    } else {
+      finishHold(holdTimer.exIdx, holdTimer.setIdx, step.seconds)
     }
-    playBeepNow()
-    finishHold(holdTimer.exIdx, holdTimer.setIdx, holdTimer.targetSeconds)
     // finishHold reads `exercises`; re-run only when the tick or timer moves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdTimer, now])
@@ -868,6 +877,7 @@ export default function ActiveWorkoutPage() {
         isAssisted: exercise.isAssisted,
         isTimeBased: exercise.isTimeBased ?? false,
         isPerSide: exercise.isPerSide ?? false,
+        perSideDelaySeconds: exercise.perSideDelaySeconds ?? 8,
         targetDurationSeconds: null,
         targetSets: previousSets.length || 1,
         previousSets,
@@ -1369,8 +1379,14 @@ export default function ActiveWorkoutPage() {
                           <div className="hold-cell">
                             {running ? (
                               <>
-                                <span className="hold-countdown">{formatClock(remaining)}</span>
-                                {ex.isPerSide && <span className="hold-side">side {holdTimer.side}</span>}
+                                {holdTimer.phase === 'gap' ? (
+                                  <span className="hold-countdown hold-gap">side 2 in {remaining}s</span>
+                                ) : (
+                                  <>
+                                    <span className="hold-countdown">{formatClock(remaining)}</span>
+                                    {ex.isPerSide && <span className="hold-side">side {holdTimer.side}</span>}
+                                  </>
+                                )}
                                 <button type="button" className="hold-stop" onClick={() => setHoldTimer(null)}>
                                   Stop
                                 </button>

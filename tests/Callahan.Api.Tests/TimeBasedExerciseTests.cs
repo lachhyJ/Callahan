@@ -131,6 +131,35 @@ public class TimeBasedExerciseTests : IDisposable
         Assert.Equal(25, plankDto.DurationSeconds);
     }
 
+    // ---- per-side delay ----------------------------------------------------
+
+    [Fact]
+    public async Task UpdateTimeBased_persists_the_per_side_delay_and_clamps_it()
+    {
+        var plank = AddExercise("Copenhagen Plank", ExerciseCategory.Core);
+        var controller = new ExercisesController(_db);
+
+        await controller.UpdateTimeBased(plank.Id, new UpdateExerciseTimeBasedRequestDto(true, true, PerSideDelaySeconds: 12));
+        Assert.Equal(12, _db.Exercises.Single(e => e.Id == plank.Id).PerSideDelaySeconds);
+
+        await controller.UpdateTimeBased(plank.Id, new UpdateExerciseTimeBasedRequestDto(true, true, PerSideDelaySeconds: 999));
+        Assert.Equal(60, _db.Exercises.Single(e => e.Id == plank.Id).PerSideDelaySeconds);
+
+        await controller.UpdateTimeBased(plank.Id, new UpdateExerciseTimeBasedRequestDto(true, true, PerSideDelaySeconds: -3));
+        Assert.Equal(0, _db.Exercises.Single(e => e.Id == plank.Id).PerSideDelaySeconds);
+    }
+
+    [Fact]
+    public async Task GetStats_hands_back_the_per_side_delay()
+    {
+        var plank = AddExercise("Copenhagen Plank", ExerciseCategory.Core, timeBased: true, perSide: true);
+        await new ExercisesController(_db).UpdateTimeBased(plank.Id, new UpdateExerciseTimeBasedRequestDto(true, true, PerSideDelaySeconds: 10));
+
+        var result = await new ExercisesController(_db).GetStats(plank.Id);
+        var dto = Assert.IsType<OkObjectResult>(result.Result).Value as ExerciseStatsDto;
+        Assert.Equal(10, dto!.PerSideDelaySeconds);
+    }
+
     // ---- strength / volume exclusion -----------------------------------
 
     [Fact]

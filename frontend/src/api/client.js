@@ -91,10 +91,10 @@ export function updateExerciseAssisted(exerciseId, isAssisted) {
   })
 }
 
-export function updateExerciseTimeBased(exerciseId, isTimeBased, isPerSide) {
+export function updateExerciseTimeBased(exerciseId, isTimeBased, isPerSide, perSideDelaySeconds = 8) {
   return apiFetch(`/api/exercises/${exerciseId}/time-based`, {
     method: 'PUT',
-    body: JSON.stringify({ isTimeBased, isPerSide }),
+    body: JSON.stringify({ isTimeBased, isPerSide, perSideDelaySeconds }),
   })
 }
 

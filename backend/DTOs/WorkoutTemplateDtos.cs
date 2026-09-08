@@ -18,6 +18,7 @@ public record WorkoutTemplateExerciseStartDto(
     bool IsAssisted,
     bool IsTimeBased,
     bool IsPerSide,
+    int PerSideDelaySeconds,
     int? TargetDurationSeconds,
     List<PreviousSetDto> PreviousSets);
 

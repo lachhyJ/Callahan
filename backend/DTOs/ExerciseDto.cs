@@ -1,18 +1,18 @@
 namespace Callahan.Api.DTOs;
 
-public record ExerciseDto(int Id, string Name, string Category, string? PrimaryMuscle, bool IsAssisted, bool IsTimeBased, bool IsPerSide);
+public record ExerciseDto(int Id, string Name, string Category, string? PrimaryMuscle, bool IsAssisted, bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds);
 
 // For the mid-session "add an exercise" picker: the full catalog, plus which
 // templates (if any) each exercise is programmed into, so the picker can
 // surface "from your other templates" first — the driving use case is an
 // exercise prescribed in one day but performed in another.
-public record PickableExerciseDto(int Id, string Name, string Category, bool IsAssisted, bool IsTimeBased, bool IsPerSide, List<string> TemplateNames);
+public record PickableExerciseDto(int Id, string Name, string Category, bool IsAssisted, bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds, List<string> TemplateNames);
 
 public record CreateExerciseRequestDto(string Name, string Category);
 
 public record UpdateExerciseAssistedRequestDto(bool IsAssisted);
 
-public record UpdateExerciseTimeBasedRequestDto(bool IsTimeBased, bool IsPerSide);
+public record UpdateExerciseTimeBasedRequestDto(bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds = 8);
 
 public record UpdateExerciseNameRequestDto(string Name);
 
@@ -28,6 +28,7 @@ public record ExerciseStatsDto(
     bool IsAssisted,
     bool IsTimeBased,
     bool IsPerSide,
+    int PerSideDelaySeconds,
     decimal HeaviestWeightKg,
     decimal BestEstimated1Rm,
     decimal BestSetVolume,

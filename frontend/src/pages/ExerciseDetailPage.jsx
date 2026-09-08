@@ -61,7 +61,7 @@ export default function ExerciseDetailPage() {
     const isTimeBased = !stats.isTimeBased
     const prev = { isTimeBased: stats.isTimeBased, isPerSide: stats.isPerSide }
     setStats((s) => ({ ...s, isTimeBased }))
-    updateExerciseTimeBased(exerciseId, isTimeBased, stats.isPerSide).catch(() => {
+    updateExerciseTimeBased(exerciseId, isTimeBased, stats.isPerSide, stats.perSideDelaySeconds).catch(() => {
       setStats((s) => ({ ...s, ...prev }))
     })
   }
@@ -70,9 +70,23 @@ export default function ExerciseDetailPage() {
     const isPerSide = !stats.isPerSide
     const prev = { isTimeBased: stats.isTimeBased, isPerSide: stats.isPerSide }
     setStats((s) => ({ ...s, isPerSide }))
-    updateExerciseTimeBased(exerciseId, stats.isTimeBased, isPerSide).catch(() => {
+    updateExerciseTimeBased(exerciseId, stats.isTimeBased, isPerSide, stats.perSideDelaySeconds).catch(() => {
       setStats((s) => ({ ...s, ...prev }))
     })
+  }
+
+  // The gap the workout timer waits between side one ending and side two
+  // auto-starting. Typed freely, clamped to 0..60 and persisted on blur; the
+  // server clamps too.
+  function handlePerSideDelayChange(value) {
+    setStats((s) => ({ ...s, perSideDelaySeconds: value }))
+  }
+
+  function handlePerSideDelayBlur() {
+    const parsed = Math.round(Number(stats.perSideDelaySeconds))
+    const seconds = Number.isFinite(parsed) ? Math.min(60, Math.max(0, parsed)) : 8
+    setStats((s) => ({ ...s, perSideDelaySeconds: seconds }))
+    updateExerciseTimeBased(exerciseId, stats.isTimeBased, stats.isPerSide, seconds).catch(() => {})
   }
 
   function startEditingName() {
@@ -163,6 +177,22 @@ export default function ExerciseDetailPage() {
           >
             Per side
           </button>
+        )}
+        {stats.isTimeBased && stats.isPerSide && (
+          <label className="per-side-delay">
+            Side 2 after
+            <input
+              type="number"
+              inputMode="numeric"
+              min={0}
+              max={60}
+              value={stats.perSideDelaySeconds ?? 8}
+              onChange={(e) => handlePerSideDelayChange(e.target.value)}
+              onBlur={handlePerSideDelayBlur}
+              aria-label="Seconds before side two starts"
+            />
+            s
+          </label>
         )}
       </p>
 

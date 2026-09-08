@@ -169,6 +169,13 @@ public class AppDbContext : DbContext
             .HasForeignKey(s => s.TargetTournamentId)
             .OnDelete(DeleteBehavior.SetNull);
 
+        // Default matches Exercise.PerSideDelaySeconds's initializer so a new
+        // column backfills existing rows to 8 and the seed rows below need no
+        // explicit UpdateData in the migration.
+        modelBuilder.Entity<Exercise>()
+            .Property(e => e.PerSideDelaySeconds)
+            .HasDefaultValue(8);
+
         modelBuilder.Entity<Exercise>().HasData(
             new Exercise { Id = 1, Name = "Bench Press", Category = ExerciseCategory.Push },
             new Exercise { Id = 4, Name = "Deadlift", Category = ExerciseCategory.Pull },

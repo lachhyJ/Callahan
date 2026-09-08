@@ -64,6 +64,38 @@ export function nextSetDescriptor(exercises) {
   return null
 }
 
+// Advance a hold countdown at a 1s tick. Returns null while time remains on the
+// current phase; at zero, one of:
+//   { type: 'finish', seconds }            — record the set and start the rest
+//   { type: 'advance', beep, holdTimer }   — beep, then keep counting the returned timer
+//
+// A per-side exercise runs: hold side 1 → (beep) → `gap` phase of
+// `delaySeconds` → (beep) → hold side 2 → (beep) → finish. `delaySeconds === 0`
+// skips the gap, so side 1 ending goes straight to side 2 with a single beep.
+// `ex` is the exercise the timer sits on (read for `isPerSide`); `nowMs` is the
+// tick time, passed in so this stays pure.
+export function advanceHold(holdTimer, ex, nowMs) {
+  if (!holdTimer) return null
+  if (Math.round((holdTimer.endsAt - nowMs) / 1000) > 0) return null
+
+  if (holdTimer.phase === 'gap') {
+    return {
+      type: 'advance',
+      beep: true,
+      holdTimer: { ...holdTimer, phase: 'hold', side: 2, endsAt: nowMs + holdTimer.targetSeconds * 1000 },
+    }
+  }
+
+  if (ex?.isPerSide && holdTimer.side === 1) {
+    const patch = holdTimer.delaySeconds > 0
+      ? { phase: 'gap', endsAt: nowMs + holdTimer.delaySeconds * 1000 }
+      : { side: 2, endsAt: nowMs + holdTimer.targetSeconds * 1000 }
+    return { type: 'advance', beep: true, holdTimer: { ...holdTimer, ...patch } }
+  }
+
+  return { type: 'finish', beep: true, seconds: holdTimer.targetSeconds }
+}
+
 // The rest descriptor to arm after ticking the set at (exIdx, setIdx), given
 // the post-tick `exercises` array. Normally it points at the next set of the
 // same exercise. But when the ticked set was that exercise's last remaining
