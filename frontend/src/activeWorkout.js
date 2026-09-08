@@ -30,6 +30,13 @@ export function restoreStartedAt(sessionKey, fallback = new Date()) {
   return Number.isNaN(restored.getTime()) ? fallback : restored
 }
 
+// A logged set on a time-based exercise: held for `durationSeconds`, never
+// counted in reps. A non-empty `durationSeconds` is the marker every reader
+// keys off, mirroring the backend's `DurationSeconds != null`.
+export function isTimeSet(s) {
+  return s.durationSeconds !== '' && s.durationSeconds != null
+}
+
 // The earlier of the candidate and whatever is already banked for this session.
 export function earliestStartedAt(sessionKey, candidate) {
   const banked = restoreStartedAt(sessionKey, candidate)

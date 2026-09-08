@@ -1015,6 +1015,48 @@ td {
   gap: var(--space-2xs);
 }
 
+/* Time-based set: a seconds field + inline countdown, spanning the Kg/Reps
+   columns of a normal row. */
+.hold-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.hold-unit {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+}
+
+.hold-countdown {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  min-width: 3.5ch;
+}
+
+.hold-side {
+  color: var(--text-tertiary);
+  font-size: var(--text-2xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.hold-start,
+.hold-stop {
+  padding: var(--space-2xs) var(--space-xs);
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.hold-start:disabled {
+  opacity: 0.4;
+}
+
 .sign-toggle-btn {
   width: 24px;
   height: 24px;

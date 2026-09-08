@@ -4,6 +4,7 @@ import {
   restoreStartedAt,
   saveActiveWorkout,
   clearActiveWorkout,
+  isTimeSet,
   nextSetDescriptor,
   restDescriptorAfterSet,
 } from './activeWorkout'
@@ -190,6 +191,17 @@ describe('restDescriptorAfterSet', () => {
     expect(d.exerciseName).toBe('C')
     expect(d.nextSetNumber).toBe(1)
     expect(d.restSeconds).toBe(120)
+  })
+})
+
+describe('isTimeSet', () => {
+  it('is true only when durationSeconds carries a value', () => {
+    expect(isTimeSet({ durationSeconds: 20 })).toBe(true)
+    expect(isTimeSet({ durationSeconds: '20' })).toBe(true)
+    expect(isTimeSet({ durationSeconds: 0 })).toBe(true) // an explicit zero is still a time set
+    expect(isTimeSet({ durationSeconds: '' })).toBe(false)
+    expect(isTimeSet({ durationSeconds: null })).toBe(false)
+    expect(isTimeSet({ reps: '8' })).toBe(false)
   })
 })
 

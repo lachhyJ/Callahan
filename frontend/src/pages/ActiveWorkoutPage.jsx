@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
-import { clearActiveWorkout, earliestStartedAt, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
+import { clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -65,32 +65,26 @@ function kgToLbDisplay(weightKg) {
 // across both so it lines up with how sets are actually logged and matched
 // against next time's previousSets. 0-based, matching what the API returns
 // and what both history views assume (`Set {setOrder + 1}`).
-function buildInitialSets(targetSets, previousSets, warmupSets = 0) {
+function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = false, targetDurationSeconds = null) {
   const previousByOrder = new Map(previousSets.map((p) => [p.setOrder, p]))
-  const warmupRows = Array.from({ length: warmupSets }, (_, i) => {
-    const setOrder = i
+  const rowAt = (setOrder, type) => {
     const previous = previousByOrder.get(setOrder) ?? null
     return {
       setOrder,
-      reps: previous ? String(previous.reps) : '',
-      weightKg: previous ? String(previous.weightKg) : '',
+      reps: !timeBased && previous ? String(previous.reps) : '',
+      weightKg: !timeBased && previous ? String(previous.weightKg) : '',
+      // Prefer last session's hold, then the program prescription, so the
+      // field lands pre-filled and the countdown has a length to run.
+      durationSeconds: timeBased
+        ? String(previous?.durationSeconds ?? targetDurationSeconds ?? '')
+        : '',
       previous,
       completed: false,
-      type: 'Warmup',
+      type,
     }
-  })
-  const workingRows = Array.from({ length: targetSets }, (_, i) => {
-    const setOrder = warmupSets + i
-    const previous = previousByOrder.get(setOrder) ?? null
-    return {
-      setOrder,
-      reps: previous ? String(previous.reps) : '',
-      weightKg: previous ? String(previous.weightKg) : '',
-      previous,
-      completed: false,
-      type: 'Normal',
-    }
-  })
+  }
+  const warmupRows = Array.from({ length: warmupSets }, (_, i) => rowAt(i, 'Warmup'))
+  const workingRows = Array.from({ length: targetSets }, (_, i) => rowAt(warmupSets + i, 'Normal'))
   return [...warmupRows, ...workingRows]
 }
 
@@ -103,11 +97,14 @@ function exerciseFromStart(ex) {
     tempo: ex.tempo,
     primaryMuscle: ex.primaryMuscle,
     isAssisted: ex.isAssisted,
+    isTimeBased: ex.isTimeBased ?? false,
+    isPerSide: ex.isPerSide ?? false,
+    targetDurationSeconds: ex.targetDurationSeconds ?? null,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     targetSets: ex.targetSets,
     cue: ex.cue ?? '',
     notes: '',
-    sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0),
+    sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0, ex.isTimeBased ?? false, ex.targetDurationSeconds ?? null),
   }
 }
 
@@ -178,7 +175,7 @@ function restTimerFromNative(exercises, native) {
 }
 
 function completedSetsFor(ex) {
-  return ex.sets.filter((s) => s.completed && s.reps !== '')
+  return ex.sets.filter((s) => s.completed && (s.reps !== '' || isTimeSet(s)))
 }
 
 // The logged sets on one exercise, spelled out for a confirmation sheet.
@@ -187,6 +184,10 @@ function completedSetsFor(ex) {
 function loggedSummary(ex) {
   const done = completedSetsFor(ex)
   if (done.length === 0) return null
+  if (ex.isTimeBased) {
+    const suffix = ex.isPerSide ? ' (per side)' : ''
+    return done.map((s) => `${s.durationSeconds}s`).join(' · ') + suffix
+  }
   return done.map((s) => `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`).join(' · ')
 }
 
@@ -243,6 +244,11 @@ export default function ActiveWorkoutPage() {
   const [startedAt, setStartedAt] = useState(() => restoreStartedAt(sessionKey))
   const [now, setNow] = useState(() => new Date())
   const [showSummary, setShowSummary] = useState(false)
+  // A running hold countdown for one time-based set:
+  // { exIdx, setIdx, endsAt, side, targetSeconds }. Only one at a time — the
+  // 1s `now` tick already running drives the display, and a dedicated effect
+  // below re-prompts for side two / records the set when it hits zero.
+  const [holdTimer, setHoldTimer] = useState(null)
   // The pending destructive action, or null: { kind, exIdx?, setIdx? }.
   //
   // Every confirmation on this screen used to be a window.confirm, which the OS
@@ -446,7 +452,7 @@ export default function ActiveWorkoutPage() {
       for (const s of ex.sets) {
         if (!s.completed) continue
         setCount += 1
-        if (s.type !== 'Warmup') {
+        if (s.type !== 'Warmup' && !isTimeSet(s)) {
           volume += (Number(s.weightKg) || 0) * (Number(s.reps) || 0)
         }
       }
@@ -618,9 +624,15 @@ export default function ActiveWorkoutPage() {
   function toggleComplete(exIdx, setIdx) {
     const exercise = exercises[exIdx]
     const set = exercise.sets[setIdx]
-    if (!set.completed && set.reps === '') {
-      setError('Enter reps before marking a set complete.')
-      return
+    if (!set.completed) {
+      if (exercise.isTimeBased && !isTimeSet(set)) {
+        setError('Enter a hold time before marking this done.')
+        return
+      }
+      if (!exercise.isTimeBased && set.reps === '') {
+        setError('Enter reps before marking a set complete.')
+        return
+      }
     }
     setError(null)
     // A real tap that happens right before every rest timer starts, so it
@@ -628,6 +640,8 @@ export default function ActiveWorkoutPage() {
     // existing session, a stale-bundle reload mid-workout) without having
     // to track every possible route back into an active workout.
     unlockAudio()
+    // Ticking (or un-ticking) a hold set by hand stops any countdown on it.
+    if (holdTimer && holdTimer.exIdx === exIdx && holdTimer.setIdx === setIdx) setHoldTimer(null)
     const nowCompleting = !set.completed
     // Compute the post-tick array locally: setExercises is async, so
     // startRestTimer below can't read it back off state in time to decide
@@ -640,6 +654,54 @@ export default function ActiveWorkoutPage() {
     setExercises(updatedExercises)
     if (nowCompleting) startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
   }
+
+  // Kick off the inline countdown for a time-based set. The hold length comes
+  // from the set's own field (pre-filled from last time / the program).
+  function startHold(exIdx, setIdx) {
+    const ex = exercises[exIdx]
+    const seconds = Number(ex.sets[setIdx].durationSeconds) || Number(ex.targetDurationSeconds) || 0
+    if (!(seconds > 0)) return
+    unlockAudio()
+    setHoldTimer({ exIdx, setIdx, endsAt: Date.now() + seconds * 1000, side: 1, targetSeconds: seconds })
+  }
+
+  // Record the hold and mark the set done, then start the rest — same path a
+  // manual tick takes.
+  function finishHold(exIdx, setIdx, seconds) {
+    setHoldTimer(null)
+    const updatedExercises = exercises.map((ex, i) =>
+      i !== exIdx
+        ? ex
+        : {
+            ...ex,
+            sets: ex.sets.map((s, j) =>
+              j !== setIdx ? s : { ...s, durationSeconds: String(seconds), completed: true }
+            ),
+          }
+    )
+    setExercises(updatedExercises)
+    startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
+  }
+
+  // Drives the hold countdown off the same 1s `now` tick as the rest timer.
+  // On a per-side exercise the first zero re-arms for side two (a beep is the
+  // prompt — the webview can't raise a reliable modal); the second records one
+  // DurationSeconds value, understood as per-side.
+  useEffect(() => {
+    if (!holdTimer) return
+    const remaining = Math.round((holdTimer.endsAt - now.getTime()) / 1000)
+    if (remaining > 0) return
+    const ex = exercises[holdTimer.exIdx]
+    if (ex?.isPerSide && holdTimer.side === 1) {
+      playBeepNow()
+      setHoldTimer((h) => (h ? { ...h, endsAt: Date.now() + h.targetSeconds * 1000, side: 2 } : h))
+      return
+    }
+    playBeepNow()
+    finishHold(holdTimer.exIdx, holdTimer.setIdx, holdTimer.targetSeconds)
+    // finishHold reads `exercises`; re-run only when the tick or timer moves.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [holdTimer, now])
 
   // The Live Activity's buttons mutate the timer natively while this webview is
   // suspended, so on every return to the foreground take native's word for it.
@@ -803,6 +865,9 @@ export default function ActiveWorkoutPage() {
         tempo: null,
         primaryMuscle: null,
         isAssisted: exercise.isAssisted,
+        isTimeBased: exercise.isTimeBased ?? false,
+        isPerSide: exercise.isPerSide ?? false,
+        targetDurationSeconds: null,
         targetSets: previousSets.length || 1,
         previousSets,
       }),
@@ -849,13 +914,17 @@ export default function ActiveWorkoutPage() {
     setSaving(true)
     try {
       const sets = exercises.flatMap((ex) =>
-        completedSetsFor(ex).map((s) => ({
-          exerciseId: ex.exerciseId,
-          reps: Number(s.reps),
-          weightKg: s.weightKg === '' ? 0 : Number(s.weightKg),
-          setOrder: s.setOrder,
-          setType: s.type,
-        }))
+        completedSetsFor(ex).map((s) => {
+          const timed = isTimeSet(s)
+          return {
+            exerciseId: ex.exerciseId,
+            reps: timed ? 0 : Number(s.reps),
+            weightKg: timed ? 0 : (s.weightKg === '' ? 0 : Number(s.weightKg)),
+            setOrder: s.setOrder,
+            setType: s.type,
+            durationSeconds: timed ? Number(s.durationSeconds) : null,
+          }
+        })
       )
 
       const exerciseNotes = exercises
@@ -1246,8 +1315,14 @@ export default function ActiveWorkoutPage() {
               <tr>
                 <th>Set</th>
                 <th>Previous</th>
-                <th>Kg</th>
-                <th>Reps</th>
+                {ex.isTimeBased ? (
+                  <th colSpan={2}>Hold{ex.isPerSide ? ' / side' : ''}</th>
+                ) : (
+                  <>
+                    <th>Kg</th>
+                    <th>Reps</th>
+                  </>
+                )}
                 <th></th>
               </tr>
             </thead>
@@ -1280,8 +1355,59 @@ export default function ActiveWorkoutPage() {
                     )}
                   </td>
                   <td className="previous-cell">
-                    {s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—'}
+                    {ex.isTimeBased
+                      ? (s.previous?.durationSeconds != null ? `${s.previous.durationSeconds}s` : '—')
+                      : (s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—')}
                   </td>
+                  {ex.isTimeBased ? (
+                    <td colSpan={2}>
+                      {(() => {
+                        const running = holdTimer && holdTimer.exIdx === exIdx && holdTimer.setIdx === setIdx
+                        const remaining = running
+                          ? Math.max(0, Math.round((holdTimer.endsAt - now.getTime()) / 1000))
+                          : null
+                        return (
+                          <div className="hold-cell">
+                            {running ? (
+                              <>
+                                <span className="hold-countdown">{formatClock(remaining)}</span>
+                                {ex.isPerSide && <span className="hold-side">side {holdTimer.side}</span>}
+                                <button type="button" className="hold-stop" onClick={() => setHoldTimer(null)}>
+                                  Stop
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  aria-label="Hold seconds"
+                                  placeholder="0"
+                                  value={s.durationSeconds}
+                                  onChange={(e) => updateSet(exIdx, setIdx, 'durationSeconds', e.target.value)}
+                                  onFocus={(e) => e.target.select()}
+                                  className={!s.completed && s.durationSeconds !== '' ? 'prefilled' : ''}
+                                />
+                                <span className="hold-unit">s</span>
+                                {!s.completed && (
+                                  <button
+                                    type="button"
+                                    className="hold-start"
+                                    disabled={!(Number(s.durationSeconds) > 0)}
+                                    onClick={() => startHold(exIdx, setIdx)}
+                                  >
+                                    Start
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        )
+                      })()}
+                    </td>
+                  ) : (
+                    <>
                   <td>
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
@@ -1332,6 +1458,8 @@ export default function ActiveWorkoutPage() {
                       className={s.previous && !s.completed ? 'prefilled' : ''}
                     />
                   </td>
+                    </>
+                  )}
                   <td>
                     <button
                       type="button"

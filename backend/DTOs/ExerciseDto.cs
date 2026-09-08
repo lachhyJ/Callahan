@@ -26,6 +26,8 @@ public record ExerciseStatsDto(
     string ExerciseName,
     string? PrimaryMuscle,
     bool IsAssisted,
+    bool IsTimeBased,
+    bool IsPerSide,
     decimal HeaviestWeightKg,
     decimal BestEstimated1Rm,
     decimal BestSetVolume,

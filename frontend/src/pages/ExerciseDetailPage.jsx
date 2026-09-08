@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName, updateExerciseTimeBased } from '../api/client'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
 import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
@@ -50,6 +50,27 @@ export default function ExerciseDetailPage() {
     setStats((prev) => ({ ...prev, isAssisted }))
     updateExerciseAssisted(exerciseId, isAssisted).catch(() => {
       setStats((prev) => ({ ...prev, isAssisted: !isAssisted }))
+    })
+  }
+
+  // Time-based and per-side move together — the server takes both on one call,
+  // and per-side is only meaningful while time-based is on. Turning time-based
+  // off leaves per-side untouched so flipping it back doesn't lose the setting.
+  function handleTimeBasedToggle() {
+    const isTimeBased = !stats.isTimeBased
+    const prev = { isTimeBased: stats.isTimeBased, isPerSide: stats.isPerSide }
+    setStats((s) => ({ ...s, isTimeBased }))
+    updateExerciseTimeBased(exerciseId, isTimeBased, stats.isPerSide).catch(() => {
+      setStats((s) => ({ ...s, ...prev }))
+    })
+  }
+
+  function handlePerSideToggle() {
+    const isPerSide = !stats.isPerSide
+    const prev = { isTimeBased: stats.isTimeBased, isPerSide: stats.isPerSide }
+    setStats((s) => ({ ...s, isPerSide }))
+    updateExerciseTimeBased(exerciseId, stats.isTimeBased, isPerSide).catch(() => {
+      setStats((s) => ({ ...s, ...prev }))
     })
   }
 
@@ -124,6 +145,24 @@ export default function ExerciseDetailPage() {
         >
           Assisted
         </button>
+        <button
+          type="button"
+          className={stats.isTimeBased ? 'assisted-toggle active' : 'assisted-toggle'}
+          onClick={handleTimeBasedToggle}
+          title="Time-based exercises log a hold in seconds instead of reps, with an inline countdown"
+        >
+          Timed
+        </button>
+        {stats.isTimeBased && (
+          <button
+            type="button"
+            className={stats.isPerSide ? 'assisted-toggle active' : 'assisted-toggle'}
+            onClick={handlePerSideToggle}
+            title="The workout timer re-prompts for a second side"
+          >
+            Per side
+          </button>
+        )}
       </p>
 
       {cues.map((c) => (

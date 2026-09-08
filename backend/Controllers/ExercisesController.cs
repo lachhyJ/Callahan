@@ -195,7 +195,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, 0, 0, 0, 0, []));
         }
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
@@ -214,6 +214,6 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
     }
 }
