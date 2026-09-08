@@ -277,7 +277,9 @@ function AppRoutes() {
     <>
       {isAuthenticated && <TopBar />}
       {isAuthenticated && <ProvisioningBanner />}
-      <div className={contentClassName}>
+      {/* id: the sole scroll container (see .app-content) — pages that need to
+          watch scroll position listen on this, not window. */}
+      <div id="app-scroll" className={contentClassName}>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/" element={<ProtectedRoute><WorkoutTemplatesPage /></ProtectedRoute>} />

@@ -310,8 +310,10 @@ export default function ActiveWorkoutPage() {
       setShowMiniBar(headerRef.current.getBoundingClientRect().bottom < 0)
     }
     handleScroll()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => window.removeEventListener('scroll', handleScroll)
+    // The scroll container is #app-scroll now, not the document (see .app-content).
+    const scroller = document.getElementById('app-scroll') ?? window
+    scroller.addEventListener('scroll', handleScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', handleScroll)
   }, [exercises])
 
   // Best-effort: a taper nudge is a nice-to-have, not core to logging a

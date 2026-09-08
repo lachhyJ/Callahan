@@ -7,12 +7,11 @@
   }
 }
 
-/* Sticky so Back/Resume/Logout stay reachable past the top of the viewport
-   on any page long enough to scroll — previously only an in-page back-link
-   did this, leaving the two visually and behaviorally out of sync. */
+/* A fixed row of the app shell (see #root) — Back/Resume/Logout stay put
+   while only .app-content scrolls beneath it. It used to be position:sticky
+   over a scrolling document, which put the scroll indicator next to Logout. */
 .top-bar {
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   z-index: var(--z-sticky);
   display: flex;
   justify-content: space-between;
@@ -103,6 +102,7 @@
    actually reaches Lachlan once the profile lapses and the app can no
    longer open at all; this is only reachable in the days before that. */
 .provisioning-banner {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -111,6 +111,18 @@
   background: var(--warning-bg);
   padding: var(--space-xs) var(--space-lg);
   font-size: var(--text-sm);
+}
+
+/* The only scrolling element: the app shell (#root) is a fixed-height flex
+   column, the TopBar and bottom nav don't move, this fills the gap and
+   scrolls. min-height:0 lets it shrink inside the flex column so overflow
+   actually engages. */
+.app-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .bottom-tab-bar {

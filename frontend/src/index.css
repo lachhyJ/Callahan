@@ -254,7 +254,12 @@ body {
   margin: 0 auto;
   text-align: center;
   border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  /* Fixed-height app shell: the TopBar and bottom nav stay put and only
+     .app-content scrolls. Without this the whole document scrolls and the
+     WKWebView's overlay scroll indicator runs the full page height, showing
+     up alongside the TopBar's Logout button. */
+  height: 100svh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;

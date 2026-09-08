@@ -57,7 +57,12 @@ for (const { name, path } of SCREENS) {
     // not the mid-input states the "no live-preview" learned constraint is about.
     await page.waitForLoadState('networkidle')
     await hideBuildTag(page)
-    await expect(page).toHaveScreenshot(`${name}.png`, { fullPage: true })
+    // Viewport shot, not fullPage: the app shell is now fixed-height with an
+    // inner scroll container (#app-scroll), so the document doesn't scroll and
+    // fullPage would just be the viewport anyway. The top of each screen is the
+    // stable part worth guarding — content further down carried the seed's
+    // daily date drift regardless.
+    await expect(page).toHaveScreenshot(`${name}.png`)
   })
 }
 
@@ -69,6 +74,6 @@ test.describe('logged out', () => {
 
   test('login screen', async ({ page }) => {
     await page.goto('/login')
-    await expect(page).toHaveScreenshot('login.png', { fullPage: true })
+    await expect(page).toHaveScreenshot('login.png')
   })
 })
