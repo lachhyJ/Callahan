@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 // A confirm dialog that can tell you what kind of decision you are making.
 //
@@ -48,7 +49,11 @@ export default function ConfirmSheet({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onCancel])
 
-  return (
+  // Portalled to <body>: these are position:fixed overlays, and rendering them
+  // inside .app-content (the scroll container) means any stacking context that
+  // lands on that element — e.g. -webkit-overflow-scrolling on WKWebView — traps
+  // them behind the bottom tab bar.
+  return createPortal(
     <>
       <div
         className={open ? 'sheet-backdrop visible' : 'sheet-backdrop'}
@@ -74,6 +79,7 @@ export default function ConfirmSheet({
           </button>
         </div>
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
