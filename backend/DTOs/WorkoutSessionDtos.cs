@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record ExerciseSetDto(int Id, int ExerciseId, string ExerciseName, int Reps, decimal WeightKg, int SetOrder, string SetType);
+public record ExerciseSetDto(int Id, int ExerciseId, string ExerciseName, int Reps, decimal WeightKg, int SetOrder, string SetType, int? DurationSeconds = null);
 
 public record ExerciseNoteDto(int ExerciseId, string ExerciseName, string Notes);
 
@@ -12,7 +12,7 @@ public record UpdateWorkoutSessionNameRequest(string? Name);
 
 public record DeletedWorkoutSessionDto(int Id, DateOnly Date, string? Name, int SetCount, string? TemplateName, string? TemplateSubtitle, string? CategorySummary, DateTime DeletedAt);
 
-public record CreateExerciseSetRequest(int ExerciseId, int Reps, decimal WeightKg, int SetOrder, string SetType);
+public record CreateExerciseSetRequest(int ExerciseId, int Reps, decimal WeightKg, int SetOrder, string SetType, int? DurationSeconds = null);
 
 public record CreateExerciseNoteRequest(int ExerciseId, string Notes);
 

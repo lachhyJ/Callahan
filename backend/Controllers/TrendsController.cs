@@ -31,8 +31,11 @@ public class TrendsController : ControllerBase
         // the taper section, the push/pull comparison, and the load-vs-recovery
         // input all count working sets only. This query didn't, so the Volume
         // chart read 3-7% high and disagreed with all of them.
+        // Time sets (DurationSeconds != null) hold Reps = 0, so they add no
+        // volume - dropped alongside warmups to keep this consistent with every
+        // other volume read.
         var sets = await _db.ExerciseSets
-            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= earliestMonthStart)
+            .Where(s => s.SetType != SetType.Warmup && s.DurationSeconds == null && s.WorkoutSession.Date >= earliestMonthStart)
             .Include(s => s.WorkoutSession)
             .ToListAsync();
 
@@ -89,7 +92,7 @@ public class TrendsController : ControllerBase
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
         var sets = await _db.ExerciseSets
-            .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= earliestMonthStart)
+            .Where(s => s.SetType != SetType.Warmup && s.DurationSeconds == null && s.WorkoutSession.Date >= earliestMonthStart)
             .Include(s => s.WorkoutSession)
             .Include(s => s.Exercise)
             .ToListAsync();
@@ -98,8 +101,10 @@ public class TrendsController : ControllerBase
         // so it's derived from the FULL history — deriving it from the window
         // let the same lift show as set volume in the monthly report and as
         // e1RM here, purely because the two looked at different date ranges.
+        // Time sets are excluded: a 0-load 0-rep row would force every exercise
+        // that has one onto the Assisted basis.
         var basisByExercise = (await _db.ExerciseSets
-                .Where(s => s.SetType != SetType.Warmup)
+                .Where(s => s.SetType != SetType.Warmup && s.DurationSeconds == null)
                 .Select(s => new { s.ExerciseId, s.WeightKg, s.Reps })
                 .ToListAsync())
             .GroupBy(s => s.ExerciseId)
@@ -244,6 +249,7 @@ public class TrendsController : ControllerBase
         var sets = await _db.ExerciseSets
             .Where(s => s.WorkoutSession.Date >= earliestMonthStart
                 && s.SetType != SetType.Warmup
+                && s.DurationSeconds == null
                 && programIds.Contains(s.ExerciseId))
             .Select(s => new SeasonStrengthBuilder.LiftSetInput(
                 s.ExerciseId, s.Exercise.Name, s.WorkoutSession.Date, s.Reps, s.WeightKg))

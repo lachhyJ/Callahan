@@ -21,6 +21,11 @@ public class WorkoutTemplateExercise
     public int RestSeconds { get; set; }
     public string? Tempo { get; set; }
 
+    // The prescribed hold for a time-based slot, in seconds (e.g. 45). Null on
+    // rep-based slots. TargetReps stays a required string but is "" / "—" for
+    // time-based slots.
+    public int? TargetDurationSeconds { get; set; }
+
     // A standing cue for this program slot (e.g. "Workout 2's Incline DB
     // Press"), not tied to any single session — distinct from ExerciseNote,
     // which is per-session. Edited in place from the active workout or the

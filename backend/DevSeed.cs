@@ -76,6 +76,24 @@ public static class DevSeed
                     for (var s = 0; s < totalSets; s++)
                     {
                         var isWarmup = s < te.WarmupSets;
+
+                        // Time-held exercises log a hold, not a rep count: Reps
+                        // and WeightKg stay 0 (the convention every volume/e1RM
+                        // read site keys off DurationSeconds != null).
+                        if (te.Exercise.IsTimeBased)
+                        {
+                            session.Sets.Add(new ExerciseSet
+                            {
+                                ExerciseId = te.ExerciseId,
+                                SetOrder = s,
+                                Reps = 0,
+                                WeightKg = 0m,
+                                DurationSeconds = te.TargetDurationSeconds ?? 30,
+                                SetType = isWarmup ? SetType.Warmup : SetType.Normal,
+                            });
+                            continue;
+                        }
+
                         var warmupFactor = isWarmup ? 0.5m + 0.15m * s : 1.0m;
                         var progressLoad = Math.Round((decimal)progress * 8m, 1);
                         var weight = te.Exercise.IsAssisted

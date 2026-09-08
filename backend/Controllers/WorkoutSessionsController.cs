@@ -115,7 +115,7 @@ public class WorkoutSessionsController : ControllerBase
             CategorySummary(session.Sets),
             session.Sets
                 .OrderBy(set => set.SetOrder)
-                .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString()))
+                .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString(), set.DurationSeconds))
                 .ToList(),
             notes);
 
@@ -136,8 +136,10 @@ public class WorkoutSessionsController : ControllerBase
         var currentWeekStart = MondayOf(today);
         var earliestWeekStart = currentWeekStart.AddDays(-7 * (weeks - 1));
 
+        // Time sets (DurationSeconds != null) carry Reps = 0, so they add nothing
+        // to volume anyway - excluded explicitly to match every other volume read.
         var sets = await _db.ExerciseSets
-            .Where(s => s.WorkoutSession.Date >= earliestWeekStart)
+            .Where(s => s.WorkoutSession.Date >= earliestWeekStart && s.DurationSeconds == null)
             .Include(s => s.WorkoutSession)
             .ToListAsync();
 
@@ -172,6 +174,11 @@ public class WorkoutSessionsController : ControllerBase
             return BadRequest(new { error = "Unknown set type." });
         }
 
+        if (request.Sets.Any(s => s.DurationSeconds is < 0))
+        {
+            return BadRequest(new { error = "Set duration can't be negative." });
+        }
+
         // SetOrder is assigned here, not trusted from the client: the 0-based
         // position of each set within its exercise, in the order sent (which is
         // display / logged order). Guarantees a unique, contiguous, 0-based
@@ -184,13 +191,19 @@ public class WorkoutSessionsController : ControllerBase
         {
             int order = nextOrder.GetValueOrDefault(s.ExerciseId);
             nextOrder[s.ExerciseId] = order + 1;
+            // A time set records a hold, not a rep count: force Reps and WeightKg
+            // to 0 so nothing downstream reads a stale count off a duration row
+            // (DurationSeconds != null is the sole marker every volume/e1RM site
+            // keys off).
+            var isTimeSet = s.DurationSeconds.HasValue;
             return new ExerciseSet
             {
                 ExerciseId = s.ExerciseId,
-                Reps = s.Reps,
-                WeightKg = s.WeightKg,
+                Reps = isTimeSet ? 0 : s.Reps,
+                WeightKg = isTimeSet ? 0m : s.WeightKg,
                 SetOrder = order,
-                SetType = Enum.Parse<SetType>(s.SetType, ignoreCase: true)
+                SetType = Enum.Parse<SetType>(s.SetType, ignoreCase: true),
+                DurationSeconds = s.DurationSeconds
             };
         }).ToList();
 

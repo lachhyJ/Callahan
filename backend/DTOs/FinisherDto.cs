@@ -1,3 +1,3 @@
 namespace Callahan.Api.DTOs;
 
-public record FinisherDto(int ExerciseId, string ExerciseName, int TargetSets, string TargetReps, int RestSeconds, bool IsAssisted, List<PreviousSetDto> PreviousSets);
+public record FinisherDto(int ExerciseId, string ExerciseName, int TargetSets, string TargetReps, int RestSeconds, bool IsAssisted, bool IsTimeBased, bool IsPerSide, List<PreviousSetDto> PreviousSets);

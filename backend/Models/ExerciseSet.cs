@@ -28,4 +28,11 @@ public class ExerciseSet
     public decimal WeightKg { get; set; }
     public int SetOrder { get; set; }
     public SetType SetType { get; set; } = SetType.Normal;
+
+    // The logged hold for a time set, in seconds. Non-null marks this row as a
+    // time set: Reps is stored as 0 on those and must not be read as a count.
+    // Reps stays a non-nullable int (the Reps = 0 convention avoids an
+    // int -> int? migration across every read site); volume and e1RM skip any
+    // row with a non-null DurationSeconds.
+    public int? DurationSeconds { get; set; }
 }

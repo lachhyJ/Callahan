@@ -31,7 +31,9 @@ public class ExercisesController : ControllerBase
                 e.Name,
                 e.Category.ToString(),
                 e.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault(),
-                e.IsAssisted))
+                e.IsAssisted,
+                e.IsTimeBased,
+                e.IsPerSide))
             .ToListAsync();
 
         return Ok(exercises);
@@ -51,12 +53,12 @@ public class ExercisesController : ControllerBase
 
         var exercises = await _db.Exercises
             .OrderBy(e => e.Category).ThenBy(e => e.Name)
-            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted })
+            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide })
             .ToListAsync();
 
         var result = exercises
             .Select(e => new PickableExerciseDto(
-                e.Id, e.Name, e.Category.ToString(), e.IsAssisted,
+                e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide,
                 templateNamesByExercise.GetValueOrDefault(e.Id, [])))
             .ToList();
 
@@ -75,7 +77,7 @@ public class ExercisesController : ControllerBase
         _db.Exercises.Add(exercise);
         await _db.SaveChangesAsync();
 
-        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted));
+        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide));
     }
 
     [HttpPut("{id}/assisted")]
@@ -85,6 +87,23 @@ public class ExercisesController : ControllerBase
         if (exercise is null) return NotFound();
 
         exercise.IsAssisted = request.IsAssisted;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Time-based (held for time, not counted in reps) and its per-side flag are
+    // set together from the exercise detail screen, next to the assisted toggle.
+    // IsPerSide only means anything while IsTimeBased is on, but it's stored
+    // independently so turning time-based off and back on doesn't lose it.
+    [HttpPut("{id}/time-based")]
+    public async Task<IActionResult> UpdateTimeBased(int id, UpdateExerciseTimeBasedRequestDto request)
+    {
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        exercise.IsTimeBased = request.IsTimeBased;
+        exercise.IsPerSide = request.IsPerSide;
         await _db.SaveChangesAsync();
 
         return NoContent();
@@ -138,7 +157,7 @@ public class ExercisesController : ControllerBase
                     sid,
                     sessionSets[0].WorkoutSession.Date,
                     notes.GetValueOrDefault(sid),
-                    sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString())).ToList());
+                    sessionSets.Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString(), s.DurationSeconds)).ToList());
             })
             .ToList();
 
@@ -165,8 +184,12 @@ public class ExercisesController : ControllerBase
 
         var primaryMuscle = exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
+        // Time sets carry no load or rep count (Reps = 0, WeightKg = 0), so they
+        // contribute nothing to any of the figures below and would only drag a
+        // Max or a basis toward zero - excluded here, same as every other
+        // strength read site.
         var sets = await _db.ExerciseSets
-            .Where(s => s.ExerciseId == id)
+            .Where(s => s.ExerciseId == id && s.DurationSeconds == null)
             .Include(s => s.WorkoutSession)
             .ToListAsync();
 

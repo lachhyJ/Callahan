@@ -117,8 +117,11 @@ public class MonthlyReportBuilder
 
     private async Task<LoadProgressionSectionDto> BuildLoadProgressionAsync(DateOnly monthStart, DateOnly monthEnd)
     {
+        // Time sets excluded: they carry no load or reps, so they contribute
+        // nothing to a PR, mover or stall and a 0/0 row would force the
+        // exercise's basis to Assisted (see LiftProgress.BasisFor).
         var allSets = await _db.ExerciseSets
-            .Where(s => s.SetType != SetType.Warmup)
+            .Where(s => s.SetType != SetType.Warmup && s.DurationSeconds == null)
             .Include(s => s.WorkoutSession)
             .Include(s => s.Exercise)
             .ToListAsync();
@@ -399,13 +402,13 @@ public class MonthlyReportBuilder
             // baseline pattern.
             var baselineStart = taperStart.AddDays(-28);
             var baselineSets = await _db.ExerciseSets
-                .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart)
+                .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart && s.DurationSeconds == null)
                 .Include(s => s.WorkoutSession)
                 .ToListAsync();
             var baselineWeeklyVolume = baselineSets.Sum(s => s.WeightKg * s.Reps) / 4m;
 
             var taperWindowSets = await _db.ExerciseSets
-                .Where(s => s.WorkoutSession.Date >= overlapStart && s.WorkoutSession.Date <= overlapEnd)
+                .Where(s => s.WorkoutSession.Date >= overlapStart && s.WorkoutSession.Date <= overlapEnd && s.DurationSeconds == null)
                 .Include(s => s.WorkoutSession)
                 .ToListAsync();
             var taperWindowWeeks = Math.Max(overlapDays / 7m, 0.1m);

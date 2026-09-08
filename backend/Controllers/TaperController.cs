@@ -134,7 +134,7 @@ public class TaperController : ControllerBase
 
         var baselineSets = await _db.ExerciseSets
             .Include(s => s.WorkoutSession)
-            .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart)
+            .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart && s.DurationSeconds == null)
             .ToListAsync();
         var gymBaselineVolume = baselineSets.Sum(s => s.WeightKg * s.Reps) / 4m;
 
@@ -149,7 +149,7 @@ public class TaperController : ControllerBase
 
         var thisWeekSets = await _db.ExerciseSets
             .Include(s => s.WorkoutSession)
-            .Where(s => s.WorkoutSession.Date >= weekStart && s.WorkoutSession.Date < weekEndExclusive)
+            .Where(s => s.WorkoutSession.Date >= weekStart && s.WorkoutSession.Date < weekEndExclusive && s.DurationSeconds == null)
             .ToListAsync();
         var gymThisWeekVolume = thisWeekSets.Sum(s => s.WeightKg * s.Reps);
 

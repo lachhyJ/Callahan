@@ -2,7 +2,7 @@ namespace Callahan.Api.DTOs;
 
 public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle);
 
-public record PreviousSetDto(int SetOrder, int Reps, decimal WeightKg, string SetType);
+public record PreviousSetDto(int SetOrder, int Reps, decimal WeightKg, string SetType, int? DurationSeconds = null);
 
 public record WorkoutTemplateExerciseStartDto(
     int WorkoutTemplateExerciseId,
@@ -16,6 +16,9 @@ public record WorkoutTemplateExerciseStartDto(
     string? Cue,
     string? PrimaryMuscle,
     bool IsAssisted,
+    bool IsTimeBased,
+    bool IsPerSide,
+    int? TargetDurationSeconds,
     List<PreviousSetDto> PreviousSets);
 
 public record WorkoutTemplateStartDto(

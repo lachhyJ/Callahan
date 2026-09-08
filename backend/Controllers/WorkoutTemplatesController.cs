@@ -56,13 +56,14 @@ public class WorkoutTemplatesController : ControllerBase
                 var previousSets = lastSession?.Sets
                     .Where(s => s.ExerciseId == te.ExerciseId)
                     .OrderBy(s => s.SetOrder)
-                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString()))
+                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString(), s.DurationSeconds))
                     .ToList() ?? [];
 
                 var primaryMuscle = te.Exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
                 return new WorkoutTemplateExerciseStartDto(
-                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle, te.Exercise.IsAssisted, previousSets);
+                    te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
+                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.TargetDurationSeconds, previousSets);
             })
             .ToList();
 
