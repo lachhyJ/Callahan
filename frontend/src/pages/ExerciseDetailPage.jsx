@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName, updateExerciseTimeBased } from '../api/client'
+import CueInput from '../components/CueInput'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
 import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
@@ -166,15 +167,13 @@ export default function ExerciseDetailPage() {
       </p>
 
       {cues.map((c) => (
-        <input
+        <CueInput
           key={c.workoutTemplateExerciseId}
-          type="text"
-          className="cue-input"
           placeholder={cues.length > 1 ? `What to focus on for ${c.templateName}…` : 'What to focus on for this exercise…'}
           value={c.cue ?? ''}
           onChange={(e) => updateCueLocal(c.workoutTemplateExerciseId, e.target.value)}
           onBlur={() => handleCueBlur(c.workoutTemplateExerciseId, c.cue ?? '')}
-          aria-label={cues.length > 1 ? `Focus cue for ${c.templateName}` : 'Focus cue for this exercise'}
+          ariaLabel={cues.length > 1 ? `Focus cue for ${c.templateName}` : 'Focus cue for this exercise'}
         />
       ))}
 

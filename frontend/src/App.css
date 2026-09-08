@@ -1402,6 +1402,13 @@ td {
   font-size: var(--text-sm);
   font-style: italic;
   transition: border-color var(--duration-fast) var(--ease-out);
+  /* Rendered as an auto-growing <textarea> (see CueInput) so a long cue wraps
+     and stays fully readable instead of scrolling out of a one-line input. */
+  font-family: inherit;
+  line-height: 1.4;
+  display: block;
+  resize: none;
+  overflow: hidden;
 
   &:focus {
     border-bottom-color: var(--border);

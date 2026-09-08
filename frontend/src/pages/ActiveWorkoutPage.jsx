@@ -9,6 +9,7 @@ import { cancelScheduledBeep, isNativeAudio, playBeepNow, restAudioDiagnostics, 
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
+import CueInput from '../components/CueInput'
 import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock } from '../utils/format'
@@ -1253,14 +1254,12 @@ export default function ActiveWorkoutPage() {
             </button>
           </div>
           {ex.workoutTemplateExerciseId && (
-            <input
-              type="text"
-              className="cue-input"
+            <CueInput
               placeholder="What to focus on for this exercise…"
               value={ex.cue}
               onChange={(e) => updateCueLocal(exIdx, e.target.value)}
               onBlur={() => handleCueBlur(exIdx)}
-              aria-label={`Focus cue for ${ex.exerciseName}`}
+              ariaLabel={`Focus cue for ${ex.exerciseName}`}
             />
           )}
           <p className="target-reps">
