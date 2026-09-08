@@ -8,7 +8,7 @@ import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
-import { isFieldActivity } from '../utils/fieldSession'
+import { activityDots } from '../utils/calendarGlyphs'
 import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
@@ -16,43 +16,8 @@ import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, Fla
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
-// Shape encodes the session subtype within a family dot's colour. A shared
-// 4-shape vocabulary (disc / triangle / diamond / ring) is reused across
-// Running and Ultimate — colour separates the families, so the shapes don't
-// need to. Ultimate's 5 classification types are still grouped down to keep
-// the read easy (Solo / Throws+Pod / Club Training+Game — disc reads as a
-// disc, fitting Solo); unclassified activities of either family fall back to
-// that family's misc shape.
-const RUNNING_SHAPE_CLASS_BY_TYPE_NAME = {
-  'High Speed Intervals': 'calendar-dot--triangle',
-  'Speed & Acceleration': 'calendar-dot--diamond',
-  'Easy Aerobic Run': 'calendar-dot--disc',
-}
-const RUNNING_MISC_SHAPE = 'calendar-dot--ring' // unclassified or any other run
-
-// Field sessions render in the run lane (blue) whatever Garmin recorded them as
-// — "field workouts take what were the run glyphs". Own shape sub-map so Field 1
-// vs Field 2 still read apart.
-const FIELD_SHAPE_CLASS_BY_TYPE_NAME = {
-  'Field 1 - Acceleration & Jump Quality': 'calendar-dot--triangle',
-  'Field 2 - Repeat Effort & COD': 'calendar-dot--diamond',
-}
-const FIELD_MISC_SHAPE = 'calendar-dot--ring'
-
-const ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME = {
-  Solo: 'calendar-dot--disc',
-  Throws: 'calendar-dot--ring',
-  Pod: 'calendar-dot--ring',
-  'Club Training': 'calendar-dot--triangle',
-  Game: 'calendar-dot--triangle',
-}
-const ULTIMATE_MISC_SHAPE = 'calendar-dot--disc'
-
-// First classified activity of the day wins the shape.
-function dotShapeClass(activities, map, fallback) {
-  const classified = activities.find((a) => a.activitySessionTypeName)
-  return classified ? map[classified.activitySessionTypeName] ?? fallback : fallback
-}
+// Calendar day-cell glyphs (shape maps + the multi-tag fan-out) live in
+// ../utils/calendarGlyphs.
 
 // Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
@@ -324,16 +289,11 @@ export default function DashboardPage() {
             const iso = isoDate(date)
             const entry = byDate.get(iso)
             const hasWorkout = entry?.workouts.length > 0
-            const dayActivities = entry?.runs ?? []
-            // Field sessions leave the Ultimate/Running lanes and get their own
-            // blue (run-lane) glyph, whichever Garmin type recorded them.
-            const fieldActivities = dayActivities.filter(isFieldActivity)
-            const hasField = fieldActivities.length > 0
-            const runningActivities = dayActivities.filter((r) => r.type === 'Running' && !isFieldActivity(r))
-            const hasRunning = runningActivities.length > 0
-            const ultimateActivities = dayActivities.filter((r) => r.type === 'Ultimate' && !isFieldActivity(r))
-            const hasUltimate = ultimateActivities.length > 0
-            const hasData = hasWorkout || hasRunning || hasUltimate || hasField
+            // One dot per distinct coloured shape across every session-type tag
+            // on the day's activities — a Field 1 + Throws activity shows both a
+            // blue triangle and a teal ring.
+            const dots = activityDots(entry?.runs ?? [])
+            const hasData = hasWorkout || dots.length > 0
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
 
@@ -359,9 +319,7 @@ export default function DashboardPage() {
                 {dayNumber}
                 <span className="calendar-dots">
                   {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
-                  {hasField && <span className={`calendar-dot calendar-dot-run ${dotShapeClass(fieldActivities, FIELD_SHAPE_CLASS_BY_TYPE_NAME, FIELD_MISC_SHAPE)}`} />}
-                  {hasRunning && <span className={`calendar-dot calendar-dot-run ${dotShapeClass(runningActivities, RUNNING_SHAPE_CLASS_BY_TYPE_NAME, RUNNING_MISC_SHAPE)}`} />}
-                  {hasUltimate && <span className={`calendar-dot calendar-dot-ultimate ${dotShapeClass(ultimateActivities, ULTIMATE_SHAPE_CLASS_BY_TYPE_NAME, ULTIMATE_MISC_SHAPE)}`} />}
+                  {dots.map((d) => <span key={d.key} className={d.className} />)}
                 </span>
               </button>
             )
