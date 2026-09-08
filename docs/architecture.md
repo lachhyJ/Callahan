@@ -106,7 +106,10 @@ SQLite via EF Core. The shape splits roughly three ways:
 
 **Gym.** `WorkoutTemplate` → `WorkoutTemplateExercise` defines the program;
 `WorkoutSession` → `ExerciseSet` records what was actually done, with a nullable link back
-to the template. `Exercise` carries muscle-group tags and an explicit assisted flag.
+to the template. `Exercise` carries muscle-group tags and boolean flags for assisted and
+time-based movements. A time-based set (a plank, a hold) records a nullable
+`ExerciseSet.DurationSeconds` instead of a rep count, and every volume / e1RM read filters
+those rows out.
 
 **Activities.** `Activity` covers runs and Ultimate games, with `ActivitySessionType` as a
 shared classification table across both. Two child entities hang off it: `ActivityLap`
