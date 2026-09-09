@@ -9,7 +9,7 @@ import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
-import { trackAction } from '../usage'
+import { trackAction, trackTiming } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
 
 
@@ -163,7 +163,11 @@ export default function DashboardPage() {
     // "Callahan.Api.RequestTiming" logs: a large gap between this number and
     // the server-side elapsed is network/tunnel/cold-start, not query cost.
     const t0 = performance.now()
-    const mark = (label) => console.info(`[perf] dashboard ${label} ${Math.round(performance.now() - t0)}ms`)
+    const mark = (label) => {
+      const ms = performance.now() - t0
+      console.info(`[perf] dashboard ${label} ${Math.round(ms)}ms`)
+      if (label === 'populated') trackTiming('dashboard-populated', ms)
+    }
     const timed = (name, p) => p.then((r) => { mark(name); return r })
     Promise.all([timed('workoutsessions', getWorkoutSessions()), timed('activities', getActivities())])
       .then(([w, a]) => {

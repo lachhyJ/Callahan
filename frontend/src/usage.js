@@ -95,6 +95,24 @@ export function trackAction(action, detail = null) {
   scheduleFlush()
 }
 
+// Temporary launch-perf instrumentation (Sep 2026). Records a client-measured
+// duration (mount -> data populated, in ms) through the same pipe as everything
+// else, so a slow launch in the wild is captured server-side without a debugger
+// attached. Stored as an action row: action "perf", detail the label, and the
+// elapsed in dwellMs (which the server already validates as a 0..86.4M ms
+// duration). Query UsageEvents where Action = 'perf' for a given time window.
+export function trackTiming(label, ms) {
+  buffer.push({
+    kind: 'action',
+    path: currentPath ?? '/',
+    action: 'perf',
+    detail: label,
+    dwellMs: Math.round(ms),
+    at: Date.now(),
+  })
+  scheduleFlush()
+}
+
 // Called once from App. Pauses the dwell clock while the tab is hidden and
 // flushes on the way out, since a PWA is usually backgrounded rather than
 // closed and an un-flushed buffer would otherwise be lost.

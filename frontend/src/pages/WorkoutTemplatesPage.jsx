@@ -3,7 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { getWorkoutTemplates } from '../api/client'
 import { loadActiveWorkout } from '../activeWorkout'
 import { unlockAudio } from '../audio'
-import { trackAction } from '../usage'
+import { trackAction, trackTiming } from '../usage'
 import { RunIcon } from '../icons'
 
 export default function WorkoutTemplatesPage() {
@@ -18,7 +18,12 @@ export default function WorkoutTemplatesPage() {
     // cold-start / network, not data volume — the cleanest probe for that.
     const t0 = performance.now()
     getWorkoutTemplates()
-      .then((t) => { console.info(`[perf] workouts populated ${Math.round(performance.now() - t0)}ms`); setTemplates(t) })
+      .then((t) => {
+        const ms = performance.now() - t0
+        console.info(`[perf] workouts populated ${Math.round(ms)}ms`)
+        trackTiming('workouts-populated', ms)
+        setTemplates(t)
+      })
       .catch((err) => setError(err.message))
   }, [activeWorkout])
 
