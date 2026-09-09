@@ -43,7 +43,8 @@ public class MonthlyReportBuilderTests : IDisposable
     }
 
     private Activity AddActivity(DateOnly date, ActivityType type, string sessionTypeName,
-        decimal? km = null, int seconds = 1800, decimal? highSpeedM = null, int activeLaps = 0)
+        decimal? km = null, int seconds = 1800, decimal? highSpeedM = null, int activeLaps = 0,
+        decimal? trainingLoad = null)
     {
         var activity = new Activity
         {
@@ -53,6 +54,7 @@ public class MonthlyReportBuilderTests : IDisposable
             DurationSeconds = seconds,
             DistanceKm = km,
             HighSpeedDistanceM = highSpeedM,
+            ActivityTrainingLoad = trainingLoad,
             ActivitySessionTypeId = SessionType(sessionTypeName, type).Id,
         };
         _db.Activities.Add(activity);
@@ -223,18 +225,19 @@ public class MonthlyReportBuilderTests : IDisposable
     }
 
     [Fact]
-    public async Task Ultimate_TotalsMonthDistance_SplitsByType_AndCountsSessionsWithoutGps()
+    public async Task Ultimate_TotalsMonthDistance_SplitsByType_CountsNoGps_AndSumsTrainingLoad()
     {
-        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 3.2m);
-        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 4.3m);
-        AddActivity(Aug.AddDays(12), ActivityType.Ultimate, "Pod", km: 7.71m);
+        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 3.2m, trainingLoad: 85m);
+        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 4.3m, trainingLoad: 79m);
+        AddActivity(Aug.AddDays(12), ActivityType.Ultimate, "Pod", km: 7.71m);   // not scored by the watch
         AddActivity(Aug.AddDays(20), ActivityType.Ultimate, "Solo", km: null);   // indoor / no GPS
-        AddActivity(new DateOnly(2026, 7, 30), ActivityType.Ultimate, "Game", km: 9m); // prior month, ignored
+        AddActivity(new DateOnly(2026, 7, 30), ActivityType.Ultimate, "Game", km: 9m, trainingLoad: 99m); // prior month
 
         var report = await Build();
 
         Assert.Equal(15.21m, report.Ultimate.TotalKm);
         Assert.Equal(1, report.Ultimate.SessionsWithoutDistance);
+        Assert.Equal(164m, report.Ultimate.TrainingLoad);   // 85 + 79, prior month excluded
 
         var game = report.Ultimate.ByType.Single(t => t.TypeName == "Game");
         Assert.Equal(7.5m, game.Km);

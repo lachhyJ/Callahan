@@ -55,13 +55,19 @@ public record TournamentBandDto(string Name, DateOnly Start, DateOnly End);
 // One calendar month of Ultimate distance: whole-recording GPS km, a
 // per-session-type breakdown of what made it up, a count of Ultimate sessions
 // that carried no GPS distance (indoor / non-GPS / manual - not estimated),
-// and run km alongside for a combined view. Descriptive only.
+// run km alongside for a combined view, and Garmin's summed activity training
+// load - TotalTrainingLoad over every scored session that month,
+// UltimateTrainingLoad the Ultimate share of it. Both null for a month with
+// no scored session (so a client breaks the line rather than plotting a 0).
+// Descriptive only.
 public record UltimateDistanceMonthDto(
     DateOnly MonthStart,
     decimal UltimateKm,
     decimal RunKm,
     int UltimateSessionsWithoutDistance,
-    List<UltimateDistanceByTypeDto> ByType);
+    List<UltimateDistanceByTypeDto> ByType,
+    decimal? UltimateTrainingLoad,
+    decimal? TotalTrainingLoad);
 
 // Km is 0 for a type whose sessions this month all lacked GPS distance -
 // SessionsWithoutDistance then carries the count. Sessions is every session of

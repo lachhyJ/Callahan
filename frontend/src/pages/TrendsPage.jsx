@@ -9,6 +9,7 @@ import LoadVsWellnessChart from '../components/LoadVsWellnessChart'
 import SeasonStrengthChart from '../components/SeasonStrengthChart'
 import UltimateDistanceChart from '../components/UltimateDistanceChart'
 import UltimateTypeBreakdown from '../components/UltimateTypeBreakdown'
+import TrainingLoadChart from '../components/TrainingLoadChart'
 import MuscleBalanceSection from '../components/MuscleBalanceSection'
 import { formatVolume } from '../utils/format'
 
@@ -78,6 +79,16 @@ function ultimateDistanceSummary(months) {
   return `${line}.`
 }
 
+// Garmin's summed activity load over the window, and how much of it was
+// Ultimate. Descriptive — no acute/chronic ratio, no verdict.
+function trainingLoadSummary(months) {
+  const total = months.reduce((sum, m) => sum + (m.totalTrainingLoad ?? 0), 0)
+  const ultimate = months.reduce((sum, m) => sum + (m.ultimateTrainingLoad ?? 0), 0)
+  if (total === 0) return null
+  const share = Math.round((ultimate / total) * 100)
+  return `Garmin training load totalled ${Math.round(total)} over the window, ${share}% of it from Ultimate.`
+}
+
 export default function TrendsPage() {
   const [months, setMonths] = useState(null)
   const [liftTrends, setLiftTrends] = useState(null)
@@ -103,6 +114,7 @@ export default function TrendsPage() {
   const loadSummary = showLoadTrend ? readinessSummary(loadTrend) : null
 
   const showUltimateDistance = ultimateDistance?.some((m) => m.ultimateKm > 0 || m.ultimateSessionsWithoutDistance > 0)
+  const showTrainingLoad = ultimateDistance?.some((m) => m.totalTrainingLoad != null)
 
   return (
     <main className="page">
@@ -155,6 +167,15 @@ export default function TrendsPage() {
           <UltimateDistanceChart months={ultimateDistance} />
           <p className="trend-summary">{ultimateDistanceSummary(ultimateDistance)}</p>
           <UltimateTypeBreakdown months={ultimateDistance} />
+        </div>
+      )}
+
+      {showTrainingLoad && (
+        <div className="section-gap">
+          <TrainingLoadChart months={ultimateDistance} />
+          {trainingLoadSummary(ultimateDistance) && (
+            <p className="trend-summary">{trainingLoadSummary(ultimateDistance)}</p>
+          )}
         </div>
       )}
 

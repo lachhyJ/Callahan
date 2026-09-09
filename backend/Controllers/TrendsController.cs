@@ -282,8 +282,9 @@ public class TrendsController : ControllerBase
     }
 
     // Monthly Ultimate distance (whole-recording GPS km) broken down by session
-    // type, with a count of sessions that carried no GPS distance, and run km
-    // alongside. Whole-recording distance deliberately: most games aren't
+    // type, with a count of sessions that carried no GPS distance, run km
+    // alongside, and Garmin's summed activity training load (total and the
+    // Ultimate share). Whole-recording distance deliberately: most games aren't
     // lap-pressed, so the on-field / live-play split isn't trustworthy per
     // session. Descriptive - the raw material for "how much am I covering
     // month to month".
@@ -308,7 +309,12 @@ public class TrendsController : ControllerBase
             .Select(a => new RunLoad(a.Date, a.DistanceKm!.Value))
             .ToListAsync();
 
-        var result = UltimateDistanceBuilder.Build(today, months, ultimate, runs);
+        var loads = await _db.Activities
+            .Where(a => a.Date >= earliestMonthStart && a.ActivityTrainingLoad != null)
+            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value, a.Type == ActivityType.Ultimate))
+            .ToListAsync();
+
+        var result = UltimateDistanceBuilder.Build(today, months, ultimate, runs, loads);
         return Ok(result);
     }
 

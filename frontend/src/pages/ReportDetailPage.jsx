@@ -187,7 +187,10 @@ export default function ReportDetailPage() {
           <p className="report-empty">No Ultimate logged this month.</p>
         ) : (
           <>
-            <p>{fmt(report.ultimate.totalKm)} km covered on the field this month.</p>
+            <p>
+              {fmt(report.ultimate.totalKm)} km covered on the field this month
+              {report.ultimate.trainingLoad != null && ` · Garmin training load ${Math.round(report.ultimate.trainingLoad)}`}.
+            </p>
             <ul className="report-list">
               {report.ultimate.byType.map((t) => {
                 // Distance is attributed to the primary session type; a type

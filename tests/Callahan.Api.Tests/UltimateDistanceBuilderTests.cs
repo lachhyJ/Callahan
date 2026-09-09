@@ -14,8 +14,9 @@ public class UltimateDistanceBuilderTests
     private static List<UltimateDistanceMonthDto> Build(
         IEnumerable<UltimateDistanceActivity>? ultimate = null,
         IEnumerable<RunLoad>? runs = null,
+        IEnumerable<GarminLoad>? loads = null,
         int months = 3) =>
-        UltimateDistanceBuilder.Build(Today, months, ultimate ?? [], runs ?? []);
+        UltimateDistanceBuilder.Build(Today, months, ultimate ?? [], runs ?? [], loads ?? []);
 
     private static UltimateDistanceActivity Ult(DateOnly date, decimal? km, string type = "Game") => new(date, km, type);
 
@@ -31,7 +32,31 @@ public class UltimateDistanceBuilderTests
             Assert.Equal(0m, m.RunKm);
             Assert.Equal(0, m.UltimateSessionsWithoutDistance);
             Assert.Empty(m.ByType);
+            Assert.Null(m.TotalTrainingLoad);
+            Assert.Null(m.UltimateTrainingLoad);
         });
+    }
+
+    [Fact]
+    public void TrainingLoad_SumsPerMonth_WithUltimateShare_NullWhenNoScoredSession()
+    {
+        var r = Build(loads:
+        [
+            new GarminLoad(new DateOnly(2026, 7, 4), 40m, IsUltimate: false),   // a run
+            new GarminLoad(new DateOnly(2026, 7, 12), 80m, IsUltimate: true),
+            new GarminLoad(new DateOnly(2026, 7, 20), 30m, IsUltimate: true),
+            new GarminLoad(new DateOnly(2026, 8, 2), 55m, IsUltimate: false),
+        ]);
+
+        var jul = r.Single(m => m.MonthStart == Jul);
+        Assert.Equal(150m, jul.TotalTrainingLoad);
+        Assert.Equal(110m, jul.UltimateTrainingLoad);
+
+        var aug = r.Single(m => m.MonthStart == Aug);
+        Assert.Equal(55m, aug.TotalTrainingLoad);
+        Assert.Null(aug.UltimateTrainingLoad);       // scored, but none of it Ultimate
+
+        Assert.Null(r.Single(m => m.MonthStart == Jun).TotalTrainingLoad);   // no scored session
     }
 
     [Fact]

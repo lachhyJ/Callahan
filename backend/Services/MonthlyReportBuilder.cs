@@ -78,16 +78,23 @@ public class MonthlyReportBuilder
     // Monthly Ultimate distance, via the same builder the Trends page uses so
     // the two can't disagree about a month. A 1-month window anchored on the
     // report month; run km isn't wanted here (the Running section already has
-    // it), so an empty run list.
+    // it), so an empty run list. Loads are the month's scored Ultimate
+    // sessions only - the section reports the Ultimate share, not total load.
     private static UltimateSectionDto BuildUltimate(DateOnly monthStart, List<Activity> monthActivities)
     {
         var ultimate = monthActivities
             .Where(a => a.Type == ActivityType.Ultimate)
             .Select(a => new UltimateDistanceActivity(
-                a.Date, a.DistanceKm, a.ActivitySessionType?.Name ?? "Unspecified"));
+                a.Date, a.DistanceKm, a.ActivitySessionType?.Name ?? "Unspecified"))
+            .ToList();
 
-        var row = UltimateDistanceBuilder.Build(monthStart, 1, ultimate, [])[0];
-        return new UltimateSectionDto(row.UltimateKm, row.UltimateSessionsWithoutDistance, row.ByType);
+        var loads = monthActivities
+            .Where(a => a.Type == ActivityType.Ultimate && a.ActivityTrainingLoad != null)
+            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value, true));
+
+        var row = UltimateDistanceBuilder.Build(monthStart, 1, ultimate, [], loads)[0];
+        return new UltimateSectionDto(
+            row.UltimateKm, row.UltimateSessionsWithoutDistance, row.UltimateTrainingLoad, row.ByType);
     }
 
     private static ConsistencySectionDto BuildConsistency(

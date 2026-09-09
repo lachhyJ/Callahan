@@ -69,13 +69,16 @@ public record RunTypeSummaryDto(
 public record RunningSectionDto(List<RunTypeSummaryDto> ByType);
 
 // Whole-recording GPS distance across the month's Ultimate activities, with the
-// per-session-type split that made it up and a count of sessions Garmin logged
-// with no GPS distance (indoor / manual - not estimated). Built by
-// UltimateDistanceBuilder, the same aggregation the Trends page uses, so the
-// two surfaces can't disagree about a month. ByType rows reuse the trend DTO.
+// per-session-type split that made it up, a count of sessions Garmin logged
+// with no GPS distance (indoor / manual - not estimated), and Garmin's summed
+// training load over the month's scored Ultimate sessions (null when none were
+// scored). Built by UltimateDistanceBuilder, the same aggregation the Trends
+// page uses, so the two surfaces can't disagree about a month. ByType rows
+// reuse the trend DTO.
 public record UltimateSectionDto(
     decimal TotalKm,
     int SessionsWithoutDistance,
+    decimal? TrainingLoad,
     List<UltimateDistanceByTypeDto> ByType);
 
 public record BalanceSectionDto(string? FlaggedLine);
