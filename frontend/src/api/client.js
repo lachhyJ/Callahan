@@ -84,6 +84,16 @@ export function updateRestSeconds(workoutTemplateExerciseId, restSeconds) {
   })
 }
 
+// Rewrites a template's whole slot order + superset links, as arranged in the
+// active workout's Rearrange mode. `items` is one entry per template-backed
+// exercise: { workoutTemplateExerciseId, exerciseOrder, supersetWithNext }.
+export function updateTemplateLayout(templateId, items) {
+  return apiFetch(`/api/workouttemplates/${templateId}/layout`, {
+    method: 'PUT',
+    body: JSON.stringify({ items }),
+  })
+}
+
 export function updateExerciseAssisted(exerciseId, isAssisted) {
   return apiFetch(`/api/exercises/${exerciseId}/assisted`, {
     method: 'PUT',

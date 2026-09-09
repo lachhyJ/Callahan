@@ -45,10 +45,13 @@ export function earliestStartedAt(sessionKey, candidate) {
 
 // What the Live Activity should describe when no rest is running: the first
 // exercise that still has an unticked set. Keeps the card meaningful for the
-// whole session rather than only in the gap after a set.
-export function nextSetDescriptor(exercises) {
+// whole session rather than only in the gap after a set. `fromIdx` starts the
+// scan partway down the list — used to point a superset's rest back at the top
+// of the group for the next round rather than at the last member's own next set.
+export function nextSetDescriptor(exercises, fromIdx = 0) {
   if (!exercises) return null
-  for (const ex of exercises) {
+  for (let i = Math.max(0, fromIdx); i < exercises.length; i++) {
+    const ex = exercises[i]
     const idx = ex.sets.findIndex((s) => !s.completed)
     if (idx === -1) continue
     return {
@@ -96,6 +99,24 @@ export function advanceHold(holdTimer, ex, nowMs) {
   return { type: 'finish', beep: true, seconds: holdTimer.targetSeconds }
 }
 
+// [startIdx, endIdx] (inclusive) of the maximal superset run containing exIdx —
+// a contiguous span where every member but the last carries `supersetWithNext`.
+// A lone exercise returns [exIdx, exIdx]. Adjacency is array order, which is
+// session order, so this is all it takes to describe a superset.
+export function supersetGroupBounds(exercises, exIdx) {
+  let start = exIdx
+  while (start > 0 && exercises[start - 1]?.supersetWithNext) start--
+  let end = exIdx
+  while (exercises[end]?.supersetWithNext) end++
+  return [start, end]
+}
+
+// Completing a set on a superset member that isn't the last one should not fire
+// a rest — the last member's rest stands for the whole round.
+export function suppressesRest(exercises, exIdx) {
+  return !!exercises[exIdx]?.supersetWithNext
+}
+
 // The rest descriptor to arm after ticking the set at (exIdx, setIdx), given
 // the post-tick `exercises` array. Normally it points at the next set of the
 // same exercise. But when the ticked set was that exercise's last remaining
@@ -115,6 +136,17 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
     totalSets: ex.sets.length,
     restSeconds: ex.restSeconds || 90,
   }
+
+  // Inside a superset, the rest only ever fires off the last member (the
+  // earlier ones suppress it), and after it you go back to the top of the group
+  // for the next round — not on to this member's own next set. Scan from the
+  // group's first member for the first still-unticked set.
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  if (groupEnd > groupStart) {
+    const nextRound = nextSetDescriptor(exercises, groupStart)
+    if (nextRound) return nextRound
+  }
+
   if (ex.sets.some((s) => !s.completed)) return sameExercise
   return nextSetDescriptor(exercises) ?? sameExercise
 }

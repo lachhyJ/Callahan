@@ -7,6 +7,8 @@ import {
   isTimeSet,
   nextSetDescriptor,
   restDescriptorAfterSet,
+  supersetGroupBounds,
+  suppressesRest,
   advanceHold,
 } from './activeWorkout'
 
@@ -192,6 +194,68 @@ describe('restDescriptorAfterSet', () => {
     expect(d.exerciseName).toBe('C')
     expect(d.nextSetNumber).toBe(1)
     expect(d.restSeconds).toBe(120)
+  })
+})
+
+describe('superset grouping', () => {
+  // E/F/G run as one superset: E and F carry the link, G ends it. A/D are lone.
+  function gymOne() {
+    return [
+      { ...exercise('Trap Bar', 150, '4', [set(120, 4, true), set(120, 4, false)]), supersetWithNext: false },
+      { ...exercise('Pull-Ups', 60, '3', [set(0, 3, false), set(0, 3, false)]), supersetWithNext: true },
+      { ...exercise('Calf Raise', 60, '12', [set(20, 12, false), set(20, 12, false)]), supersetWithNext: true },
+      { ...exercise('Copenhagen', 60, '20', [set(0, 20, false), set(0, 20, false)]), supersetWithNext: false },
+      { ...exercise('Hip Thrust', 90, '8', [set(60, 8, false)]), supersetWithNext: false },
+    ]
+  }
+
+  it('supersetGroupBounds spans the whole E/F/G run from any member', () => {
+    const ex = gymOne()
+    expect(supersetGroupBounds(ex, 1)).toEqual([1, 3])
+    expect(supersetGroupBounds(ex, 2)).toEqual([1, 3])
+    expect(supersetGroupBounds(ex, 3)).toEqual([1, 3])
+  })
+
+  it('supersetGroupBounds returns a lone exercise as its own span', () => {
+    const ex = gymOne()
+    expect(supersetGroupBounds(ex, 0)).toEqual([0, 0])
+    expect(supersetGroupBounds(ex, 4)).toEqual([4, 4])
+  })
+
+  it('suppressesRest is true for every member but the last', () => {
+    const ex = gymOne()
+    expect(ex.map((_, i) => suppressesRest(ex, i))).toEqual([false, true, true, false, false])
+  })
+
+  it('rest after a non-last member still resolves a descriptor (caller suppresses the timer)', () => {
+    // The page checks suppressesRest before arming a timer; restDescriptorAfterSet
+    // itself stays total so the Live Activity sync can always describe "next".
+    const ex = gymOne()
+    ex[1].sets[0].completed = true // ticked Pull-Ups set 1
+    const d = restDescriptorAfterSet(ex, 1, 0)
+    // Next unticked scanning from the group top (Pull-Ups set 2).
+    expect(d.exerciseName).toBe('Pull-Ups')
+    expect(d.nextSetNumber).toBe(2)
+  })
+
+  it('rest off the last member points back at the top of the group for the next round', () => {
+    const ex = gymOne()
+    // Round 1 done for E/F/G; ticking G's set 1.
+    ex[1].sets[0].completed = true
+    ex[2].sets[0].completed = true
+    ex[3].sets[0].completed = true
+    const d = restDescriptorAfterSet(ex, 3, 0)
+    expect(d.exerciseName).toBe('Pull-Ups') // group's first member, round 2
+    expect(d.nextSetNumber).toBe(2)
+    expect(d.restSeconds).toBe(60)
+  })
+
+  it('once the whole group is done the rest rolls on to the next exercise', () => {
+    const ex = gymOne()
+    for (const i of [1, 2, 3]) ex[i].sets = ex[i].sets.map((s) => ({ ...s, completed: true }))
+    const d = restDescriptorAfterSet(ex, 3, 1)
+    expect(d.exerciseName).toBe('Hip Thrust')
+    expect(d.nextSetNumber).toBe(1)
   })
 })
 
