@@ -1308,7 +1308,14 @@ export default function ActiveWorkoutPage() {
         <span>{formatDuration(now - startedAt)}</span>
         <div className="active-workout-header-actions">
           {rearrangeToggle}
-          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+          <button
+            type="button"
+            onClick={() => setShowSummary(true)}
+            disabled={rearranging}
+            title={rearranging ? 'Finish rearranging first' : undefined}
+          >
+            Finish
+          </button>
         </div>
       </div>
       <div className="active-workout-header" ref={headerRef}>
@@ -1324,7 +1331,14 @@ export default function ActiveWorkoutPage() {
         </div>
         <div className="active-workout-header-actions">
           {rearrangeToggle}
-          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+          <button
+            type="button"
+            onClick={() => setShowSummary(true)}
+            disabled={rearranging}
+            title={rearranging ? 'Finish rearranging first' : undefined}
+          >
+            Finish
+          </button>
         </div>
       </div>
       {isCustom && (
