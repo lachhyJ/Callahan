@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getLiftTrends, getLoadTrend, getRunTypeTrends, getSeasonStrength, getTrends } from '../api/client'
+import { getLiftTrends, getLoadTrend, getRunTypeTrends, getSeasonStrength, getTrends, getUltimateDistanceTrend } from '../api/client'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
 import RunTypeTrendsList from '../components/RunTypeTrendsList'
 import LoadVsWellnessChart from '../components/LoadVsWellnessChart'
 import SeasonStrengthChart from '../components/SeasonStrengthChart'
+import UltimateDistanceChart from '../components/UltimateDistanceChart'
+import UltimateTypeBreakdown from '../components/UltimateTypeBreakdown'
 import MuscleBalanceSection from '../components/MuscleBalanceSection'
 import { formatVolume } from '../utils/format'
 
@@ -61,12 +63,28 @@ function readinessSummary(weeks) {
     : `Readiness averaged ${recent} over the last 4 weeks (${prior} in the 4 before).`
 }
 
+// months is the fixed 6-month window from getUltimateDistanceTrend(6) — split
+// into two 3-month halves. Descriptive: the km covered and, if any, the count
+// of sessions Garmin logged with no GPS distance (indoor / manual).
+function ultimateDistanceSummary(months) {
+  const sumKm = (list) => list.reduce((total, m) => total + m.ultimateKm, 0)
+  const recentKm = sumKm(months.slice(3))
+  const priorKm = sumKm(months.slice(0, 3))
+  const noGps = months.reduce((total, m) => total + m.ultimateSessionsWithoutDistance, 0)
+
+  let line = `${recentKm.toFixed(1)} km across Ultimate in the last 3 months`
+  if (priorKm > 0) line += ` (${priorKm.toFixed(1)} km in the 3 before that)`
+  if (noGps > 0) line += ` · ${noGps} session${noGps === 1 ? '' : 's'} logged without GPS distance`
+  return `${line}.`
+}
+
 export default function TrendsPage() {
   const [months, setMonths] = useState(null)
   const [liftTrends, setLiftTrends] = useState(null)
   const [runTypeTrends, setRunTypeTrends] = useState(null)
   const [loadTrend, setLoadTrend] = useState(null)
   const [seasonStrength, setSeasonStrength] = useState(null)
+  const [ultimateDistance, setUltimateDistance] = useState(null)
   const [error, setError] = useState(null)
 
   useEffect(() => {
@@ -75,6 +93,7 @@ export default function TrendsPage() {
     getRunTypeTrends(6).then(setRunTypeTrends).catch(() => setRunTypeTrends([]))
     getLoadTrend(12).then(setLoadTrend).catch(() => setLoadTrend([]))
     getSeasonStrength(SEASON_STRENGTH_MONTHS).then(setSeasonStrength).catch(() => setSeasonStrength(null))
+    getUltimateDistanceTrend(6).then(setUltimateDistance).catch(() => setUltimateDistance([]))
   }, [])
 
   const hasAnyData = months?.some((m) => m.gymSessions > 0 || m.runSessions > 0)
@@ -82,6 +101,8 @@ export default function TrendsPage() {
 
   const showLoadTrend = loadTrend?.some((w) => w.gymVolume > 0 || w.meanReadiness != null)
   const loadSummary = showLoadTrend ? readinessSummary(loadTrend) : null
+
+  const showUltimateDistance = ultimateDistance?.some((m) => m.ultimateKm > 0 || m.ultimateSessionsWithoutDistance > 0)
 
   return (
     <main className="page">
@@ -127,6 +148,14 @@ export default function TrendsPage() {
             </div>
           )}
         </>
+      )}
+
+      {showUltimateDistance && (
+        <div className="section-gap">
+          <UltimateDistanceChart months={ultimateDistance} />
+          <p className="trend-summary">{ultimateDistanceSummary(ultimateDistance)}</p>
+          <UltimateTypeBreakdown months={ultimateDistance} />
+        </div>
       )}
 
       {showLoadTrend && (
