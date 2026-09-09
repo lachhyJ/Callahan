@@ -63,7 +63,7 @@ public class WorkoutTemplatesController : ControllerBase
 
                 return new WorkoutTemplateExerciseStartDto(
                     te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
-                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, previousSets);
+                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, te.SupersetWithNext, previousSets);
             })
             .ToList();
 
@@ -94,6 +94,52 @@ public class WorkoutTemplatesController : ControllerBase
         if (request.RestSeconds < 0) return BadRequest();
 
         te.RestSeconds = request.RestSeconds;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Rewrites the slot order and superset links for a whole template, as the
+    // athlete arranged them in the active workout's Rearrange mode. Same
+    // "session edit follows you into future sessions" idea as UpdateRestSeconds
+    // and UpdateCue, but it touches every slot at once so it takes the template
+    // id and the full list rather than one slot.
+    [HttpPut("{templateId}/layout")]
+    public async Task<IActionResult> UpdateLayout(int templateId, UpdateTemplateLayoutRequest request)
+    {
+        var slots = await _db.WorkoutTemplateExercises
+            .Where(te => te.WorkoutTemplateId == templateId)
+            .ToListAsync();
+        if (slots.Count == 0) return NotFound();
+
+        var byId = slots.ToDictionary(s => s.Id);
+
+        // The client sends every template slot exactly once. A payload that
+        // references a slot from another template, or doesn't cover them all, is
+        // a bug on the sending side — reject the whole thing rather than apply a
+        // partial reorder.
+        var ids = request.Items.Select(i => i.WorkoutTemplateExerciseId).ToList();
+        if (ids.Count != slots.Count || ids.Distinct().Count() != ids.Count
+            || ids.Any(id => !byId.ContainsKey(id)))
+        {
+            return BadRequest(new { error = "Layout must list every slot of this template exactly once." });
+        }
+
+        foreach (var item in request.Items)
+        {
+            var slot = byId[item.WorkoutTemplateExerciseId];
+            slot.ExerciseOrder = item.ExerciseOrder;
+            slot.SupersetWithNext = item.SupersetWithNext;
+        }
+
+        // A "link to next" on the last slot by order is meaningless — there is
+        // no next. Sanitise server-side whatever the client sent.
+        var last = request.Items
+            .OrderByDescending(i => i.ExerciseOrder)
+            .Select(i => byId[i.WorkoutTemplateExerciseId])
+            .First();
+        last.SupersetWithNext = false;
+
         await _db.SaveChangesAsync();
 
         return NoContent();

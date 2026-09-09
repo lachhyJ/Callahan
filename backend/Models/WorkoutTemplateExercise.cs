@@ -31,4 +31,12 @@ public class WorkoutTemplateExercise
     // which is per-session. Edited in place from the active workout or the
     // exercise detail page.
     public string? Cue { get; set; }
+
+    // True when this slot runs straight into the next one (by ExerciseOrder) as
+    // a superset — no rest between them. A superset is a maximal run of slots
+    // where every member but the last carries this flag; the last member's rest
+    // is the one that fires per round. Consecutive-only by construction:
+    // adjacency is ExerciseOrder, so there is nothing to store beyond this bit.
+    // Set from the active workout's Rearrange mode.
+    public bool SupersetWithNext { get; set; }
 }
