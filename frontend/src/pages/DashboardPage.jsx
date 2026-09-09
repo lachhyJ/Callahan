@@ -158,10 +158,18 @@ export default function DashboardPage() {
   }, [syncResult])
 
   function loadSessions() {
-    Promise.all([getWorkoutSessions(), getActivities()])
+    // Temporary launch-perf instrumentation (Sep 2026). Times the two fetches
+    // the whole Dashboard render is gated on. Read alongside the backend
+    // "Callahan.Api.RequestTiming" logs: a large gap between this number and
+    // the server-side elapsed is network/tunnel/cold-start, not query cost.
+    const t0 = performance.now()
+    const mark = (label) => console.info(`[perf] dashboard ${label} ${Math.round(performance.now() - t0)}ms`)
+    const timed = (name, p) => p.then((r) => { mark(name); return r })
+    Promise.all([timed('workoutsessions', getWorkoutSessions()), timed('activities', getActivities())])
       .then(([w, a]) => {
         setWorkouts(w)
         setActivities(a)
+        mark('populated')
       })
       .catch((err) => setError(err.message))
   }

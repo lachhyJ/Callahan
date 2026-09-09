@@ -106,6 +106,35 @@ using (var scope = app.Services.CreateScope())
     scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
 }
 
+// Per-request timing, first line of the pipeline so it captures the whole
+// cost of serving each request. Temporary instrumentation for the launch-perf
+// investigation (Sep 2026) — the goal is to separate server-side compute from
+// network/tunnel/cold-start latency. The first request after an idle period
+// carries .NET tiered-JIT warmup and EF's first-query model build, so watch
+// the elapsed on the first hit after a deploy or a quiet spell versus the
+// steady-state numbers. Category is bumped to its own logger so it shows at
+// Information even though Microsoft.AspNetCore is filtered to Warning.
+var requestTimingLogger = app.Services.GetRequiredService<ILoggerFactory>()
+    .CreateLogger("Callahan.Api.RequestTiming");
+app.Use(async (context, next) =>
+{
+    var started = System.Diagnostics.Stopwatch.GetTimestamp();
+    try
+    {
+        await next();
+    }
+    finally
+    {
+        var elapsedMs = System.Diagnostics.Stopwatch.GetElapsedTime(started).TotalMilliseconds;
+        requestTimingLogger.LogInformation(
+            "{Method} {Path} -> {StatusCode} in {ElapsedMs:0.0}ms",
+            context.Request.Method,
+            context.Request.Path.Value,
+            context.Response.StatusCode,
+            elapsedMs);
+    }
+});
+
 app.UseHttpsRedirection();
 
 app.UseCors("Default");

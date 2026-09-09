@@ -13,8 +13,12 @@ export default function WorkoutTemplatesPage() {
 
   useEffect(() => {
     if (activeWorkout) return
+    // Temporary launch-perf instrumentation (Sep 2026). This page fetches one
+    // tiny payload (3 templates), so a slow number here is almost entirely
+    // cold-start / network, not data volume — the cleanest probe for that.
+    const t0 = performance.now()
     getWorkoutTemplates()
-      .then(setTemplates)
+      .then((t) => { console.info(`[perf] workouts populated ${Math.round(performance.now() - t0)}ms`); setTemplates(t) })
       .catch((err) => setError(err.message))
   }, [activeWorkout])
 
