@@ -7,7 +7,7 @@ import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } f
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
-import { BellIcon, CheckIcon, PlateIcon } from '../icons'
+import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
 import { getEquipmentType } from '../plateCalc'
@@ -1231,6 +1231,29 @@ export default function ActiveWorkoutPage() {
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading workout…</p></main>
 
+  // Shared by the header and the fade-in mini bar. An icon while idle so it
+  // sits quietly next to Finish; a labelled accent button while active so the
+  // way out of Rearrange mode is obvious.
+  const rearrangeToggle = exercises.length > 1 && !showSummary
+    ? rearranging
+      ? (
+        <button type="button" className="rearrange-btn rearrange-btn-done" onClick={() => setRearranging(false)}>
+          Done
+        </button>
+      )
+      : (
+        <button
+          type="button"
+          className="rearrange-btn rearrange-btn-icon"
+          onClick={() => setRearranging(true)}
+          aria-label="Rearrange exercises"
+          title="Rearrange"
+        >
+          <ReorderIcon />
+        </button>
+      )
+    : null
+
   if (showSummary) {
     const exercisesWithCompletedSets = exercises
       .map((ex) => ({ ex, sets: completedSetsFor(ex) }))
@@ -1283,7 +1306,10 @@ export default function ActiveWorkoutPage() {
     <main className={restTimer ? 'page with-rest-bar' : 'page'}>
       <div className={showMiniBar ? 'mini-progress-bar visible' : 'mini-progress-bar'}>
         <span>{formatDuration(now - startedAt)}</span>
-        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+        <div className="active-workout-header-actions">
+          {rearrangeToggle}
+          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+        </div>
       </div>
       <div className="active-workout-header" ref={headerRef}>
         <div>
@@ -1297,15 +1323,7 @@ export default function ActiveWorkoutPage() {
           )}
         </div>
         <div className="active-workout-header-actions">
-          {exercises.length > 1 && (
-            <button
-              type="button"
-              className="rearrange-btn"
-              onClick={() => setRearranging((r) => !r)}
-            >
-              {rearranging ? 'Done' : 'Rearrange'}
-            </button>
-          )}
+          {rearrangeToggle}
           <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
         </div>
       </div>

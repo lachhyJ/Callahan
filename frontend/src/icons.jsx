@@ -36,6 +36,16 @@ export function BackIcon(props) {
   )
 }
 
+export function ReorderIcon(props) {
+  return (
+    <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M10 4v12" />
+      <path d="M7 7l3-3 3 3" />
+      <path d="M7 13l3 3 3-3" />
+    </svg>
+  )
+}
+
 export function WorkoutIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

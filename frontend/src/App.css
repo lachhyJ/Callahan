@@ -984,17 +984,48 @@ td {
   gap: var(--space-sm);
 }
 
-.rearrange-btn {
+.active-workout-header-actions .rearrange-btn {
   background: transparent;
   border: 1px solid var(--border);
-  color: var(--text-h);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  padding: var(--space-2xs) var(--space-sm);
+  color: var(--text);
   border-radius: var(--radius-md);
-  min-height: 36px;
   touch-action: manipulation;
   user-select: none;
+}
+
+/* Idle: a quiet square that sits next to Finish without competing with it.
+   Kept visually small per the phone layout, with the touch target pushed out
+   to 44px+ by the overlay rather than by growing the chrome. */
+.active-workout-header-actions .rearrange-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  position: relative;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -4px;
+  }
+}
+
+.mini-progress-bar .rearrange-btn-icon {
+  width: 34px;
+  height: 34px;
+}
+
+/* Active: a labelled way out of Rearrange mode. */
+.active-workout-header-actions .rearrange-btn-done {
+  padding: var(--space-2xs) var(--space-md);
+  min-height: 38px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-bg);
 }
 
 /* A superset is a run of adjacent cards sharing one left rail. The internal
