@@ -4080,18 +4080,32 @@ td {
   padding: var(--space-xs) var(--space-sm);
 }
 
+/* Rides in the same slot as .confirm-sheet-detail and borrows its panel look so
+   it reads as part of the card, not a control dropped on top. The global `label`
+   rule forces column + its own gap/size, so every axis is restated here. */
 .confirm-sheet-checkbox {
   display: flex;
+  flex-direction: row;
   align-items: center;
   gap: var(--space-sm);
-  margin-top: var(--space-sm);
+  margin: var(--space-2xs) 0 0;
+  padding: var(--space-sm);
+  background: var(--surface-overlay);
+  border-radius: var(--radius-md);
   font-size: var(--text-sm);
   color: var(--text-h);
+  text-align: left;
+  cursor: pointer;
 
-  input {
-    width: 20px;
-    height: 20px;
+  input[type='checkbox'] {
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+    background: none;
     accent-color: var(--accent);
   }
 }
