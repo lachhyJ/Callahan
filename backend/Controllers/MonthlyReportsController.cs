@@ -33,7 +33,11 @@ public class MonthlyReportsController : ControllerBase
     // (a UTC off-by-one, since fixed by trainingDayIso on the client), so every
     // snapshot from Sep 2025 through Jul 2026 was counting them under the wrong
     // month or day. Their stored JSON is stale even though the DTO is unchanged.
-    private const int CurrentReportSchemaVersion = 2;
+    //
+    // 3: added the Ultimate section - monthly whole-recording GPS km across
+    // Ultimate activities, its per-session-type split, and a count of sessions
+    // logged without GPS distance. v2 snapshots have no such field and rebuild.
+    private const int CurrentReportSchemaVersion = 3;
 
     public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder)
     {

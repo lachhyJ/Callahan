@@ -62,6 +62,7 @@ public class MonthlyReportBuilder
         var consistency = BuildConsistency(monthWorkouts, monthActivities, trailingWorkouts, trailingActivities, weeksInMonth, trailingWeeks, daysInMonth);
         var loadProgression = await BuildLoadProgressionAsync(monthStart, monthEnd);
         var running = await BuildRunningAsync(monthStart, monthEnd, monthActivities);
+        var ultimate = BuildUltimate(monthStart, monthActivities);
         var balance = await BuildBalanceAsync(monthStart, monthEnd);
         var context = BuildContext(monthWorkouts, monthActivities, taperEvents, monthStart, monthEnd);
         var taperOverlaps = await BuildTaperOverlapsAsync(taperEvents, monthStart, monthEnd);
@@ -71,7 +72,22 @@ public class MonthlyReportBuilder
 
         return new MonthlyReportDto(
             year, month, false, true, DateTime.UtcNow, null,
-            headline, consistency, loadProgression, running, balance, context, taperOverlaps, nextMonth, wellness);
+            headline, consistency, loadProgression, running, ultimate, balance, context, taperOverlaps, nextMonth, wellness);
+    }
+
+    // Monthly Ultimate distance, via the same builder the Trends page uses so
+    // the two can't disagree about a month. A 1-month window anchored on the
+    // report month; run km isn't wanted here (the Running section already has
+    // it), so an empty run list.
+    private static UltimateSectionDto BuildUltimate(DateOnly monthStart, List<Activity> monthActivities)
+    {
+        var ultimate = monthActivities
+            .Where(a => a.Type == ActivityType.Ultimate)
+            .Select(a => new UltimateDistanceActivity(
+                a.Date, a.DistanceKm, a.ActivitySessionType?.Name ?? "Unspecified"));
+
+        var row = UltimateDistanceBuilder.Build(monthStart, 1, ultimate, [])[0];
+        return new UltimateSectionDto(row.UltimateKm, row.UltimateSessionsWithoutDistance, row.ByType);
     }
 
     private static ConsistencySectionDto BuildConsistency(

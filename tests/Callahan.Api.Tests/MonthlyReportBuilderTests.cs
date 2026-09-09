@@ -223,6 +223,32 @@ public class MonthlyReportBuilderTests : IDisposable
     }
 
     [Fact]
+    public async Task Ultimate_TotalsMonthDistance_SplitsByType_AndCountsSessionsWithoutGps()
+    {
+        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 3.2m);
+        AddActivity(Aug.AddDays(3), ActivityType.Ultimate, "Game", km: 4.3m);
+        AddActivity(Aug.AddDays(12), ActivityType.Ultimate, "Pod", km: 7.71m);
+        AddActivity(Aug.AddDays(20), ActivityType.Ultimate, "Solo", km: null);   // indoor / no GPS
+        AddActivity(new DateOnly(2026, 7, 30), ActivityType.Ultimate, "Game", km: 9m); // prior month, ignored
+
+        var report = await Build();
+
+        Assert.Equal(15.21m, report.Ultimate.TotalKm);
+        Assert.Equal(1, report.Ultimate.SessionsWithoutDistance);
+
+        var game = report.Ultimate.ByType.Single(t => t.TypeName == "Game");
+        Assert.Equal(7.5m, game.Km);
+        Assert.Equal(2, game.Sessions);
+
+        var solo = report.Ultimate.ByType.Single(t => t.TypeName == "Solo");
+        Assert.Equal(0m, solo.Km);
+        Assert.Equal(1, solo.SessionsWithoutDistance);
+
+        // Km-descending: Pod (7.71) before Game (7.5) before Solo (0).
+        Assert.Equal(new[] { "Pod", "Game", "Solo" }, report.Ultimate.ByType.Select(t => t.TypeName));
+    }
+
+    [Fact]
     public async Task Balance_FlagsPullsBeingSkippedAgainstWhatTheTemplatePrescribed()
     {
         var bench = AddExercise("Bench Press", ExerciseCategory.Push);
@@ -363,7 +389,7 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
         // Must track MonthlyReportsController.CurrentReportSchemaVersion — the
         // assertion is "a stale row was upgraded to current", not "current is 1".
         // Bump this alongside it.
-        Assert.Equal(2, row.SchemaVersion);
+        Assert.Equal(3, row.SchemaVersion);
         Assert.DoesNotContain("old shape", row.ReportJson);
     }
 

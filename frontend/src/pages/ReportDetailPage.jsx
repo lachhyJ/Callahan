@@ -164,7 +164,7 @@ export default function ReportDetailPage() {
       </section>
 
       <section className="report-section">
-        <h3>Running &amp; context</h3>
+        <h3>Running, Ultimate &amp; context</h3>
 
         <h4>Running</h4>
         {report.running.byType.length === 0 ? <p className="report-empty">No runs logged this month.</p> : (
@@ -180,6 +180,30 @@ export default function ReportDetailPage() {
               return <li key={r.typeName}>{r.typeName}: {parts.join(', ')}</li>
             })}
           </ul>
+        )}
+
+        <h4>Ultimate</h4>
+        {report.ultimate.byType.length === 0 && report.ultimate.sessionsWithoutDistance === 0 ? (
+          <p className="report-empty">No Ultimate logged this month.</p>
+        ) : (
+          <>
+            <p>{fmt(report.ultimate.totalKm)} km covered on the field this month.</p>
+            <ul className="report-list">
+              {report.ultimate.byType.map((t) => {
+                // Distance is attributed to the primary session type; a type
+                // whose sessions had no GPS shows the count instead of km.
+                const parts = [`${t.sessions} session${t.sessions === 1 ? '' : 's'}`]
+                if (t.km > 0) parts.push(`${fmt(t.km)} km`)
+                if (t.sessionsWithoutDistance > 0) parts.push(`${t.sessionsWithoutDistance} without GPS`)
+                return <li key={t.typeName}>{t.typeName}: {parts.join(', ')}</li>
+              })}
+            </ul>
+            {report.ultimate.sessionsWithoutDistance > 0 && (
+              <p className="report-coverage-note">
+                {report.ultimate.sessionsWithoutDistance} session{report.ultimate.sessionsWithoutDistance === 1 ? '' : 's'} logged without GPS distance — not in the total.
+              </p>
+            )}
+          </>
         )}
 
         <h4>Context</h4>
