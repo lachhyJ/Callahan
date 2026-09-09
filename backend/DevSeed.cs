@@ -37,6 +37,19 @@ public static class DevSeed
         var today = DateOnly.FromDateTime(DateTime.Today);
         var windowStart = today.AddDays(-70);
 
+        // Fake Garmin training metrics (see GarminActivityMetrics) on an
+        // activity, scaled by a 0..1 intensity. ~1 in 8 is left unscored, like
+        // real data where a short / no-HR session gets no training effect.
+        void ApplyFakeGarminMetrics(Activity a, double intensity)
+        {
+            if (rng.Next(8) == 0) return;
+            a.ActivityTrainingLoad = Math.Round(30m + (decimal)(intensity * 95) + rng.Next(-8, 9), 0);
+            a.AerobicTrainingEffect = Math.Round(1.4m + (decimal)(intensity * 2.6), 1);
+            a.AnaerobicTrainingEffect = Math.Round(0.8m + (decimal)(rng.NextDouble() * 3.2), 1);
+            a.TrainingEffectLabel = intensity > 0.66 ? "ANAEROBIC_CAPACITY"
+                : intensity > 0.33 ? "AEROBIC_BASE" : "RECOVERY";
+        }
+
         var templates = await db.WorkoutTemplates
             .Include(t => t.Exercises).ThenInclude(te => te.Exercise)
             .OrderBy(t => t.SortOrder)
@@ -125,7 +138,7 @@ public static class DevSeed
             {
                 var distanceKm = Math.Round(4m + (decimal)rng.NextDouble() * 6m, 2);
                 var runType = runTypes.Count > 0 ? runTypes[rng.Next(runTypes.Count)] : null;
-                db.Activities.Add(new Activity
+                var run = new Activity
                 {
                     Date = d,
                     Type = ActivityType.Running,
@@ -139,7 +152,9 @@ public static class DevSeed
                     SessionTags = runType is null
                         ? new()
                         : new() { new ActivitySessionTag { ActivitySessionTypeId = runType.Id } },
-                });
+                };
+                ApplyFakeGarminMetrics(run, 0.35 + rng.NextDouble() * 0.4);
+                db.Activities.Add(run);
             }
         }
 
@@ -161,12 +176,13 @@ public static class DevSeed
         for (var g = 0; g < 3; g++)
         {
             var gameDate = g < 2 ? tournament.StartDate : tournament.EndDate;
-            db.Activities.Add(new Activity
+            var game = new Activity
             {
                 Date = gameDate,
                 Type = ActivityType.Ultimate,
                 Source = ActivitySource.Manual,
                 DurationSeconds = 4200 + rng.Next(-300, 300),
+                DistanceKm = Math.Round(3m + (decimal)rng.NextDouble() * 2m, 2),
                 Tournament = tournament,
                 ActivitySessionTypeId = gameType?.Id,
                 SessionTags = gameType is null
@@ -178,7 +194,41 @@ public static class DevSeed
                 OffFieldSeconds = 1800,
                 LivePlaySeconds = 1500,
                 PointsPlayed = 12 + rng.Next(0, 4),
-            });
+            };
+            ApplyFakeGarminMetrics(game, 0.7 + rng.NextDouble() * 0.25);
+            db.Activities.Add(game);
+        }
+
+        // Non-Game Ultimate sessions spread across the window, so the monthly
+        // Ultimate-distance trend and its per-type breakdown have more than one
+        // type and more than one month. One is left without DistanceKm to
+        // exercise the "logged without GPS" path (an indoor / hall session).
+        var nonGameNames = new[] { "Club Training", "Pod", "Solo" };
+        var nonGameTypes = nonGameNames
+            .Select(n => ultimateTypes.FirstOrDefault(t => t.Name == n))
+            .Where(t => t is not null)
+            .ToList();
+        if (nonGameTypes.Count > 0)
+        {
+            var n = 0;
+            for (var d = windowStart.AddDays(4); d < today; d = d.AddDays(9), n++)
+            {
+                var stype = nonGameTypes[n % nonGameTypes.Count]!;
+                var indoor = n % 5 == 2; // roughly one in five, deterministic
+                var sess = new Activity
+                {
+                    Date = d,
+                    Type = ActivityType.Ultimate,
+                    Source = ActivitySource.Manual,
+                    DurationSeconds = 3000 + rng.Next(-600, 900),
+                    DistanceKm = indoor ? null : Math.Round(2m + (decimal)rng.NextDouble() * 5m, 2),
+                    AvgHeartRate = 130 + rng.Next(-12, 18),
+                    ActivitySessionTypeId = stype.Id,
+                    SessionTags = new() { new ActivitySessionTag { ActivitySessionTypeId = stype.Id } },
+                };
+                ApplyFakeGarminMetrics(sess, indoor ? 0.2 : 0.4 + rng.NextDouble() * 0.4);
+                db.Activities.Add(sess);
+            }
         }
 
         for (var d = windowStart; d < today; d = d.AddDays(1))
