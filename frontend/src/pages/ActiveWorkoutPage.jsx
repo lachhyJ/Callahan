@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout } from '../activeWorkout'
+import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateTemplateLayout } from '../api/client'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -105,9 +105,34 @@ function exerciseFromStart(ex) {
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     targetSets: ex.targetSets,
     cue: ex.cue ?? '',
+    // Runs straight into the next card as a superset — set from Rearrange mode.
+    // Ad-hoc / finisher additions have no template slot and never carry it.
+    supersetWithNext: ex.supersetWithNext ?? false,
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0, ex.isTimeBased ?? false, ex.targetDurationSeconds ?? null),
   }
+}
+
+// The persistable layout of a session: one entry per template-backed exercise,
+// in current session order, carrying its 0-based order and superset link.
+// Ad-hoc additions have no slot id and are left out — they can't be saved back
+// to a template.
+function templateBackedLayout(exercises) {
+  return exercises
+    .filter((ex) => ex.workoutTemplateExerciseId != null)
+    .map((ex, i) => ({
+      workoutTemplateExerciseId: ex.workoutTemplateExerciseId,
+      exerciseOrder: i,
+      supersetWithNext: !!ex.supersetWithNext,
+    }))
+}
+
+function layoutEquals(a, b) {
+  if (!a || !b || a.length !== b.length) return false
+  return a.every((x, i) =>
+    x.workoutTemplateExerciseId === b[i].workoutTemplateExerciseId
+    && x.exerciseOrder === b[i].exerciseOrder
+    && x.supersetWithNext === b[i].supersetWithNext)
 }
 
 // Suggested set count during a taper phase, scaled off the exercise's real
@@ -278,8 +303,18 @@ export default function ActiveWorkoutPage() {
   // Diary section once the ducking behaviour is settled.
   const [audioDiary, setAudioDiary] = useState(null)
   const [logCopied, setLogCopied] = useState(false)
+  // Reorder / superset editing mode. The cards collapse to a compact row with
+  // move controls and a chain-link toggle in the gap to the next card.
+  const [rearranging, setRearranging] = useState(false)
+  // Ticked by default in the Save / Discard sheet when the layout was changed —
+  // whether to write the new order + superset links back to the template.
+  const [keepLayout, setKeepLayout] = useState(true)
   const navigate = useNavigate()
   const hasAutoScrolled = useRef(false)
+  // The template's slot order + superset links as they were when this session
+  // loaded, so the end-of-session prompt can tell whether anything was
+  // rearranged. Template-backed exercises only; null for a custom session.
+  const layoutBaselineRef = useRef(null)
   // Last rest period's exercise/set, so the card still says what you just did
   // once the countdown has finished.
   const lastRestRef = useRef(null)
@@ -318,6 +353,11 @@ export default function ActiveWorkoutPage() {
       setStartedAt(restoreStartedAt(sessionKey))
       if (saved.date) setDate(saved.date)
       if (saved.sessionNotes) setSessionNotes(saved.sessionNotes)
+      // Prefer the baseline banked with the slot; fall back to the resumed
+      // order so a reload after this feature shipped still has something to
+      // diff against (a genuine change made before the reload just won't be
+      // offered for persistence — acceptable).
+      layoutBaselineRef.current = saved.layoutBaseline ?? templateBackedLayout(saved.exercises ?? [])
     } else if (isCustom) {
       // Empty workout — start with a blank slate; exercises get added via
       // the picker / finishers list, same as an ad-hoc add mid-template.
@@ -325,9 +365,11 @@ export default function ActiveWorkoutPage() {
     } else {
       startWorkoutTemplate(templateId)
         .then((data) => {
+          const built = data.exercises.map(exerciseFromStart)
           setTemplateName(data.templateName)
           setTemplateSubtitle(data.templateSubtitle)
-          setExercises(data.exercises.map(exerciseFromStart))
+          setExercises(built)
+          layoutBaselineRef.current = templateBackedLayout(built)
         })
         .catch((err) => setError(err.message))
     }
@@ -371,7 +413,7 @@ export default function ActiveWorkoutPage() {
     // anyone noticing. No such path is known today.
     const earlier = earliestStartedAt(sessionKey, startedAt)
     if (earlier.getTime() !== startedAt.getTime()) setStartedAt(earlier)
-    saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: earlier.toISOString(), date, sessionNotes })
+    saveActiveWorkout({ templateId: sessionKey, templateName, templateSubtitle, exercises, startedAt: earlier.toISOString(), date, sessionNotes, layoutBaseline: layoutBaselineRef.current })
   }, [exercises, templateName, templateSubtitle, sessionKey, startedAt, date, sessionNotes])
 
   useEffect(() => {
@@ -623,6 +665,34 @@ export default function ActiveWorkoutPage() {
     }
   }
 
+  // Bring the first still-unticked set anywhere in the session into view — used
+  // when a superset member's completion deliberately does NOT start a rest, so
+  // the eye still gets moved to what's next (the next member, or the next
+  // round's first member).
+  function scrollToNextIncompleteSet(exs) {
+    for (let i = 0; i < exs.length; i++) {
+      const j = exs[i].sets.findIndex((s) => !s.completed)
+      if (j === -1) continue
+      const row = document.getElementById(`set-${i}-${j}`)
+      if (row) {
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      }
+      return
+    }
+  }
+
+  // After ticking a set: arm the rest, unless the ticked exercise is a superset
+  // member that isn't the last one — those run straight into the next exercise
+  // with no rest, and only the group's last member's rest stands for the round.
+  function armRestAfterSet(updatedExercises, exIdx, setIdx) {
+    if (suppressesRest(updatedExercises, exIdx)) {
+      scrollToNextIncompleteSet(updatedExercises)
+      return
+    }
+    startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
+  }
+
   function toggleComplete(exIdx, setIdx) {
     const exercise = exercises[exIdx]
     const set = exercise.sets[setIdx]
@@ -654,7 +724,7 @@ export default function ActiveWorkoutPage() {
         : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
     )
     setExercises(updatedExercises)
-    if (nowCompleting) startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
+    if (nowCompleting) armRestAfterSet(updatedExercises, exIdx, setIdx)
   }
 
   // Kick off the inline countdown for a time-based set. The hold length comes
@@ -690,7 +760,7 @@ export default function ActiveWorkoutPage() {
           }
     )
     setExercises(updatedExercises)
-    startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
+    armRestAfterSet(updatedExercises, exIdx, setIdx)
   }
 
   // Drives the hold countdown off the same 1s `now` tick as the rest timer.
@@ -825,6 +895,32 @@ export default function ActiveWorkoutPage() {
     setOpenTypeMenu(null)
   }
 
+  // Move an exercise one slot up or down in Rearrange mode. Any move clears the
+  // superset link on the two swapped cards and on the card just above the pair,
+  // so a member can't be dragged out of a group while silently keeping it
+  // linked — re-link is a deliberate second tap. Predictable beats clever here.
+  function moveExercise(exIdx, dir) {
+    const to = exIdx + dir
+    setExercises((prev) => {
+      if (to < 0 || to >= prev.length) return prev
+      const next = prev.map((ex) => ({ ...ex }))
+      ;[next[exIdx], next[to]] = [next[to], next[exIdx]]
+      const lo = Math.min(exIdx, to)
+      for (const i of [lo - 1, lo, lo + 1]) {
+        if (next[i]) next[i].supersetWithNext = false
+      }
+      return next
+    })
+  }
+
+  // The chain-link toggle sitting in the gap after card `exIdx`: link it into a
+  // superset with the next card, or break the link.
+  function toggleSupersetLink(exIdx) {
+    setExercises((prev) =>
+      prev.map((ex, i) => (i === exIdx ? { ...ex, supersetWithNext: !ex.supersetWithNext } : ex))
+    )
+  }
+
   function addSet(exIdx) {
     setExercises((prev) =>
       prev.map((ex, i) =>
@@ -902,11 +998,36 @@ export default function ActiveWorkoutPage() {
     }
   }
 
-  // The finish button: asks first if planned sets were left blank, otherwise
-  // goes straight through. Confirming in the sheet calls saveSession directly.
+  // Whether the exercise order or superset links differ from what this session
+  // loaded with — the thing the Save / Discard sheet offers to keep. Custom
+  // sessions have no template to write back to.
+  const layoutChanged =
+    !isCustom
+    && !!exercises
+    && !!layoutBaselineRef.current
+    && !layoutEquals(templateBackedLayout(exercises), layoutBaselineRef.current)
+
+  // Write the current order + superset links back to the template. Best-effort:
+  // a failure must not block finishing or discarding the session, so it is
+  // awaited (to keep the request alive past navigation) but never rethrows.
+  async function persistLayout() {
+    try {
+      await updateTemplateLayout(Number(templateId), templateBackedLayout(exercises))
+      layoutBaselineRef.current = templateBackedLayout(exercises)
+    } catch (err) {
+      console.warn('layout save failed', err)
+    }
+  }
+
+  // The finish button: asks first if planned sets were left blank or the layout
+  // was rearranged, otherwise goes straight through.
   function handleSave() {
     if (missedSetGaps(exercises).length > 0) {
       setConfirming({ kind: 'gaps' })
+      return
+    }
+    if (layoutChanged) {
+      setConfirming({ kind: 'layout' })
       return
     }
     saveSession()
@@ -914,6 +1035,7 @@ export default function ActiveWorkoutPage() {
 
   async function saveSession() {
     setConfirming(null)
+    if (layoutChanged && keepLayout) await persistLayout()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     // Explicitly, not via the rest-timer effect's teardown: neither ending path
@@ -964,8 +1086,10 @@ export default function ActiveWorkoutPage() {
     setConfirming({ kind: 'discard' })
   }
 
-  function discardSession() {
+  async function discardSession() {
     setConfirming(null)
+    // A rearrangement is worth keeping even when the logged sets aren't.
+    if (layoutChanged && keepLayout) await persistLayout()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
     clearRestTimerStore()
     // Explicitly, not via the rest-timer effect's teardown: neither ending path
@@ -1006,6 +1130,7 @@ export default function ActiveWorkoutPage() {
         detail: discardDetail,
         confirmLabel: 'Discard workout',
         onConfirm: discardSession,
+        showKeepLayout: layoutChanged,
       }
     }
     if (confirming.kind === 'gaps') {
@@ -1016,6 +1141,18 @@ export default function ActiveWorkoutPage() {
         detail: gapDetail,
         confirmLabel: 'Save anyway',
         onConfirm: saveSession,
+        showKeepLayout: layoutChanged,
+      }
+    }
+    if (confirming.kind === 'layout') {
+      return {
+        variant: 'caution',
+        title: 'Save this workout?',
+        body: 'You rearranged the exercises this session.',
+        detail: null,
+        confirmLabel: 'Save workout',
+        onConfirm: saveSession,
+        showKeepLayout: true,
       }
     }
     if (confirming.kind === 'removeExercise') {
@@ -1077,7 +1214,18 @@ export default function ActiveWorkoutPage() {
       cancelLabel="Keep logging"
       onConfirm={() => confirmSpec?.onConfirm?.()}
       onCancel={() => setConfirming(null)}
-    />
+    >
+      {confirmSpec?.showKeepLayout && (
+        <label className="confirm-sheet-checkbox">
+          <input
+            type="checkbox"
+            checked={keepLayout}
+            onChange={(e) => setKeepLayout(e.target.checked)}
+          />
+          Keep the new exercise order{templateName ? ` for ${templateName}` : ''}
+        </label>
+      )}
+    </ConfirmSheet>
   )
 
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
@@ -1148,7 +1296,18 @@ export default function ActiveWorkoutPage() {
             </label>
           )}
         </div>
-        <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+        <div className="active-workout-header-actions">
+          {exercises.length > 1 && (
+            <button
+              type="button"
+              className="rearrange-btn"
+              onClick={() => setRearranging((r) => !r)}
+            >
+              {rearranging ? 'Done' : 'Rearrange'}
+            </button>
+          )}
+          <button type="button" onClick={() => setShowSummary(true)}>Finish</button>
+        </div>
       </div>
       {isCustom && (
         <input
@@ -1242,8 +1401,15 @@ export default function ActiveWorkoutPage() {
 
       {exercises.map((ex, exIdx) => {
         const isResting = restTimer?.exerciseName === ex.exerciseName
+        const [gStart, gEnd] = supersetGroupBounds(exercises, exIdx)
+        const inSuperset = gEnd > gStart
+        const supersetPos = !inSuperset ? '' : exIdx === gStart ? ' superset-first' : exIdx === gEnd ? ' superset-last' : ' superset-mid'
         return (
-        <div key={`${ex.exerciseId}-${exIdx}`} className="exercise-card">
+        <Fragment key={`${ex.exerciseId}-${exIdx}`}>
+        <div className={`exercise-card${inSuperset ? ' superset-member' : ''}${supersetPos}`}>
+          {inSuperset && exIdx === gStart && (
+            <span className="superset-pill">Superset · {gEnd - gStart + 1}</span>
+          )}
           <div className="exercise-card-header">
             <div className="exercise-card-title">
               <h2>
@@ -1259,9 +1425,16 @@ export default function ActiveWorkoutPage() {
                 </span>
               )}
             </div>
-            <button type="button" className="remove-exercise-btn" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>
-              Remove
-            </button>
+            {rearranging ? (
+              <div className="exercise-move-controls">
+                <button type="button" onClick={() => moveExercise(exIdx, -1)} disabled={exIdx === 0} aria-label={`Move ${ex.exerciseName} up`}>▲</button>
+                <button type="button" onClick={() => moveExercise(exIdx, 1)} disabled={exIdx === exercises.length - 1} aria-label={`Move ${ex.exerciseName} down`}>▼</button>
+              </div>
+            ) : (
+              <button type="button" className="remove-exercise-btn" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>
+                Remove
+              </button>
+            )}
           </div>
           {ex.workoutTemplateExerciseId && (
             <CueInput
@@ -1273,25 +1446,31 @@ export default function ActiveWorkoutPage() {
             />
           )}
           <p className="target-reps">
-            {ex.targetReps ? `Target: ${ex.targetSets} × ${ex.targetReps} · ` : ''}rest{' '}
-            <input
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min="0"
-              step="15"
-              className="rest-input"
-              style={{ width: `${Math.max(String(ex.restSeconds).length, 1) + 1}ch` }}
-              value={ex.restSeconds}
-              onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
-              onFocus={(e) => {
-                setFocusedRestExIdx(exIdx)
-                e.target.select()
-              }}
-              onBlur={() => handleRestBlur(exIdx)}
-              aria-label={`Rest time for ${ex.exerciseName}`}
-            />
-            s
+            {ex.targetReps ? `Target: ${ex.targetSets} × ${ex.targetReps} · ` : ''}
+            <span
+              className={`rest-control${suppressesRest(exercises, exIdx) ? ' rest-control--dormant' : ''}`}
+              title={suppressesRest(exercises, exIdx) ? 'No auto-rest — this exercise runs into the next as a superset' : undefined}
+            >
+              rest{' '}
+              <input
+                type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min="0"
+                step="15"
+                className="rest-input"
+                style={{ width: `${Math.max(String(ex.restSeconds).length, 1) + 1}ch` }}
+                value={ex.restSeconds}
+                onChange={(e) => updateExerciseRest(exIdx, e.target.value)}
+                onFocus={(e) => {
+                  setFocusedRestExIdx(exIdx)
+                  e.target.select()
+                }}
+                onBlur={() => handleRestBlur(exIdx)}
+                aria-label={`Rest time for ${ex.exerciseName}`}
+              />
+              s
+            </span>
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
           {taperSetSuggestion(ex, taper) !== null && (
@@ -1493,6 +1672,19 @@ export default function ActiveWorkoutPage() {
           </table>
           <button type="button" className="add-set-btn" onClick={() => addSet(exIdx)}>+ Add set</button>
         </div>
+        {rearranging && exIdx < exercises.length - 1 && (
+          <div className="superset-link-row">
+            <button
+              type="button"
+              className={`superset-link-btn${ex.supersetWithNext ? ' linked' : ''}`}
+              onClick={() => toggleSupersetLink(exIdx)}
+              aria-pressed={ex.supersetWithNext}
+            >
+              {ex.supersetWithNext ? '⛓ superset — tap to break' : '🔗 link as superset'}
+            </button>
+          </div>
+        )}
+        </Fragment>
         )
       })}
 

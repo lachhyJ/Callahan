@@ -976,6 +976,110 @@ td {
   color: var(--accent);
 }
 
+/* ── Reorder / supersets ───────────────────────────────────────────── */
+
+.active-workout-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.rearrange-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  padding: var(--space-2xs) var(--space-sm);
+  border-radius: var(--radius-md);
+  min-height: 36px;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+/* A superset is a run of adjacent cards sharing one left rail. The internal
+   border-bottoms are dropped so the group reads as one block; only the last
+   member keeps the divider. */
+.superset-member {
+  border-left: 3px solid var(--accent);
+  padding-left: var(--space-sm);
+  position: relative;
+}
+
+.superset-member:not(.superset-last) {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.superset-member + .superset-member {
+  padding-top: var(--space-xs);
+}
+
+.superset-pill {
+  align-self: flex-start;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: var(--space-2xs);
+}
+
+.rest-control--dormant,
+.rest-control--dormant .rest-input {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-tertiary);
+  opacity: 0.6;
+}
+
+.exercise-move-controls {
+  display: flex;
+  gap: var(--space-2xs);
+  flex-shrink: 0;
+
+  button {
+    width: 44px;
+    height: 44px;
+    margin: -7px 0;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    color: var(--text-h);
+    font-size: var(--text-base);
+    touch-action: manipulation;
+
+    &:disabled {
+      opacity: 0.3;
+    }
+  }
+}
+
+.superset-link-row {
+  display: flex;
+  justify-content: center;
+  margin: var(--space-2xs) 0 var(--space-sm);
+}
+
+.superset-link-btn {
+  min-height: 44px;
+  padding: 0 var(--space-md);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+  user-select: none;
+
+  &.linked {
+    border-style: solid;
+    border-color: var(--accent-border);
+    background: var(--accent-bg);
+    color: var(--accent);
+    font-weight: 600;
+  }
+}
+
 .tempo-badge {
   display: inline-flex;
   align-items: center;
@@ -3943,6 +4047,22 @@ td {
   background: var(--surface-overlay);
   border-radius: var(--radius-md);
   padding: var(--space-xs) var(--space-sm);
+}
+
+.confirm-sheet-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+  font-size: var(--text-sm);
+  color: var(--text-h);
+
+  input {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    accent-color: var(--accent);
+  }
 }
 
 .confirm-sheet-actions {

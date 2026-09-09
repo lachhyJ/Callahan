@@ -28,6 +28,9 @@ export default function ConfirmSheet({
   cancelLabel = 'Cancel',
   onConfirm,
   onCancel,
+  // Optional extra control rendered between the detail line and the actions —
+  // e.g. a "keep this change too" checkbox that rides along with the confirm.
+  children,
 }) {
   const confirmRef = useRef(null)
   const cancelRef = useRef(null)
@@ -70,6 +73,7 @@ export default function ConfirmSheet({
         <strong className="confirm-sheet-title">{title}</strong>
         <p className="confirm-sheet-body">{body}</p>
         {detail && <p className="confirm-sheet-detail">{detail}</p>}
+        {children}
         <div className="confirm-sheet-actions">
           <button type="button" ref={cancelRef} className="confirm-sheet-cancel" onClick={onCancel}>
             {cancelLabel}
