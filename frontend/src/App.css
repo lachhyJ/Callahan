@@ -988,9 +988,13 @@ td {
   /* stretch to the row's height, which Finish sets — so the two controls are
      always the same height without hardcoding Finish's box model here. */
   align-self: stretch;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
+  /* Accent-tinted, not a faint grey outline: against the raised background of
+     the fade-in scroll bar a transparent hairline-border button was nearly
+     invisible. Same treatment as the active "Done" state, so idle and active
+     read as one control in two modes. */
+  background: var(--accent-bg);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
   border-radius: var(--radius-md);
   touch-action: manipulation;
   user-select: none;
@@ -1017,14 +1021,11 @@ td {
   width: 36px;
 }
 
-/* Active: a labelled way out of Rearrange mode. */
+/* Active: a labelled way out of Rearrange mode (accent tint is inherited). */
 .active-workout-header-actions .rearrange-btn-done {
   padding: 0 var(--space-md);
   font-size: var(--text-sm);
   font-weight: 600;
-  color: var(--accent);
-  border-color: var(--accent-border);
-  background: var(--accent-bg);
 }
 
 /* A superset is a run of adjacent cards sharing one left rail. The internal
