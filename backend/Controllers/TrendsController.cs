@@ -281,5 +281,36 @@ public class TrendsController : ControllerBase
         return Ok(result);
     }
 
+    // Monthly Ultimate distance (whole-recording GPS km) broken down by session
+    // type, with a count of sessions that carried no GPS distance, and run km
+    // alongside. Whole-recording distance deliberately: most games aren't
+    // lap-pressed, so the on-field / live-play split isn't trustworthy per
+    // session. Descriptive - the raw material for "how much am I covering
+    // month to month".
+    [HttpGet("ultimate-distance")]
+    public async Task<ActionResult<List<UltimateDistanceMonthDto>>> GetUltimateDistanceTrend([FromQuery] int months = 6)
+    {
+        months = Math.Clamp(months, 1, 24);
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
+        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+
+        var ultimate = await _db.Activities
+            .Where(a => a.Type == ActivityType.Ultimate && a.Date >= earliestMonthStart)
+            .Select(a => new UltimateDistanceActivity(
+                a.Date,
+                a.DistanceKm,
+                a.ActivitySessionType != null ? a.ActivitySessionType.Name : "Unspecified"))
+            .ToListAsync();
+
+        var runs = await _db.Activities
+            .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.DistanceKm != null)
+            .Select(a => new RunLoad(a.Date, a.DistanceKm!.Value))
+            .ToListAsync();
+
+        var result = UltimateDistanceBuilder.Build(today, months, ultimate, runs);
+        return Ok(result);
+    }
+
     private static LiftSetInput ToInput(Models.ExerciseSet s) => new(s.WeightKg, s.Reps);
 }

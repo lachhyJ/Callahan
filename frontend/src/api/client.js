@@ -167,6 +167,10 @@ export function getSeasonStrength(months = 9) {
   return apiFetch(`/api/trends/season-strength?months=${months}`)
 }
 
+export function getUltimateDistanceTrend(months = 6) {
+  return apiFetch(`/api/trends/ultimate-distance?months=${months}`)
+}
+
 export function getTaperEvents() {
   return apiFetch('/api/taper/events')
 }

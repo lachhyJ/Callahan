@@ -51,3 +51,23 @@ public record TrajectoryPointDto(DateOnly MonthStart, decimal E1Rm, decimal PctF
 public record SeasonBandDto(string Name, DateOnly Start, DateOnly End, DateOnly? TargetDate);
 
 public record TournamentBandDto(string Name, DateOnly Start, DateOnly End);
+
+// One calendar month of Ultimate distance: whole-recording GPS km, a
+// per-session-type breakdown of what made it up, a count of Ultimate sessions
+// that carried no GPS distance (indoor / non-GPS / manual - not estimated),
+// and run km alongside for a combined view. Descriptive only.
+public record UltimateDistanceMonthDto(
+    DateOnly MonthStart,
+    decimal UltimateKm,
+    decimal RunKm,
+    int UltimateSessionsWithoutDistance,
+    List<UltimateDistanceByTypeDto> ByType);
+
+// Km is 0 for a type whose sessions this month all lacked GPS distance -
+// SessionsWithoutDistance then carries the count. Sessions is every session of
+// that type in the month, with or without distance.
+public record UltimateDistanceByTypeDto(
+    string TypeName,
+    decimal Km,
+    int Sessions,
+    int SessionsWithoutDistance);
