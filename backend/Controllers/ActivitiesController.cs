@@ -209,6 +209,7 @@ public class ActivitiesController : ControllerBase
                 // Null-coalesce so a manual re-POST without the field can't wipe
                 // a blob a previous Garmin sync captured.
                 existing.RawJson = request.RawJson ?? existing.RawJson;
+                GarminActivityMetrics.Apply(existing, existing.RawJson);
                 await _db.SaveChangesAsync();
                 return Ok(ToDto(existing));
             }
@@ -227,6 +228,7 @@ public class ActivitiesController : ControllerBase
             GarminActivityId = request.GarminActivityId,
             RawJson = request.RawJson,
         };
+        GarminActivityMetrics.Apply(activity, activity.RawJson);
 
         // Auto-attach to a tournament whose date range contains this game, so
         // creating the tournament (even in advance) is enough - the weekend's
@@ -452,6 +454,33 @@ public class ActivitiesController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new ReclassifyResponse(LapFieldClassifier.Version, changes.Count, changes));
+    }
+
+    // Re-parse Garmin's training metrics (load, aerobic/anaerobic training
+    // effect, effect label) out of the already-stored RawJson for every
+    // activity that has one, in place, with no Garmin traffic - the sync path
+    // does this per activity, this catches rows synced before the columns
+    // existed and picks up any change to GarminActivityMetrics.Parse.
+    [HttpPost("garmin-metrics/backfill")]
+    public async Task<ActionResult<BackfillGarminMetricsResponse>> BackfillGarminMetrics()
+    {
+        var candidates = await _db.Activities
+            .Where(a => a.RawJson != null)
+            .ToListAsync();
+
+        var updated = 0;
+        foreach (var activity in candidates)
+        {
+            var before = (activity.ActivityTrainingLoad, activity.AerobicTrainingEffect,
+                activity.AnaerobicTrainingEffect, activity.TrainingEffectLabel);
+            GarminActivityMetrics.Apply(activity, activity.RawJson);
+            var after = (activity.ActivityTrainingLoad, activity.AerobicTrainingEffect,
+                activity.AnaerobicTrainingEffect, activity.TrainingEffectLabel);
+            if (before != after) updated++;
+        }
+
+        await _db.SaveChangesAsync();
+        return Ok(new BackfillGarminMetricsResponse(candidates.Count, updated));
     }
 
     // The GPS stream for one Ultimate activity. Deletes-and-reinserts the

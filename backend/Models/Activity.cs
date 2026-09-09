@@ -77,6 +77,19 @@ public class Activity
     // /api/activities returns whole date ranges and nothing reads this.
     public string? RawJson { get; set; }
 
+    // Garmin's own per-activity training metrics (Firstbeat / EPOC), parsed
+    // out of RawJson by GarminActivityMetrics whenever it is (re)stored: the
+    // training-load figure, the aerobic / anaerobic training-effect scores
+    // (0-5), and Garmin's label for the dominant effect (SPEED,
+    // ANAEROBIC_CAPACITY, AEROBIC_BASE, RECOVERY, ...). All null when the
+    // watch didn't score the session (short sessions, no HR) and on
+    // manually-entered activities. Load is rounded to whole and the effects
+    // to 1dp on ingest; the unrounded originals stay in RawJson.
+    public decimal? ActivityTrainingLoad { get; set; }
+    public decimal? AerobicTrainingEffect { get; set; }
+    public decimal? AnaerobicTrainingEffect { get; set; }
+    public string? TrainingEffectLabel { get; set; }
+
     public List<ActivityLap> Laps { get; set; } = new();
 
     // The per-second GPS stream, when one has been synced (Ultimate only).
