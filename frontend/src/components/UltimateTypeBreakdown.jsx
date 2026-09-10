@@ -1,6 +1,6 @@
 // What made up the Ultimate distance over the window, by primary session type.
 // Reuses the run-type-trend-* styles (name + detail + count row) rather than
-// growing a third identical ruleset — same shape as the Run mix list above it.
+// growing a third identical ruleset — same shape as the Running mix list above it.
 const oneDp = (v) => Number(v).toFixed(1)
 
 function aggregateByType(months) {

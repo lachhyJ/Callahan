@@ -155,7 +155,7 @@ export default function TrendsPage() {
 
           {runTypeTrends && runTypeTrends.length > 0 && (
             <div className="section-gap">
-              <h2 className="trend-chart-title">Run mix</h2>
+              <h2 className="trend-chart-title">Running mix</h2>
               <RunTypeTrendsList trends={runTypeTrends} />
             </div>
           )}
