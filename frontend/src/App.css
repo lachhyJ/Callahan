@@ -1577,6 +1577,10 @@ td {
   display: block;
   resize: none;
   overflow: hidden;
+  /* Reset the global `textarea { min-height: 60px }` — that default is for real
+     multi-line fields; this one auto-grows to its content (see CueInput) and a
+     one-line cue was being padded out to 60px, leaving dead space above Target. */
+  min-height: 0;
 
   &:focus {
     border-bottom-color: var(--border);
