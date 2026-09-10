@@ -1566,6 +1566,11 @@ td {
   border-bottom: 1px solid transparent;
   width: 100%;
   padding: var(--space-2xs) 0;
+  /* border-box so the autosize in CueInput doesn't double-count the vertical
+     padding: <textarea>.scrollHeight already includes it, so with content-box
+     the field ends ~9px taller than its text and the cue looks like it's
+     floating above an empty strip before Target. */
+  box-sizing: border-box;
   color: var(--text);
   font-size: var(--text-sm);
   font-style: italic;
