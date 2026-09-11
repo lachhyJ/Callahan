@@ -18,6 +18,11 @@ export function getNativeStatus() {
   return AppInfo.getStatus().catch(() => null)
 }
 
-export function nativeBuildTag({ branch, commit, dirty }) {
-  return `native · ${branch}@${commit}${dirty ? '+' : ''}`
+export function nativeBuildTag({ branch, commit, dirty, provisioningExpiresAt }) {
+  const base = `native · ${branch}@${commit}${dirty ? '+' : ''}`
+  if (!provisioningExpiresAt) return base
+
+  const days = Math.ceil((new Date(provisioningExpiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+  const signingText = days <= 0 ? 'signing expired' : days === 1 ? 'signing expires in 1 day' : `signing expires in ${days}d`
+  return `${base} · ${signingText}`
 }
