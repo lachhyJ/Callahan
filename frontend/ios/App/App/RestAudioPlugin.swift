@@ -156,6 +156,10 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Wall-clock time the armed beep is meant to sound. The audio clock is what
     /// actually fires it; this is what we check that firing against.
     private var armedEndAt: Date?
+    /// Audio-hardware-clock (`deviceCurrentTime`) time the armed beep is
+    /// scheduled to sound at. The duck monitor polls against this, not against
+    /// a wall-clock delay — see `scheduleDuck` for why.
+    private var armedAudioEnd: TimeInterval?
     /// Kept so a re-arm can reissue the local notification unchanged.
     private var armedTitle = "Rest over"
     private var armedBody = "Next set."
@@ -247,8 +251,13 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc private func handleRouteChange(_ note: Notification) {
         guard let raw = note.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
-              let reason = AVAudioSession.RouteChangeReason(rawValue: raw),
-              reason == .oldDeviceUnavailable else { return }
+              let reason = AVAudioSession.RouteChangeReason(rawValue: raw) else { return }
+        // Logged unconditionally (not just on oldDeviceUnavailable) so a mid-rest
+        // AirPods reconnect/renegotiation shows up in the diary even when it
+        // doesn't trigger recovery — needed to tell whether a route event lines
+        // up with an audio-clock drift event.
+        record("route change (reason=\(reason.rawValue))")
+        guard reason == .oldDeviceUnavailable else { return }
         DispatchQueue.main.async { self.recoverArmedRest() }
     }
 
@@ -356,22 +365,48 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// Opens the ducking window just before the armed beep. If this never fires
-    /// the beep still sounds, it just plays over the music instead of through a
-    /// dip — the keep-alive exists so that it does fire while backgrounded.
-    private func scheduleDuck(inSeconds seconds: TimeInterval) {
-        let lead = max(0, seconds - Self.duckLeadSeconds)
+    /// How often the duck monitor re-checks the audio clock. Short enough that
+    /// worst-case slop is negligible against a beep's length, long enough not to
+    /// matter for battery/CPU over a rest.
+    private static let duckPollInterval: TimeInterval = 0.25
+
+    /// Opens the ducking window just before the armed beep.
+    ///
+    /// This used to be a single `Timer` scheduled `seconds - duckLeadSeconds`
+    /// wall-clock-seconds in advance — which races the beep on a different
+    /// clock. The beep fires on `deviceCurrentTime` (the audio hardware clock);
+    /// a `Timer` counts down on the wall clock. Over a long backgrounded rest
+    /// those two clocks can drift apart by several seconds — measured in a real
+    /// workout: a beep finished 7.9s early on the audio clock with no duck-timer
+    /// log at all beforehand, meaning it played over the music undocked. The
+    /// existing early-tolerance re-arm in the finish delegate catches the
+    /// *firing time* being wrong after the fact, but by then the unducked beep
+    /// has already been heard.
+    ///
+    /// Fix: don't predict the duck time once, far ahead, on the wrong clock.
+    /// Poll `deviceCurrentTime` itself — the same clock the beep is scheduled
+    /// against — on a short repeating timer, and duck the moment the audio
+    /// clock says we're inside the lead window. Whatever the audio clock is
+    /// actually doing, this tracks it instead of guessing it in advance.
+    private func scheduleDuck() {
         onMain { [weak self] in
             guard let self else { return }
             self.duckTimer?.invalidate()
-            self.duckTimer = Timer.scheduledTimer(withTimeInterval: lead, repeats: false) { [weak self] _ in
-            guard let self else { return }
-            // THE decisive line. If this appears at roughly endAt-0.35 the app was
-            // alive and the keep-alive is doing its job; if it appears late, or
-            // only once the app is reopened, the process was suspended.
-            let late = self.armedEndAt.map { Date().timeIntervalSince($0.addingTimeInterval(-Self.duckLeadSeconds)) } ?? 0
-            self.record(String(format: "duck timer fired (%+.2fs vs target)", late))
-            self.activate(ducking: true)
+            self.duckTimer = Timer.scheduledTimer(withTimeInterval: Self.duckPollInterval, repeats: true) { [weak self] timer in
+                guard let self, let p = self.player, let audioEnd = self.armedAudioEnd else {
+                    timer.invalidate()
+                    return
+                }
+                guard audioEnd - p.deviceCurrentTime <= Self.duckLeadSeconds else { return }
+                timer.invalidate()
+                self.duckTimer = nil
+                // THE decisive line. If this appears at roughly endAt-0.35 the
+                // audio and wall clocks agree; a large deviation confirms they
+                // had drifted apart and the poll caught it instead of a
+                // pre-scheduled wall-clock Timer missing it.
+                let late = self.armedEndAt.map { Date().timeIntervalSince($0.addingTimeInterval(-Self.duckLeadSeconds)) } ?? 0
+                self.record(String(format: "duck timer fired (%+.2fs vs target)", late))
+                self.activate(ducking: true)
             }
         }
     }
@@ -541,6 +576,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
         player = p
         armedEndAt = endAt
+        armedAudioEnd = baseline + seconds
         let ok = p.play(atTime: baseline + seconds)
         // `base` is the audio-hardware clock (`deviceCurrentTime`) the beep is
         // scheduled against; pair it with `dev` in the finish record. If the
@@ -561,7 +597,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         if previous?.isPlaying != true || previous?.currentTime == 0 {
             previous?.stop()
         }
-        scheduleDuck(inSeconds: seconds)
+        scheduleDuck()
         scheduleLocalNotification(inSeconds: seconds, title: armedTitle, body: armedBody)
         return ok
     }
@@ -603,6 +639,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         record("standDown (beepSounding=\(beepIsSounding))")
         cancelLocalNotification()
         armedEndAt = nil
+        armedAudioEnd = nil
         cancelTimers()
         guard !beepIsSounding else {
             // The delegate finishes the teardown when the tone ends.
@@ -630,6 +667,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // Nothing is pending after an immediate beep, so the finish delegate must
         // not mistake this for an armed one arriving early.
         armedEndAt = nil
+        armedAudioEnd = nil
         activate(ducking: true)
         guard let p = loadPlayer() else { return }
         p.volume = Self.beepVolume
@@ -673,6 +711,7 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
             return
         }
         armedEndAt = nil
+        armedAudioEnd = nil
         self.player = nil
         // Drop ducking immediately so music comes back, then stand the session
         // down — the rest is over, so nothing needs the audio clock any more, and
