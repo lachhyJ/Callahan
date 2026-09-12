@@ -140,6 +140,16 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// a real workout: ducking came on late and stayed on for the rest of the
     /// session. Nothing legitimately needs it for more than a beep's length.
     private var duckWatchdog: Timer?
+    /// Periodic diary entry while the keep-alive is running, so an early beep
+    /// can be pinned to roughly when the clock went wrong instead of only
+    /// showing up as a discrepancy at arm-vs-finish, minutes apart.
+    private var heartbeatTimer: Timer?
+    private var heartbeatWallStart: Date?
+    private var heartbeatDeviceStart: TimeInterval?
+    /// Frequent enough to bracket a drift event within a rest; infrequent
+    /// enough that a whole workout's heartbeats don't crowd the beep/duck
+    /// lines out of the 400-line diary buffer.
+    private static let heartbeatInterval: TimeInterval = 20.0
 
     /// True once the armed beep has actually started making sound, as opposed to
     /// merely being scheduled.
@@ -222,6 +232,24 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             name: AVAudioSession.routeChangeNotification,
             object: nil
         )
+
+        // mediaserverd can restart on its own — no user action, nothing that
+        // looks like an interruption or a route change — and Apple's docs say
+        // every AVAudioSession property and every existing AVAudioPlayer is
+        // invalid afterwards. Neither `interruptionNotification` nor
+        // `routeChangeNotification` fires for this, which is exactly the gap
+        // in the diary for the early-beep cases: `keepAlive.isPlaying` kept
+        // reading true and `deviceCurrentTime` kept advancing, both sourced
+        // from objects the OS had already thrown away underneath us. This is
+        // the one remaining notification that would explain a beep firing
+        // early against its own scheduled device time with no other event
+        // logged around it.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleMediaServicesReset(_:)),
+            name: AVAudioSession.mediaServicesWereResetNotification,
+            object: nil
+        )
     }
 
     /// Re-arm whatever is left of the rest after the audio stack was taken away.
@@ -251,6 +279,21 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         @unknown default:
             break
         }
+    }
+
+    /// The old `player`/`keepAlive` instances and the session's category/mode
+    /// are all dead the moment this fires — per Apple's docs, reactivating
+    /// or calling into them is undefined, not just stale. Drop everything and
+    /// rebuild from `armedEndAt`, the same recovery path an interruption
+    /// takes, rather than trying to salvage anything already in memory.
+    @objc private func handleMediaServicesReset(_ note: Notification) {
+        record("mediaServicesWereReset")
+        player = nil
+        keepAlive = nil
+        sessionActive = false
+        cancelTimers()
+        stopHeartbeat()
+        DispatchQueue.main.async { self.recoverArmedRest() }
     }
 
     @objc private func handleRouteChange(_ note: Notification) {
@@ -465,11 +508,45 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let started = p.play()
         keepAlive = p
         record("keepAlive start -> \(started)")
+        heartbeatWallStart = Date()
+        heartbeatDeviceStart = p.deviceCurrentTime
+        startHeartbeat()
     }
 
     private func stopKeepAlive() {
         keepAlive?.stop()
         keepAlive = nil
+        stopHeartbeat()
+    }
+
+    private func startHeartbeat() {
+        onMain { [weak self] in
+            guard let self else { return }
+            self.heartbeatTimer?.invalidate()
+            self.heartbeatTimer = Timer.scheduledTimer(withTimeInterval: Self.heartbeatInterval,
+                                                       repeats: true) { [weak self] _ in
+                self?.logHeartbeat()
+            }
+        }
+    }
+
+    /// Wall-clock-vs-device-clock drift, measured against the keep-alive's own
+    /// baseline rather than the beep's — so it is available for the whole rest,
+    /// not just at arm and finish, and can bracket exactly when a drift event
+    /// happened rather than only that one happened somewhere in the interval.
+    private func logHeartbeat() {
+        guard let k = keepAlive, let wallStart = heartbeatWallStart, let devStart = heartbeatDeviceStart else { return }
+        let wallElapsed = Date().timeIntervalSince(wallStart)
+        let devElapsed = k.deviceCurrentTime - devStart
+        record(String(format: "heartbeat (keepAlive.isPlaying=%@, wall=%.1fs, dev=%.1fs, drift=%+.2fs)",
+                      k.isPlaying ? "y" : "n", wallElapsed, devElapsed, devElapsed - wallElapsed))
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+        heartbeatWallStart = nil
+        heartbeatDeviceStart = nil
     }
 
     private func loadPlayer() -> AVAudioPlayer? {
