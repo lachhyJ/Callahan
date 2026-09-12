@@ -177,6 +177,10 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// rest period — so a missed un-duck costs a second of quiet music, not a
     /// whole set of it.
     private static let duckMaxSeconds: TimeInterval = 3.0
+    /// How far past its end time a schedule can arrive and still be worth
+    /// sounding. Beyond this it is JS reconciling a rest that already beeped
+    /// while backgrounded, not a rest coming due.
+    private static let staleScheduleSeconds: TimeInterval = 2.0
     private static let notificationID = "callahan.rest.over"
 
     override public func load() {
@@ -534,9 +538,21 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return true
         }
 
+        let overdue = -endAt.timeIntervalSinceNow
         guard endAt.timeIntervalSinceNow > 0.25 else {
-            // Too close to arm reliably — just sound it.
-            playImmediately()
+            // Too close to arm reliably — sound it, but only if it has just come
+            // due. The JS-side reconcile race that revives a stale native endAt
+            // into a fresh schedule (see ActiveWorkoutPage.jsx's reconcile) is
+            // now guarded at the source, but this is a second line of defence
+            // for any other path that hands arm() a schedule that is actually
+            // long past — sounding a beep and ducking for a rest that finished
+            // and was already handled minutes ago.
+            if overdue > Self.staleScheduleSeconds {
+                record(String(format: "ignored stale schedule (%.1fs past)", overdue))
+                standDown()
+            } else {
+                playImmediately()
+            }
             return false
         }
 

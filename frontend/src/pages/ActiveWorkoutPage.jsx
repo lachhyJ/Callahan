@@ -792,6 +792,17 @@ export default function ActiveWorkoutPage() {
       const native = await readNativeRestState()
       if (cancelled || !native) return
 
+      // Native only expires `RestTimerStore` on its own didBecomeActive, which
+      // fires after this visibilitychange — so a rest that already finished
+      // (and was already beeped and torn down) in the background can still
+      // read back as `active: true` with a past `endAt` in the gap. Treating
+      // that as a fresh rest revives a dead timer with an elapsed endAt,
+      // which the schedule effect immediately hands to the native beep as
+      // "too close to arm — just sound it", ducking audio for no reason.
+      if (native.active && native.endAt && native.endAt <= Date.now()) {
+        native.active = false
+      }
+
       // Sets ticked from the card come back as a count. Apply them before the
       // timer below, so the rest native started is described by the set the
       // workout has actually advanced to.
