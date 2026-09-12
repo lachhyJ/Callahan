@@ -4194,6 +4194,22 @@ td {
   color: var(--text);
 }
 
+/* Side by side with real horizontal separation, not stacked with a 4px
+   vertical gap — that stacking is what was landing thumb taps on the wrong
+   one (usually Clear, right under Copy, wiping the log you meant to save). */
+.audio-diary-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.audio-diary-clear {
+  color: var(--error-text);
+  /* rest-alert-test-link is a zero-padding text link; give the destructive
+     one real hit area so a thumb doesn't have to land on the underline. */
+  padding: var(--space-2xs) 0;
+}
+
 /* --- Routines -------------------------------------------------------------
    The program's non-session work: the daily ankle circuit and the Jump Block.
    Card-per-routine, with the prescription always visible and the longer
