@@ -19,6 +19,17 @@ export default function ProgramPage() {
 
   const clean = useMemo(() => (html === null ? null : DOMPurify.sanitize(html)), [html])
 
+  // Markdig's auto-identifiers extension already gives every heading a slug
+  // id, so section links are just anchors into the sanitized markup — no
+  // separate table of contents from the server needed.
+  const sections = useMemo(() => {
+    if (!clean) return []
+    const doc = new DOMParser().parseFromString(clean, 'text/html')
+    return Array.from(doc.querySelectorAll('h2'))
+      .filter((h) => h.id)
+      .map((h) => ({ id: h.id, text: h.textContent }))
+  }, [clean])
+
   if (error) {
     return (
       <main className="page">
@@ -39,6 +50,14 @@ export default function ProgramPage() {
 
   return (
     <main className="page">
+      {sections.length > 0 && (
+        <nav className="program-quick-links" aria-label="Jump to section">
+          {sections.map((s) => (
+            <a key={s.id} href={`#${s.id}`}>{s.text}</a>
+          ))}
+        </nav>
+      )}
+      {/* clean is DOMPurify-sanitized above */}
       <div className="program-doc" dangerouslySetInnerHTML={{ __html: clean }} />
     </main>
   )
