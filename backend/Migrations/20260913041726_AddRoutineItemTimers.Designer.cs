@@ -3,6 +3,7 @@ using System;
 using Callahan.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Callahan.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260913041726_AddRoutineItemTimers")]
+    partial class AddRoutineItemTimers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.10");
@@ -1494,12 +1497,6 @@ namespace Callahan.Api.Migrations
                     b.Property<string>("TargetReps")
                         .IsRequired()
                         .HasColumnType("TEXT");
-
-                    b.Property<int?>("TargetRepsMax")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<int?>("TargetRepsMin")
-                        .HasColumnType("INTEGER");
 
                     b.Property<int>("TargetSets")
                         .HasColumnType("INTEGER");

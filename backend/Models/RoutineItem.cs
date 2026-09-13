@@ -18,4 +18,11 @@ public class RoutineItem
 
     // The program's own Notes column, where it has one.
     public string? Cue { get; set; }
+
+    // Null means this item has no hold timer (rep-based or step-only items).
+    public int? HoldSeconds { get; set; }
+    public bool IsPerSide { get; set; }
+
+    // Gap between sides when IsPerSide is on, mirrors Exercise.PerSideDelaySeconds.
+    public int? PerSideDelaySeconds { get; set; }
 }

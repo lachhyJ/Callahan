@@ -1,6 +1,14 @@
 namespace Callahan.Api.DTOs;
 
-public record RoutineItemDto(int Id, int ItemOrder, string Name, string Prescription, string? Cue);
+public record RoutineItemDto(
+    int Id,
+    int ItemOrder,
+    string Name,
+    string Prescription,
+    string? Cue,
+    int? HoldSeconds,
+    bool IsPerSide,
+    int? PerSideDelaySeconds);
 
 public record RoutineCompletionDto(int Id, DateOnly Date, string? Notes);
 
