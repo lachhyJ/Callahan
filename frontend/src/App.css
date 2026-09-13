@@ -2408,11 +2408,10 @@ td {
 }
 
 .chart-range-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 44px;
-  min-height: 44px;
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -2423,6 +2422,14 @@ td {
   touch-action: manipulation;
   user-select: none;
   transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+
+  /* Visible box stays compact; this pads the actual tap target out to 44px
+     without growing the button's on-screen footprint. */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
 }
 
 .chart-range-btn:hover {

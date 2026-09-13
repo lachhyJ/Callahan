@@ -242,7 +242,7 @@ export default function ExerciseDetailPage() {
           ))}
         </div>
       )}
-      {hasData && stats.chart.length >= 2 && filteredChart.length >= 2 && <ProgressionChart points={filteredChart} />}
+      {hasData && stats.chart.length >= 2 && filteredChart.length >= 2 && <ProgressionChart key={chartRangeDays} points={filteredChart} />}
       {hasData && stats.chart.length >= 2 && filteredChart.length < 2 && (
         <p className="chart-single-point-note">No sessions logged in this range.</p>
       )}
