@@ -29,7 +29,7 @@ export default function ProgramPage() {
     const doc = new DOMParser().parseFromString(clean, 'text/html')
     return Array.from(doc.querySelectorAll('h2'))
       .filter((h) => h.id)
-      .map((h) => ({ id: h.id, text: h.textContent }))
+      .map((h) => ({ id: h.id, text: h.textContent.replace(/^Part\s+\d+\s*[—-]\s*/i, '') }))
   }, [clean])
 
   // .app-content (the app shell's scroll container, not window) is the only

@@ -4729,11 +4729,15 @@ td {
   display: inline-flex;
   align-items: center;
   font-size: var(--text-2xs);
-  color: var(--text-tertiary);
+  font-weight: 600;
+  color: var(--text-secondary);
   background: var(--surface-raised);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: var(--space-2xs) var(--space-xs);
+  max-width: 11rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
   text-decoration: none;
   touch-action: manipulation;
