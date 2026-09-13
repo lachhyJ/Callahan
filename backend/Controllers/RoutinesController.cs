@@ -54,7 +54,9 @@ public class RoutinesController : ControllerBase
             r.Cadence,
             r.Notes,
             r.Items.OrderBy(i => i.ItemOrder)
-                .Select(i => new RoutineItemDto(i.Id, i.ItemOrder, i.Name, i.Prescription, i.Cue))
+                .Select(i => new RoutineItemDto(
+                    i.Id, i.ItemOrder, i.Name, i.Prescription, i.Cue,
+                    i.HoldSeconds, i.IsPerSide, i.PerSideDelaySeconds))
                 .ToList(),
             completions.FirstOrDefault(c => c.Date == today),
             completions);
