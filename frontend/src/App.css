@@ -4656,6 +4656,69 @@ td {
    box so the page body never scrolls sideways.
    ------------------------------------------------------------------------- */
 
+.program-quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2xs);
+  padding-bottom: var(--space-sm);
+  margin-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border);
+}
+
+.program-quick-links a {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--text-2xs);
+  color: var(--text-tertiary);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2xs) var(--space-xs);
+  white-space: nowrap;
+  text-decoration: none;
+  touch-action: manipulation;
+  user-select: none;
+
+  /* Visible box stays compact; this pads the actual tap target out to 44px
+     without growing the button's on-screen footprint (matches .chart-range-btn). */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -8px;
+  }
+}
+
+.program-quick-links a:hover,
+.program-quick-links a:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.program-back-to-top {
+  position: fixed;
+  bottom: calc(var(--bottom-nav-height) + var(--space-md));
+  right: var(--space-md);
+  z-index: var(--z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--elevation-raised), var(--shadow);
+  touch-action: manipulation;
+}
+
+.program-back-to-top:hover,
+.program-back-to-top:focus-visible {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 .program-doc {
   color: var(--text-secondary);
   font-size: var(--text-sm);
