@@ -22,6 +22,11 @@ public record ExerciseHistoryPageDto(List<ExerciseHistoryEntryDto> Entries, int 
 
 public record ChartPointDto(DateOnly Date, decimal MaxWeightKg);
 
+// Present only when the exercise's active template slot is actually ready to
+// progress - nothing is rendered otherwise, so there's no "not ready" shape
+// to represent here.
+public record ProgressionReadinessDto(int TargetRepsMax, decimal LastSessionWeightKg, DateOnly LastSessionDate);
+
 public record ExerciseStatsDto(
     string ExerciseName,
     string? PrimaryMuscle,
@@ -33,4 +38,5 @@ public record ExerciseStatsDto(
     decimal BestEstimated1Rm,
     decimal BestSetVolume,
     decimal BestSessionVolume,
-    List<ChartPointDto> Chart);
+    List<ChartPointDto> Chart,
+    ProgressionReadinessDto? ProgressionReadiness = null);

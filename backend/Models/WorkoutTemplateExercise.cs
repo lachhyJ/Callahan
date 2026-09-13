@@ -26,6 +26,12 @@ public class WorkoutTemplateExercise
     // time-based slots.
     public int? TargetDurationSeconds { get; set; }
 
+    // Structured rep-range bounds parsed from TargetReps, used for progression
+    // readiness. Null on both means "never flag this slot" (AMRAP, time-based
+    // slots). TargetReps itself stays the free-text display string.
+    public int? TargetRepsMin { get; set; }
+    public int? TargetRepsMax { get; set; }
+
     // A standing cue for this program slot (e.g. "Workout 2's Incline DB
     // Press"), not tied to any single session — distinct from ExerciseNote,
     // which is per-session. Edited in place from the active workout or the

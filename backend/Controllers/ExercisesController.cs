@@ -202,6 +202,8 @@ public class ExercisesController : ControllerBase
             return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, 0, 0, 0, 0, []));
         }
 
+        var progressionReadiness = await GetProgressionReadiness(id);
+
         var heaviestWeight = sets.Max(s => s.WeightKg);
         var bestEstimated1Rm = sets.Max(s => LiftMath.Epley1Rm(s.Reps, s.WeightKg));
         var bestSetVolume = sets.Max(s => s.WeightKg * s.Reps);
@@ -218,6 +220,42 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness));
+    }
+
+    // Known edge case, not solved here: assumes the exercise sits in exactly
+    // one active (non-retired) template slot, true of the program today. If
+    // that ever changes, this needs to pick which slot's criteria to surface.
+    private async Task<ProgressionReadinessDto?> GetProgressionReadiness(int exerciseId)
+    {
+        var slot = await _db.WorkoutTemplateExercises
+            .Include(te => te.WorkoutTemplate)
+            .Where(te => te.ExerciseId == exerciseId && !te.WorkoutTemplate.IsRetired)
+            .FirstOrDefaultAsync();
+
+        if (slot is null) return null;
+
+        var lastSession = await _db.WorkoutSessions
+            .Where(s => s.WorkoutTemplateId == slot.WorkoutTemplateId)
+            .Include(s => s.Sets)
+            .OrderByDescending(s => s.Date)
+            .ThenByDescending(s => s.Id)
+            .FirstOrDefaultAsync();
+
+        var readiness = ProgressionReadinessChecker.Evaluate(
+            new ProgressionReadinessChecker.SlotInput(slot.TargetSets, slot.TargetRepsMax),
+            lastSession?.Date,
+            lastSession?.Sets
+                .Where(s => s.ExerciseId == exerciseId)
+                .Select(s => new ProgressionReadinessChecker.SetInput(s.SetOrder, s.Reps, s.SetType))
+                .ToList() ?? []);
+
+        if (!readiness.Ready) return null;
+
+        var lastWeight = lastSession!.Sets
+            .Where(s => s.ExerciseId == exerciseId && s.SetType != SetType.Warmup)
+            .Max(s => s.WeightKg);
+
+        return new ProgressionReadinessDto(readiness.TargetRepsMax!.Value, lastWeight, lastSession.Date);
     }
 }

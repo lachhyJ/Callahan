@@ -252,6 +252,14 @@ export default function ExerciseDetailPage() {
         </p>
       )}
 
+      {stats.progressionReadiness && (
+        <p className="chart-single-point-note">
+          Every working set hit target reps (≥{stats.progressionReadiness.targetRepsMax}) at{' '}
+          {formatWeight(stats.progressionReadiness.lastSessionWeightKg)}kg on{' '}
+          {formatDateMedium(stats.progressionReadiness.lastSessionDate)} — ready to add weight.
+        </p>
+      )}
+
       {hasData && (
         <div className="stat-grid">
           <div className="stat-card">

@@ -1,5 +1,6 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -61,9 +62,18 @@ public class WorkoutTemplatesController : ControllerBase
 
                 var primaryMuscle = te.Exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
+                var readiness = ProgressionReadinessChecker.Evaluate(
+                    new ProgressionReadinessChecker.SlotInput(te.TargetSets, te.TargetRepsMax),
+                    lastSession?.Date,
+                    lastSession?.Sets
+                        .Where(s => s.ExerciseId == te.ExerciseId)
+                        .Select(s => new ProgressionReadinessChecker.SetInput(s.SetOrder, s.Reps, s.SetType))
+                        .ToList() ?? []);
+
                 return new WorkoutTemplateExerciseStartDto(
                     te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
-                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, te.SupersetWithNext, previousSets);
+                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, te.SupersetWithNext, previousSets,
+                    readiness.Ready);
             })
             .ToList();
 

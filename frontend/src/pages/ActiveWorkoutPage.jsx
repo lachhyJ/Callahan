@@ -108,6 +108,7 @@ function exerciseFromStart(ex) {
     // Runs straight into the next card as a superset — set from Rearrange mode.
     // Ad-hoc / finisher additions have no template slot and never carry it.
     supersetWithNext: ex.supersetWithNext ?? false,
+    readyToProgress: ex.readyToProgress ?? false,
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0, ex.isTimeBased ?? false, ex.targetDurationSeconds ?? null),
   }
@@ -715,13 +716,25 @@ export default function ActiveWorkoutPage() {
     // Ticking (or un-ticking) a hold set by hand stops any countdown on it.
     if (holdTimer && holdTimer.exIdx === exIdx && holdTimer.setIdx === setIdx) setHoldTimer(null)
     const nowCompleting = !set.completed
+    // A heavier set than anything logged last time invalidates the readiness
+    // flag mid-session, before the next /start round-trip would recompute it
+    // server-side. A same-weight, higher-rep set correctly leaves it up.
+    const priorMaxWeight = Math.max(
+      ...exercise.sets.map((s) => Number(s.previous?.weightKg)).filter((w) => !Number.isNaN(w)),
+      -Infinity
+    )
+    const loggingHeavier = nowCompleting && !exercise.isTimeBased && Number(set.weightKg) > priorMaxWeight
     // Compute the post-tick array locally: setExercises is async, so
     // startRestTimer below can't read it back off state in time to decide
     // whether this was the exercise's last set.
     const updatedExercises = exercises.map((ex, i) =>
       i !== exIdx
         ? ex
-        : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })) }
+        : {
+            ...ex,
+            sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })),
+            readyToProgress: loggingHeavier ? false : ex.readyToProgress,
+          }
     )
     setExercises(updatedExercises)
     if (nowCompleting) armRestAfterSet(updatedExercises, exIdx, setIdx)
@@ -1467,6 +1480,11 @@ export default function ActiveWorkoutPage() {
                 </Link>
               </h2>
               {ex.primaryMuscle && <span className="primary-muscle">{ex.primaryMuscle}</span>}
+              {ex.readyToProgress && (
+                <Link to={`/exercises/${ex.exerciseId}`} className="ready-to-progress-badge">
+                  Ready to add weight
+                </Link>
+              )}
               {isResting && (
                 <span className="resting-badge">
                   <span className="resting-dot" />

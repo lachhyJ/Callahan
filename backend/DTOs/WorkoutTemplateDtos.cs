@@ -21,7 +21,8 @@ public record WorkoutTemplateExerciseStartDto(
     int PerSideDelaySeconds,
     int? TargetDurationSeconds,
     bool SupersetWithNext,
-    List<PreviousSetDto> PreviousSets);
+    List<PreviousSetDto> PreviousSets,
+    bool ReadyToProgress);
 
 public record WorkoutTemplateStartDto(
     int TemplateId,
