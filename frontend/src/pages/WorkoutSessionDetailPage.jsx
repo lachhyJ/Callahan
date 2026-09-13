@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
 import { formatDateLong } from '../dateUtils'
@@ -132,7 +132,7 @@ export default function WorkoutSessionDetailPage() {
       <div className="exercise-history-section">
         {exercises.map((ex) => (
           <div key={ex.exerciseId} className="history-entry">
-            <strong>{ex.exerciseName}</strong>
+            <Link to={`/exercises/${ex.exerciseId}`} className="history-entry-link"><strong>{ex.exerciseName}</strong></Link>
             {notesByExercise.has(ex.exerciseId) && <p className="notes">{notesByExercise.get(ex.exerciseId)}</p>}
             <ul className="history-set-list">
               {ex.sets.map((s) => (

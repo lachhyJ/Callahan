@@ -18,6 +18,7 @@ function formatDate(iso) {
 export default function ProgressionChart({ points }) {
   const svgRef = useRef(null)
   const [activeIdx, setActiveIdx] = useState(points.length - 1)
+  const [touched, setTouched] = useState(false)
 
   const values = points.map((p) => p.maxWeightKg)
   const rawMin = Math.min(...values)
@@ -55,6 +56,7 @@ export default function ProgressionChart({ points }) {
       }
     })
     setActiveIdx(nearest)
+    setTouched(true)
   }
 
   const active = points[activeIdx]
@@ -70,7 +72,7 @@ export default function ProgressionChart({ points }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="progression-chart-svg"
         onPointerMove={handlePointerMove}
-        onPointerLeave={() => setActiveIdx(points.length - 1)}
+        onPointerLeave={() => { setActiveIdx(points.length - 1); setTouched(false) }}
         onTouchMove={handlePointerMove}
       >
         <ChartGridLines ticks={ticks} y={yFor} x1={PAD_LEFT} x2={WIDTH - PAD_RIGHT} />
@@ -86,16 +88,18 @@ export default function ProgressionChart({ points }) {
         </text>
       </svg>
 
-      <div
-        className="chart-tooltip"
-        style={{
-          left: `${(activeX / WIDTH) * 100}%`,
-          transform: tooltipRight ? 'translateX(-100%)' : 'none',
-        }}
-      >
-        <strong>{active.maxWeightKg} kg</strong>
-        <span>{formatDate(active.date)}{isLast ? ' (latest)' : ''}</span>
-      </div>
+      {touched && (
+        <div
+          className="chart-tooltip"
+          style={{
+            left: `${(activeX / WIDTH) * 100}%`,
+            transform: tooltipRight ? 'translateX(-100%)' : 'none',
+          }}
+        >
+          <strong>{active.maxWeightKg} kg</strong>
+          <span>{formatDate(active.date)}{isLast ? ' (latest)' : ''}</span>
+        </div>
+      )}
     </div>
   )
 }

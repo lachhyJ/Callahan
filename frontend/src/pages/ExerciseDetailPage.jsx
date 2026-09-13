@@ -8,6 +8,18 @@ import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
 
 const PAGE_SIZE = 10
 
+const CHART_RANGES = [
+  { label: '3M', days: 90 },
+  { label: '6M', days: 180 },
+  { label: '1Y', days: 365 },
+  { label: 'All', days: null },
+]
+
+function filterChartByRange(chart, days) {
+  if (days === null) return chart
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000
+  return chart.filter((p) => new Date(`${p.date}T00:00:00`).getTime() >= cutoff)
+}
 
 export default function ExerciseDetailPage() {
   const { exerciseId } = useParams()
@@ -20,6 +32,7 @@ export default function ExerciseDetailPage() {
   const [cues, setCues] = useState([])
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
+  const [chartRangeDays, setChartRangeDays] = useState(CHART_RANGES[CHART_RANGES.length - 1].days)
 
   useEffect(() => {
     setStats(null)
@@ -130,6 +143,7 @@ export default function ExerciseDetailPage() {
   }
 
   const hasData = stats.chart.length > 0
+  const filteredChart = filterChartByRange(stats.chart, chartRangeDays)
 
   return (
     <main className="page exercise-detail-page">
@@ -214,7 +228,24 @@ export default function ExerciseDetailPage() {
         </div>
       )}
 
-      {hasData && stats.chart.length >= 2 && <ProgressionChart points={stats.chart} />}
+      {hasData && stats.chart.length >= 2 && (
+        <div className="chart-range-toggle">
+          {CHART_RANGES.map((r) => (
+            <button
+              key={r.label}
+              type="button"
+              className={r.days === chartRangeDays ? 'chart-range-btn active' : 'chart-range-btn'}
+              onClick={() => setChartRangeDays(r.days)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {hasData && stats.chart.length >= 2 && filteredChart.length >= 2 && <ProgressionChart points={filteredChart} />}
+      {hasData && stats.chart.length >= 2 && filteredChart.length < 2 && (
+        <p className="chart-single-point-note">No sessions logged in this range.</p>
+      )}
       {hasData && stats.chart.length === 1 && (
         <p className="chart-single-point-note">
           Logged once so far — {stats.chart[0].maxWeightKg} kg on {formatDateMedium(stats.chart[0].date)}. One more session and you'll see a trend here.
@@ -249,7 +280,7 @@ export default function ExerciseDetailPage() {
           {history.length === 0 && !historyError && <p>Loading…</p>}
           {history.map((entry) => (
             <div key={entry.workoutSessionId} className="history-entry">
-              <strong>{formatDateMedium(entry.date)}</strong>
+              <Link to={`/sessions/${entry.workoutSessionId}`} className="history-entry-link"><strong>{formatDateMedium(entry.date)}</strong></Link>
               {entry.notes && <p className="notes">{entry.notes}</p>}
               <ul className="history-set-list">
                 {entry.sets.map((s) => (
