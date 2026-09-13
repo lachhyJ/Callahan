@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { getProgramContent } from '../api/client'
 
@@ -10,6 +10,8 @@ import { getProgramContent } from '../api/client'
 export default function ProgramPage() {
   const [html, setHtml] = useState(null)
   const [error, setError] = useState(null)
+  const [showBackToTop, setShowBackToTop] = useState(false)
+  const pageRef = useRef(null)
 
   useEffect(() => {
     getProgramContent()
@@ -30,6 +32,20 @@ export default function ProgramPage() {
       .map((h) => ({ id: h.id, text: h.textContent }))
   }, [clean])
 
+  // .app-content (the app shell's scroll container, not window) is the only
+  // scrolling element — see its comment in App.css.
+  useEffect(() => {
+    const scroller = pageRef.current?.closest('.app-content')
+    if (!scroller) return
+    const onScroll = () => setShowBackToTop(scroller.scrollTop > 400)
+    scroller.addEventListener('scroll', onScroll, { passive: true })
+    return () => scroller.removeEventListener('scroll', onScroll)
+  }, [clean])
+
+  const scrollToTop = () => {
+    pageRef.current?.closest('.app-content')?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   if (error) {
     return (
       <main className="page">
@@ -49,7 +65,7 @@ export default function ProgramPage() {
   }
 
   return (
-    <main className="page">
+    <main className="page" ref={pageRef}>
       {sections.length > 0 && (
         <nav className="program-quick-links" aria-label="Jump to section">
           {sections.map((s) => (
@@ -59,6 +75,16 @@ export default function ProgramPage() {
       )}
       {/* clean is DOMPurify-sanitized above */}
       <div className="program-doc" dangerouslySetInnerHTML={{ __html: clean }} />
+      {showBackToTop && (
+        <button
+          type="button"
+          className="program-back-to-top"
+          aria-label="Back to top"
+          onClick={scrollToTop}
+        >
+          ↑
+        </button>
+      )}
     </main>
   )
 }
