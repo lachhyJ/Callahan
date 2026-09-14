@@ -236,6 +236,27 @@ describe('superset grouping', () => {
     // Next unticked scanning from the group top (Pull-Ups set 2).
     expect(d.exerciseName).toBe('Pull-Ups')
     expect(d.nextSetNumber).toBe(2)
+    // Pull-Ups isn't the group's last member, so the lock-screen "Set done"
+    // button must not fire a rest off this descriptor either.
+    expect(d.isLastInSuperset).toBe(false)
+  })
+
+  it('a descriptor pointing at the group\'s last member is flagged for a rest', () => {
+    const ex = gymOne()
+    // Pull-Ups and Calf Raise fully done, leaving Copenhagen (the group's last
+    // member — it's the one without supersetWithNext) as the next unticked set.
+    ex[1].sets = ex[1].sets.map((s) => ({ ...s, completed: true }))
+    ex[2].sets = ex[2].sets.map((s) => ({ ...s, completed: true }))
+    const d = nextSetDescriptor(ex, 1)
+    expect(d.exerciseName).toBe('Copenhagen')
+    expect(d.isLastInSuperset).toBe(true)
+  })
+
+  it('a descriptor pointing at a non-last member is not flagged for a rest', () => {
+    const ex = gymOne()
+    const d = nextSetDescriptor(ex, 1) // lands on Pull-Ups, which isn't the group's last member
+    expect(d.exerciseName).toBe('Pull-Ups')
+    expect(d.isLastInSuperset).toBe(false)
   })
 
   it('rest off the last member points back at the top of the group for the next round', () => {

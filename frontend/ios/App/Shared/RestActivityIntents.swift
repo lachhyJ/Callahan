@@ -184,9 +184,13 @@ actor RestTimerStore {
             var state = activity.content.state
             let advanced = state.nextSetNumber + 1
             state.nextSetNumber = advanced
-            // Past the last set there is nothing left to rest for — the card
-            // says "Last set done" and the countdown stays at zero.
-            if advanced <= state.totalSets, state.restSeconds > 0 {
+            // A non-last superset member runs straight into the next exercise
+            // with no rest — only the group's last member's rest stands for the
+            // round (see `isLastInSuperset`'s doc comment / suppressesRest in
+            // activeWorkout.js). Past the last set there is also nothing left
+            // to rest for — the card says "Last set done" and the countdown
+            // stays at zero either way.
+            if state.isLastInSuperset, advanced <= state.totalSets, state.restSeconds > 0 {
                 let end = Date().addingTimeInterval(Double(state.restSeconds))
                 state.endAt = end
                 state.totalSeconds = state.restSeconds

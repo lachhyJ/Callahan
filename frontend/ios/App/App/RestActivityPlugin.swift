@@ -147,7 +147,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             nextSetNumber: call.getInt("nextSetNumber") ?? 1,
             totalSets: call.getInt("totalSets") ?? 1,
             restSeconds: call.getInt("restSeconds") ?? 0,
-            enteredReps: call.getString("enteredReps") ?? ""
+            enteredReps: call.getString("enteredReps") ?? "",
+            isLastInSuperset: call.getBool("isLastInSuperset") ?? true
         )
         self.currentEndAt = endAt
         Task {

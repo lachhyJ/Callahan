@@ -32,6 +32,14 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         /// range ("6-8") — this is the single number sitting in the input.
         var enteredReps: String = ""
 
+        /// Whether ticking the set this card is pointed at should fire a rest at
+        /// all. False for a non-last superset member: the app runs those straight
+        /// into the next exercise with no rest, and only the group's last
+        /// member's rest stands for the round (see `suppressesRest` in
+        /// activeWorkout.js). Defaults true so a card synced by an older build
+        /// still rests as normal.
+        var isLastInSuperset: Bool = true
+
         var isResting: Bool { endAt != nil }
 
         /// Start of the rest period, for the progress bar. Only meaningful while

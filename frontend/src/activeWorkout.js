@@ -62,6 +62,10 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
       nextSetNumber: idx + 1,
       totalSets: ex.sets.length,
       restSeconds: ex.restSeconds || 90,
+      // Whether ticking *this* set should fire a rest at all — the lock-screen
+      // card needs this to make the same call the checkbox does in
+      // armRestAfterSet, since it cannot call back into JS to ask.
+      isLastInSuperset: !suppressesRest(exercises, i),
     }
   }
   return null
@@ -135,6 +139,10 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
     nextSetNumber: setIdx + 2,
     totalSets: ex.sets.length,
     restSeconds: ex.restSeconds || 90,
+    // restDescriptorAfterSet is only reached once armRestAfterSet has already
+    // confirmed this exercise doesn't suppress its own rest (see suppressesRest
+    // above), so its own next set is never mid-superset.
+    isLastInSuperset: true,
   }
 
   // Inside a superset, the rest only ever fires off the last member (the

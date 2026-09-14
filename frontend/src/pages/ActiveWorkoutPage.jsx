@@ -653,6 +653,7 @@ export default function ActiveWorkoutPage() {
       nextSetNumber: descriptor.nextSetNumber,
       totalSets: descriptor.totalSets,
       restSeconds: duration,
+      isLastInSuperset: descriptor.isLastInSuperset ?? true,
     })
     // Native schedules its own local notification in scheduleBeep, which fires
     // on the device clock instead of arriving over APNs a few seconds late.
@@ -667,9 +668,9 @@ export default function ActiveWorkoutPage() {
   }
 
   // Bring the first still-unticked set anywhere in the session into view — used
-  // when a superset member's completion deliberately does NOT start a rest, so
-  // the eye still gets moved to what's next (the next member, or the next
-  // round's first member).
+  // after any superset-member set is ticked, whether or not it starts a rest,
+  // so the eye moves to what's genuinely next (the next member, or back to the
+  // group's first still-unfinished member for the next round).
   function scrollToNextIncompleteSet(exs) {
     for (let i = 0; i < exs.length; i++) {
       const j = exs[i].sets.findIndex((s) => !s.completed)
@@ -686,9 +687,17 @@ export default function ActiveWorkoutPage() {
   // After ticking a set: arm the rest, unless the ticked exercise is a superset
   // member that isn't the last one — those run straight into the next exercise
   // with no rest, and only the group's last member's rest stands for the round.
+  //
+  // Inside a superset, ticking *any* member's set moves the eye to whatever set
+  // is genuinely next in the group — not only on a non-last member's set, which
+  // used to leave the view sitting on the last member once its own (non-final)
+  // set was ticked instead of rolling back to the group's top.
   function armRestAfterSet(updatedExercises, exIdx, setIdx) {
-    if (suppressesRest(updatedExercises, exIdx)) {
+    const [groupStart, groupEnd] = supersetGroupBounds(updatedExercises, exIdx)
+    if (groupEnd > groupStart) {
       scrollToNextIncompleteSet(updatedExercises)
+    }
+    if (suppressesRest(updatedExercises, exIdx)) {
       return
     }
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))

@@ -41,6 +41,11 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
     // Lets the card's "Set done" button start the next rest itself, without
     // waking this webview to ask how long it should be.
     restSeconds: detail.restSeconds ?? rest?.totalSeconds ?? 0,
+    // Whether ticking the set the card is currently pointed at should fire a
+    // rest at all — false for a non-last superset member, which the "Set done"
+    // button should run straight past into the next exercise. Defaults true so
+    // a lone exercise (no descriptor field at all) behaves as it always has.
+    isLastInSuperset: detail.isLastInSuperset ?? true,
     sessionStartedAt: sessionStartedAt ?? Date.now(),
   }).catch(() => {
     // A Live Activity is a nicety on top of the push notification — if the user
