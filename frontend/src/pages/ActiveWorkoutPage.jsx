@@ -667,35 +667,56 @@ export default function ActiveWorkoutPage() {
     }
   }
 
+  function scrollToSetRow(exIdx, setIdx) {
+    const row = document.getElementById(`set-${exIdx}-${setIdx}`)
+    if (!row) return
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+  }
+
   // Bring the first still-unticked set anywhere in the session into view — used
-  // after any superset-member set is ticked, whether or not it starts a rest,
-  // so the eye moves to what's genuinely next (the next member, or back to the
-  // group's first still-unfinished member for the next round).
+  // once a superset group is entirely done, to move on to whatever's next.
   function scrollToNextIncompleteSet(exs) {
     for (let i = 0; i < exs.length; i++) {
       const j = exs[i].sets.findIndex((s) => !s.completed)
       if (j === -1) continue
-      const row = document.getElementById(`set-${i}-${j}`)
-      if (row) {
-        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
-      }
+      scrollToSetRow(i, j)
       return
     }
+  }
+
+  // The next set to bring into view after ticking one inside a superset group:
+  // whichever member's turn is next in the round, cycling forward from the one
+  // just ticked and wrapping within [groupStart, groupEnd] — never restarting
+  // the scan from the group's top. A naive "first incomplete set in the group"
+  // scan would do that instead, landing back on an earlier member for as long
+  // as it has *any* later round left, which is every round but its last.
+  function scrollToNextInSuperset(exs, groupStart, groupEnd, fromIdx) {
+    const span = groupEnd - groupStart + 1
+    for (let step = 1; step <= span; step++) {
+      const i = groupStart + ((fromIdx - groupStart + step) % span)
+      const j = exs[i].sets.findIndex((s) => !s.completed)
+      if (j === -1) continue
+      scrollToSetRow(i, j)
+      return true
+    }
+    return false
   }
 
   // After ticking a set: arm the rest, unless the ticked exercise is a superset
   // member that isn't the last one — those run straight into the next exercise
   // with no rest, and only the group's last member's rest stands for the round.
   //
-  // Inside a superset, ticking *any* member's set moves the eye to whatever set
-  // is genuinely next in the group — not only on a non-last member's set, which
-  // used to leave the view sitting on the last member once its own (non-final)
-  // set was ticked instead of rolling back to the group's top.
+  // Inside a superset, ticking *any* member's set moves the eye to whichever
+  // member is next in the rotation — including the group's last member ticking
+  // a non-final set, which used to leave the view sitting there instead of
+  // cycling back to whoever's turn is next.
   function armRestAfterSet(updatedExercises, exIdx, setIdx) {
     const [groupStart, groupEnd] = supersetGroupBounds(updatedExercises, exIdx)
     if (groupEnd > groupStart) {
-      scrollToNextIncompleteSet(updatedExercises)
+      if (!scrollToNextInSuperset(updatedExercises, groupStart, groupEnd, exIdx)) {
+        scrollToNextIncompleteSet(updatedExercises)
+      }
     }
     if (suppressesRest(updatedExercises, exIdx)) {
       return
