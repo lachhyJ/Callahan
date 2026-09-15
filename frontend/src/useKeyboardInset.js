@@ -1,58 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Capacitor } from '@capacitor/core'
 
 // Tracks how far the on-screen keyboard has pushed up from the bottom of the
 // layout viewport, so a bottom-docked toolbar/sheet can lift clear of it.
 //
-// Native (Capacitor iOS): the WKWebView's own visualViewport reporting is
-// unreliable here — on device it sometimes leaves a gap between our UI and
-// the real keyboard (Capacitor's own native input-accessory bar, the
-// up/down/done row, isn't accounted for consistently), which shows up as the
-// app's own bottom nav peeking through between the toolbar/sheet and the
-// keyboard, by an amount that varies per keyboard transition. The
-// @capacitor/keyboard plugin instead reports the OS's own keyboard height
-// directly, so use it whenever running natively.
-//
-// IMPORTANT: the Keyboard plugin's default `resize` mode on iOS is `native`,
-// which makes iOS *also* shrink the WKWebView itself when the keyboard
-// opens. Combined with this hook applying its own `keyboardHeight` offset on
-// top, that double-counts — the webview is already inset by the keyboard's
-// height, then our UI gets pushed up by that same height again, landing
-// wherever the two independent adjustments happen to disagree. capacitor
-// .config.json sets `plugins.Keyboard.resize` to `none` so the webview
-// never resizes itself and this hook's offset is the only adjustment made.
-// Don't remove that config without re-verifying on a real device — the
-// Simulator did not reliably reproduce the double-counted-offset bug this
-// caused, only real hardware did.
-//
-// Web/PWA: no native plugin available, so visualViewport (accurate there)
-// stays the fallback.
+// This used to also try the @capacitor/keyboard plugin's raw keyboardHeight
+// on native iOS, on the theory that visualViewport was unreliable there.
+// On-device debugging (2026-09-15) proved that theory wrong: iOS's WKWebView
+// already auto-resizes itself above the keyboard on its own — confirmed by
+// logging window.innerHeight/document.documentElement.clientHeight/
+// visualViewport.height together mid-keyboard and finding all three already
+// shrunk to the same value, matching (screen height − keyboard height)
+// exactly, with no code involved. Adding the plugin's keyboardHeight as a
+// *second* offset on top of a webview that had already resized itself by
+// that same amount double-counted every time — not intermittently, always —
+// which is worse than the original bug. Plain visualViewport self-corrects
+// to ~0 in that already-resized case (innerHeight and vv.height end up
+// equal), so it's the only offset ever safely computed.
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
 
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      let cancelled = false
-      let showHandle = null
-      let hideHandle = null
-      import('@capacitor/keyboard').then(({ Keyboard }) => {
-        if (cancelled) return
-        Keyboard.addListener('keyboardWillShow', (info) => setInset(info.keyboardHeight)).then((h) => {
-          if (cancelled) h.remove()
-          else showHandle = h
-        })
-        Keyboard.addListener('keyboardWillHide', () => setInset(0)).then((h) => {
-          if (cancelled) h.remove()
-          else hideHandle = h
-        })
-      })
-      return () => {
-        cancelled = true
-        showHandle?.remove()
-        hideHandle?.remove()
-      }
-    }
-
     const vv = window.visualViewport
     if (!vv) return
     function update() {
