@@ -648,18 +648,21 @@ export default function ActiveWorkoutPage() {
     }
   }
 
-  // Deferred one frame: called synchronously from the tick handler, before
-  // React has committed the completed-exercise's re-render (e.g. a fully
-  // finished superset member restyling/collapsing). Scrolling against that
-  // stale layout was seen to produce a brief scroll-up-then-back-down blip
-  // once the row's real position settled — waiting a frame lets layout
-  // catch up first.
+  // Called synchronously from the tick handler, before React has committed
+  // the completed-exercise's re-render (e.g. a fully finished superset
+  // member restyling). Scrolling against that stale layout produces a brief
+  // scroll-up-then-back-down blip once the row's real position settles. A
+  // single requestAnimationFrame wasn't enough to reliably land after that
+  // commit — nesting a second rAF is the standard "wait for a frame where
+  // the previous one has definitely already painted" pattern.
   function scrollToSetRow(exIdx, setIdx) {
     requestAnimationFrame(() => {
-      const row = document.getElementById(`set-${exIdx}-${setIdx}`)
-      if (!row) return
-      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      requestAnimationFrame(() => {
+        const row = document.getElementById(`set-${exIdx}-${setIdx}`)
+        if (!row) return
+        const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      })
     })
   }
 

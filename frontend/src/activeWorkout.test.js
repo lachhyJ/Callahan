@@ -313,9 +313,10 @@ describe('superset grouping', () => {
     // Pull-Ups' 4th set (index 3): Calf Raise and Copenhagen have no set at
     // that index at all, so nobody is left to rotate to.
     expect(suppressesRest(ex, 0, 3)).toBe(false)
-    // The rest that fires still uses the group's first member's own duration
-    // (Pull-Ups' 45s) — not Pull-Ups being treated as newly standalone with
-    // some other implied duration.
+    // Pull-Ups still owns the group's rest here since it's the one with work
+    // left (it just happens to also be the group's first member in this
+    // fixture — see the reversed-order fixture below for the case that
+    // actually distinguishes "current owner" from "always first member").
     const d = restDescriptorAfterSet(ex, 0, 3)
     expect(d.restSeconds).toBe(45)
   })
@@ -327,19 +328,47 @@ describe('superset grouping', () => {
     expect(d.exerciseName).toBe('Calf Raise')
   })
 
-  it('the round-closing rest always uses the group\'s first member\'s duration, not the closer\'s own', () => {
+  it('the round-closing rest uses whichever member currently owns the group, not the closer\'s own', () => {
     const ex = unevenGym()
     // Round 1: Pull-Ups, Calf Raise done; Copenhagen (90s) closes the round.
     ex[0].sets[0].completed = true
     ex[1].sets[0].completed = true
     const d = restDescriptorAfterSet(ex, 2, 0)
     expect(d.exerciseName).toBe('Pull-Ups') // next round, back to the top
-    // Not Copenhagen's own 90s — the group's first member (Pull-Ups) owns
-    // the duration for the whole superset.
+    // Not Copenhagen's own 90s — Pull-Ups (still the earliest member with
+    // work left) owns the duration for the whole superset at this point.
     expect(d.restSeconds).toBe(45)
   })
 
-  it('isSupersetRestOwner is true only for the group\'s first member (and any lone exercise)', () => {
+  // The case that actually distinguishes "current owner" from a permanent
+  // "always the first member": here the FIRST member is the short one, and
+  // it's exhausted first while the second, longer member still has sets left
+  // — exactly the scenario Lachlan hit gym-testing (3 sets/45s into 5
+  // sets/150s). Ownership must shift to the second member once the first is
+  // done, not keep using the first member's now-irrelevant duration.
+  function firstMemberExhaustedFirstGym() {
+    return [
+      { ...exercise('Exercise 1', 45, '8', [0, 1, 2].map(() => set(20, 8, false))), supersetWithNext: true },
+      { ...exercise('Exercise 2', 150, '5', [0, 1, 2, 3, 4].map(() => set(40, 5, false))), supersetWithNext: false },
+    ]
+  }
+
+  it('rest ownership shifts to the next member once an earlier one is exhausted', () => {
+    const ex = firstMemberExhaustedFirstGym()
+    ex[0].sets = ex[0].sets.map((s) => ({ ...s, completed: true })) // Exercise 1 fully done
+    ex[1].sets[0].completed = true
+    ex[1].sets[1].completed = true
+    ex[1].sets[2].completed = true
+    expect(isSupersetRestOwner(ex, 0)).toBe(false)
+    expect(isSupersetRestOwner(ex, 1)).toBe(true)
+    // Exercise 2's own remaining sets (4th here) rest on its own 150s, not
+    // Exercise 1's leftover 45s.
+    expect(suppressesRest(ex, 1, 3)).toBe(false)
+    const d = restDescriptorAfterSet(ex, 1, 2)
+    expect(d.restSeconds).toBe(150)
+  })
+
+  it('isSupersetRestOwner is true only for the group\'s first member while it still has work (and any lone exercise)', () => {
     const ex = unevenGym() // Pull-Ups, Calf Raise, Copenhagen
     expect(ex.map((_, i) => isSupersetRestOwner(ex, i))).toEqual([true, false, false])
     const lone = gymOne()

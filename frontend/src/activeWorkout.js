@@ -79,27 +79,41 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
 }
 
 // The rest duration for a set inside superset group [groupStart, groupEnd]:
-// always the group's first member's own restSeconds, regardless of which
-// member's tick actually closes the round — one config for the whole
-// superset, not whichever exercise happens to be the one resting. Outside a
-// group (groupStart === groupEnd) the exercise's own restSeconds applies, as
-// for any standalone exercise.
+// the earliest group member (in array order) that still has an incomplete
+// set, regardless of which member's tick actually closes a given round — one
+// config for the whole superset, not whichever exercise happens to be the
+// one resting. That's the group's first member for as long as it still has
+// work; once it's fully done, ownership moves to whichever member is next in
+// line. Getting this wrong was the actual bug in the original "always the
+// first member, permanently" version: once a shorter first member (e.g. 3
+// sets) finished while a longer second member (5 sets) still had 2 sets
+// left, the first member's now-irrelevant duration kept being used instead
+// of the second member's own. Outside a group (groupStart === groupEnd) the
+// exercise's own restSeconds applies, as for any standalone exercise.
 function groupRestSeconds(exercises, groupStart, groupEnd, exIdx) {
-  const owner = groupEnd > groupStart ? groupStart : exIdx
-  return exercises[owner].restSeconds || 90
+  return exercises[groupRestOwner(exercises, groupStart, groupEnd, exIdx)].restSeconds || 90
+}
+
+function groupRestOwner(exercises, groupStart, groupEnd, exIdx) {
+  if (groupEnd === groupStart) return exIdx
+  for (let i = groupStart; i <= groupEnd; i++) {
+    if (exercises[i].sets.some((s) => !s.completed)) return i
+  }
+  return groupEnd // whole group done — doesn't matter which, nothing left to rest for
 }
 
 // Whether exIdx's own restSeconds field is the one actually read for its
-// group's rest duration — true for a lone exercise, or for a superset
-// group's first member; false for every other member, whose own restSeconds
-// is never consulted (see groupRestSeconds). This is a fixed fact about the
-// exercise's position, unlike suppressesRest, which answers a different,
-// per-round question ("would completing my next set fire a rest at all") and
-// changes as a round-robin progresses through uneven set counts. Used to
-// decide which rest-seconds fields the UI should show as editable.
+// group's rest duration right now — true for a lone exercise, or for
+// whichever superset member currently owns the group's rest (see
+// groupRestOwner); false for every other member, whose own restSeconds isn't
+// consulted while someone earlier still has work. This shifts as a
+// round-robin progresses through uneven set counts, unlike suppressesRest,
+// which answers a different, per-tick question ("would completing my next
+// set fire a rest at all"). Used to decide which rest-seconds fields the UI
+// should show as editable.
 export function isSupersetRestOwner(exercises, exIdx) {
-  const [groupStart] = supersetGroupBounds(exercises, exIdx)
-  return groupStart === exIdx
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  return groupRestOwner(exercises, groupStart, groupEnd, exIdx) === exIdx
 }
 
 // Within [groupStart, groupEnd], the member due next in a round-robin
