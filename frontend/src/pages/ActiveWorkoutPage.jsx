@@ -14,33 +14,10 @@ import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock } from '../utils/format'
 import PlateCalcSheet from '../components/PlateCalcSheet'
+import { useKeyboardInset } from '../useKeyboardInset'
 
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
-
-// Tracks how far the on-screen keyboard has pushed up from the bottom of the
-// layout viewport, so a toolbar can dock just above it instead of getting
-// covered — the layout viewport doesn't shrink when a mobile keyboard opens,
-// only the visual one does. Falls back to 0 (dock at the screen bottom) on
-// browsers without visualViewport or when no keyboard is showing.
-function useKeyboardInset() {
-  const [inset, setInset] = useState(0)
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!vv) return
-    function update() {
-      setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
-    }
-    update()
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    return () => {
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-    }
-  }, [])
-  return inset
-}
 
 function formatDuration(ms) {
   const totalSeconds = Math.floor(ms / 1000)
