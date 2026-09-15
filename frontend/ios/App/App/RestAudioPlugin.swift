@@ -659,7 +659,18 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         p.delegate = self
         p.prepareToPlay()
 
-        let baseline = p.deviceCurrentTime
+        // `deviceCurrentTime` is documented as shared hardware-clock time across
+        // every player on the session, but a just-instantiated `AVAudioPlayer`
+        // doesn't necessarily finish syncing to that clock the instant
+        // `prepareToPlay()` returns — the 2026-09-15 diary caught beeps landing
+        // early by an amount that scaled with the arm length (~5-7% short, on a
+        // fully-foregrounded run with zero heartbeat drift the whole time), which
+        // points at `p`'s own baseline reading low rather than at any real clock
+        // drift. `keepAlive` has been running the whole rest and is the clock the
+        // heartbeat already proves is trustworthy, so prefer its baseline; fall
+        // back to `p`'s own if for some reason it isn't up yet.
+        let baselineSource = keepAlive?.isPlaying == true ? keepAlive : p
+        let baseline = baselineSource?.deviceCurrentTime ?? p.deviceCurrentTime
         let seconds = endAt.timeIntervalSinceNow
         guard seconds > 0.05 else {
             previous?.stop()
@@ -679,8 +690,9 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         // point of the keep-alive is to keep this clock running so `base` is
         // stable; `keepAlive=NOT PLAYING` here means it is not, and every arm is
         // a cold arm.
-        record(String(format: "armed beep for +%.1fs @ base=%.3f (keepAlive=%@)",
+        record(String(format: "armed beep for +%.1fs @ base=%.3f (src=%@, keepAlive=%@)",
                       seconds, baseline,
+                      baselineSource === keepAlive ? "keepAlive" : "beepPlayer",
                       keepAlive?.isPlaying == true ? "playing" : "NOT PLAYING"))
         // Same rule as standDown: never cut a tone that is already audible. A
         // superseded player is left to finish on its own; the delegate ignores it
