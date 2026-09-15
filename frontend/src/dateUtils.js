@@ -53,6 +53,15 @@ export function shortWeekdayAndDay(isoDateStr) {
   return `${weekday} ${d.getDate()}`
 }
 
+// "6:42 pm" — time-of-day for a session's start, from an ISO datetime
+// string (e.g. WorkoutSession.StartedAt). Locale-default deliberately, like
+// shortWeekdayAndDay: time-of-day format (12h/24h) is a device setting, not
+// something to pin.
+export function formatTimeOfDay(isoDateTimeStr) {
+  const d = new Date(isoDateTimeStr)
+  return d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+}
+
 // "30 May 2026" — for anywhere the year matters (taper events, Recently
 // Deleted). Locale is pinned to en-AU rather than left undefined, which
 // follows device settings and would silently format month-first on a

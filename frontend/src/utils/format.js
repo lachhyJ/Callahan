@@ -33,6 +33,17 @@ export function formatClock(totalSeconds) {
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
 
+// "48 min" / "1h 12m" — a session's total elapsed time, from a duration in
+// seconds. Rounds to the nearest minute since sub-minute precision isn't
+// meaningful for "how long was the gym session".
+export function formatSessionDuration(totalSeconds) {
+  const totalMinutes = Math.round(totalSeconds / 60)
+  if (totalMinutes < 60) return `${totalMinutes} min`
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return `${hours}h ${minutes}m`
+}
+
 // "Sep" — the short month for a chart axis or a trend row, from an ISO date.
 // Locale-default deliberately (unlike the pinned en-AU date formatters): a
 // bare month abbreviation reads correctly in any of them.
