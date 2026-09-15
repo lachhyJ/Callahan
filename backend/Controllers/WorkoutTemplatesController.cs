@@ -72,7 +72,7 @@ public class WorkoutTemplatesController : ControllerBase
 
                 return new WorkoutTemplateExerciseStartDto(
                     te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
-                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, te.SupersetWithNext, previousSets,
+                    te.Exercise.IsAssisted, te.Exercise.IsTimeBased, te.Exercise.IsPerSide, te.Exercise.PerSideDelaySeconds, te.TargetDurationSeconds, te.SupersetWithNext, te.SupersetRestSeconds, previousSets,
                     readiness.Ready);
             })
             .ToList();
@@ -104,6 +104,23 @@ public class WorkoutTemplatesController : ControllerBase
         if (request.RestSeconds < 0) return BadRequest();
 
         te.RestSeconds = request.RestSeconds;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Persists the whole superset group's rest duration. Only meaningful when
+    // called on a group's first slot — the client is responsible for that;
+    // this endpoint just writes whatever slot id it's given, same as
+    // UpdateRestSeconds.
+    [HttpPut("exercises/{workoutTemplateExerciseId}/superset-rest-seconds")]
+    public async Task<IActionResult> UpdateSupersetRestSeconds(int workoutTemplateExerciseId, UpdateSupersetRestSecondsRequest request)
+    {
+        var te = await _db.WorkoutTemplateExercises.FindAsync(workoutTemplateExerciseId);
+        if (te is null) return NotFound();
+        if (request.SupersetRestSeconds < 0) return BadRequest();
+
+        te.SupersetRestSeconds = request.SupersetRestSeconds;
         await _db.SaveChangesAsync();
 
         return NoContent();

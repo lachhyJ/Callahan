@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -85,6 +85,9 @@ function exerciseFromStart(ex) {
     // Runs straight into the next card as a superset — set from Rearrange mode.
     // Ad-hoc / finisher additions have no template slot and never carry it.
     supersetWithNext: ex.supersetWithNext ?? false,
+    // The whole group's rest duration, meaningful only on a group's first
+    // slot. Null means "use the app default" — see groupRestSeconds.
+    supersetRestSeconds: ex.supersetRestSeconds ?? null,
     readyToProgress: ex.readyToProgress ?? false,
     notes: '',
     sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0, ex.isTimeBased ?? false, ex.targetDurationSeconds ?? null),
@@ -278,6 +281,7 @@ export default function ActiveWorkoutPage() {
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   const [openPlateCalc, setOpenPlateCalc] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
+  const [focusedSupersetRestExIdx, setFocusedSupersetRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
   const [taper, setTaper] = useState(null)
   // Temporary: native rest-audio event diary, shown under "Test beep" so a
@@ -603,6 +607,32 @@ export default function ActiveWorkoutPage() {
     persistRestSeconds(exIdx, exercises[exIdx]?.restSeconds)
     setTimeout(() => {
       setFocusedRestExIdx((prev) => (prev === exIdx ? null : prev))
+    }, 150)
+  }
+
+  // The group-level rest control's own version of the pair above — same
+  // shape, but writes supersetRestSeconds on the group's first member
+  // instead of restSeconds on exIdx itself.
+  function updateSupersetRest(exIdx, value) {
+    const supersetRestSeconds = value === '' ? '' : Math.max(0, Number(value))
+    setExercises((prev) => prev.map((ex, i) => (i !== exIdx ? ex : { ...ex, supersetRestSeconds })))
+  }
+
+  function persistSupersetRestSeconds(exIdx, supersetRestSeconds) {
+    const ex = exercises[exIdx]
+    if (!ex?.workoutTemplateExerciseId || supersetRestSeconds === '' || Number.isNaN(Number(supersetRestSeconds))) return
+    updateSupersetRestSeconds(ex.workoutTemplateExerciseId, Number(supersetRestSeconds)).catch(() => {})
+  }
+
+  function selectSupersetRestPreset(exIdx, preset) {
+    updateSupersetRest(exIdx, preset)
+    persistSupersetRestSeconds(exIdx, preset)
+  }
+
+  function handleSupersetRestBlur(exIdx) {
+    persistSupersetRestSeconds(exIdx, exercises[exIdx]?.supersetRestSeconds)
+    setTimeout(() => {
+      setFocusedSupersetRestExIdx((prev) => (prev === exIdx ? null : prev))
     }, 150)
   }
 
@@ -1581,7 +1611,7 @@ export default function ActiveWorkoutPage() {
             {ex.targetReps ? `Target: ${ex.targetSets} × ${ex.targetReps} · ` : ''}
             <span
               className={`rest-control${isSupersetRestOwner(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
-              title={isSupersetRestOwner(exercises, exIdx) ? undefined : 'Not used — the superset rests on the group\'s first exercise\'s duration'}
+              title={isSupersetRestOwner(exercises, exIdx) ? undefined : 'Not used while more than one exercise in this superset still has work — the group\'s shared rest timer applies instead'}
             >
               rest{' '}
               <input
@@ -1603,6 +1633,32 @@ export default function ActiveWorkoutPage() {
               />
               s
             </span>
+            {isSupersetGroupConfigOwner(exercises, exIdx) && (
+              <span
+                className={`rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
+                title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
+              >
+                superset rest{' '}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  step="15"
+                  className="rest-input"
+                  style={{ width: `${Math.max(String(ex.supersetRestSeconds ?? 90).length, 1) + 1}ch` }}
+                  value={ex.supersetRestSeconds ?? 90}
+                  onChange={(e) => updateSupersetRest(exIdx, e.target.value)}
+                  onFocus={(e) => {
+                    setFocusedSupersetRestExIdx(exIdx)
+                    e.target.select()
+                  }}
+                  onBlur={() => handleSupersetRestBlur(exIdx)}
+                  aria-label={`Superset rest time for the ${ex.exerciseName} group`}
+                />
+                s
+              </span>
+            )}
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
           {taperSetSuggestion(ex, taper) !== null && (
@@ -1617,6 +1673,21 @@ export default function ActiveWorkoutPage() {
                   className={ex.restSeconds === preset ? 'rest-preset active' : 'rest-preset'}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => selectRestPreset(exIdx, preset)}
+                >
+                  {preset}s
+                </button>
+              ))}
+            </div>
+          )}
+          {focusedSupersetRestExIdx === exIdx && (
+            <div className="rest-presets">
+              {REST_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={(ex.supersetRestSeconds ?? 90) === preset ? 'rest-preset active' : 'rest-preset'}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectSupersetRestPreset(exIdx, preset)}
                 >
                   {preset}s
                 </button>

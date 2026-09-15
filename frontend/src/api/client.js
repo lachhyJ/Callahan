@@ -84,6 +84,15 @@ export function updateRestSeconds(workoutTemplateExerciseId, restSeconds) {
   })
 }
 
+// Persists the whole superset group's rest duration — call with the group's
+// first slot's id, since that's the only one the backend reads back.
+export function updateSupersetRestSeconds(workoutTemplateExerciseId, supersetRestSeconds) {
+  return apiFetch(`/api/workouttemplates/exercises/${workoutTemplateExerciseId}/superset-rest-seconds`, {
+    method: 'PUT',
+    body: JSON.stringify({ supersetRestSeconds }),
+  })
+}
+
 // Rewrites a template's whole slot order + superset links, as arranged in the
 // active workout's Rearrange mode. `items` is one entry per template-backed
 // exercise: { workoutTemplateExerciseId, exerciseOrder, supersetWithNext }.

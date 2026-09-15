@@ -10,6 +10,7 @@ import {
   supersetGroupBounds,
   suppressesRest,
   isSupersetRestOwner,
+  isSupersetGroupConfigOwner,
   advanceHold,
 } from './activeWorkout'
 
@@ -271,7 +272,10 @@ describe('superset grouping', () => {
     const d = restDescriptorAfterSet(ex, 3, 0)
     expect(d.exerciseName).toBe('Pull-Ups') // group's first member, round 2
     expect(d.nextSetNumber).toBe(2)
-    expect(d.restSeconds).toBe(60)
+    // More than one member still has work, so the group's shared config
+    // applies — gymOne never sets supersetRestSeconds, so this is the
+    // app-wide default (90), not any individual member's own restSeconds.
+    expect(d.restSeconds).toBe(90)
   })
 
   it('once the whole group is done the rest rolls on to the next exercise', () => {
@@ -303,7 +307,7 @@ describe('superset grouping', () => {
     expect(suppressesRest(ex, 0, 0)).toBe(true)
   })
 
-  it('the last member standing rests between its own sets once everyone else is exhausted', () => {
+  it('the last member standing rests on its own duration once everyone else is exhausted', () => {
     const ex = unevenGym()
     ex[1].sets = ex[1].sets.map((s) => ({ ...s, completed: true })) // Calf Raise done
     ex[2].sets = ex[2].sets.map((s) => ({ ...s, completed: true })) // Copenhagen done
@@ -313,10 +317,9 @@ describe('superset grouping', () => {
     // Pull-Ups' 4th set (index 3): Calf Raise and Copenhagen have no set at
     // that index at all, so nobody is left to rotate to.
     expect(suppressesRest(ex, 0, 3)).toBe(false)
-    // Pull-Ups still owns the group's rest here since it's the one with work
-    // left (it just happens to also be the group's first member in this
-    // fixture — see the reversed-order fixture below for the case that
-    // actually distinguishes "current owner" from "always first member").
+    // Pull-Ups is now the sole active member, so its own restSeconds (45)
+    // applies — not the group's shared supersetRestSeconds, which only
+    // governs while more than one member still has work.
     const d = restDescriptorAfterSet(ex, 0, 3)
     expect(d.restSeconds).toBe(45)
   })
@@ -328,16 +331,36 @@ describe('superset grouping', () => {
     expect(d.exerciseName).toBe('Calf Raise')
   })
 
-  it('the round-closing rest uses whichever member currently owns the group, not the closer\'s own', () => {
+  it('the round-closing rest uses the group\'s shared config while more than one member is active', () => {
     const ex = unevenGym()
     // Round 1: Pull-Ups, Calf Raise done; Copenhagen (90s) closes the round.
+    // Pull-Ups still has 4 sets left, so more than one member is active.
     ex[0].sets[0].completed = true
     ex[1].sets[0].completed = true
     const d = restDescriptorAfterSet(ex, 2, 0)
     expect(d.exerciseName).toBe('Pull-Ups') // next round, back to the top
-    // Not Copenhagen's own 90s — Pull-Ups (still the earliest member with
-    // work left) owns the duration for the whole superset at this point.
-    expect(d.restSeconds).toBe(45)
+    // Not Copenhagen's own 90s, nor Pull-Ups' own 45s — unevenGym never sets
+    // supersetRestSeconds, so this is the app-wide default.
+    expect(d.restSeconds).toBe(90)
+  })
+
+  it('the group\'s own supersetRestSeconds is used when set, while more than one member is active', () => {
+    const ex = unevenGym()
+    ex[0].supersetRestSeconds = 75 // set on the group's first member
+    ex[0].sets[0].completed = true
+    ex[1].sets[0].completed = true
+    const d = restDescriptorAfterSet(ex, 2, 0)
+    expect(d.restSeconds).toBe(75)
+  })
+
+  it('isSupersetGroupConfigOwner is true only for the group\'s first member, regardless of completion state', () => {
+    const ex = unevenGym()
+    expect(ex.map((_, i) => isSupersetGroupConfigOwner(ex, i))).toEqual([true, false, false])
+    // Fixed positional fact — doesn't move even once Pull-Ups is exhausted.
+    ex[0].sets = ex[0].sets.map((s) => ({ ...s, completed: true }))
+    expect(isSupersetGroupConfigOwner(ex, 0)).toBe(true)
+    const lone = gymOne()
+    expect(isSupersetGroupConfigOwner(lone, 0)).toBe(false) // not in a group at all
   })
 
   // The case that actually distinguishes "current owner" from a permanent
@@ -368,9 +391,9 @@ describe('superset grouping', () => {
     expect(d.restSeconds).toBe(150)
   })
 
-  it('isSupersetRestOwner is true only for the group\'s first member while it still has work (and any lone exercise)', () => {
-    const ex = unevenGym() // Pull-Ups, Calf Raise, Copenhagen
-    expect(ex.map((_, i) => isSupersetRestOwner(ex, i))).toEqual([true, false, false])
+  it('isSupersetRestOwner is false for every group member while more than one is active (and true for any lone exercise)', () => {
+    const ex = unevenGym() // Pull-Ups, Calf Raise, Copenhagen — all still active
+    expect(ex.map((_, i) => isSupersetRestOwner(ex, i))).toEqual([false, false, false])
     const lone = gymOne()
     expect(isSupersetRestOwner(lone, 0)).toBe(true) // Trap Bar, not in a group
     expect(isSupersetRestOwner(lone, 4)).toBe(true) // Hip Thrust, not in a group

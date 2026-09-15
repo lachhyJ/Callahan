@@ -21,6 +21,7 @@ public record WorkoutTemplateExerciseStartDto(
     int PerSideDelaySeconds,
     int? TargetDurationSeconds,
     bool SupersetWithNext,
+    int? SupersetRestSeconds,
     List<PreviousSetDto> PreviousSets,
     bool ReadyToProgress);
 
@@ -33,6 +34,8 @@ public record WorkoutTemplateStartDto(
 public record UpdateCueRequest(string? Cue);
 
 public record UpdateRestSecondsRequest(int RestSeconds);
+
+public record UpdateSupersetRestSecondsRequest(int SupersetRestSeconds);
 
 public record ExerciseCueDto(int WorkoutTemplateExerciseId, string TemplateName, string? Cue);
 

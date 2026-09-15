@@ -79,41 +79,72 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
 }
 
 // The rest duration for a set inside superset group [groupStart, groupEnd]:
-// the earliest group member (in array order) that still has an incomplete
-// set, regardless of which member's tick actually closes a given round — one
-// config for the whole superset, not whichever exercise happens to be the
-// one resting. That's the group's first member for as long as it still has
-// work; once it's fully done, ownership moves to whichever member is next in
-// line. Getting this wrong was the actual bug in the original "always the
-// first member, permanently" version: once a shorter first member (e.g. 3
-// sets) finished while a longer second member (5 sets) still had 2 sets
-// left, the first member's now-irrelevant duration kept being used instead
-// of the second member's own. Outside a group (groupStart === groupEnd) the
-// exercise's own restSeconds applies, as for any standalone exercise.
+// the group's own configured rest (supersetRestSeconds, stored on its first
+// member) while more than one member still has work — one shared config for
+// the whole rotation, not any individual exercise's own field. Once the
+// rotation is down to a single member with work left, that exercise's own
+// restSeconds takes over instead, since the group timer no longer means
+// anything once there's nobody left to rotate to.
+//
+// Two earlier versions of this got it wrong: always using the first
+// member's own restSeconds (breaks as soon as the group's real config
+// differs from that field's purpose) and "ownership shifts to whichever
+// member is furthest behind" (conflated the group's rest with an
+// individual exercise's, so a group of >1 active members still ended up
+// borrowing one specific member's own field). A dedicated group-level field
+// removes the ambiguity entirely. Outside a group (groupStart === groupEnd)
+// the exercise's own restSeconds applies, as for any standalone exercise.
 function groupRestSeconds(exercises, groupStart, groupEnd, exIdx) {
-  return exercises[groupRestOwner(exercises, groupStart, groupEnd, exIdx)].restSeconds || 90
+  if (groupEnd === groupStart) return exercises[exIdx].restSeconds || 90
+  const solo = soleActiveGroupMember(exercises, groupStart, groupEnd)
+  if (solo != null) return exercises[solo].restSeconds || 90
+  return exercises[groupStart].supersetRestSeconds || 90
 }
 
-function groupRestOwner(exercises, groupStart, groupEnd, exIdx) {
-  if (groupEnd === groupStart) return exIdx
+// The single group member still with incomplete sets, or null if more than
+// one (or none) still have work. "More than one active" is exactly when the
+// group's shared rest config applies instead of any one member's own.
+function soleActiveGroupMember(exercises, groupStart, groupEnd) {
+  let solo = null
   for (let i = groupStart; i <= groupEnd; i++) {
-    if (exercises[i].sets.some((s) => !s.completed)) return i
+    if (!exercises[i].sets.some((s) => !s.completed)) continue
+    if (solo != null) return null // a second active member — not solo
+    solo = i
   }
-  return groupEnd // whole group done — doesn't matter which, nothing left to rest for
+  return solo
 }
 
-// Whether exIdx's own restSeconds field is the one actually read for its
-// group's rest duration right now — true for a lone exercise, or for
-// whichever superset member currently owns the group's rest (see
-// groupRestOwner); false for every other member, whose own restSeconds isn't
-// consulted while someone earlier still has work. This shifts as a
-// round-robin progresses through uneven set counts, unlike suppressesRest,
-// which answers a different, per-tick question ("would completing my next
-// set fire a rest at all"). Used to decide which rest-seconds fields the UI
-// should show as editable.
+// Whether exIdx's own restSeconds field is the one actually read right now —
+// true for a lone exercise, or for a superset member once it's the sole
+// remaining active member of its group (see groupRestSeconds); false
+// whenever the group's shared supersetRestSeconds governs instead. This
+// shifts as a round-robin progresses through uneven set counts, unlike
+// suppressesRest, which answers a different, per-tick question ("would
+// completing my next set fire a rest at all"). Used to decide which
+// rest-seconds fields the UI should show as editable.
 export function isSupersetRestOwner(exercises, exIdx) {
   const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
-  return groupRestOwner(exercises, groupStart, groupEnd, exIdx) === exIdx
+  if (groupEnd === groupStart) return true
+  return soleActiveGroupMember(exercises, groupStart, groupEnd) === exIdx
+}
+
+// Whether exIdx is the group member whose supersetRestSeconds field is the
+// group's shared config — always the group's first member, a fixed fact
+// about position (never shifts, unlike isSupersetRestOwner). Used to decide
+// which single card shows the group-level rest control.
+export function isSupersetGroupConfigOwner(exercises, exIdx) {
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  return groupEnd > groupStart && groupStart === exIdx
+}
+
+// Whether the group's shared supersetRestSeconds currently governs (more
+// than one member still has work) rather than some individual member's own
+// restSeconds having taken over. Used to dim the group-level rest control
+// once the rotation is down to its last active member.
+export function isSupersetGroupRestActive(exercises, exIdx) {
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  if (groupEnd === groupStart) return false
+  return soleActiveGroupMember(exercises, groupStart, groupEnd) == null
 }
 
 // Within [groupStart, groupEnd], the member due next in a round-robin

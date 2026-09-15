@@ -40,9 +40,18 @@ public class WorkoutTemplateExercise
 
     // True when this slot runs straight into the next one (by ExerciseOrder) as
     // a superset — no rest between them. A superset is a maximal run of slots
-    // where every member but the last carries this flag; the last member's rest
-    // is the one that fires per round. Consecutive-only by construction:
-    // adjacency is ExerciseOrder, so there is nothing to store beyond this bit.
-    // Set from the active workout's Rearrange mode.
+    // where every member but the last carries this flag. Consecutive-only by
+    // construction: adjacency is ExerciseOrder, so there is nothing to store
+    // beyond this bit. Set from the active workout's Rearrange mode.
     public bool SupersetWithNext { get; set; }
+
+    // The whole superset group's rest duration, used while more than one
+    // group member still has sets left — distinct from RestSeconds, which
+    // only ever governs this slot's own rest once it's the sole remaining
+    // active member (see groupRestSeconds in the frontend's activeWorkout.js
+    // for the read-side logic). Meaningful only on a group's first slot
+    // (lowest ExerciseOrder among a contiguous SupersetWithNext run); null
+    // everywhere else, including on lone (non-superset) slots, where it's
+    // simply never read. Null means "use the app's default (90s)".
+    public int? SupersetRestSeconds { get; set; }
 }
