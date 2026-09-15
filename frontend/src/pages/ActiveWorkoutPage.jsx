@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -648,11 +648,19 @@ export default function ActiveWorkoutPage() {
     }
   }
 
+  // Deferred one frame: called synchronously from the tick handler, before
+  // React has committed the completed-exercise's re-render (e.g. a fully
+  // finished superset member restyling/collapsing). Scrolling against that
+  // stale layout was seen to produce a brief scroll-up-then-back-down blip
+  // once the row's real position settled — waiting a frame lets layout
+  // catch up first.
   function scrollToSetRow(exIdx, setIdx) {
-    const row = document.getElementById(`set-${exIdx}-${setIdx}`)
-    if (!row) return
-    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+    requestAnimationFrame(() => {
+      const row = document.getElementById(`set-${exIdx}-${setIdx}`)
+      if (!row) return
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+    })
   }
 
   // Bring the first still-unticked set anywhere in the session into view — used
@@ -1569,8 +1577,8 @@ export default function ActiveWorkoutPage() {
           <p className="target-reps">
             {ex.targetReps ? `Target: ${ex.targetSets} × ${ex.targetReps} · ` : ''}
             <span
-              className={`rest-control${suppressesRest(exercises, exIdx) ? ' rest-control--dormant' : ''}`}
-              title={suppressesRest(exercises, exIdx) ? 'No auto-rest — this exercise runs into the next as a superset' : undefined}
+              className={`rest-control${isSupersetRestOwner(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
+              title={isSupersetRestOwner(exercises, exIdx) ? undefined : 'Not used — the superset rests on the group\'s first exercise\'s duration'}
             >
               rest{' '}
               <input

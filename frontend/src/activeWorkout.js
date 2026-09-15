@@ -89,6 +89,19 @@ function groupRestSeconds(exercises, groupStart, groupEnd, exIdx) {
   return exercises[owner].restSeconds || 90
 }
 
+// Whether exIdx's own restSeconds field is the one actually read for its
+// group's rest duration — true for a lone exercise, or for a superset
+// group's first member; false for every other member, whose own restSeconds
+// is never consulted (see groupRestSeconds). This is a fixed fact about the
+// exercise's position, unlike suppressesRest, which answers a different,
+// per-round question ("would completing my next set fire a rest at all") and
+// changes as a round-robin progresses through uneven set counts. Used to
+// decide which rest-seconds fields the UI should show as editable.
+export function isSupersetRestOwner(exercises, exIdx) {
+  const [groupStart] = supersetGroupBounds(exercises, exIdx)
+  return groupStart === exIdx
+}
+
 // Within [groupStart, groupEnd], the member due next in a round-robin
 // rotation when there's no specific "just ticked" exercise to cycle forward
 // from: whichever member still has work left with the fewest sets completed

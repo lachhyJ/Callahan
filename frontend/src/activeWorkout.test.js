@@ -9,6 +9,7 @@ import {
   restDescriptorAfterSet,
   supersetGroupBounds,
   suppressesRest,
+  isSupersetRestOwner,
   advanceHold,
 } from './activeWorkout'
 
@@ -336,6 +337,14 @@ describe('superset grouping', () => {
     // Not Copenhagen's own 90s — the group's first member (Pull-Ups) owns
     // the duration for the whole superset.
     expect(d.restSeconds).toBe(45)
+  })
+
+  it('isSupersetRestOwner is true only for the group\'s first member (and any lone exercise)', () => {
+    const ex = unevenGym() // Pull-Ups, Calf Raise, Copenhagen
+    expect(ex.map((_, i) => isSupersetRestOwner(ex, i))).toEqual([true, false, false])
+    const lone = gymOne()
+    expect(isSupersetRestOwner(lone, 0)).toBe(true) // Trap Bar, not in a group
+    expect(isSupersetRestOwner(lone, 4)).toBe(true) // Hip Thrust, not in a group
   })
 })
 
