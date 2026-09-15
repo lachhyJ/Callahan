@@ -99,7 +99,7 @@ function PlatesYouHave({ available, onToggle }) {
   )
 }
 
-const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added', hidden: 'Hide' }
+const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
 export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined

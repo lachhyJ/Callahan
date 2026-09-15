@@ -431,6 +431,12 @@ td {
   min-width: 0;
 }
 
+.history-item-time {
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
 .row-delete-btn {
   flex-shrink: 0;
   display: inline-flex;

@@ -256,6 +256,10 @@ export default function ActiveWorkoutPage() {
   const [creatingExercise, setCreatingExercise] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState(null)
   const [error, setError] = useState(null)
+  // A set-completion validation message (missing reps/hold time) needs to
+  // interrupt with a popup, not just render an easy-to-miss inline <p> — the
+  // general `error` state above stays for load/save failures.
+  const [setValidationError, setSetValidationError] = useState(null)
   const [saving, setSaving] = useState(false)
   const [openTypeMenu, setOpenTypeMenu] = useState(null)
   // Seeded from the persisted slot rather than `new Date()`.
@@ -729,11 +733,11 @@ export default function ActiveWorkoutPage() {
     const set = exercise.sets[setIdx]
     if (!set.completed) {
       if (exercise.isTimeBased && !isTimeSet(set)) {
-        setError('Enter a hold time before marking this done.')
+        setSetValidationError('Enter a hold time before marking this done.')
         return
       }
       if (!exercise.isTimeBased && set.reps === '') {
-        setError('Enter reps before marking a set complete.')
+        setSetValidationError('Enter reps before marking a set complete.')
         return
       }
     }
@@ -955,6 +959,7 @@ export default function ActiveWorkoutPage() {
   // linked — re-link is a deliberate second tap. Predictable beats clever here.
   function moveExercise(exIdx, dir) {
     const to = exIdx + dir
+    let movedExerciseId = null
     setExercises((prev) => {
       if (to < 0 || to >= prev.length) return prev
       const next = prev.map((ex) => ({ ...ex }))
@@ -963,7 +968,19 @@ export default function ActiveWorkoutPage() {
       for (const i of [lo - 1, lo, lo + 1]) {
         if (next[i]) next[i].supersetWithNext = false
       }
+      movedExerciseId = next[to].exerciseId
       return next
+    })
+    if (movedExerciseId === null) return
+    // The card now keeps a stable key (ex.exerciseId) across the swap, so it
+    // survives as the same DOM node — but the swap can still scroll it out of
+    // view (or leave it ambiguous which card moved), so re-focus it explicitly.
+    requestAnimationFrame(() => {
+      const card = document.getElementById(`exercise-card-${movedExerciseId}`)
+      if (!card) return
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      card.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+      card.querySelector('.exercise-move-controls button')?.focus()
     })
   }
 
@@ -1282,6 +1299,16 @@ export default function ActiveWorkoutPage() {
     </ConfirmSheet>
   )
 
+  const setValidationSheet = (
+    <ConfirmSheet
+      open={!!setValidationError}
+      variant="alert"
+      title="Missing info"
+      body={setValidationError ?? ''}
+      onCancel={() => setSetValidationError(null)}
+    />
+  )
+
   if (error && !exercises) return <main className="page"><p className="error">{error}</p></main>
   if (!exercises) return <main className="page"><p>Loading workout…</p></main>
 
@@ -1349,6 +1376,7 @@ export default function ActiveWorkoutPage() {
           <button type="button" className="discard-btn" onClick={handleDiscard}>Discard workout</button>
         </div>
         {confirmSheets}
+        {setValidationSheet}
       </main>
     )
   }
@@ -1497,8 +1525,8 @@ export default function ActiveWorkoutPage() {
         const inSuperset = gEnd > gStart
         const supersetPos = !inSuperset ? '' : exIdx === gStart ? ' superset-first' : exIdx === gEnd ? ' superset-last' : ' superset-mid'
         return (
-        <Fragment key={`${ex.exerciseId}-${exIdx}`}>
-        <div className={`exercise-card${inSuperset ? ' superset-member' : ''}${supersetPos}`}>
+        <Fragment key={ex.exerciseId}>
+        <div id={`exercise-card-${ex.exerciseId}`} className={`exercise-card${inSuperset ? ' superset-member' : ''}${supersetPos}`}>
           {inSuperset && exIdx === gStart && (
             <span className="superset-pill">Superset · {gEnd - gStart + 1}</span>
           )}
@@ -1964,6 +1992,7 @@ export default function ActiveWorkoutPage() {
       />
 
       {confirmSheets}
+      {setValidationSheet}
     </main>
   )
 }

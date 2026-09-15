@@ -199,18 +199,22 @@ export function clearCustomEquipment(exerciseId) {
 
 // Name-based guess at what kind of equipment an exercise is loaded on —
 // 'barbell' (bar/sled + plates), 'dumbbell' (fixed-weight, logged as
-// combined weight across both hands), or 'hidden' (cable stacks, machines,
-// bodyweight — nothing to load or calculate). 'added' (plates hung from a
-// dip belt) is deliberately never guessed: pull-ups and chin-ups are
-// unweighted far more often than not, so they keep guessing 'hidden' and
-// 'added' is reached by the per-exercise override, which then sticks. Not perfect (a DB/Cable
-// naming convention only helps for exercises tagged that way, and moves
-// like "Lunges" or "Single Leg Hamstring Curl" carry no equipment hint at
-// all) — those fall through to 'barbell' rather than 'hidden', since a
-// manual override is one tap away either direction and showing an unneeded
-// button is cheaper than hiding a needed one.
+// combined weight across both hands), or 'hidden' (cable stacks, pin-loaded
+// machines, bodyweight — nothing to load or calculate). 'added' (plates
+// hung from a dip belt, or stacked on a single-sided plate-loaded machine
+// like a hip thrust or hack squat) is deliberately never guessed: pull-ups
+// and chin-ups are unweighted far more often than not, so they keep
+// guessing 'hidden' and 'added' is reached by the per-exercise override,
+// which then sticks. "machine" is intentionally NOT in this list — plenty
+// of machines are plate-loaded (needing 'added', not 'hidden'), so a bare
+// name match can't tell pin-stack from plate-loaded; those fall through to
+// 'barbell' rather than 'hidden', since a manual override is one tap away
+// either direction and showing an unneeded button is cheaper than hiding a
+// needed one. Not perfect (a DB/Cable naming convention only helps for
+// exercises tagged that way, and moves like "Lunges" or "Single Leg
+// Hamstring Curl" carry no equipment hint at all) — same fallback applies.
 const HIDDEN_KEYWORDS = [
-  'cable', 'machine',
+  'cable',
   'push-up', 'pull-up', 'chin-up',
   'plank', 'dead bug', 'box jump', 'ab wheel', 'pallof', 'burpee', 'wall sit',
 ]

@@ -12,7 +12,8 @@ import { workoutLabel } from '../components/SessionList'
 import ActivitySessionRow from '../components/ActivitySessionRow'
 import { useActivityClassification } from '../hooks/useActivityClassification'
 import { TrashIcon } from '../icons'
-import { endOfWeek, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
+import { endOfWeek, formatTimeOfDay, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
+import { formatSessionDuration } from '../utils/format'
 
 const WEEKS_PER_PAGE = 6
 const UNDO_WINDOW_MS = 6000
@@ -245,12 +246,24 @@ export default function HistoryPage() {
                     const isDuplicateNotes = item.type === 'Ultimate' ||
                       (item.type === 'Running' && item.source === 'Garmin' && item.activitySessionTypeId)
                     const showNotes = item.notes && !isDuplicateNotes
+                    // Older sessions (pre-timestamp tracking) can have either
+                    // field null — fall back to just the date rather than
+                    // showing "NaN min" or an empty time.
+                    const workoutMeta = item.kind === 'workout' && item.startedAt
+                      ? [
+                          formatTimeOfDay(item.startedAt),
+                          item.finishedAt
+                            ? formatSessionDuration((new Date(item.finishedAt) - new Date(item.startedAt)) / 1000)
+                            : null,
+                        ].filter(Boolean).join(' · ')
+                      : null
 
                     return (
                       <div key={`${item.kind}-${item.id}`} className="history-item">
                         <div className="history-item-row">
                           <span className="history-item-main">
                             <strong>{shortWeekdayAndDay(item.date)}</strong>{' '}
+                            {workoutMeta && <span className="history-item-time">{workoutMeta}</span>}{' '}
                             {item.kind === 'workout' ? (
                               <Link to={`/sessions/${item.id}`} className="session-link">
                                 {workoutLabel(item)} · {item.setCount} set{item.setCount === 1 ? '' : 's'}
