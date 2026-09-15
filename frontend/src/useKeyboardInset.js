@@ -16,21 +16,57 @@ import { useEffect, useState } from 'react'
 // which is worse than the original bug. Plain visualViewport self-corrects
 // to ~0 in that already-resized case (innerHeight and vv.height end up
 // equal), so it's the only offset ever safely computed.
+//
+// Still not enough on its own, though (2026-09-15, same day, on-device
+// again): a resize/scroll event on visualViewport fires with whatever the
+// viewport looks like at that exact instant, and that instant isn't always
+// the settled final state — the very first keyboard-show in a session, and
+// switching focus from one field to another *without* the keyboard closing
+// in between (only a scroll-to-bring-the-new-field-into-view happens, no
+// full resize), both fire events mid-animation with a transient, wrong
+// value that never got corrected because nothing fired again afterward.
+// Re-check shortly after the last event settles, and also after any focus
+// change lands on a new element — a focus/blur pair doesn't guarantee a
+// visualViewport event at all if the OS doesn't need to scroll further.
+const SETTLE_DELAY_MS = 150
+
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
 
   useEffect(() => {
     const vv = window.visualViewport
     if (!vv) return
-    function update() {
-      setInset(Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop)))
+    let settleTimer = null
+
+    function compute() {
+      return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
     }
+
+    function scheduleSettleCheck() {
+      clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => setInset(compute()), SETTLE_DELAY_MS)
+    }
+
+    function update() {
+      setInset(compute())
+      scheduleSettleCheck()
+    }
+
+    function onFocusChange() {
+      scheduleSettleCheck()
+    }
+
     update()
     vv.addEventListener('resize', update)
     vv.addEventListener('scroll', update)
+    document.addEventListener('focusin', onFocusChange)
+    document.addEventListener('focusout', onFocusChange)
     return () => {
+      clearTimeout(settleTimer)
       vv.removeEventListener('resize', update)
       vv.removeEventListener('scroll', update)
+      document.removeEventListener('focusin', onFocusChange)
+      document.removeEventListener('focusout', onFocusChange)
     }
   }, [])
 
