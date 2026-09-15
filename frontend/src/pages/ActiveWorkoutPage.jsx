@@ -951,22 +951,43 @@ export default function ActiveWorkoutPage() {
     setOpenTypeMenu(null)
   }
 
-  // Move an exercise one slot up or down in Rearrange mode. Any move clears the
-  // superset link on the two swapped cards and on the card just above the pair,
-  // so a member can't be dragged out of a group while silently keeping it
-  // linked — re-link is a deliberate second tap. Predictable beats clever here.
+  // Move an exercise one slot up or down in Rearrange mode. A superset link is
+  // a relationship between two specific exercises, not between two positions —
+  // so a link survives a move iff its two exercises are still adjacent (in
+  // order) afterward, and breaks otherwise. That alone still isn't enough:
+  // the only way to get an unrelated exercise from after a group to before it
+  // is clicking it past the group one slot at a time, and the ordinary
+  // adjacent swap that implies would put the mover *between* two linked
+  // members at some point along the way — genuinely separating them, and
+  // breaking that link, even though the mover has nothing to do with the
+  // group. So when the immediate neighbor belongs to a group the mover isn't
+  // already part of, hop clean over the whole group in one click instead: the
+  // mover never becomes adjacent to an interior member, so none of the
+  // group's own links are ever touched — only the one link at whichever
+  // boundary the mover actually crosses.
   function moveExercise(exIdx, dir) {
-    const to = exIdx + dir
     let movedExerciseId = null
     setExercises((prev) => {
-      if (to < 0 || to >= prev.length) return prev
-      const next = prev.map((ex) => ({ ...ex }))
-      ;[next[exIdx], next[to]] = [next[to], next[exIdx]]
-      const lo = Math.min(exIdx, to)
-      for (const i of [lo - 1, lo, lo + 1]) {
-        if (next[i]) next[i].supersetWithNext = false
+      const naiveTo = exIdx + dir
+      if (naiveTo < 0 || naiveTo >= prev.length) return prev
+      const [ownStart, ownEnd] = supersetGroupBounds(prev, exIdx)
+      let to = naiveTo
+      if (naiveTo < ownStart || naiveTo > ownEnd) {
+        const [gStart, gEnd] = supersetGroupBounds(prev, naiveTo)
+        if (gEnd > gStart) to = dir > 0 ? gEnd : gStart
       }
-      movedExerciseId = next[to].exerciseId
+      const linkedPairs = new Set()
+      for (let i = 0; i < prev.length - 1; i++) {
+        if (prev[i].supersetWithNext) linkedPairs.add(`${prev[i].exerciseId}:${prev[i + 1].exerciseId}`)
+      }
+      const next = prev.map((ex) => ({ ...ex }))
+      const [mover] = next.splice(exIdx, 1)
+      next.splice(to, 0, mover)
+      for (let i = 0; i < next.length; i++) {
+        const after = next[i + 1]
+        next[i].supersetWithNext = !!after && linkedPairs.has(`${next[i].exerciseId}:${after.exerciseId}`)
+      }
+      movedExerciseId = mover.exerciseId
       return next
     })
     if (movedExerciseId === null) return
