@@ -9,11 +9,14 @@ import { createPortal } from 'react-dom'
 // save anyway?" looked identical at 1am with a barbell in front of you. The
 // only difference was the sentence, and the sentence is the thing you skim.
 //
-// Two variants, deliberately not subtle:
+// Three variants, deliberately not subtle:
 //   • `danger`   — destructive and unrecoverable. Red rule, red confirm button,
 //                  and the safe action is the one your thumb lands on first.
 //   • `caution`  — recoverable and probably fine. Amber rule, ordinary accent
 //                  confirm, and confirming is the expected outcome.
+//   • `alert`    — not a decision at all, just something the user needs to see
+//                  before continuing (e.g. "enter reps first"). Single
+//                  dismiss button; no `onConfirm` needed.
 //
 // A bottom sheet rather than a centred modal: this is a phone-first screen and
 // the buttons need to be in thumb reach, which is also the app's existing
@@ -75,12 +78,20 @@ export default function ConfirmSheet({
         {detail && <p className="confirm-sheet-detail">{detail}</p>}
         {children}
         <div className="confirm-sheet-actions">
-          <button type="button" ref={cancelRef} className="confirm-sheet-cancel" onClick={onCancel}>
-            {cancelLabel}
-          </button>
-          <button type="button" ref={confirmRef} className="confirm-sheet-confirm" onClick={onConfirm}>
-            {confirmLabel}
-          </button>
+          {variant === 'alert' ? (
+            <button type="button" ref={confirmRef} className="confirm-sheet-confirm" onClick={onCancel}>
+              {confirmLabel || 'OK'}
+            </button>
+          ) : (
+            <>
+              <button type="button" ref={cancelRef} className="confirm-sheet-cancel" onClick={onCancel}>
+                {cancelLabel}
+              </button>
+              <button type="button" ref={confirmRef} className="confirm-sheet-confirm" onClick={onConfirm}>
+                {confirmLabel}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </>,
