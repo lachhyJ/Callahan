@@ -17,6 +17,7 @@ import {
   setCustomEquipment,
   setEquipmentTypeOverride,
 } from '../plateCalc'
+import { useKeyboardInset } from '../useKeyboardInset'
 
 const SAVED_BAR = 'saved'
 const CUSTOM_BAR = 'custom'
@@ -121,33 +122,16 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const sheetRef = useRef(null)
 
   // The sheet is `position: fixed; bottom: 0` against the LAYOUT viewport,
-  // which iOS Safari doesn't shrink when the keyboard opens — only the
-  // VISUAL viewport shrinks. With no adjustment, focusing a field inside the
-  // sheet (custom bar weight, a plate chip) leaves the sheet's lower content
-  // sitting behind the keyboard by an amount that varies with the sheet's own
-  // height (how many rows are showing), which is exactly the "sometimes
-  // behind the keyboard, varies how far" symptom reported. Lift the sheet by
-  // the keyboard's height and cap it to what's left so it scrolls internally
-  // instead of clipping.
-  const [keyboardInset, setKeyboardInset] = useState(0)
-
-  useEffect(() => {
-    const vv = window.visualViewport
-    if (!open || !vv) {
-      setKeyboardInset(0)
-      return
-    }
-    function syncInset() {
-      setKeyboardInset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop))
-    }
-    syncInset()
-    vv.addEventListener('resize', syncInset)
-    vv.addEventListener('scroll', syncInset)
-    return () => {
-      vv.removeEventListener('resize', syncInset)
-      vv.removeEventListener('scroll', syncInset)
-    }
-  }, [open])
+  // which doesn't shrink when the keyboard opens. With no adjustment,
+  // focusing a field inside the sheet (custom bar weight, a plate chip)
+  // leaves the sheet's lower content sitting behind the keyboard by an
+  // amount that varies with the sheet's own height (how many rows are
+  // showing) — lift the sheet by the keyboard's height and cap it to what's
+  // left so it scrolls internally instead of clipping. See
+  // useKeyboardInset.js for why this needs the native Keyboard plugin rather
+  // than just visualViewport in the Capacitor app.
+  const rawKeyboardInset = useKeyboardInset()
+  const keyboardInset = open ? rawKeyboardInset : 0
 
   // Re-sync to this exercise's settings whenever the sheet is opened for a
   // (possibly different) exercise, rather than carrying over whatever was
