@@ -13,6 +13,18 @@ import { Capacitor } from '@capacitor/core'
 // @capacitor/keyboard plugin instead reports the OS's own keyboard height
 // directly, so use it whenever running natively.
 //
+// IMPORTANT: the Keyboard plugin's default `resize` mode on iOS is `native`,
+// which makes iOS *also* shrink the WKWebView itself when the keyboard
+// opens. Combined with this hook applying its own `keyboardHeight` offset on
+// top, that double-counts — the webview is already inset by the keyboard's
+// height, then our UI gets pushed up by that same height again, landing
+// wherever the two independent adjustments happen to disagree. capacitor
+// .config.json sets `plugins.Keyboard.resize` to `none` so the webview
+// never resizes itself and this hook's offset is the only adjustment made.
+// Don't remove that config without re-verifying on a real device — the
+// Simulator did not reliably reproduce the double-counted-offset bug this
+// caused, only real hardware did.
+//
 // Web/PWA: no native plugin available, so visualViewport (accurate there)
 // stays the fallback.
 export function useKeyboardInset() {
