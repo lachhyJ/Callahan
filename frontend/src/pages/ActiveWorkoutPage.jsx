@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -690,21 +690,16 @@ export default function ActiveWorkoutPage() {
   }
 
   // The next set to bring into view after ticking one inside a superset group:
-  // whichever member's turn is next in the round, cycling forward from the one
-  // just ticked and wrapping within [groupStart, groupEnd] — never restarting
-  // the scan from the group's top. A naive "first incomplete set in the group"
-  // scan would do that instead, landing back on an earlier member for as long
-  // as it has *any* later round left, which is every round but its last.
+  // whichever member's turn is next in the round. Delegates to the same
+  // nextIncompleteInGroup the rest-timer/Live Activity data path uses
+  // (restDescriptorAfterSet) — this used to be its own separate cycling loop,
+  // which is exactly how it drifted out of sync with that path and both ended
+  // up needing the same fix twice.
   function scrollToNextInSuperset(exs, groupStart, groupEnd, fromIdx) {
-    const span = groupEnd - groupStart + 1
-    for (let step = 1; step <= span; step++) {
-      const i = groupStart + ((fromIdx - groupStart + step) % span)
-      const j = exs[i].sets.findIndex((s) => !s.completed)
-      if (j === -1) continue
-      scrollToSetRow(i, j)
-      return true
-    }
-    return false
+    const next = nextIncompleteInGroup(exs, groupStart, groupEnd, fromIdx)
+    if (!next) return false
+    scrollToSetRow(next.i, next.j)
+    return true
   }
 
   // After ticking a set: arm the rest, unless the ticked exercise is a superset
@@ -722,7 +717,10 @@ export default function ActiveWorkoutPage() {
         scrollToNextIncompleteSet(updatedExercises)
       }
     }
-    if (suppressesRest(updatedExercises, exIdx)) {
+    // The set actually just ticked is `setIdx`, not exIdx's next incomplete
+    // one (which after this tick is setIdx + 1) — suppressesRest needs the
+    // real index to judge whether this tick closed out the round.
+    if (suppressesRest(updatedExercises, exIdx, setIdx)) {
       return
     }
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))

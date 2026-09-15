@@ -233,11 +233,13 @@ describe('superset grouping', () => {
     const ex = gymOne()
     ex[1].sets[0].completed = true // ticked Pull-Ups set 1
     const d = restDescriptorAfterSet(ex, 1, 0)
-    // Next unticked scanning from the group top (Pull-Ups set 2).
-    expect(d.exerciseName).toBe('Pull-Ups')
-    expect(d.nextSetNumber).toBe(2)
-    // Pull-Ups isn't the group's last member, so the lock-screen "Set done"
-    // button must not fire a rest off this descriptor either.
+    // Rotates forward to the next member in the group (Calf Raise) rather
+    // than rescanning from the group's top back onto Pull-Ups itself.
+    expect(d.exerciseName).toBe('Calf Raise')
+    expect(d.nextSetNumber).toBe(1)
+    // Calf Raise isn't the group's last member (Copenhagen still has work),
+    // so the lock-screen "Set done" button must not fire a rest off this
+    // descriptor either.
     expect(d.isLastInSuperset).toBe(false)
   })
 
@@ -277,6 +279,43 @@ describe('superset grouping', () => {
     const d = restDescriptorAfterSet(ex, 3, 1)
     expect(d.exerciseName).toBe('Hip Thrust')
     expect(d.nextSetNumber).toBe(1)
+  })
+
+  // Uneven set counts: Pull-Ups gets 5 sets, Calf Raise and Copenhagen only 3.
+  // Once the two 3-set members are exhausted, Pull-Ups' own remaining sets
+  // are the only work left in the group. All sets start incomplete; each
+  // test ticks whatever it needs.
+  function unevenGym() {
+    return [
+      { ...exercise('Pull-Ups', 60, '3', [0, 1, 2, 3, 4].map(() => set(0, 3, false))), supersetWithNext: true },
+      { ...exercise('Calf Raise', 60, '12', [0, 1, 2].map(() => set(20, 12, false))), supersetWithNext: true },
+      { ...exercise('Copenhagen', 60, '20', [0, 1, 2].map(() => set(0, 20, false))), supersetWithNext: false },
+    ]
+  }
+
+  it('a member earlier in the group still suppresses while a later one has work left', () => {
+    const ex = unevenGym()
+    // Pull-Ups' 1st set: Calf Raise/Copenhagen both still owe this round.
+    expect(suppressesRest(ex, 0, 0)).toBe(true)
+  })
+
+  it('the last member standing rests between its own sets once everyone else is exhausted', () => {
+    const ex = unevenGym()
+    ex[1].sets = ex[1].sets.map((s) => ({ ...s, completed: true })) // Calf Raise done
+    ex[2].sets = ex[2].sets.map((s) => ({ ...s, completed: true })) // Copenhagen done
+    ex[0].sets[0].completed = true
+    ex[0].sets[1].completed = true
+    ex[0].sets[2].completed = true
+    // Pull-Ups' 4th set (index 3): Calf Raise and Copenhagen have no set at
+    // that index at all, so nobody is left to rotate to.
+    expect(suppressesRest(ex, 0, 3)).toBe(false)
+  })
+
+  it('the rest-timer/Live Activity descriptor rotates the same way the on-screen scroll does', () => {
+    const ex = unevenGym()
+    ex[0].sets[0].completed = true // ticked Pull-Ups set 1
+    const d = restDescriptorAfterSet(ex, 0, 0)
+    expect(d.exerciseName).toBe('Calf Raise')
   })
 })
 
