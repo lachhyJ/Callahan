@@ -68,7 +68,7 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
       enteredReps: ex.sets[j].reps,
       nextSetNumber: j + 1,
       totalSets: ex.sets.length,
-      restSeconds: ex.restSeconds || 90,
+      restSeconds: groupRestSeconds(exercises, groupStart, groupEnd, target ? target.i : i),
       // Whether ticking *this* set should fire a rest at all — the lock-screen
       // card needs this to make the same call the checkbox does in
       // armRestAfterSet, since it cannot call back into JS to ask.
@@ -76,6 +76,17 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
     }
   }
   return null
+}
+
+// The rest duration for a set inside superset group [groupStart, groupEnd]:
+// always the group's first member's own restSeconds, regardless of which
+// member's tick actually closes the round — one config for the whole
+// superset, not whichever exercise happens to be the one resting. Outside a
+// group (groupStart === groupEnd) the exercise's own restSeconds applies, as
+// for any standalone exercise.
+function groupRestSeconds(exercises, groupStart, groupEnd, exIdx) {
+  const owner = groupEnd > groupStart ? groupStart : exIdx
+  return exercises[owner].restSeconds || 90
 }
 
 // Within [groupStart, groupEnd], the member due next in a round-robin
@@ -187,19 +198,6 @@ export function suppressesRest(exercises, exIdx, setIdx = exercises[exIdx]?.sets
 // renders as "Last set done".
 export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   const ex = exercises[exIdx]
-  const sameExercise = {
-    exerciseName: ex.exerciseName,
-    targetReps: ex.targetReps,
-    targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
-    enteredReps: ex.sets[setIdx + 1]?.reps,
-    nextSetNumber: setIdx + 2,
-    totalSets: ex.sets.length,
-    restSeconds: ex.restSeconds || 90,
-    // Reached only when nothing else in this exercise's group (if any) has
-    // work left, so this exercise's own next set is never mid-rotation.
-    isLastInSuperset: true,
-  }
-
   // Inside a superset, cycle forward from the exercise just ticked for
   // whoever's turn is next — including wrapping back to this exercise's own
   // next set when it's the only member with work left. An uneven-count group
@@ -207,6 +205,21 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   // are exhausted, not only the one flagged as the group's last exercise, so
   // this can't just scan from the group's top the way it used to.
   const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  const restSeconds = groupRestSeconds(exercises, groupStart, groupEnd, exIdx)
+
+  const sameExercise = {
+    exerciseName: ex.exerciseName,
+    targetReps: ex.targetReps,
+    targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
+    enteredReps: ex.sets[setIdx + 1]?.reps,
+    nextSetNumber: setIdx + 2,
+    totalSets: ex.sets.length,
+    restSeconds,
+    // Reached only when nothing else in this exercise's group (if any) has
+    // work left, so this exercise's own next set is never mid-rotation.
+    isLastInSuperset: true,
+  }
+
   if (groupEnd > groupStart) {
     const next = nextIncompleteInGroup(exercises, groupStart, groupEnd, exIdx)
     if (next) {
@@ -219,7 +232,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
         enteredReps: nx.sets[next.j].reps,
         nextSetNumber: next.j + 1,
         totalSets: nx.sets.length,
-        restSeconds: nx.restSeconds || 90,
+        restSeconds,
         isLastInSuperset: !suppressesRest(exercises, next.i),
       }
     }

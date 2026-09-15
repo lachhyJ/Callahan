@@ -285,11 +285,14 @@ describe('superset grouping', () => {
   // Once the two 3-set members are exhausted, Pull-Ups' own remaining sets
   // are the only work left in the group. All sets start incomplete; each
   // test ticks whatever it needs.
+  // Distinct restSeconds per member (45/60/90) so tests can actually tell
+  // whose duration ends up used, rather than every member coincidentally
+  // sharing one value.
   function unevenGym() {
     return [
-      { ...exercise('Pull-Ups', 60, '3', [0, 1, 2, 3, 4].map(() => set(0, 3, false))), supersetWithNext: true },
+      { ...exercise('Pull-Ups', 45, '3', [0, 1, 2, 3, 4].map(() => set(0, 3, false))), supersetWithNext: true },
       { ...exercise('Calf Raise', 60, '12', [0, 1, 2].map(() => set(20, 12, false))), supersetWithNext: true },
-      { ...exercise('Copenhagen', 60, '20', [0, 1, 2].map(() => set(0, 20, false))), supersetWithNext: false },
+      { ...exercise('Copenhagen', 90, '20', [0, 1, 2].map(() => set(0, 20, false))), supersetWithNext: false },
     ]
   }
 
@@ -309,6 +312,11 @@ describe('superset grouping', () => {
     // Pull-Ups' 4th set (index 3): Calf Raise and Copenhagen have no set at
     // that index at all, so nobody is left to rotate to.
     expect(suppressesRest(ex, 0, 3)).toBe(false)
+    // The rest that fires still uses the group's first member's own duration
+    // (Pull-Ups' 45s) — not Pull-Ups being treated as newly standalone with
+    // some other implied duration.
+    const d = restDescriptorAfterSet(ex, 0, 3)
+    expect(d.restSeconds).toBe(45)
   })
 
   it('the rest-timer/Live Activity descriptor rotates the same way the on-screen scroll does', () => {
@@ -316,6 +324,18 @@ describe('superset grouping', () => {
     ex[0].sets[0].completed = true // ticked Pull-Ups set 1
     const d = restDescriptorAfterSet(ex, 0, 0)
     expect(d.exerciseName).toBe('Calf Raise')
+  })
+
+  it('the round-closing rest always uses the group\'s first member\'s duration, not the closer\'s own', () => {
+    const ex = unevenGym()
+    // Round 1: Pull-Ups, Calf Raise done; Copenhagen (90s) closes the round.
+    ex[0].sets[0].completed = true
+    ex[1].sets[0].completed = true
+    const d = restDescriptorAfterSet(ex, 2, 0)
+    expect(d.exerciseName).toBe('Pull-Ups') // next round, back to the top
+    // Not Copenhagen's own 90s — the group's first member (Pull-Ups) owns
+    // the duration for the whole superset.
+    expect(d.restSeconds).toBe(45)
   })
 })
 
