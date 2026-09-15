@@ -1634,10 +1634,12 @@ export default function ActiveWorkoutPage() {
               s
             </span>
             {isSupersetGroupConfigOwner(exercises, exIdx) && (
-              <span
-                className={`rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
-                title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
-              >
+              <>
+                {' · '}
+                <span
+                  className={`rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
+                  title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
+                >
                 superset rest{' '}
                 <input
                   type="number"
@@ -1657,7 +1659,8 @@ export default function ActiveWorkoutPage() {
                   aria-label={`Superset rest time for the ${ex.exerciseName} group`}
                 />
                 s
-              </span>
+                </span>
+              </>
             )}
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
