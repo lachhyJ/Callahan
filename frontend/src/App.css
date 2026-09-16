@@ -1083,7 +1083,13 @@ td {
    below — it describes the whole group, not this one exercise, so it reads
    better next to the group's own label. */
 .superset-rest-control {
-  font-size: var(--text-xs);
+  /* Matches .target-reps (var(--text-sm)), the size the original per-exercise
+     rest control already lives at. Not var(--text-xs) like the pill next to
+     it: the mobile input-zoom-prevention rule forces every number input's
+     own value to var(--text-base) regardless of its container, so a smaller
+     surrounding label just made that mismatch stand out more (the value
+     rendering noticeably larger than its own "rest"/"s" label). */
+  font-size: var(--text-sm);
   color: var(--text-secondary);
   flex-shrink: 0;
 }
