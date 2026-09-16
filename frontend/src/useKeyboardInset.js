@@ -17,21 +17,19 @@ import { useEffect, useState } from 'react'
 // to ~0 in that already-resized case (innerHeight and vv.height end up
 // equal), so it's the only offset ever safely computed.
 //
-// Still not enough on its own (2026-09-15/16, on-device each time): the
-// *value* can be right while the *paint* is still wrong. iOS composites
-// `position: fixed` elements as part of the scrolling content while a
-// scroll is actively animating — whether that's the browser's own
-// "scroll the focused field into view" pass, or our own explicit
-// scrollIntoView call — and only re-pins them to the viewport a beat after
-// scrolling truly stops. Portalling to <body> (matching the fix ConfirmSheet
-// needed for a *different* problem, a stacking-context trap) does not touch
-// this at all — confirmed on-device by finding this hook's own debug overlay
-// missing its first few lines, scrolled out of frame by the exact same
-// amount as the page's scrollY, despite being position:fixed at top:0 and
-// portaled to body itself. There is no CSS fix for this; the only reliable
-// mitigation is to not let anything see the mid-scroll paint at all — hide
-// the toolbar/sheet for the duration of any scroll (however it was
-// triggered) and reveal it only once nothing has moved for a beat.
+// The "value right, paint wrong" chase that led here (2026-09-15/16,
+// on-device each time) turned out to have a real root cause found later in
+// useLockDocumentScroll below: a phantom window-level scroll iOS forces
+// regardless of the app's own .app-content-only-scrolls architecture. Once
+// that's neutralized at the source, ordinary .app-content scrolling (a
+// manual scroll, or our own scrollIntoView call) is just a normal scroll
+// and doesn't need this treatment — hiding on *every* focus change (a
+// dedicated focusin/focusout trigger, removed 2026-09-16) or on every
+// .app-content scroll (a capture-phase document scroll listener, also
+// removed) fired constantly and produced a visible, unwanted flicker
+// switching between fields with the keyboard already open, for no benefit
+// once the real bug was fixed. What's left here guards only the case that's
+// still genuinely transient: the keyboard's own height actually changing.
 const SETTLE_DELAY_MS = 150
 
 // iOS draws a native input-accessory bar (the ‹ › and Done row) directly
@@ -39,15 +37,15 @@ const SETTLE_DELAY_MS = 150
 // keyboard's own reported height and nothing in the DOM can measure it, so
 // a fixed-position element positioned right at the resized viewport's edge
 // still renders underneath it. This is a hand-measured estimate, not a
-// queryable constant; nudge it if it drifts on a future iOS version — the
-// first guess (50) still left a sliver of the toolbar under the accessory
-// bar on-device (2026-09-16), so this includes a bit of headroom rather
-// than the bar's exact measured height, on the theory that a few px of gap
-// above the bar reads better than a few px still hidden under it. Add it on
-// top of the inset whenever positioning something while a text field is
-// actually focused (not when merely showing at the screen's resting bottom
-// with no keyboard up at all).
-export const KEYBOARD_ACCESSORY_HEIGHT = 68
+// queryable constant; nudge it if it drifts on a future iOS version — 50
+// left a sliver of the toolbar under the accessory bar on-device
+// (2026-09-16 morning), 68 overcorrected the other way once the real
+// scroll-drift bug (see useLockDocumentScroll) was fixed and stopped
+// compounding the error (2026-09-16 afternoon). Add it on top of the inset
+// whenever positioning something while a text field is actually focused
+// (not when merely showing at the screen's resting bottom with no keyboard
+// up at all).
+export const KEYBOARD_ACCESSORY_HEIGHT = 58
 
 // .app-content is documented (App.css) as the app's one and only scrolling
 // element — #root itself locks height:100svh/overflow:hidden specifically
@@ -77,9 +75,10 @@ export function useLockDocumentScroll() {
 }
 
 // Returns { inset, unsettled }. `unsettled` is true for a brief window
-// around any scroll, resize, or focus change — every consumer should hide
-// itself (not just reposition) while this is true, since the *position* can
-// be numerically correct and still paint in the wrong place until settled.
+// around a genuine visualViewport resize/scroll (the keyboard's own height
+// changing) — every consumer should hide itself (not just reposition)
+// while this is true, since the *position* can be numerically correct and
+// still paint in the wrong place until settled.
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
   const [unsettled, setUnsettled] = useState(false)
@@ -110,19 +109,10 @@ export function useKeyboardInset() {
     setInset(compute())
     vv.addEventListener('resize', onViewportChange)
     vv.addEventListener('scroll', onViewportChange)
-    document.addEventListener('focusin', markUnsettled)
-    document.addEventListener('focusout', markUnsettled)
-    // `capture: true` so this also fires for a scroll on any descendant
-    // scrollable (e.g. .app-content), not just window/document itself —
-    // scroll events don't bubble, only capture.
-    document.addEventListener('scroll', markUnsettled, { capture: true, passive: true })
     return () => {
       clearTimeout(settleTimer)
       vv.removeEventListener('resize', onViewportChange)
       vv.removeEventListener('scroll', onViewportChange)
-      document.removeEventListener('focusin', markUnsettled)
-      document.removeEventListener('focusout', markUnsettled)
-      document.removeEventListener('scroll', markUnsettled, { capture: true })
     }
   }, [])
 

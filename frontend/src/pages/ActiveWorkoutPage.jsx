@@ -686,13 +686,13 @@ export default function ActiveWorkoutPage() {
   // single requestAnimationFrame wasn't enough to reliably land after that
   // commit — nesting a second rAF is the standard "wait for a frame where
   // the previous one has definitely already painted" pattern.
-  function scrollToSetRow(exIdx, setIdx) {
+  function scrollToSetRow(exIdx, setIdx, block = 'center') {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const row = document.getElementById(`set-${exIdx}-${setIdx}`)
         if (!row) return
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' })
+        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block })
       })
     })
   }
@@ -1843,8 +1843,12 @@ export default function ActiveWorkoutPage() {
                               // doesn't re-trigger it, leaving the page scrolled to
                               // wherever the *first* field in this keyboard session
                               // was. Force it explicitly so every focus lands the
-                              // same way regardless of what came before.
-                              scrollToSetRow(exIdx, setIdx)
+                              // same way regardless of what came before. 'start' not
+                              // the default 'center': centering in the *full* page
+                              // lands past halfway of what's actually visible once
+                              // the keyboard/toolbar eat the bottom portion (reported
+                              // 2026-09-16).
+                              scrollToSetRow(exIdx, setIdx, 'start')
                             }}
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
