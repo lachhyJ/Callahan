@@ -17,17 +17,21 @@ import { useEffect, useState } from 'react'
 // to ~0 in that already-resized case (innerHeight and vv.height end up
 // equal), so it's the only offset ever safely computed.
 //
-// Still not enough on its own, though (2026-09-15, same day, on-device
-// again): a resize/scroll event on visualViewport fires with whatever the
-// viewport looks like at that exact instant, and that instant isn't always
-// the settled final state — the very first keyboard-show in a session, and
-// switching focus from one field to another *without* the keyboard closing
-// in between (only a scroll-to-bring-the-new-field-into-view happens, no
-// full resize), both fire events mid-animation with a transient, wrong
-// value that never got corrected because nothing fired again afterward.
-// Re-check shortly after the last event settles, and also after any focus
-// change lands on a new element — a focus/blur pair doesn't guarantee a
-// visualViewport event at all if the OS doesn't need to scroll further.
+// Still not enough on its own (2026-09-15/16, on-device each time): the
+// *value* can be right while the *paint* is still wrong. iOS composites
+// `position: fixed` elements as part of the scrolling content while a
+// scroll is actively animating — whether that's the browser's own
+// "scroll the focused field into view" pass, or our own explicit
+// scrollIntoView call — and only re-pins them to the viewport a beat after
+// scrolling truly stops. Portalling to <body> (matching the fix ConfirmSheet
+// needed for a *different* problem, a stacking-context trap) does not touch
+// this at all — confirmed on-device by finding this hook's own debug overlay
+// missing its first few lines, scrolled out of frame by the exact same
+// amount as the page's scrollY, despite being position:fixed at top:0 and
+// portaled to body itself. There is no CSS fix for this; the only reliable
+// mitigation is to not let anything see the mid-scroll paint at all — hide
+// the toolbar/sheet for the duration of any scroll (however it was
+// triggered) and reveal it only once nothing has moved for a beat.
 const SETTLE_DELAY_MS = 150
 
 // iOS draws a native input-accessory bar (the ‹ › and Done row) directly
@@ -45,8 +49,40 @@ const SETTLE_DELAY_MS = 150
 // with no keyboard up at all).
 export const KEYBOARD_ACCESSORY_HEIGHT = 68
 
+// .app-content is documented (App.css) as the app's one and only scrolling
+// element — #root itself locks height:100svh/overflow:hidden specifically
+// so nothing above .app-content ever needs to move. iOS's native "scroll
+// the focused input into view" pass ignores that entirely: it operates on
+// the WKWebView's own backing scroll view, a layer below the DOM/CSS model,
+// and pans the *whole rendered page* (a real, persistent window.scrollY —
+// confirmed on-device 2026-09-16, not a transient animation frame) to help
+// bring a focused field above the keyboard, even though .app-content's own
+// internal scroll already handles that. Once the page is panned this way,
+// every position:fixed element — including ones portaled straight to
+// <body> — renders shifted by that same amount, because iOS composites
+// them against the panned page, not the true viewport. No CSS fixes this;
+// pinning html/body with position:fixed was tried and did not stop the
+// pan (also confirmed on-device). The only thing that works is snapping
+// scrollY back to 0 the moment it drifts, so the pan never has anywhere to
+// settle other than back where it started — call this once, near the app
+// root, for the lifetime of the app.
+export function useLockDocumentScroll() {
+  useEffect(() => {
+    function resetScroll() {
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0)
+    }
+    window.addEventListener('scroll', resetScroll, { passive: true })
+    return () => window.removeEventListener('scroll', resetScroll)
+  }, [])
+}
+
+// Returns { inset, unsettled }. `unsettled` is true for a brief window
+// around any scroll, resize, or focus change — every consumer should hide
+// itself (not just reposition) while this is true, since the *position* can
+// be numerically correct and still paint in the wrong place until settled.
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
+  const [unsettled, setUnsettled] = useState(false)
 
   useEffect(() => {
     const vv = window.visualViewport
@@ -57,33 +93,38 @@ export function useKeyboardInset() {
       return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
     }
 
-    function scheduleSettleCheck() {
+    function markUnsettled() {
+      setUnsettled(true)
       clearTimeout(settleTimer)
-      settleTimer = setTimeout(() => setInset(compute()), SETTLE_DELAY_MS)
+      settleTimer = setTimeout(() => {
+        setInset(compute())
+        setUnsettled(false)
+      }, SETTLE_DELAY_MS)
     }
 
-    function update() {
+    function onViewportChange() {
       setInset(compute())
-      scheduleSettleCheck()
+      markUnsettled()
     }
 
-    function onFocusChange() {
-      scheduleSettleCheck()
-    }
-
-    update()
-    vv.addEventListener('resize', update)
-    vv.addEventListener('scroll', update)
-    document.addEventListener('focusin', onFocusChange)
-    document.addEventListener('focusout', onFocusChange)
+    setInset(compute())
+    vv.addEventListener('resize', onViewportChange)
+    vv.addEventListener('scroll', onViewportChange)
+    document.addEventListener('focusin', markUnsettled)
+    document.addEventListener('focusout', markUnsettled)
+    // `capture: true` so this also fires for a scroll on any descendant
+    // scrollable (e.g. .app-content), not just window/document itself —
+    // scroll events don't bubble, only capture.
+    document.addEventListener('scroll', markUnsettled, { capture: true, passive: true })
     return () => {
       clearTimeout(settleTimer)
-      vv.removeEventListener('resize', update)
-      vv.removeEventListener('scroll', update)
-      document.removeEventListener('focusin', onFocusChange)
-      document.removeEventListener('focusout', onFocusChange)
+      vv.removeEventListener('resize', onViewportChange)
+      vv.removeEventListener('scroll', onViewportChange)
+      document.removeEventListener('focusin', markUnsettled)
+      document.removeEventListener('focusout', markUnsettled)
+      document.removeEventListener('scroll', markUnsettled, { capture: true })
     }
   }, [])
 
-  return inset
+  return { inset, unsettled }
 }

@@ -130,7 +130,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   // input-accessory bar sits on top of that — see KEYBOARD_ACCESSORY_HEIGHT
   // in useKeyboardInset.js — so lift by both and cap the height so the
   // sheet scrolls internally instead of clipping.
-  const rawKeyboardInset = useKeyboardInset()
+  const { inset: rawKeyboardInset, unsettled: keyboardUnsettled } = useKeyboardInset()
   const keyboardInset = open ? rawKeyboardInset : 0
 
   // Re-sync to this exercise's settings whenever the sheet is opened for a
@@ -264,6 +264,11 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                 bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT,
                 maxHeight: `calc(100vh - ${keyboardInset + KEYBOARD_ACCESSORY_HEIGHT}px)`,
                 overflowY: 'auto',
+                // See useKeyboardInset.js: hidden, not just repositioned,
+                // while a scroll is actively settling — the computed
+                // position above can be correct and still paint wrong
+                // until then.
+                visibility: keyboardUnsettled ? 'hidden' : 'visible',
               }
             : undefined
         }

@@ -309,7 +309,7 @@ export default function ActiveWorkoutPage() {
   // close over the live `exercises` value.
   const exercisesRef = useRef(null)
   const headerRef = useRef(null)
-  const keyboardInset = useKeyboardInset()
+  const { inset: keyboardInset, unsettled: keyboardUnsettled } = useKeyboardInset()
 
   useEffect(() => {
     // Mini bar only takes over once the real header has actually scrolled
@@ -2059,7 +2059,14 @@ export default function ActiveWorkoutPage() {
         return createPortal(
           <div
             className="weight-input-toolbar"
-            style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
+            style={{
+              bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT,
+              // Hidden (not just repositioned) while unsettled: iOS paints
+              // fixed elements as part of the scrolling content during an
+              // active scroll, landing wherever that happens to be rather
+              // than the computed position above — see useKeyboardInset.js.
+              visibility: keyboardUnsettled ? 'hidden' : 'visible',
+            }}
           >
             <button
               type="button"
