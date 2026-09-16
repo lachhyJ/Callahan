@@ -1565,7 +1565,48 @@ export default function ActiveWorkoutPage() {
         <Fragment key={ex.exerciseId}>
         <div id={`exercise-card-${ex.exerciseId}`} className={`exercise-card${inSuperset ? ' superset-member' : ''}${supersetPos}`}>
           {inSuperset && exIdx === gStart && (
-            <span className="superset-pill">Superset · {gEnd - gStart + 1}</span>
+            <div className="superset-pill-row">
+              <span className="superset-pill">Superset · {gEnd - gStart + 1}</span>
+              <span
+                className={`rest-control superset-rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
+                title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
+              >
+                rest{' '}
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  min="0"
+                  step="15"
+                  className="rest-input"
+                  style={{ width: `${Math.max(String(ex.supersetRestSeconds ?? 90).length, 1) + 1}ch` }}
+                  value={ex.supersetRestSeconds ?? 90}
+                  onChange={(e) => updateSupersetRest(exIdx, e.target.value)}
+                  onFocus={(e) => {
+                    setFocusedSupersetRestExIdx(exIdx)
+                    e.target.select()
+                  }}
+                  onBlur={() => handleSupersetRestBlur(exIdx)}
+                  aria-label={`Superset rest time for the ${ex.exerciseName} group`}
+                />
+                s
+              </span>
+            </div>
+          )}
+          {inSuperset && exIdx === gStart && focusedSupersetRestExIdx === exIdx && (
+            <div className="rest-presets superset-rest-presets">
+              {REST_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={(ex.supersetRestSeconds ?? 90) === preset ? 'rest-preset active' : 'rest-preset'}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => selectSupersetRestPreset(exIdx, preset)}
+                >
+                  {preset}s
+                </button>
+              ))}
+            </div>
           )}
           <div className="exercise-card-header">
             <div className="exercise-card-title">
@@ -1633,35 +1674,6 @@ export default function ActiveWorkoutPage() {
               />
               s
             </span>
-            {isSupersetGroupConfigOwner(exercises, exIdx) && (
-              <>
-                {' · '}
-                <span
-                  className={`rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
-                  title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
-                >
-                superset rest{' '}
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  pattern="[0-9]*"
-                  min="0"
-                  step="15"
-                  className="rest-input"
-                  style={{ width: `${Math.max(String(ex.supersetRestSeconds ?? 90).length, 1) + 1}ch` }}
-                  value={ex.supersetRestSeconds ?? 90}
-                  onChange={(e) => updateSupersetRest(exIdx, e.target.value)}
-                  onFocus={(e) => {
-                    setFocusedSupersetRestExIdx(exIdx)
-                    e.target.select()
-                  }}
-                  onBlur={() => handleSupersetRestBlur(exIdx)}
-                  aria-label={`Superset rest time for the ${ex.exerciseName} group`}
-                />
-                s
-                </span>
-              </>
-            )}
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
           {taperSetSuggestion(ex, taper) !== null && (
@@ -1676,21 +1688,6 @@ export default function ActiveWorkoutPage() {
                   className={ex.restSeconds === preset ? 'rest-preset active' : 'rest-preset'}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => selectRestPreset(exIdx, preset)}
-                >
-                  {preset}s
-                </button>
-              ))}
-            </div>
-          )}
-          {focusedSupersetRestExIdx === exIdx && (
-            <div className="rest-presets">
-              {REST_PRESETS.map((preset) => (
-                <button
-                  key={preset}
-                  type="button"
-                  className={(ex.supersetRestSeconds ?? 90) === preset ? 'rest-preset active' : 'rest-preset'}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => selectSupersetRestPreset(exIdx, preset)}
                 >
                   {preset}s
                 </button>

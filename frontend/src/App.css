@@ -1052,6 +1052,14 @@ td {
   padding-top: var(--space-xs);
 }
 
+.superset-pill-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-2xs);
+}
+
 .superset-pill {
   align-self: flex-start;
   font-size: var(--text-xs);
@@ -1059,7 +1067,25 @@ td {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--accent);
-  margin-bottom: var(--space-2xs);
+}
+
+.superset-pill-row .superset-pill {
+  margin-bottom: 0;
+}
+
+/* The group's own rest control, sitting next to the "Superset" label at the
+   top of the card rather than crowded into the per-exercise target-reps line
+   below — it describes the whole group, not this one exercise, so it reads
+   better next to the group's own label. */
+.superset-rest-control {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.superset-rest-presets {
+  margin-top: calc(-1 * var(--space-2xs));
+  margin-bottom: var(--space-xs);
 }
 
 .rest-control--dormant,
