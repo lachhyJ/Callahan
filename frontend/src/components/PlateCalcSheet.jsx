@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   BAR_PRESETS,
   DUMBBELL_STEPS_KG,
@@ -247,7 +248,11 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
   const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
 
-  return (
+  // Portalled to <body>: position:fixed inside .app-content (the scroll
+  // container) rides along with a scroll gesture on iOS WKWebView instead
+  // of staying pinned to the viewport, only settling into its real spot
+  // once scrolling fully stops — same fix ConfirmSheet already needed.
+  return createPortal(
     <>
       <div className={open ? 'sheet-backdrop visible' : 'sheet-backdrop'} onClick={onClose} />
       <div
@@ -463,6 +468,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
           </>
         )}
       </div>
-    </>
+    </>,
+    document.body,
   )
 }
