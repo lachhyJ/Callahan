@@ -240,14 +240,19 @@ textarea {
   resize: vertical;
 }
 
-/* iOS Safari auto-zooms the viewport on focus for any text input under 16px;
-   this beats the smaller per-component font sizes below without touching
-   desktop density. */
+/* iOS Safari auto-zooms the viewport on focus for any text input under 16px
+   (and Safari won't reliably zoom back out on blur, leaving the page stuck
+   zoomed in) — this needs to beat every smaller per-component font size
+   below, including ones that arrive via a class selector (e.g. .cue-input's
+   font-size: var(--text-sm)), which otherwise wins on specificity regardless
+   of source order. !important is deliberate here: this rule exists
+   specifically to override component-level font-size, on mobile only,
+   without touching desktop density. */
 @media (max-width: 768px) {
   input:not([type='checkbox']):not([type='radio']),
   select,
   textarea {
-    font-size: var(--text-base);
+    font-size: var(--text-base) !important;
   }
 }
 
