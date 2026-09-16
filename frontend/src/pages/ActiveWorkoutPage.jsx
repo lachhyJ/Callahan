@@ -14,7 +14,7 @@ import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock } from '../utils/format'
 import PlateCalcSheet from '../components/PlateCalcSheet'
-import { useKeyboardInset } from '../useKeyboardInset'
+import { KEYBOARD_ACCESSORY_HEIGHT, useKeyboardInset } from '../useKeyboardInset'
 
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
@@ -1839,6 +1839,14 @@ export default function ActiveWorkoutPage() {
                             onFocus={(e) => {
                               setFocusedWeightCell(cellKey)
                               e.target.select()
+                              // iOS only auto-scrolls a focused input into view on a
+                              // genuine keyboard open/close transition — tapping a
+                              // different field while the keyboard is already up
+                              // doesn't re-trigger it, leaving the page scrolled to
+                              // wherever the *first* field in this keyboard session
+                              // was. Force it explicitly so every focus lands the
+                              // same way regardless of what came before.
+                              scrollToSetRow(exIdx, setIdx)
                             }}
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
@@ -2043,7 +2051,7 @@ export default function ActiveWorkoutPage() {
         return (
           <div
             className="weight-input-toolbar"
-            style={{ bottom: keyboardInset > 0 ? keyboardInset : 'var(--bottom-nav-height)' }}
+            style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
           >
             <button
               type="button"

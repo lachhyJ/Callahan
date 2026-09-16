@@ -30,6 +30,17 @@ import { useEffect, useState } from 'react'
 // visualViewport event at all if the OS doesn't need to scroll further.
 const SETTLE_DELAY_MS = 150
 
+// iOS draws a native input-accessory bar (the ‹ › and Done row) directly
+// above the system keyboard for text/number fields — it isn't part of the
+// keyboard's own reported height and nothing in the DOM can measure it, so
+// a fixed-position element positioned right at the resized viewport's edge
+// still renders underneath it. This is a hand-measured estimate, not a
+// queryable constant; nudge it if it drifts on a future iOS version. Add
+// it on top of the inset whenever positioning something while a text field
+// is actually focused (not when merely showing at the screen's resting
+// bottom with no keyboard up at all).
+export const KEYBOARD_ACCESSORY_HEIGHT = 50
+
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
 

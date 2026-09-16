@@ -17,7 +17,7 @@ import {
   setCustomEquipment,
   setEquipmentTypeOverride,
 } from '../plateCalc'
-import { useKeyboardInset } from '../useKeyboardInset'
+import { KEYBOARD_ACCESSORY_HEIGHT, useKeyboardInset } from '../useKeyboardInset'
 
 const SAVED_BAR = 'saved'
 const CUSTOM_BAR = 'custom'
@@ -123,13 +123,12 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
 
   // The sheet is `position: fixed; bottom: 0` against the LAYOUT viewport,
   // which doesn't shrink when the keyboard opens. With no adjustment,
-  // focusing a field inside the sheet (custom bar weight, a plate chip)
-  // leaves the sheet's lower content sitting behind the keyboard by an
-  // amount that varies with the sheet's own height (how many rows are
-  // showing) — lift the sheet by the keyboard's height and cap it to what's
-  // left so it scrolls internally instead of clipping. See
-  // useKeyboardInset.js for why this needs the native Keyboard plugin rather
-  // than just visualViewport in the Capacitor app.
+  // focusing a field inside the sheet (custom bar weight, custom bar name)
+  // leaves the sheet's lower content sitting behind the keyboard, and even
+  // once positioned correctly relative to the *keyboard*, iOS's own native
+  // input-accessory bar sits on top of that — see KEYBOARD_ACCESSORY_HEIGHT
+  // in useKeyboardInset.js — so lift by both and cap the height so the
+  // sheet scrolls internally instead of clipping.
   const rawKeyboardInset = useKeyboardInset()
   const keyboardInset = open ? rawKeyboardInset : 0
 
@@ -254,7 +253,15 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
       <div
         ref={sheetRef}
         className={open ? 'day-detail-sheet plate-calc-sheet open' : 'day-detail-sheet plate-calc-sheet'}
-        style={keyboardInset > 0 ? { bottom: keyboardInset, maxHeight: `calc(100vh - ${keyboardInset}px)`, overflowY: 'auto' } : undefined}
+        style={
+          keyboardInset > 0
+            ? {
+                bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT,
+                maxHeight: `calc(100vh - ${keyboardInset + KEYBOARD_ACCESSORY_HEIGHT}px)`,
+                overflowY: 'auto',
+              }
+            : undefined
+        }
         role="dialog"
         aria-modal="true"
         aria-label="Plate calculator"
