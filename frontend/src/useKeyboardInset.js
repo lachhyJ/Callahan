@@ -35,11 +35,15 @@ const SETTLE_DELAY_MS = 150
 // keyboard's own reported height and nothing in the DOM can measure it, so
 // a fixed-position element positioned right at the resized viewport's edge
 // still renders underneath it. This is a hand-measured estimate, not a
-// queryable constant; nudge it if it drifts on a future iOS version. Add
-// it on top of the inset whenever positioning something while a text field
-// is actually focused (not when merely showing at the screen's resting
-// bottom with no keyboard up at all).
-export const KEYBOARD_ACCESSORY_HEIGHT = 50
+// queryable constant; nudge it if it drifts on a future iOS version — the
+// first guess (50) still left a sliver of the toolbar under the accessory
+// bar on-device (2026-09-16), so this includes a bit of headroom rather
+// than the bar's exact measured height, on the theory that a few px of gap
+// above the bar reads better than a few px still hidden under it. Add it on
+// top of the inset whenever positioning something while a text field is
+// actually focused (not when merely showing at the screen's resting bottom
+// with no keyboard up at all).
+export const KEYBOARD_ACCESSORY_HEIGHT = 68
 
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
