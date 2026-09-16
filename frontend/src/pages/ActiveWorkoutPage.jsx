@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
 import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
@@ -2045,7 +2046,17 @@ export default function ActiveWorkoutPage() {
         const isLb = focusedWeightCell in lbInputs
         const isPlateCalcOpen = openPlateCalc?.exIdx === focusedExIdx && openPlateCalc?.setIdx === focusedSetIdx
         const calcHidden = getEquipmentType(focusedExercise.exerciseId, focusedExercise.exerciseName) === 'hidden'
-        return (
+        // Portalled to <body>, same reason as ConfirmSheet: position:fixed
+        // inside .app-content (the scroll container) rides along with the
+        // scroll gesture on iOS WKWebView instead of staying pinned to the
+        // viewport, only settling into its real spot once scrolling fully
+        // stops — which is exactly why this landed in a different place
+        // depending on how far the page had to scroll to bring the newly
+        // focused field into view, not which field it was (reported
+        // 2026-09-16). A screenshot taken mid-scroll (or mid the "still
+        // catching up" window right after) catches it wherever that
+        // scroll-coupled position happened to be.
+        return createPortal(
           <div
             className="weight-input-toolbar"
             style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
@@ -2066,7 +2077,8 @@ export default function ActiveWorkoutPage() {
             >
               {isLb ? 'lb' : 'kg'}
             </button>
-          </div>
+          </div>,
+          document.body,
         )
       })()}
 
