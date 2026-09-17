@@ -45,6 +45,19 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             name: UIApplication.didBecomeActiveNotification,
             object: nil
         )
+
+        // RestAudioPlugin's beep is armed on the audio hardware clock, which
+        // survives backgrounding — its finish delegate is the one place that
+        // has actually confirmed, on the wall clock, that a rest is over, even
+        // while the phone is locked. Retiring the countdown here (rather than
+        // only on didBecomeActive) is what makes the card's next-set display
+        // update without needing the phone to be woken first.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleBeepFinished),
+            name: .callahanRestBeepFinished,
+            object: nil
+        )
     }
 
     /// An expired rest zeroes the countdown; it does not retire the card, which
@@ -52,17 +65,40 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// discarded. JS re-syncs on resume anyway — this just avoids showing a dead
     /// countdown in the gap before it does.
     @objc private func handleBecomeActive() {
+        retireExpiredRest()
+    }
+
+    /// The audio beep genuinely finishing is authoritative — it does not need
+    /// the `currentEndAt <= Date()` guard `retireExpiredRest` otherwise applies
+    /// for the didBecomeActive path (where currentEndAt could be for a rest
+    /// that has not actually ended yet, e.g. the app being reopened mid-rest).
+    @objc private func handleBeepFinished() {
+        guard #available(iOS 16.2, *) else { return }
+        currentEndAt = nil
+        Task { await retireCountdown() }
+    }
+
+    private func retireExpiredRest() {
         guard #available(iOS 16.2, *) else { return }
         guard let endAt = currentEndAt, endAt <= Date() else { return }
         currentEndAt = nil
-        Task {
-            await RestTimerStore.shared.clear()
-            guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else { return }
-            var state = activity.content.state
-            state.endAt = nil
-            state.totalSeconds = 0
-            await activity.update(ActivityContent(state: state, staleDate: nil))
-        }
+        Task { await retireCountdown() }
+    }
+
+    /// Zeroes the Live Activity's countdown so the card falls back to showing
+    /// what is loaded for the next set instead of a dead or negative timer.
+    /// Leaves `targetWeight`/`targetReps`/`enteredReps` untouched — they
+    /// already describe the set this rest was for, which is the same set the
+    /// card should now be prompting, so nothing else needs to change.
+    @available(iOS 16.2, *)
+    private func retireCountdown() async {
+        await RestTimerStore.shared.clear()
+        guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else { return }
+        var state = activity.content.state
+        guard state.endAt != nil else { return }
+        state.endAt = nil
+        state.totalSeconds = 0
+        await activity.update(ActivityContent(state: state, staleDate: nil))
     }
 
     /// What the native side currently believes about the rest timer.

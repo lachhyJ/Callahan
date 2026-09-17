@@ -10,6 +10,16 @@ import Foundation
 /// pinned to the pre-adjustment time while the countdown moved.
 public extension Notification.Name {
     static let callahanRestTimerChanged = Notification.Name("callahan.rest.changed")
+
+    /// Posted by RestAudioPlugin the moment its armed beep genuinely finishes
+    /// (wall clock confirmed, not an early audio-clock firing that gets
+    /// re-armed) — the audio session's keep-alive is what has kept this
+    /// process from being suspended, so this is the one reliably-firing signal
+    /// that a rest is actually over regardless of whether the phone is locked.
+    /// RestActivityPlugin listens for this to retire the countdown into the
+    /// Live Activity's next-set display right then, rather than waiting for
+    /// the app to next become active.
+    static let callahanRestBeepFinished = Notification.Name("callahan.rest.beepFinished")
 }
 
 public enum RestTimerChange {

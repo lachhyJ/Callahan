@@ -825,5 +825,12 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
         stopDucking()
         stopKeepAlive()
         deactivate()
+        // This is the one point that has actually confirmed, on the wall clock,
+        // that the rest is over — including while backgrounded, since the
+        // keep-alive is what kept this process alive to reach here at all. Tell
+        // the Live Activity now rather than waiting for the app to next become
+        // active, which is what previously left the card showing a dead
+        // countdown (or the wrong set) until the phone was unlocked.
+        NotificationCenter.default.post(name: .callahanRestBeepFinished, object: nil)
     }
 }
