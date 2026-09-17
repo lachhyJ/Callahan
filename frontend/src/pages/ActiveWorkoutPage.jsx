@@ -152,38 +152,24 @@ function applyNativeCompletions(exercises, count) {
   if (!exercises || count <= 0) return null
   const next = exercises.map((ex) => ({ ...ex, sets: ex.sets.map((set) => ({ ...set })) }))
   let applied = 0
-  let lastTicked = null
-  outer: for (let exIdx = 0; exIdx < next.length; exIdx++) {
-    const ex = next[exIdx]
-    for (let setIdx = 0; setIdx < ex.sets.length; setIdx++) {
+  outer: for (const ex of next) {
+    for (const set of ex.sets) {
       if (applied >= count) break outer
-      const set = ex.sets[setIdx]
       if (set.completed) continue
       const reps = set.reps !== '' ? set.reps : (ex.targetReps ?? '')
       if (reps === '' || reps == null) break outer
       set.reps = String(reps)
       set.completed = true
       applied += 1
-      lastTicked = { exIdx, setIdx }
     }
   }
-  return applied > 0 ? { exercises: next, applied, lastTicked } : null
+  return applied > 0 ? { exercises: next, applied } : null
 }
 
 // A rest the card started while this webview was suspended: native owns endAt,
 // and the descriptor is rebuilt from wherever the workout has now got to.
-//
-// `lastTicked`, when a native completion was just folded in above, anchors the
-// rebuild the same way an in-app tick does (restDescriptorAfterSet), rather
-// than falling back to nextSetDescriptor's ambient "fewest completed" scan —
-// which has no notion of whose turn it just was and can pick the wrong
-// superset member for a beat, until the next real tick (which is anchored)
-// silently corrects it. Ambient is only right when nothing was just ticked —
-// e.g. a rest the card itself started with no prior local timer.
-function restTimerFromNative(exercises, native, lastTicked) {
-  const detail = lastTicked
-    ? restDescriptorAfterSet(exercises, lastTicked.exIdx, lastTicked.setIdx)
-    : nextSetDescriptor(exercises)
+function restTimerFromNative(exercises, native) {
+  const detail = nextSetDescriptor(exercises)
   if (!detail) return null
   return {
     endAt: native.endAt,
@@ -909,13 +895,11 @@ export default function ActiveWorkoutPage() {
       // timer below, so the rest native started is described by the set the
       // workout has actually advanced to.
       let current = exercisesRef.current
-      let lastTicked = null
       const pending = native.pendingCompletions || 0
       if (pending > 0) {
         const result = applyNativeCompletions(current, pending)
         if (result) {
           current = result.exercises
-          lastTicked = result.lastTicked
           exercisesRef.current = current
           setExercises(current)
           ackNativeCompletions(result.applied)
@@ -930,7 +914,7 @@ export default function ActiveWorkoutPage() {
         if (!native.active) return prev ? null : prev
         // A rest that started from the card while there was no local timer —
         // "Set done" on a locked phone is exactly this case.
-        if (!prev) return restTimerFromNative(current, native, lastTicked)
+        if (!prev) return restTimerFromNative(current, native)
         if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
           return { ...prev, endAt: native.endAt, timerId: null }
         }
