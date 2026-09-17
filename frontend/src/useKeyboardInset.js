@@ -44,7 +44,7 @@ const SETTLE_DELAY_MS = 150
 // (2026-09-17). Add it on top of the inset whenever positioning something
 // while a text field is actually focused (not when merely showing at the
 // screen's resting bottom with no keyboard up at all).
-export const KEYBOARD_ACCESSORY_HEIGHT = 3
+export const KEYBOARD_ACCESSORY_HEIGHT = 0
 
 // .app-content is documented (App.css) as the app's one and only scrolling
 // element — #root itself locks height:100svh/overflow:hidden specifically
