@@ -107,6 +107,23 @@ already exist as columns. A schema change (a genuinely new field, not
 just new values) would need an EF Core migration, which is a different
 and more involved conversation than "update this rep range."
 
+## The warm-up section is a heading contract, not just prose
+
+The active-workout screen's warm-up toggle (`GET /api/program/warmup` in
+`ProgramController`) extracts one section of the markdown file by exact
+heading text — everything under `### Universal gym warm-up` up to the next
+heading of the same or higher level. There's a single warm-up shared by all
+three gym templates, not one per day, so there's nothing to scope per
+template — the endpoint just always returns that one section.
+
+If a synced doc retitles or restructures that heading, `GetWarmup` starts
+404ing (the toggle shows an error in the app rather than failing silently)
+until the heading is fixed or `WarmupHeadingPrefix` in `ProgramController`
+is updated to match. **Whenever a new program doc is synced, check that the
+warm-up heading still starts with "Universal gym warm-up"** (or update the
+constant) — same spirit as step 5 above, just for this one section instead
+of the template tables.
+
 ## What this doesn't cover
 
 Bigger structural changes — a new training block entirely, restructuring

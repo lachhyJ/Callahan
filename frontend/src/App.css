@@ -907,6 +907,7 @@ td {
 
 .live-stats {
   display: flex;
+  align-items: baseline;
   gap: var(--space-lg);
   color: var(--text);
   font-size: var(--text-sm);
@@ -968,6 +969,14 @@ td {
   color: var(--text);
   font-size: var(--text-sm);
   margin: 0;
+}
+
+.warmup-panel {
+  margin-top: var(--space-xs);
+  padding: var(--space-sm);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  font-size: var(--text-sm);
 }
 
 .taper-nudge {
@@ -1958,6 +1967,15 @@ td {
   color: var(--text-tertiary);
   text-decoration: underline;
   cursor: pointer;
+}
+
+/* Pushed to the far right of .live-stats, on the same row as the duration /
+   volume / set-count readout rather than its own row underneath. Overrides
+   rest-alert-test-link's negative top margin (tuned for that link sitting
+   alone above Test beep) which otherwise pulls this one above the baseline
+   of its .live-stats siblings. */
+.rest-alert-test-link.warmup-toggle-link {
+  margin: 0 0 0 auto;
 }
 
 .push-prompt {

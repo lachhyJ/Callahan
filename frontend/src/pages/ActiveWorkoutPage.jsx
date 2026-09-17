@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
+import DOMPurify from 'dompurify'
+import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
 import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -285,6 +286,11 @@ export default function ActiveWorkoutPage() {
   const [focusedSupersetRestExIdx, setFocusedSupersetRestExIdx] = useState(null)
   const [showMiniBar, setShowMiniBar] = useState(false)
   const [taper, setTaper] = useState(null)
+  // Warm-up toggle: null = not fetched yet, { html } = loaded, { error } = the
+  // program doc's warm-up section couldn't be found (fetched once per mount,
+  // not re-fetched on every toggle).
+  const [showWarmup, setShowWarmup] = useState(false)
+  const [warmup, setWarmup] = useState(null)
   // Temporary: native rest-audio event diary, shown under "Test beep" so a
   // backgrounded rest can be read back without Xcode. Remove with the plugin's
   // Diary section once the ducking behaviour is settled.
@@ -1492,7 +1498,33 @@ export default function ActiveWorkoutPage() {
         <span>{formatDuration(now - startedAt)}</span>
         <span>{stats.volume.toLocaleString()} kg</span>
         <span>{stats.setCount} set{stats.setCount === 1 ? '' : 's'}</span>
+        {!isCustom && (
+          <button
+            type="button"
+            className="rest-alert-test-link warmup-toggle-link"
+            onClick={() => {
+              const next = !showWarmup
+              setShowWarmup(next)
+              if (next && warmup === null) {
+                getProgramWarmup()
+                  .then((res) => setWarmup({ html: DOMPurify.sanitize(res.html) }))
+                  .catch((err) => setWarmup({ error: err.message }))
+              }
+            }}
+          >
+            {showWarmup ? 'Hide warm-up' : 'Warm-up'}
+          </button>
+        )}
       </div>
+      {showWarmup && (
+        <div className="warmup-panel">
+          {warmup === null && <p>Loading…</p>}
+          {warmup?.error && <p className="error">{warmup.error}</p>}
+          {warmup?.html && (
+            <div className="program-doc" dangerouslySetInnerHTML={{ __html: warmup.html }} />
+          )}
+        </div>
+      )}
       {error && <p className="error">{error}</p>}
 
       {/* Confirm the in-app beep is unlocked and audible before relying on it

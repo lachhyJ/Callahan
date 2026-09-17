@@ -229,6 +229,13 @@ export function getProgramContent() {
   return apiFetch('/api/program/content')
 }
 
+// The active-workout warm-up toggle's content. 404s (with a message) if the
+// program doc's warm-up section can't be found — surfaced as an error in the
+// toggle panel rather than hidden, so a broken sync shows up immediately.
+export function getProgramWarmup() {
+  return apiFetch('/api/program/warmup')
+}
+
 export function getWorkoutSession(id) {
   return apiFetch(`/api/workoutsessions/${id}`)
 }
