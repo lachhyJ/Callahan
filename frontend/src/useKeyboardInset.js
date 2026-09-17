@@ -40,11 +40,11 @@ const SETTLE_DELAY_MS = 150
 // left a sliver of the toolbar under the accessory bar on-device
 // (2026-09-16 morning), 68 overcorrected once the real scroll-drift bug
 // (see useLockDocumentScroll) was fixed and stopped compounding the error
-// (2026-09-16 afternoon), 58 was still visibly too much (2026-09-17). Add
-// it on top of the inset whenever positioning something while a text field
-// is actually focused (not when merely showing at the screen's resting
-// bottom with no keyboard up at all).
-export const KEYBOARD_ACCESSORY_HEIGHT = 24
+// (2026-09-16 afternoon), 58 and then 24 were both still visibly too much
+// (2026-09-17). Add it on top of the inset whenever positioning something
+// while a text field is actually focused (not when merely showing at the
+// screen's resting bottom with no keyboard up at all).
+export const KEYBOARD_ACCESSORY_HEIGHT = 8
 
 // .app-content is documented (App.css) as the app's one and only scrolling
 // element — #root itself locks height:100svh/overflow:hidden specifically
