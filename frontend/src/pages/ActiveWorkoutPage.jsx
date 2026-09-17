@@ -310,6 +310,7 @@ export default function ActiveWorkoutPage() {
   const exercisesRef = useRef(null)
   const headerRef = useRef(null)
   const keyboardInset = useKeyboardInset()
+  const [scrollingToField, setScrollingToField] = useState(false)
 
   useEffect(() => {
     // Mini bar only takes over once the real header has actually scrolled
@@ -706,6 +707,23 @@ export default function ActiveWorkoutPage() {
         // the way to `block: 'center'`'s past-the-keyboard's-halfway-point.
         const scroller = row.closest('.app-content') ?? document.scrollingElement
         const delta = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - topOffset
+        // Scrolling a lower field up into view while the keyboard is open
+        // can make the whole page visibly jump mid-animation — iOS's own
+        // native "bring focused field into view" pass and this explicit
+        // scroll appear to fight each other briefly before settling
+        // (reported 2026-09-17). Hide the toolbar/sheet for the duration of
+        // *this specific scroll* rather than on every focus change (tried
+        // and reverted the same day — too broad, flickered on switches that
+        // never scrolled at all).
+        if (Math.abs(delta) > 2) {
+          setScrollingToField(true)
+          const onScrollEnd = () => {
+            setScrollingToField(false)
+            scroller.removeEventListener('scrollend', onScrollEnd)
+          }
+          scroller.addEventListener('scrollend', onScrollEnd, { once: true })
+          setTimeout(() => setScrollingToField(false), 500)
+        }
         scroller.scrollBy({ top: delta, behavior })
       })
     })
@@ -2080,7 +2098,10 @@ export default function ActiveWorkoutPage() {
         return createPortal(
           <div
             className="weight-input-toolbar"
-            style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
+            style={{
+              bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT,
+              visibility: scrollingToField ? 'hidden' : 'visible',
+            }}
           >
             <button
               type="button"
