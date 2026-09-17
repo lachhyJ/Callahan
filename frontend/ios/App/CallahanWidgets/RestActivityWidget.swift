@@ -30,16 +30,16 @@ struct RestActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    SessionLabel(context: context, font: .caption)
+                    SessionLabel(context: context, font: .caption, compact: true)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ElapsedLabel(since: context.attributes.sessionStartedAt)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    VStack(spacing: 8) {
+                    VStack(spacing: 6) {
                         ExerciseRow(context: context)
                         ProgressBar(context: context)
-                        ControlRow(context: context)
+                        ControlRow(context: context, compact: true)
                     }
                     .padding(.top, 2)
                 }
@@ -142,11 +142,17 @@ private struct ElapsedLabel: View {
 private struct SessionLabel: View {
     let context: ActivityViewContext<RestActivityAttributes>
     var font: Font
+    /// True in the Dynamic Island's expanded leading region, which allots this
+    /// row less height than the Lock Screen header does — at the glyph's normal
+    /// size it clipped against the top of the region. `.imageScale(.small)`
+    /// shrinks just the glyph rather than the text next to it.
+    var compact: Bool = false
 
     var body: some View {
         HStack(spacing: 6) {
             Image(systemName: "figure.strengthtraining.traditional")
                 .font(font)
+                .imageScale(compact ? .small : .medium)
             Text(context.attributes.sessionLabel)
                 .font(font)
                 .lineLimit(1)
@@ -214,6 +220,12 @@ private struct ProgressBar: View {
 @available(iOS 16.2, *)
 private struct ControlRow: View {
     let context: ActivityViewContext<RestActivityAttributes>
+    /// True in the Dynamic Island's expanded view, which gets noticeably less
+    /// width than the Lock Screen presentation for the same three-part row —
+    /// shrinks the countdown's reserved width and the button labels so nothing
+    /// clips against the Island's rounded edge. See the sizing-rules note atop
+    /// this file for why the countdown itself still can't be `.fixedSize()`.
+    var compact: Bool = false
 
     /// The rest has run out, or there was never one running — either way the next
     /// thing to happen is a set, not an adjustment.
@@ -221,13 +233,16 @@ private struct ControlRow: View {
     private var hasSetsLeft: Bool { context.state.nextSetNumber <= context.state.totalSets }
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: compact ? 4 : 8) {
             if #available(iOS 17.0, *), !restOver {
                 Button(intent: AdjustRestIntent(deltaSeconds: -15)) {
                     Text("-15s").font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
                 .buttonStyle(.bordered)
                 .tint(.gray)
+                .controlSize(compact ? .small : .regular)
             }
 
             Spacer(minLength: 0)
@@ -239,9 +254,9 @@ private struct ControlRow: View {
                 LoadedSet(context: context)
             } else {
                 Countdown(context: context,
-                          font: .system(size: 26, weight: .semibold, design: .rounded))
+                          font: .system(size: compact ? 22 : 26, weight: .semibold, design: .rounded))
                     .layoutPriority(1)
-                    .frame(width: restOver ? 90 : 150, alignment: .center)
+                    .frame(width: restOver ? (compact ? 70 : 90) : (compact ? 110 : 150), alignment: .center)
             }
             Spacer(minLength: 0)
 
@@ -259,20 +274,27 @@ private struct ControlRow: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .tint(RestActivityWidget.accent)
+                        .controlSize(compact ? .small : .regular)
                         .accessibilityLabel("Set done")
                     }
                 } else {
                     Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
                         Text("+15s").font(.subheadline.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .buttonStyle(.bordered)
                     .tint(.gray)
+                    .controlSize(compact ? .small : .regular)
 
                     Button(intent: SkipRestIntent()) {
                         Text("Skip").font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.75)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(RestActivityWidget.accent)
+                    .controlSize(compact ? .small : .regular)
                 }
             }
         }

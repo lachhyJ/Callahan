@@ -31,7 +31,7 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
     totalSeconds: rest ? rest.totalSeconds : 0,
     exerciseName: detail.exerciseName ?? 'Workout',
     targetReps: detail.targetReps == null ? '' : String(detail.targetReps),
-    targetWeight: formatWeight(detail.targetWeightKg),
+    targetWeight: detail.isBodyweight ? '' : formatWeight(detail.targetWeightKg),
     // What is actually typed into the next set's reps box, as opposed to the
     // programmed target, which is often a range. The card shows this in the slot
     // the countdown vacates when the rest ends.
