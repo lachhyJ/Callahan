@@ -21,15 +21,14 @@ import { useEffect, useState } from 'react'
 // on-device each time) turned out to have a real root cause found later in
 // useLockDocumentScroll below: a phantom window-level scroll iOS forces
 // regardless of the app's own .app-content-only-scrolls architecture. Once
-// that's neutralized at the source, ordinary .app-content scrolling (a
-// manual scroll, or our own scrollIntoView call) is just a normal scroll
-// and doesn't need this treatment — hiding on *every* focus change (a
-// dedicated focusin/focusout trigger, removed 2026-09-16) or on every
-// .app-content scroll (a capture-phase document scroll listener, also
-// removed) fired constantly and produced a visible, unwanted flicker
-// switching between fields with the keyboard already open, for no benefit
-// once the real bug was fixed. What's left here guards only the case that's
-// still genuinely transient: the keyboard's own height actually changing.
+// that's neutralized at the source there's no remaining paint-lag to guard
+// against — a settle debounce (below) is still worth keeping so the
+// *value* isn't read mid-animation, but hiding the element while unsettled
+// was tried at several different trigger scopes (every focus change, every
+// .app-content scroll including our own scrollIntoView calls, then only a
+// genuine visualViewport change) and produced a visible flicker at every
+// scope tried, for a paint-correctness problem that no longer exists —
+// removed entirely 2026-09-17 rather than keep narrowing the trigger.
 const SETTLE_DELAY_MS = 150
 
 // iOS draws a native input-accessory bar (the ‹ › and Done row) directly
@@ -39,13 +38,13 @@ const SETTLE_DELAY_MS = 150
 // still renders underneath it. This is a hand-measured estimate, not a
 // queryable constant; nudge it if it drifts on a future iOS version — 50
 // left a sliver of the toolbar under the accessory bar on-device
-// (2026-09-16 morning), 68 overcorrected the other way once the real
-// scroll-drift bug (see useLockDocumentScroll) was fixed and stopped
-// compounding the error (2026-09-16 afternoon). Add it on top of the inset
-// whenever positioning something while a text field is actually focused
-// (not when merely showing at the screen's resting bottom with no keyboard
-// up at all).
-export const KEYBOARD_ACCESSORY_HEIGHT = 58
+// (2026-09-16 morning), 68 overcorrected once the real scroll-drift bug
+// (see useLockDocumentScroll) was fixed and stopped compounding the error
+// (2026-09-16 afternoon), 58 was still visibly too much (2026-09-17). Add
+// it on top of the inset whenever positioning something while a text field
+// is actually focused (not when merely showing at the screen's resting
+// bottom with no keyboard up at all).
+export const KEYBOARD_ACCESSORY_HEIGHT = 24
 
 // .app-content is documented (App.css) as the app's one and only scrolling
 // element — #root itself locks height:100svh/overflow:hidden specifically
@@ -74,14 +73,8 @@ export function useLockDocumentScroll() {
   }, [])
 }
 
-// Returns { inset, unsettled }. `unsettled` is true for a brief window
-// around a genuine visualViewport resize/scroll (the keyboard's own height
-// changing) — every consumer should hide itself (not just reposition)
-// while this is true, since the *position* can be numerically correct and
-// still paint in the wrong place until settled.
 export function useKeyboardInset() {
   const [inset, setInset] = useState(0)
-  const [unsettled, setUnsettled] = useState(false)
 
   useEffect(() => {
     const vv = window.visualViewport
@@ -92,18 +85,10 @@ export function useKeyboardInset() {
       return Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop))
     }
 
-    function markUnsettled() {
-      setUnsettled(true)
-      clearTimeout(settleTimer)
-      settleTimer = setTimeout(() => {
-        setInset(compute())
-        setUnsettled(false)
-      }, SETTLE_DELAY_MS)
-    }
-
     function onViewportChange() {
       setInset(compute())
-      markUnsettled()
+      clearTimeout(settleTimer)
+      settleTimer = setTimeout(() => setInset(compute()), SETTLE_DELAY_MS)
     }
 
     setInset(compute())
@@ -116,5 +101,5 @@ export function useKeyboardInset() {
     }
   }, [])
 
-  return { inset, unsettled }
+  return inset
 }

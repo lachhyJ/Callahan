@@ -309,7 +309,7 @@ export default function ActiveWorkoutPage() {
   // close over the live `exercises` value.
   const exercisesRef = useRef(null)
   const headerRef = useRef(null)
-  const { inset: keyboardInset, unsettled: keyboardUnsettled } = useKeyboardInset()
+  const keyboardInset = useKeyboardInset()
 
   useEffect(() => {
     // Mini bar only takes over once the real header has actually scrolled
@@ -686,13 +686,27 @@ export default function ActiveWorkoutPage() {
   // single requestAnimationFrame wasn't enough to reliably land after that
   // commit — nesting a second rAF is the standard "wait for a frame where
   // the previous one has definitely already painted" pattern.
-  function scrollToSetRow(exIdx, setIdx, block = 'center') {
+  function scrollToSetRow(exIdx, setIdx, { topOffset } = {}) {
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         const row = document.getElementById(`set-${exIdx}-${setIdx}`)
         if (!row) return
         const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        row.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block })
+        const behavior = reduceMotion ? 'auto' : 'smooth'
+        if (topOffset == null) {
+          row.scrollIntoView({ behavior, block: 'center' })
+          return
+        }
+        // `block: 'start'` (tried 2026-09-16) aligns the row flush with the
+        // very top of .app-content — exactly where `thead th`'s own
+        // `position: sticky; top: 0` also wants to sit, so the sticky
+        // header painted on top of the row's own Set-number cell (reported
+        // 2026-09-17). A fixed pixel offset below the scroller's top edge
+        // clears the sticky header with room to spare, without going all
+        // the way to `block: 'center'`'s past-the-keyboard's-halfway-point.
+        const scroller = row.closest('.app-content') ?? document.scrollingElement
+        const delta = row.getBoundingClientRect().top - scroller.getBoundingClientRect().top - topOffset
+        scroller.scrollBy({ top: delta, behavior })
       })
     })
   }
@@ -1843,12 +1857,15 @@ export default function ActiveWorkoutPage() {
                               // doesn't re-trigger it, leaving the page scrolled to
                               // wherever the *first* field in this keyboard session
                               // was. Force it explicitly so every focus lands the
-                              // same way regardless of what came before. 'start' not
-                              // the default 'center': centering in the *full* page
+                              // same way regardless of what came before. Not the
+                              // default block:'center': centering in the *full* page
                               // lands past halfway of what's actually visible once
                               // the keyboard/toolbar eat the bottom portion (reported
-                              // 2026-09-16).
-                              scrollToSetRow(exIdx, setIdx, 'start')
+                              // 2026-09-16) — and not block:'start' either, tried the
+                              // same day, which collides with the sticky table header
+                              // (reported 2026-09-17). A small fixed offset threads
+                              // both.
+                              scrollToSetRow(exIdx, setIdx, { topOffset: 90 })
                             }}
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={s.previous && !s.completed ? 'prefilled' : ''}
@@ -2063,14 +2080,7 @@ export default function ActiveWorkoutPage() {
         return createPortal(
           <div
             className="weight-input-toolbar"
-            style={{
-              bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT,
-              // Hidden (not just repositioned) while unsettled: iOS paints
-              // fixed elements as part of the scrolling content during an
-              // active scroll, landing wherever that happens to be rather
-              // than the computed position above — see useKeyboardInset.js.
-              visibility: keyboardUnsettled ? 'hidden' : 'visible',
-            }}
+            style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
           >
             <button
               type="button"
