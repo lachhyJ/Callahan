@@ -44,10 +44,10 @@ struct RestActivityWidget: Widget {
                     .padding(.top, 2)
                 }
             } compactLeading: {
-                Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
+                Image(systemName: context.restOver ? "checkmark" : "timer")
                     .foregroundStyle(Self.accent)
             } compactTrailing: {
-                if context.state.isResting && !context.isStale {
+                if !context.restOver {
                     Countdown(context: context, font: .caption2.monospacedDigit())
                         .frame(width: 46, alignment: .trailing)
                 }
@@ -57,10 +57,10 @@ struct RestActivityWidget: Widget {
                 // compact slot or the whole island, so the only lever is making
                 // the demoted presentation still worth reading: the time left,
                 // not a glyph that says "there is a timer somewhere".
-                if context.state.isResting && !context.isStale {
+                if !context.restOver {
                     Countdown(context: context, font: .system(size: 12, weight: .semibold).monospacedDigit())
                 } else {
-                    Image(systemName: (context.isStale && context.state.isResting) ? "checkmark" : "timer")
+                    Image(systemName: "checkmark")
                         .foregroundStyle(Self.accent)
                 }
             }
@@ -70,6 +70,26 @@ struct RestActivityWidget: Widget {
 
     /// Callahan's purple. Deliberately not Hevy's blue.
     static let accent = Color(red: 0.66, green: 0.33, blue: 0.97)
+}
+
+// MARK: - Shared
+
+/// Whether the rest is over — no countdown left to show, so the card should be
+/// pointing at the next set instead.
+///
+/// Deliberately keyed on `state.isResting` (`endAt == nil`), not `isStale`.
+/// `isStale` only reflects the system's own `staleDate` bookkeeping, which
+/// stays false for any content the app just pushed itself — including the
+/// zeroed-`endAt` update the app sends the moment a rest genuinely finishes
+/// (RestActivityPlugin, on the beep or on Skip). Gating this on `isStale`
+/// alone left the countdown slot stuck showing its own "no endAt" fallback
+/// forever after a real update, since nothing ever made `isStale` true for
+/// that fresh content. `isStale` is OR'd in as a fallback for the one case
+/// this app doesn't proactively update for — the system's own passive
+/// detection of a `staleDate` that has quietly passed.
+@available(iOS 16.2, *)
+extension ActivityViewContext<RestActivityAttributes> {
+    var restOver: Bool { !state.isResting || isStale }
 }
 
 // MARK: - Pieces
@@ -227,9 +247,7 @@ private struct ControlRow: View {
     /// this file for why the countdown itself still can't be `.fixedSize()`.
     var compact: Bool = false
 
-    /// The rest has run out, or there was never one running — either way the next
-    /// thing to happen is a set, not an adjustment.
-    private var restOver: Bool { !context.state.isResting || context.isStale }
+    private var restOver: Bool { context.restOver }
     private var hasSetsLeft: Bool { context.state.nextSetNumber <= context.state.totalSets }
 
     var body: some View {
@@ -246,7 +264,7 @@ private struct ControlRow: View {
             }
 
             Spacer(minLength: 0)
-            if context.isStale {
+            if restOver {
                 // The rest is over, so a countdown has nothing left to say. What
                 // you want at arm's length is what the next set is loaded to —
                 // which used to be buried in the small grey line while this slot
