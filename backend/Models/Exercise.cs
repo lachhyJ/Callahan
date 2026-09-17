@@ -22,6 +22,11 @@ public class Exercise
     // back on keeps the chosen gap. Default 8.
     public int PerSideDelaySeconds { get; set; } = 8;
 
+    // Rep-based but unweighted (skater bounds, air squats). Hides the Kg
+    // column during workouts instead of defaulting it to 0. Catalog-level,
+    // sibling of IsAssisted/IsTimeBased.
+    public bool IsBodyweight { get; set; }
+
     public ICollection<ExerciseSet> Sets { get; set; } = [];
     public ICollection<ExerciseMuscleTarget> MuscleTargets { get; set; } = [];
 }

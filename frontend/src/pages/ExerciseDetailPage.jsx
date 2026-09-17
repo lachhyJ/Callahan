@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseName, updateExerciseTimeBased } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseBodyweight, updateExerciseName, updateExerciseTimeBased } from '../api/client'
 import CueInput from '../components/CueInput'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
@@ -76,6 +76,14 @@ export default function ExerciseDetailPage() {
     setStats((s) => ({ ...s, isTimeBased }))
     updateExerciseTimeBased(exerciseId, isTimeBased, stats.isPerSide, stats.perSideDelaySeconds).catch(() => {
       setStats((s) => ({ ...s, ...prev }))
+    })
+  }
+
+  function handleBodyweightToggle() {
+    const isBodyweight = !stats.isBodyweight
+    setStats((prev) => ({ ...prev, isBodyweight }))
+    updateExerciseBodyweight(exerciseId, isBodyweight).catch(() => {
+      setStats((prev) => ({ ...prev, isBodyweight: !isBodyweight }))
     })
   }
 
@@ -181,6 +189,14 @@ export default function ExerciseDetailPage() {
           title="Time-based exercises log a hold in seconds instead of reps, with an inline countdown"
         >
           Timed
+        </button>
+        <button
+          type="button"
+          className={stats.isBodyweight ? 'assisted-toggle active' : 'assisted-toggle'}
+          onClick={handleBodyweightToggle}
+          title="Bodyweight exercises skip the Kg column during workouts"
+        >
+          Bodyweight
         </button>
         {stats.isTimeBased && (
           <button

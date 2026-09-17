@@ -19,6 +19,7 @@ public record WorkoutTemplateExerciseStartDto(
     bool IsTimeBased,
     bool IsPerSide,
     int PerSideDelaySeconds,
+    bool IsBodyweight,
     int? TargetDurationSeconds,
     bool SupersetWithNext,
     int? SupersetRestSeconds,
