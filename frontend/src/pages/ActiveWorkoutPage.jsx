@@ -79,6 +79,7 @@ function exerciseFromStart(ex) {
     isAssisted: ex.isAssisted,
     isTimeBased: ex.isTimeBased ?? false,
     isPerSide: ex.isPerSide ?? false,
+    isBodyweight: ex.isBodyweight ?? false,
     perSideDelaySeconds: ex.perSideDelaySeconds ?? 8,
     targetDurationSeconds: ex.targetDurationSeconds ?? null,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
@@ -197,6 +198,9 @@ function loggedSummary(ex) {
   if (ex.isTimeBased) {
     const suffix = ex.isPerSide ? ' (per side)' : ''
     return done.map((s) => `${s.durationSeconds}s`).join(' · ') + suffix
+  }
+  if (ex.isBodyweight) {
+    return done.map((s) => `${s.reps} reps`).join(' · ')
   }
   return done.map((s) => `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`).join(' · ')
 }
@@ -1102,6 +1106,7 @@ export default function ActiveWorkoutPage() {
         isAssisted: exercise.isAssisted,
         isTimeBased: exercise.isTimeBased ?? false,
         isPerSide: exercise.isPerSide ?? false,
+        isBodyweight: exercise.isBodyweight ?? false,
         perSideDelaySeconds: exercise.perSideDelaySeconds ?? 8,
         targetDurationSeconds: null,
         targetSets: previousSets.length || 1,
@@ -1315,7 +1320,9 @@ export default function ActiveWorkoutPage() {
           : lastOne
             ? 'This is the only set, so removing it removes the exercise from the session too.'
             : "This set hasn't been logged — you can add it back with “+ Add set”.",
-        detail: set.completed ? `${set.weightKg === '' ? 0 : set.weightKg}kg × ${set.reps}` : null,
+        detail: set.completed
+          ? (ex.isBodyweight ? `${set.reps} reps` : `${set.weightKg === '' ? 0 : set.weightKg}kg × ${set.reps}`)
+          : null,
         confirmLabel: 'Remove set',
         onConfirm: () => confirmRemoveSet(confirming.exIdx, confirming.setIdx),
       }
@@ -1414,7 +1421,9 @@ export default function ActiveWorkoutPage() {
             <ul className="summary-set-list">
               {sets.map((s, i) => (
                 <li key={i}>
-                  {s.weightKg === '' ? 0 : s.weightKg}kg × {s.reps}{s.type !== 'Normal' ? ` (${s.type})` : ''}
+                  {ex.isBodyweight
+                    ? `${s.reps} reps`
+                    : `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`}{s.type !== 'Normal' ? ` (${s.type})` : ''}
                 </li>
               ))}
             </ul>
@@ -1755,6 +1764,8 @@ export default function ActiveWorkoutPage() {
                 <th>Previous</th>
                 {ex.isTimeBased ? (
                   <th colSpan={2}>Hold{ex.isPerSide ? ' / side' : ''}</th>
+                ) : ex.isBodyweight ? (
+                  <th colSpan={2}>Reps</th>
                 ) : (
                   <>
                     <th>Kg</th>
@@ -1795,6 +1806,8 @@ export default function ActiveWorkoutPage() {
                   <td className="previous-cell">
                     {ex.isTimeBased
                       ? (s.previous?.durationSeconds != null ? `${s.previous.durationSeconds}s` : '—')
+                      : ex.isBodyweight
+                      ? (s.previous ? `${s.previous.reps} reps` : '—')
                       : (s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—')}
                   </td>
                   {ex.isTimeBased ? (
@@ -1852,6 +1865,7 @@ export default function ActiveWorkoutPage() {
                     </td>
                   ) : (
                     <>
+                  {!ex.isBodyweight && (
                   <td>
                     {(() => {
                       const cellKey = `${exIdx}-${setIdx}`
@@ -1906,7 +1920,8 @@ export default function ActiveWorkoutPage() {
                       )
                     })()}
                   </td>
-                  <td>
+                  )}
+                  <td colSpan={ex.isBodyweight ? 2 : undefined}>
                     <input
                       type="text"
                       inputMode="numeric"

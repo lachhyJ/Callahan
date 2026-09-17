@@ -34,7 +34,8 @@ public class ExercisesController : ControllerBase
                 e.IsAssisted,
                 e.IsTimeBased,
                 e.IsPerSide,
-                e.PerSideDelaySeconds))
+                e.PerSideDelaySeconds,
+                e.IsBodyweight))
             .ToListAsync();
 
         return Ok(exercises);
@@ -54,12 +55,12 @@ public class ExercisesController : ControllerBase
 
         var exercises = await _db.Exercises
             .OrderBy(e => e.Category).ThenBy(e => e.Name)
-            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds })
+            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds, e.IsBodyweight })
             .ToListAsync();
 
         var result = exercises
             .Select(e => new PickableExerciseDto(
-                e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds,
+                e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds, e.IsBodyweight,
                 templateNamesByExercise.GetValueOrDefault(e.Id, [])))
             .ToList();
 
@@ -78,7 +79,7 @@ public class ExercisesController : ControllerBase
         _db.Exercises.Add(exercise);
         await _db.SaveChangesAsync();
 
-        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds));
+        return Ok(new ExerciseDto(exercise.Id, exercise.Name, exercise.Category.ToString(), null, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight));
     }
 
     [HttpPut("{id}/assisted")]
@@ -88,6 +89,20 @@ public class ExercisesController : ControllerBase
         if (exercise is null) return NotFound();
 
         exercise.IsAssisted = request.IsAssisted;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
+    // Rep-based but unweighted (skater bounds, air squats). Hides the Kg
+    // column in the active workout set table instead of it defaulting to 0.
+    [HttpPut("{id}/bodyweight")]
+    public async Task<IActionResult> UpdateBodyweight(int id, UpdateExerciseBodyweightRequestDto request)
+    {
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        exercise.IsBodyweight = request.IsBodyweight;
         await _db.SaveChangesAsync();
 
         return NoContent();
@@ -199,7 +214,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, 0, 0, 0, 0, []));
         }
 
         var progressionReadiness = await GetProgressionReadiness(id);
@@ -220,7 +235,7 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness));
     }
 
     // Known edge case, not solved here: assumes the exercise sits in exactly

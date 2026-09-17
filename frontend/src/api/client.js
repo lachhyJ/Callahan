@@ -117,6 +117,13 @@ export function updateExerciseTimeBased(exerciseId, isTimeBased, isPerSide, perS
   })
 }
 
+export function updateExerciseBodyweight(exerciseId, isBodyweight) {
+  return apiFetch(`/api/exercises/${exerciseId}/bodyweight`, {
+    method: 'PUT',
+    body: JSON.stringify({ isBodyweight }),
+  })
+}
+
 export function updateExerciseName(exerciseId, name) {
   return apiFetch(`/api/exercises/${exerciseId}/name`, {
     method: 'PUT',
