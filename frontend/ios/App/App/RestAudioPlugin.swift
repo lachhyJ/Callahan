@@ -250,6 +250,16 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             name: AVAudioSession.mediaServicesWereResetNotification,
             object: nil
         )
+
+        // Lets other plugins (RestActivityPlugin, for its countdown-retiring
+        // path) write into this same diary without duplicating the storage —
+        // see the Diary section above for what it's for.
+        NotificationCenter.default.addObserver(
+            forName: .callahanDiaryEvent, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let message = note.userInfo?[CallahanDiary.messageKey] as? String else { return }
+            self?.record(message)
+        }
     }
 
     /// Re-arm whatever is left of the rest after the audio stack was taken away.

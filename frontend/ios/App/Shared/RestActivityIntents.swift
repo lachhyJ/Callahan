@@ -20,6 +20,18 @@ public extension Notification.Name {
     /// Live Activity's next-set display right then, rather than waiting for
     /// the app to next become active.
     static let callahanRestBeepFinished = Notification.Name("callahan.rest.beepFinished")
+
+    /// A plain diagnostic line for RestAudioPlugin's diary, posted by code
+    /// outside that plugin (e.g. RestActivityPlugin) that has nothing else to
+    /// write to. See RestAudioPlugin's own Diary section for why this exists —
+    /// the same "guessing costs a whole workout per attempt" reasoning applies
+    /// to the Live Activity's own countdown-retiring path, which has no
+    /// visibility on-device otherwise.
+    static let callahanDiaryEvent = Notification.Name("callahan.diary.event")
+}
+
+public enum CallahanDiary {
+    public static let messageKey = "message"
 }
 
 public enum RestTimerChange {

@@ -74,15 +74,16 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// that has not actually ended yet, e.g. the app being reopened mid-rest).
     @objc private func handleBeepFinished() {
         guard #available(iOS 16.2, *) else { return }
+        diary("beepFinished received (currentEndAt=\(currentEndAt.map { String($0.timeIntervalSince1970) } ?? "nil"))")
         currentEndAt = nil
-        Task { await retireCountdown() }
+        Task { await retireCountdown(reason: "beepFinished") }
     }
 
     private func retireExpiredRest() {
         guard #available(iOS 16.2, *) else { return }
         guard let endAt = currentEndAt, endAt <= Date() else { return }
         currentEndAt = nil
-        Task { await retireCountdown() }
+        Task { await retireCountdown(reason: "becomeActive") }
     }
 
     /// Zeroes the Live Activity's countdown so the card falls back to showing
@@ -91,14 +92,30 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// already describe the set this rest was for, which is the same set the
     /// card should now be prompting, so nothing else needs to change.
     @available(iOS 16.2, *)
-    private func retireCountdown() async {
+    private func retireCountdown(reason: String) async {
         await RestTimerStore.shared.clear()
-        guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else { return }
+        guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else {
+            diary("retireCountdown(\(reason)): no currentActivity, nothing to update")
+            return
+        }
         var state = activity.content.state
-        guard state.endAt != nil else { return }
+        guard state.endAt != nil else {
+            diary("retireCountdown(\(reason)): endAt already nil, skipped")
+            return
+        }
         state.endAt = nil
         state.totalSeconds = 0
         await activity.update(ActivityContent(state: state, staleDate: nil))
+        diary("retireCountdown(\(reason)): updated, activityState=\(activity.activityState)")
+    }
+
+    /// Writes into RestAudioPlugin's diary (see that type's Diary section) —
+    /// this plugin has no diagnostics UI of its own, and duplicating the
+    /// storage would split one investigation across two panels.
+    private func diary(_ message: String) {
+        NotificationCenter.default.post(
+            name: .callahanDiaryEvent, object: nil, userInfo: [CallahanDiary.messageKey: message]
+        )
     }
 
     /// What the native side currently believes about the rest timer.
