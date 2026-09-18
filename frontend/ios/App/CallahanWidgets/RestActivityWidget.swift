@@ -49,6 +49,16 @@ struct RestActivityWidget: Widget {
                         ControlRow(context: context, compact: true)
                     }
                     .padding(.top, 2)
+                    // Same corner-curve issue as the leading/trailing regions
+                    // above, at the bottom two corners this time: ControlRow's
+                    // outermost buttons (-15s, Skip) sat flush against the
+                    // sides with zero margin, crowding straight into the
+                    // curve. Horizontal + bottom clearance, not more internal
+                    // button padding — the buttons themselves are already
+                    // sized correctly, it's the region's own edge that had no
+                    // margin at all.
+                    .padding(.horizontal, 8)
+                    .padding(.bottom, 4)
                 }
             } compactLeading: {
                 Image(systemName: context.restOver ? "checkmark" : "timer")
