@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getActivities, getLatestWellness, getMonthlyReports, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { staleWhileRevalidate } from '../swrCache'
 import { buildDailySeries, wellnessRange } from '../wellnessMetrics'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WellnessCard from '../components/WellnessCard'
@@ -112,30 +113,48 @@ export default function DashboardPage() {
   const [unviewedReport, setUnviewedReport] = useState(null)
 
   useEffect(() => {
+    // Deliberately deferred behind the critical workouts/activities fetch
+    // (loadSessions below) rather than fired in parallel with it on mount -
+    // every fetch competes for the same Cloudflare-tunnel round-trip budget,
+    // and none of this feeds first paint. requestIdleCallback (with a
+    // setTimeout fallback for Safari/WKWebView, which doesn't have it) lets
+    // the calendar's own fetches get a head start on the connection.
     // Own effect, own silent catch - a wellness fetch failure must never
     // blank the whole dashboard the way the workouts/activities Promise.all
     // below does via the page-level `error` state.
-    getLatestWellness().then(setWellness).catch(() => {})
-    getWellnessInsight().then(setWellnessInsight).catch(() => {})
-    const { start, end } = wellnessRange(30)
-    getWellness(start, end)
-      .then((rows) => setReadinessSeries(buildDailySeries(rows, 30).byKey.readiness))
-      .catch(() => {})
+    const runIdle = window.requestIdleCallback ?? ((cb) => setTimeout(cb, 200))
+    const cancelIdle = window.cancelIdleCallback ?? clearTimeout
+    const handle = runIdle(() => {
+      staleWhileRevalidate('wellness-latest', getLatestWellness, setWellness).catch(() => {})
+      staleWhileRevalidate('wellness-insight', getWellnessInsight, setWellnessInsight).catch(() => {})
+      const { start, end } = wellnessRange(30)
+      staleWhileRevalidate(
+        `wellness-readiness-${start}-${end}`,
+        () => getWellness(start, end),
+        (rows) => setReadinessSeries(buildDailySeries(rows, 30).byKey.readiness),
+      ).catch(() => {})
+    })
+    return () => cancelIdle(handle)
   }, [])
 
   useEffect(() => {
-    getMonthlyReports().then((reports) => {
-      // Newest first from the API. Only nudge about a month that has
-      // actually ended — the API also returns the current, in-progress
-      // month as a provisional entry, and surfacing that produces a
-      // misleading "Down month — 0 sessions" headline early in the month.
-      const now = new Date()
-      const currentMonthKey = now.getFullYear() * 12 + now.getMonth()
-      const latestUnviewed = reports.find(
-        (r) => !r.viewed && r.year * 12 + (r.month - 1) < currentMonthKey,
-      )
-      setUnviewedReport(latestUnviewed ?? null)
-    }).catch(() => {})
+    const runIdle = window.requestIdleCallback ?? ((cb) => setTimeout(cb, 200))
+    const cancelIdle = window.cancelIdleCallback ?? clearTimeout
+    const handle = runIdle(() => {
+      staleWhileRevalidate('monthly-reports', getMonthlyReports, (reports) => {
+        // Newest first from the API. Only nudge about a month that has
+        // actually ended — the API also returns the current, in-progress
+        // month as a provisional entry, and surfacing that produces a
+        // misleading "Down month — 0 sessions" headline early in the month.
+        const now = new Date()
+        const currentMonthKey = now.getFullYear() * 12 + now.getMonth()
+        const latestUnviewed = reports.find(
+          (r) => !r.viewed && r.year * 12 + (r.month - 1) < currentMonthKey,
+        )
+        setUnviewedReport(latestUnviewed ?? null)
+      }).catch(() => {})
+    })
+    return () => cancelIdle(handle)
   }, [])
 
   function dismissUnviewedReport() {
@@ -162,6 +181,9 @@ export default function DashboardPage() {
     // the whole Dashboard render is gated on. Read alongside the backend
     // "Callahan.Api.RequestTiming" logs: a large gap between this number and
     // the server-side elapsed is network/tunnel/cold-start, not query cost.
+    // Only the live network fetch is timed - the synchronous cache paint
+    // below (if any) isn't a network round-trip and would make these numbers
+    // meaningless.
     const t0 = performance.now()
     const mark = (label) => {
       const ms = performance.now() - t0
@@ -169,12 +191,19 @@ export default function DashboardPage() {
       if (label === 'populated') trackTiming('dashboard-populated', ms)
     }
     const timed = (name, p) => p.then((r) => { mark(name); return r })
-    Promise.all([timed('workoutsessions', getWorkoutSessions()), timed('activities', getActivities())])
-      .then(([w, a]) => {
-        setWorkouts(w)
-        setActivities(a)
-        mark('populated')
-      })
+
+    // Stale-while-revalidate: setWorkouts/setActivities fire immediately with
+    // last launch's cached response (if any), painting the calendar before
+    // the network round-trip even starts, then fire again with the live
+    // result once it lands. See swrCache.js.
+    const workoutsPromise = staleWhileRevalidate(
+      'workoutsessions', () => timed('workoutsessions', getWorkoutSessions()), setWorkouts,
+    )
+    const activitiesPromise = staleWhileRevalidate(
+      'activities', () => timed('activities', getActivities()), setActivities,
+    )
+    Promise.all([workoutsPromise, activitiesPromise])
+      .then(() => mark('populated'))
       .catch((err) => setError(err.message))
   }
 
