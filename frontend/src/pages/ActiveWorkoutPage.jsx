@@ -848,10 +848,8 @@ export default function ActiveWorkoutPage() {
           }
     )
     setExercises(updatedExercises)
-    if (nowCompleting) {
-      tapSetComplete()
-      armRestAfterSet(updatedExercises, exIdx, setIdx)
-    }
+    tapSetComplete()
+    if (nowCompleting) armRestAfterSet(updatedExercises, exIdx, setIdx)
   }
 
   // Kick off the inline countdown for a time-based set. The hold length comes
