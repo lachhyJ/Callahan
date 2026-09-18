@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, groupMemberDueNext, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -140,28 +140,63 @@ function nextSetLabel(rest) {
   return parts.filter(Boolean).join(' · ') || 'Next set.'
 }
 
+// Which set a native completion should land on, with nothing yet ticked this
+// batch to anchor from — mirrors nextSetDescriptor's own ambient targeting
+// (activeWorkout.js) exactly, since the card's own display is built from
+// that same scan and a press should complete whatever the card was showing.
+function ambientCompletionTarget(exercises, fromIdx) {
+  for (let i = fromIdx; i < exercises.length; i++) {
+    if (exercises[i].sets.every((s) => s.completed)) continue
+    const [groupStart, groupEnd] = supersetGroupBounds(exercises, i)
+    const target = groupEnd > groupStart ? groupMemberDueNext(exercises, groupStart, groupEnd) : null
+    const j = target ? target.j : exercises[i].sets.findIndex((s) => !s.completed)
+    return { i: target ? target.i : i, j }
+  }
+  return null
+}
+
+// Which set is due right after ticking (exIdx, setIdx) — mirrors
+// restDescriptorAfterSet's own targeting exactly, for the same reason: a
+// second (or third...) native completion in the same batch should land on
+// whoever's turn is next in rotation, not just the next row of whichever
+// exercise happens to sit first in the array.
+function completionTargetAfterTick(exercises, exIdx, setIdx) {
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  if (groupEnd > groupStart) {
+    const next = nextIncompleteInGroup(exercises, groupStart, groupEnd, exIdx)
+    if (next) return next
+  }
+  if (exercises[exIdx].sets.some((s) => !s.completed)) {
+    return { i: exIdx, j: exercises[exIdx].sets.findIndex((s) => !s.completed) }
+  }
+  return ambientCompletionTarget(exercises, groupEnd + 1)
+}
+
 // Fold sets ticked from the Live Activity into the workout's own state.
 //
 // The card can only bank a count — it has no access to the set rows — so this
-// walks forward from wherever the workout is now, ticking the next unticked set
-// once per press. A set confirmed from a locked phone has no typed reps, so the
-// programmed target stands in; that is what the athlete was being asked to do
-// and what the card was showing them when they pressed it. Sets with neither a
-// typed nor a target rep count are left alone rather than saved as a blank.
+// walks forward from wherever the workout is now, ticking whichever set is
+// actually due next in rotation order (not just array order — a mid-superset
+// press otherwise lands on the wrong exercise's set, completing member A's
+// row ahead of B's turn even when B was due). A set confirmed from a locked
+// phone has no typed reps, so the programmed target stands in; that is what
+// the athlete was being asked to do and what the card was showing them when
+// they pressed it. Sets with neither a typed nor a target rep count are left
+// alone rather than saved as a blank.
 function applyNativeCompletions(exercises, count) {
   if (!exercises || count <= 0) return null
   const next = exercises.map((ex) => ({ ...ex, sets: ex.sets.map((set) => ({ ...set })) }))
   let applied = 0
-  outer: for (const ex of next) {
-    for (const set of ex.sets) {
-      if (applied >= count) break outer
-      if (set.completed) continue
-      const reps = set.reps !== '' ? set.reps : (ex.targetReps ?? '')
-      if (reps === '' || reps == null) break outer
-      set.reps = String(reps)
-      set.completed = true
-      applied += 1
-    }
+  let target = ambientCompletionTarget(next, 0)
+  while (target && applied < count) {
+    const ex = next[target.i]
+    const set = ex.sets[target.j]
+    const reps = set.reps !== '' ? set.reps : (ex.targetReps ?? '')
+    if (reps === '' || reps == null) break
+    set.reps = String(reps)
+    set.completed = true
+    applied += 1
+    target = completionTargetAfterTick(next, target.i, target.j)
   }
   return applied > 0 ? { exercises: next, applied } : null
 }

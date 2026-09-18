@@ -153,7 +153,7 @@ export function isSupersetGroupRestActive(exercises, exIdx) {
 // from: whichever member still has work left with the fewest sets completed
 // so far, ties broken by group order. See nextIncompleteInGroup for the
 // anchored version, used right after a tick.
-function groupMemberDueNext(exercises, groupStart, groupEnd) {
+export function groupMemberDueNext(exercises, groupStart, groupEnd) {
   let best = null
   for (let i = groupStart; i <= groupEnd; i++) {
     const j = exercises[i].sets.findIndex((s) => !s.completed)
