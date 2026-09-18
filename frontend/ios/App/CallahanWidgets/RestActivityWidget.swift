@@ -61,28 +61,24 @@ struct RestActivityWidget: Widget {
                     .padding(.bottom, 4)
                 }
             } compactLeading: {
-                // No padding added here on purpose: the gap between this
-                // glyph and the camera cutout is the system's own reserved
-                // margin around the sensor housing, not something this view
-                // controls — unlike the expanded card, which draws its own
-                // rounded rect and owns its full internal padding, compact
-                // content is composited directly onto the physical pill and
-                // iOS keeps that inset fixed regardless of what's inside it.
                 Image(systemName: context.restOver ? "checkmark" : "timer")
                     .foregroundStyle(Self.accent)
             } compactTrailing: {
                 if !context.restOver {
-                    // Narrowed from 46 — that was wider than "2:27"-length
-                    // content needs, which under `.trailing` alignment just
-                    // left the text sitting away from the pill's own right
-                    // edge rather than hugging it. Still can't go tighter
-                    // than genuine double-digit-minute content needs (see the
-                    // sizing-rules note atop this file on why a `Timer` text
-                    // can't be capped arbitrarily narrow) — some of the
-                    // remaining gap past this point is the same system inset
-                    // `compactLeading` has, not this frame.
+                    // Narrowed from 46 → 40 → 34. Turns out the pill's overall
+                    // compact width responds to this frame, not just this
+                    // side of it — shrinking it tightened the gap to the
+                    // camera cutout on the *leading* side too, not only this
+                    // trailing edge. 34pt covers single-digit-minute content
+                    // ("2:27") with the tightest realistic margin; Lachlan's
+                    // rests never reach double digits in practice, so this
+                    // deliberately isn't sized for "9:59"+ — a rest that long
+                    // would clip here, which is an accepted, reversible
+                    // trade for a tighter pill the rest of the time. See the
+                    // sizing-rules note atop this file on why the countdown
+                    // itself still can't be `.fixedSize()`.
                     Countdown(context: context, font: .caption2.monospacedDigit())
-                        .frame(width: 40, alignment: .trailing)
+                        .frame(width: 34, alignment: .trailing)
                 }
             } minimal: {
                 // When another app also has a Live Activity up — music, usually —
