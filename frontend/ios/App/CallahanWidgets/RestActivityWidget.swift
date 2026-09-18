@@ -33,11 +33,11 @@ struct RestActivityWidget: Widget {
                     SessionLabel(context: context, font: .caption, compact: true)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    ElapsedLabel(since: context.attributes.sessionStartedAt)
+                    ElapsedLabel(since: context.attributes.sessionStartedAt, compact: true)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        ExerciseRow(context: context)
+                        ExerciseRow(context: context, compact: true)
                         ProgressBar(context: context)
                         ControlRow(context: context, compact: true)
                     }
@@ -126,10 +126,14 @@ private struct Countdown: View {
 @available(iOS 16.2, *)
 private struct ElapsedLabel: View {
     let since: Date
+    /// True in the Dynamic Island's expanded view — see `ExerciseRow`'s own
+    /// `compact` doc. Was part of the original clipping report ("the 'n' of
+    /// 'min'") but never actually given a smaller size for the Island.
+    var compact: Bool = false
 
     var body: some View {
         Text(text)
-            .font(.subheadline)
+            .font(compact ? .caption : .subheadline)
             .monospacedDigit()
             .foregroundStyle(.secondary)
             .lineLimit(1)
@@ -185,29 +189,36 @@ private struct SessionLabel: View {
 @available(iOS 16.2, *)
 private struct ExerciseRow: View {
     let context: ActivityViewContext<RestActivityAttributes>
+    /// True in the Dynamic Island's expanded view. This row carries the
+    /// longest text in the whole card (`nextSetLine`, e.g. "Next: set 2 of
+    /// 3 · 20-25 reps") at the same size as the wider Lock Screen layout,
+    /// which was the one piece of the original clipping report never
+    /// actually addressed — everything else in this file got a `compact`
+    /// pass but this row didn't.
+    var compact: Bool = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: compact ? 8 : 10) {
             // Hevy shows a per-exercise illustration; we have no artwork, so a
             // glyph in a tinted circle stands in for it.
             ZStack {
                 Circle().fill(RestActivityWidget.accent.opacity(0.18))
                 Image(systemName: "dumbbell.fill")
-                    .font(.system(size: 18))
+                    .font(.system(size: compact ? 14 : 18))
                     .foregroundStyle(RestActivityWidget.accent)
             }
-            .frame(width: 40, height: 40)
+            .frame(width: compact ? 30 : 40, height: compact ? 30 : 40)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(context.state.exerciseName)
-                    .font(.headline.weight(.semibold))
+                    .font(compact ? .subheadline.weight(.semibold) : .headline.weight(.semibold))
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.65)
                 Text(context.state.nextSetLine)
-                    .font(.subheadline)
+                    .font(compact ? .caption : .subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.65)
             }
             Spacer(minLength: 0)
         }
