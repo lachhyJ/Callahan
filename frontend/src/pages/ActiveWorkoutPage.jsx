@@ -8,6 +8,7 @@ import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
+import { tapSetComplete } from '../haptics'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
@@ -847,7 +848,10 @@ export default function ActiveWorkoutPage() {
           }
     )
     setExercises(updatedExercises)
-    if (nowCompleting) armRestAfterSet(updatedExercises, exIdx, setIdx)
+    if (nowCompleting) {
+      tapSetComplete()
+      armRestAfterSet(updatedExercises, exIdx, setIdx)
+    }
   }
 
   // Kick off the inline countdown for a time-based set. The hold length comes
@@ -883,6 +887,7 @@ export default function ActiveWorkoutPage() {
           }
     )
     setExercises(updatedExercises)
+    tapSetComplete()
     armRestAfterSet(updatedExercises, exIdx, setIdx)
   }
 
