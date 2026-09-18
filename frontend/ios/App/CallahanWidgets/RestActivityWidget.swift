@@ -269,7 +269,7 @@ private struct ControlRow: View {
                 // you want at arm's length is what the next set is loaded to —
                 // which used to be buried in the small grey line while this slot
                 // said "Go", a label that looked like a button and did nothing.
-                LoadedSet(context: context)
+                LoadedSet(context: context, compact: compact)
             } else {
                 Countdown(context: context,
                           font: .system(size: compact ? 22 : 26, weight: .semibold, design: .rounded))
@@ -329,6 +329,17 @@ private struct ControlRow: View {
 @available(iOS 16.2, *)
 private struct LoadedSet: View {
     let context: ActivityViewContext<RestActivityAttributes>
+    /// True in the Dynamic Island's expanded view — see `ControlRow`'s own
+    /// `compact` doc for why this slot needs less room there than on the
+    /// Lock Screen. This view previously rendered at the same fixed size in
+    /// both presentations, which went unnoticed while `restOver` was stuck
+    /// on the `isStale` bug (see the `restOver` extension above) and this
+    /// view essentially never appeared in the Island at all — now that it
+    /// renders correctly there, a long loaded-set line ("115 kg × 6") at
+    /// full size has nothing but `minimumScaleFactor` to keep it inside the
+    /// Island's tighter bottom region, unlike `Countdown`, which also gets a
+    /// smaller starting font and an explicit narrower `.frame`.
+    var compact: Bool = false
 
     var body: some View {
         Group {
@@ -338,12 +349,13 @@ private struct LoadedSet: View {
                 Text(context.state.loadedSetLine)
             }
         }
-        .font(.system(size: 26, weight: .semibold, design: .rounded))
+        .font(.system(size: compact ? 20 : 26, weight: .semibold, design: .rounded))
         .monospacedDigit()
         .lineLimit(1)
-        .minimumScaleFactor(0.6)
+        .minimumScaleFactor(0.55)
         .foregroundStyle(RestActivityWidget.accent)
         .layoutPriority(1)
+        .frame(maxWidth: compact ? 130 : .infinity)
     }
 }
 
