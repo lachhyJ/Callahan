@@ -61,7 +61,12 @@ struct RestActivityWidget: Widget {
                     .padding(.bottom, 4)
                 }
             } compactLeading: {
-                Image(systemName: context.restOver ? "checkmark" : "timer")
+                // "checkmark" read as "you're done" — the wrong signal for a
+                // state that means "your next set is loaded, go lift it".
+                // `dumbbell.fill` matches `ExerciseRow`'s own icon in the
+                // expanded view, so idle and active read as one visual
+                // language instead of introducing a third icon concept.
+                Image(systemName: context.restOver ? "dumbbell.fill" : "timer")
                     .foregroundStyle(Self.accent)
             } compactTrailing: {
                 if !context.restOver {
@@ -89,7 +94,7 @@ struct RestActivityWidget: Widget {
                 if !context.restOver {
                     Countdown(context: context, font: .system(size: 12, weight: .semibold).monospacedDigit())
                 } else {
-                    Image(systemName: "checkmark")
+                    Image(systemName: "dumbbell.fill")
                         .foregroundStyle(Self.accent)
                 }
             }
