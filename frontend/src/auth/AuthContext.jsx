@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { login as apiLogin } from '../api/client'
+import { clearAllCache } from '../swrCache'
 
 const AuthContext = createContext(null)
 
@@ -7,7 +8,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('callahan_token'))
 
   useEffect(() => {
-    const handleUnauthorized = () => setToken(null)
+    const handleUnauthorized = () => { clearAllCache(); setToken(null) }
     window.addEventListener('callahan-unauthorized', handleUnauthorized)
     return () => window.removeEventListener('callahan-unauthorized', handleUnauthorized)
   }, [])
@@ -20,6 +21,7 @@ export function AuthProvider({ children }) {
 
   function logout() {
     localStorage.removeItem('callahan_token')
+    clearAllCache()
     setToken(null)
   }
 

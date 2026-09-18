@@ -4,6 +4,7 @@ import { getWorkoutTemplates } from '../api/client'
 import { loadActiveWorkout } from '../activeWorkout'
 import { unlockAudio } from '../audio'
 import { trackAction, trackTiming } from '../usage'
+import { staleWhileRevalidate } from '../swrCache'
 import { RunIcon } from '../icons'
 
 export default function WorkoutTemplatesPage() {
@@ -16,15 +17,18 @@ export default function WorkoutTemplatesPage() {
     // Temporary launch-perf instrumentation (Sep 2026). This page fetches one
     // tiny payload (3 templates), so a slow number here is almost entirely
     // cold-start / network, not data volume — the cleanest probe for that.
+    // Only the live fetch is timed; the cache paint below isn't a network
+    // round-trip.
     const t0 = performance.now()
-    getWorkoutTemplates()
-      .then((t) => {
+    staleWhileRevalidate('workouttemplates', () => {
+      const p = getWorkoutTemplates()
+      p.then(() => {
         const ms = performance.now() - t0
         console.info(`[perf] workouts populated ${Math.round(ms)}ms`)
         trackTiming('workouts-populated', ms)
-        setTemplates(t)
       })
-      .catch((err) => setError(err.message))
+      return p
+    }, setTemplates).catch((err) => setError(err.message))
   }, [activeWorkout])
 
   if (activeWorkout) {
