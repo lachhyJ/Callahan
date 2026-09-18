@@ -92,8 +92,17 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
 
     /// Header label: the template's own name, with its subtitle when there is
     /// one. Falls back to "Workout" so a custom session still reads as something.
-    var sessionLabel: String {
-        let parts = [templateName, templateSubtitle].filter { !$0.isEmpty }
-        return parts.isEmpty ? "Workout" : parts.joined(separator: " · ")
+    ///
+    /// `compact` drops the subtitle entirely rather than truncating it — for
+    /// the Dynamic Island's expanded view, whose leading region shares the
+    /// row with the camera cutout and the elapsed-time trailing region, so
+    /// there's materially less width than the Lock Screen gets. A truncated
+    /// "Gym 3 · Squat &..." reads as unfinished and clips against the card's
+    /// corner curve at that length; "Gym 3" alone fits comfortably, and the
+    /// exercise name right below it already carries the actual detail.
+    func sessionLabel(compact: Bool = false) -> String {
+        let parts = compact ? [templateName] : [templateName, templateSubtitle]
+        let nonEmpty = parts.filter { !$0.isEmpty }
+        return nonEmpty.isEmpty ? "Workout" : nonEmpty.joined(separator: " · ")
     }
 }

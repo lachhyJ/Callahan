@@ -194,7 +194,7 @@ private struct SessionLabel: View {
             Image(systemName: "figure.strengthtraining.traditional")
                 .font(font)
                 .imageScale(compact ? .small : .medium)
-            Text(context.attributes.sessionLabel)
+            Text(context.attributes.sessionLabel(compact: compact))
                 .font(font)
                 .lineLimit(1)
                 .truncationMode(.tail)
