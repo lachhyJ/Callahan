@@ -30,10 +30,17 @@ struct RestActivityWidget: Widget {
         } dynamicIsland: { context in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
+                    // Top padding, not the system's automatic content-margin
+                    // inset alone: the leading/trailing row sits right where
+                    // the Island's rounded corner curves the card inward, and
+                    // with no top clearance the text visibly clips against
+                    // that curve at both corners.
                     SessionLabel(context: context, font: .caption, compact: true)
+                        .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     ElapsedLabel(since: context.attributes.sessionStartedAt, compact: true)
+                        .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
