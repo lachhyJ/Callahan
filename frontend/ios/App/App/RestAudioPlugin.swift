@@ -126,6 +126,11 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         ])
     }
 
+    /// Fired alongside the beep — see `activate(ducking:)`, the one place both
+    /// the scheduled and the immediate beep paths funnel through right before
+    /// sounding.
+    private let completionHaptic = UINotificationFeedbackGenerator()
+
     private var player: AVAudioPlayer?
     /// Loops for the duration of the rest so the app is never suspended — see the
     /// background-audio discussion on the type. Silent, so it is inaudible to the
@@ -370,7 +375,14 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             try configureSession(ducking: ducking)
             try AVAudioSession.sharedInstance().setActive(true)
             sessionActive = true
-            if ducking { armDuckWatchdog() }
+            if ducking {
+                armDuckWatchdog()
+                // Same process that keeps the beep alive through a locked/
+                // backgrounded rest (the keep-alive player) is what lets this
+                // reach the Taptic Engine here too — there's no separate
+                // background-safe haptic API to reach for instead.
+                completionHaptic.notificationOccurred(.success)
+            }
         } catch {
             CAPLog.print("RestAudio: could not activate session — \(error.localizedDescription)")
         }
