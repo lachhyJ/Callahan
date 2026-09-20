@@ -79,6 +79,15 @@ TYPE_MAP = {
     "ultimate_disc": "Ultimate",
 }
 
+# typeKey(s) Garmin uses for a lifting session, routed to POST
+# /api/garmin-strength instead of TYPE_MAP/POST /api/activities — a strength
+# session enriches an existing WorkoutSession (matched by date/time) rather
+# than creating its own Activity row.
+#
+# "strength_training" confirmed 2026-09-20 via --dump against 4 real logged
+# sessions (2026-09-11, 09-12, 09-14, 09-18, typeId 13).
+STRENGTH_TYPE_KEYS = {"strength_training"}
+
 # Callahan activity types whose laps we pull. Runs use Garmin's own per-lap
 # ACTIVE labelling for high-speed distance; Ultimate "Game" activities are
 # manually lap-pressed on sub on/off and Callahan classifies each lap
@@ -176,6 +185,10 @@ def post_activity(api_base, token, payload):
     return callahan_request("POST", api_base, "/api/activities", token, payload)
 
 
+def post_strength(api_base, token, payload):
+    return callahan_request("POST", api_base, "/api/garmin-strength", token, payload)
+
+
 def put_wellness(api_base, token, payload):
     return callahan_request("PUT", api_base, "/api/wellness", token, payload)
 
@@ -216,6 +229,34 @@ def to_payload(activity, activity_type):
         # training load, max HR, elevation gain, ...); Callahan stores this as
         # a hedge so those stay recoverable without re-hitting Garmin. See
         # Activity.RawJson.
+        "rawJson": json.dumps(activity, separators=(",", ":")),
+    }
+
+
+def to_strength_payload(activity):
+    """Builds the payload for POST /api/garmin-strength. Training-load/effect
+    fields are read straight off the activity summary (the same dict RawJson
+    would store) rather than through a shared parser with the C# side, since
+    there's no RawJson round-trip here — SyncGarminStrengthRequest carries
+    typed fields directly."""
+    summary_id = activity.get("activityId")
+    duration_s = activity.get("duration")
+    start_local = activity.get("startTimeLocal", "")
+    activity_date = start_local.split(" ")[0].split("T")[0] if start_local else None
+    started_at = start_local.replace(" ", "T") if start_local else None
+
+    return {
+        "garminActivityId": str(summary_id) if summary_id is not None else None,
+        "date": activity_date,
+        "startedAt": started_at,
+        "durationSeconds": int(round(duration_s)) if duration_s is not None else 0,
+        "calories": to_int(activity.get("calories")),
+        "avgHeartRate": to_int(activity.get("averageHR")),
+        "activityTrainingLoad": activity.get("activityTrainingLoad"),
+        "aerobicTrainingEffect": activity.get("aerobicTrainingEffect"),
+        "anaerobicTrainingEffect": activity.get("anaerobicTrainingEffect"),
+        "trainingEffectLabel": activity.get("trainingEffectLabel"),
+        "notes": activity.get("activityName") or None,
         "rawJson": json.dumps(activity, separators=(",", ":")),
     }
 
@@ -598,6 +639,31 @@ def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False,
 
     for a in activities:
         type_key = a.get("activityType", {}).get("typeKey")
+
+        if type_key in STRENGTH_TYPE_KEYS:
+            strength_payload = to_strength_payload(a)
+            if strength_payload["date"] is None:
+                log(f"Skipping strength activity {a.get('activityId')}: no startTimeLocal in response.")
+                skipped += 1
+                continue
+            if dry_run:
+                print(json.dumps(strength_payload, indent=2))
+                synced += 1
+                continue
+            try:
+                result, token = post_strength(api_base, token, strength_payload)
+                if result.get("matched"):
+                    log(f"Matched strength activity {strength_payload['garminActivityId']} -> "
+                        f"WorkoutSession {result.get('workoutSessionId')}")
+                else:
+                    log(f"Strength activity {strength_payload['garminActivityId']} needs manual review "
+                        f"(pending id {result.get('pendingId')}) — no single WorkoutSession matched.")
+                synced += 1
+            except requests.HTTPError as e:
+                log(f"Failed to sync strength activity {strength_payload['garminActivityId']}: {e}")
+                skipped += 1
+            continue
+
         activity_type = TYPE_MAP.get(type_key)
         if activity_type is None:
             log(f"Skipping activity {a.get('activityId')} ({a.get('activityName')!r}): "

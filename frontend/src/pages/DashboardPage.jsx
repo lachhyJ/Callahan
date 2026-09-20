@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getMonthlyReports, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { staleWhileRevalidate } from '../swrCache'
 import { buildDailySeries, wellnessRange } from '../wellnessMetrics'
 import { isoDate, startOfWeek } from '../dateUtils'
@@ -11,7 +11,7 @@ import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
 import { trackAction, trackTiming } from '../usage'
-import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, TaperIcon, TrashIcon } from '../icons'
+import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
 
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -111,6 +111,7 @@ export default function DashboardPage() {
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
+  const [pendingGarminCount, setPendingGarminCount] = useState(0)
 
   useEffect(() => {
     // Deliberately deferred behind the critical workouts/activities fetch
@@ -133,6 +134,7 @@ export default function DashboardPage() {
         () => getWellness(start, end),
         (rows) => setReadinessSeries(buildDailySeries(rows, 30).byKey.readiness),
       ).catch(() => {})
+      getPendingGarminStrength().then((items) => setPendingGarminCount(items.length)).catch(() => {})
     })
     return () => cancelIdle(handle)
   }, [])
@@ -268,6 +270,12 @@ export default function DashboardPage() {
             {isMonthView ? 'Recent' : 'Month view'}
           </button>
           <SyncGarminButton variant="icon" onSynced={loadSessions} onResult={setSyncResult} />
+          {pendingGarminCount > 0 && (
+            <Link to="/garmin-strength-review" className="icon-link garmin-strength-review-link" aria-label="Garmin strength activities to review">
+              <SyncIcon />
+              <span className="icon-link-badge">{pendingGarminCount}</span>
+            </Link>
+          )}
           <Link to="/recently-deleted" className="icon-link" aria-label="Recently deleted">
             <TrashIcon />
           </Link>
