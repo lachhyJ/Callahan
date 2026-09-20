@@ -117,7 +117,11 @@ public class WorkoutSessionsController : ControllerBase
                 .OrderBy(set => set.SetOrder)
                 .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString(), set.DurationSeconds))
                 .ToList(),
-            notes);
+            notes,
+            session.GarminActivityId is null ? null : new GarminStrengthDto(
+                session.GarminDurationSeconds, session.GarminCalories, session.GarminAvgHeartRate,
+                session.GarminActivityTrainingLoad, session.GarminAerobicTrainingEffect,
+                session.GarminAnaerobicTrainingEffect, session.GarminTrainingEffectLabel));
 
         return Ok(dto);
     }

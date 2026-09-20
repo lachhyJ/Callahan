@@ -273,6 +273,18 @@ export function getDeletedWorkoutSessions() {
   return apiFetch('/api/workoutsessions/deleted')
 }
 
+export function getPendingGarminStrength() {
+  return apiFetch('/api/garmin-strength/pending')
+}
+
+export function linkPendingGarminStrength(pendingId, sessionId) {
+  return apiFetch(`/api/garmin-strength/pending/${pendingId}/link/${sessionId}`, { method: 'POST' })
+}
+
+export function dismissPendingGarminStrength(pendingId) {
+  return apiFetch(`/api/garmin-strength/pending/${pendingId}`, { method: 'DELETE' })
+}
+
 export function getWorkoutTemplates() {
   return apiFetch('/api/workouttemplates')
 }

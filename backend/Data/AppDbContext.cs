@@ -36,6 +36,7 @@ public class AppDbContext : DbContext
     public DbSet<PlanSlot> PlanSlots => Set<PlanSlot>();
     public DbSet<PlanSlotWeek> PlanSlotWeeks => Set<PlanSlotWeek>();
     public DbSet<PlateCalcSetting> PlateCalcSettings => Set<PlateCalcSetting>();
+    public DbSet<PendingGarminStrengthActivity> PendingGarminStrengthActivities => Set<PendingGarminStrengthActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +76,15 @@ public class AppDbContext : DbContext
             .HasIndex(a => a.GarminActivityId)
             .IsUnique()
             .HasFilter("[GarminActivityId] IS NOT NULL");
+
+        modelBuilder.Entity<WorkoutSession>()
+            .HasIndex(s => s.GarminActivityId)
+            .IsUnique()
+            .HasFilter("[GarminActivityId] IS NOT NULL");
+
+        modelBuilder.Entity<PendingGarminStrengthActivity>()
+            .HasIndex(p => p.GarminActivityId)
+            .IsUnique();
 
         modelBuilder.Entity<TaperCheckIn>()
             .HasIndex(c => new { c.TournamentId, c.Date })

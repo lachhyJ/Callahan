@@ -114,12 +114,26 @@ cron image.
 - `ultimate_disc` → Ultimate (confirmed 2026-08-14 via `--dump` against
   real logged "Melbourne Ultimate Disc" sessions)
 
-Everything else Garmin reports (snowboarding, strength training, hiking,
-...) is deliberately unmapped — those activities are logged and skipped,
-never guessed at or defaulted to an existing type. To add a new sport,
-run `--dump` after logging a real session of that type on Garmin, find
-its `typeKey` in the output, and only add it to `TYPE_MAP` once you've
-confirmed it against real data — not by guessing from Garmin's UI label.
+Everything else Garmin reports (snowboarding, hiking, ...) is deliberately
+unmapped — those activities are logged and skipped, never guessed at or
+defaulted to an existing type. To add a new sport, run `--dump` after
+logging a real session of that type on Garmin, find its `typeKey` in the
+output, and only add it to `TYPE_MAP` once you've confirmed it against
+real data — not by guessing from Garmin's UI label.
+
+**Strength training is handled separately, not via `TYPE_MAP`.** A gym
+session already exists in Callahan as a manually-logged `WorkoutSession`
+before Garmin ever syncs it, so a Garmin strength activity doesn't create
+its own record — it's matched to the `WorkoutSession` on the same date
+whose `StartedAt` falls within 45 minutes of the Garmin activity's start,
+via `POST /api/garmin-strength` (see `GarminStrengthController`,
+`STRENGTH_TYPE_KEYS` in `garmin_sync.py`). Zero or multiple same-day
+unlinked sessions overlapping that window can't be resolved automatically
+and land in a manual-review list instead (`GET /api/garmin-strength/pending`
+— link/dismiss each from there).
+
+`strength_training` (typeId 13) confirmed 2026-09-20 via `--dump` against 4
+real logged sessions (2026-09-11, 09-12, 09-14, 09-18).
 
 ## Wellness discovery (`--dump-wellness`)
 

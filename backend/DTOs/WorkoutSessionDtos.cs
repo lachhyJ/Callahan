@@ -6,7 +6,11 @@ public record ExerciseNoteDto(int ExerciseId, string ExerciseName, string Notes)
 
 public record WorkoutSessionSummaryDto(int Id, DateOnly Date, string? Name, string? Notes, int SetCount, string? TemplateName, string? TemplateSubtitle, DateTime? StartedAt, DateTime? FinishedAt, string? CategorySummary);
 
-public record WorkoutSessionDetailDto(int Id, DateOnly Date, string? Name, string? Notes, DateTime? StartedAt, DateTime? FinishedAt, string? TemplateName, string? TemplateSubtitle, string? CategorySummary, List<ExerciseSetDto> Sets, List<ExerciseNoteDto> ExerciseNotes);
+public record WorkoutSessionDetailDto(int Id, DateOnly Date, string? Name, string? Notes, DateTime? StartedAt, DateTime? FinishedAt, string? TemplateName, string? TemplateSubtitle, string? CategorySummary, List<ExerciseSetDto> Sets, List<ExerciseNoteDto> ExerciseNotes, GarminStrengthDto? Garmin);
+
+// The Garmin side of a WorkoutSession, once matched - null on every session
+// without a linked Garmin strength activity.
+public record GarminStrengthDto(int? DurationSeconds, int? Calories, int? AvgHeartRate, decimal? ActivityTrainingLoad, decimal? AerobicTrainingEffect, decimal? AnaerobicTrainingEffect, string? TrainingEffectLabel);
 
 public record UpdateWorkoutSessionNameRequest(string? Name);
 

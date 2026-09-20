@@ -122,6 +122,14 @@ export default function WorkoutSessionDetailPage() {
       <p className="session-date">{formatDateLong(session.date)}</p>
       {duration && <p className="session-duration">{duration} · {session.sets.length} set{session.sets.length === 1 ? '' : 's'}</p>}
       {session.notes && <p className="notes">{session.notes}</p>}
+      {session.garmin && (
+        <p className="session-garmin-stats">
+          Garmin
+          {session.garmin.calories != null && ` · ${session.garmin.calories} cal`}
+          {session.garmin.avgHeartRate != null && ` · ${session.garmin.avgHeartRate} bpm avg`}
+          {session.garmin.activityTrainingLoad != null && ` · ${session.garmin.activityTrainingLoad} load`}
+        </p>
+      )}
 
       {exercises.length === 0 && (
         <div className="empty-state">
