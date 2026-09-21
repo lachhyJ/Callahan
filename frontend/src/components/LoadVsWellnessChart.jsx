@@ -90,7 +90,14 @@ export default function LoadVsWellnessChart({ weeks }) {
 
   return (
     <div className="trend-chart">
-      <h2 className="trend-chart-title">Recovery vs load</h2>
+      <div className="trend-chart-header">
+        <h2 className="trend-chart-title">Recovery vs load</h2>
+        <div className="trend-chart-legend">
+          <span className="trend-legend-item"><span className="trend-legend-swatch muted" />Volume</span>
+          {hasGymLoad && <span className="trend-legend-item"><span className="trend-legend-swatch run" />Load</span>}
+          <span className="trend-legend-item"><span className="trend-legend-swatch gym" />Readiness</span>
+        </div>
+      </div>
 
       <svg
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -175,7 +182,7 @@ export default function LoadVsWellnessChart({ weeks }) {
       </svg>
 
       <span className="trend-chart-caption">
-        kg lifted (dark){hasGymLoad ? ' vs Garmin training load (light, own scale)' : ''} per week · line is mean readiness{anyTournament ? ' · shaded weeks had a tournament' : ''}
+        kg lifted per week{hasGymLoad ? ' · Garmin load is its own scale, not directly comparable to volume' : ''}{anyTournament ? ' · shaded weeks had a tournament' : ''}
       </span>
     </div>
   )
