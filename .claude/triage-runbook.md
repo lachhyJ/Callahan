@@ -58,6 +58,13 @@ NAS's Syncthing trash-can versioning happened to be on).
 
 ## Steps, per note directly in `triage/` (not already in `reviewed/`)
 
+0. **Before triaging anything, read all four vault docs**:
+   `~/moxie-vault/30-projects/callahan/overview.md`, `decisions.md`,
+   `backlog.md`, and the most recent handful of `session-log.md` entries.
+   This is a cold, one-shot session with no accumulated context from other
+   Callahan threads — skipping this step is how a triage pass ends up
+   contradicting an existing decision or re-proposing something already
+   settled. Do this once per pass, not once per item.
 1. Read the note in full, including any attached images (Obsidian drops
    pasted screenshots into an assets folder next to it — check for
    `![[...]]` embeds and open them).
@@ -67,6 +74,10 @@ NAS's Syncthing trash-can versioning happened to be on).
    interactively, so use that. Don't invent scope to fill a gap.
 3. Check feasibility against the real codebase — grep for the relevant
    files/patterns, don't reason from memory of similar features elsewhere.
+   Also check `backlog.md` for an existing item covering the same ground
+   (exact match, near-duplicate, or a related item this idea should be
+   merged into / noted against) and `decisions.md` for anything that already
+   settled this question or constrains the approach.
 4. Classify the outcome:
    - **trivial** — small enough to just fix, no plan doc needed.
    - **needs a plan** — real design/implementation work; write a plan sketch
@@ -75,6 +86,11 @@ NAS's Syncthing trash-can versioning happened to be on).
    - **needs more info** — if step 2's question didn't resolve it, note
      exactly what's still missing.
    - **not worth it** — say why, briefly. A clear "no" is a valid outcome.
+     A prior decision that already rules this out counts as "not worth it,"
+     not "needs a plan" — cite the decision.
+   - **duplicate** — matches an existing `backlog.md` item; note which one
+     and whether this triage note adds anything the existing line doesn't
+     (a new detail, a screenshot, a reframing) worth folding in.
 5. Append a `## Triage notes` section to the *same* note with:
    `Reviewed: YYYY-MM-DD` on its own line first, then your assessment
    (restated idea, feasibility, rough shape of the fix/feature,
