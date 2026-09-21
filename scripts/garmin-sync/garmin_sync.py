@@ -261,9 +261,12 @@ def to_strength_payload(activity):
         "durationSeconds": int(round(duration_s)) if duration_s is not None else 0,
         "calories": to_int(activity.get("calories")),
         "avgHeartRate": to_int(activity.get("averageHR")),
-        "activityTrainingLoad": activity.get("activityTrainingLoad"),
-        "aerobicTrainingEffect": activity.get("aerobicTrainingEffect"),
-        "anaerobicTrainingEffect": activity.get("anaerobicTrainingEffect"),
+        # Rounded the same way GarminActivityMetrics.Parse rounds these for the
+        # Activity model (load to whole, effects to 1dp) - unrounded, Garmin's
+        # float64 load renders as "28.5265808105469" on screen.
+        "activityTrainingLoad": round(load, 0) if (load := activity.get("activityTrainingLoad")) is not None else None,
+        "aerobicTrainingEffect": round(aero, 1) if (aero := activity.get("aerobicTrainingEffect")) is not None else None,
+        "anaerobicTrainingEffect": round(anaero, 1) if (anaero := activity.get("anaerobicTrainingEffect")) is not None else None,
         "trainingEffectLabel": activity.get("trainingEffectLabel"),
         "notes": activity.get("activityName") or None,
         "rawJson": json.dumps(activity, separators=(",", ":")),

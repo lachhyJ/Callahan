@@ -18,6 +18,18 @@ function formatDuration(startedAt, finishedAt) {
   return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
 }
 
+// No "Garmin" label - the line only ever appears on a Garmin-linked session,
+// so it's not distinguishing anything. Rounds activityTrainingLoad client-side
+// too, not just at sync time: rows synced before that rounding existed still
+// carry Garmin's raw float64 (e.g. "28.5265808105469") in the DB.
+function garminSummary(g) {
+  const parts = []
+  if (g.calories != null) parts.push(`${g.calories} cal`)
+  if (g.avgHeartRate != null) parts.push(`${g.avgHeartRate} bpm avg`)
+  if (g.activityTrainingLoad != null) parts.push(`${Math.round(g.activityTrainingLoad)} load`)
+  return parts.length > 0 ? parts.join(' · ') : null
+}
+
 // Groups sets by exercise while preserving first-appearance order — sets come
 // back ordered by SetOrder within an exercise, not grouped, so this rebuilds
 // the same "exercise card" shape the active workout page uses.
@@ -122,13 +134,8 @@ export default function WorkoutSessionDetailPage() {
       <p className="session-date">{formatDateLong(session.date)}</p>
       {duration && <p className="session-duration">{duration} · {session.sets.length} set{session.sets.length === 1 ? '' : 's'}</p>}
       {session.notes && <p className="notes">{session.notes}</p>}
-      {session.garmin && (
-        <p className="session-garmin-stats">
-          Garmin
-          {session.garmin.calories != null && ` · ${session.garmin.calories} cal`}
-          {session.garmin.avgHeartRate != null && ` · ${session.garmin.avgHeartRate} bpm avg`}
-          {session.garmin.activityTrainingLoad != null && ` · ${session.garmin.activityTrainingLoad} load`}
-        </p>
+      {session.garmin && garminSummary(session.garmin) && (
+        <p className="session-garmin-stats">{garminSummary(session.garmin)}</p>
       )}
 
       {exercises.length === 0 && (
