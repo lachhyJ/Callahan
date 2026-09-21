@@ -2529,8 +2529,15 @@ td {
   border-radius: var(--radius-sm);
 }
 
-.load-vs-wellness-svg {
-  height: auto;
+.trend-chart-svg.load-vs-wellness-svg {
+  /* Higher specificity than .trend-chart-svg alone is required here, not
+     just later source order - .trend-chart-svg's own height:106px sits
+     further down this file and a same-specificity override earlier in the
+     cascade loses regardless of which one "should" win. Matches the
+     component's WIDTH:HEIGHT viewBox ratio (320:170) at this card's
+     typical rendered width, so the taller viewBox actually renders taller
+     instead of letterboxing inside the shared 106px box. */
+  height: 190px;
 }
 
 .chart-end-label {

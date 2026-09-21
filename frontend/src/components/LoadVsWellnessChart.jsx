@@ -3,9 +3,16 @@ import ChartGridLines from './ChartGridLines'
 import { formatVolume } from '../utils/format'
 
 const WIDTH = 320
-const HEIGHT = 120
+// Taller than the other trend charts' shared 120 - with two bars per week
+// (volume + Garmin load) instead of one, each bar is already half as wide;
+// more vertical room is the lever left to keep them readable. Paired with
+// the matching bump in .load-vs-wellness-svg's CSS height so the physical
+// render grows with it instead of just adding empty space inside the same
+// box (a taller viewBox alone would just letterbox within an unchanged
+// fixed-height CSS box).
+const HEIGHT = 170
 const PAD_LEFT = 30
-const PAD_RIGHT = 26
+const PAD_RIGHT = 24
 const PAD_TOP = 10
 const PAD_BOTTOM = 20
 
