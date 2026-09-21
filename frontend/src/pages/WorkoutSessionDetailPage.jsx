@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
-import { formatDateLong } from '../dateUtils'
+import { formatDateLong, formatTimeOfDay } from '../dateUtils'
 import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
 
 const UNDO_WINDOW_MS = 6000
@@ -131,7 +131,10 @@ export default function WorkoutSessionDetailPage() {
         onBlur={(e) => handleNameBlur(e.target.value)}
         aria-label="Session name"
       />
-      <p className="session-date">{formatDateLong(session.date)}</p>
+      <p className="session-date">
+        {formatDateLong(session.date)}
+        {session.startedAt && ` · ${formatTimeOfDay(session.startedAt)}`}
+      </p>
       {duration && <p className="session-duration">{duration} · {session.sets.length} set{session.sets.length === 1 ? '' : 's'}</p>}
       {session.notes && <p className="notes">{session.notes}</p>}
       {session.garmin && garminSummary(session.garmin) && (
