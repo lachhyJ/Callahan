@@ -72,6 +72,16 @@ NAS's Syncthing trash-can versioning happened to be on).
    restated clearly. **If anything is ambiguous or underspecified, ask
    Lachlan directly in this session rather than guessing** — this runs
    interactively, so use that. Don't invent scope to fill a gap.
+   Two different kinds of unknown come up here, and only one of them
+   belongs in the backlog instead of a question right now:
+   - **A decision only Lachlan can make** (taste, priority, "do you even
+     want this behavior") — always ask in-session, even if the answer
+     might be "let me think about it." Never write a design question to
+     `backlog.md` as a "needs more info" line when the session had the
+     chance to just ask and didn't.
+   - **Information the session itself can't get right now** (a diary that
+     hasn't been captured yet, a repro that hasn't happened) — this is the
+     legitimate "needs more info" case for step 4, nothing to ask.
 3. Check feasibility against the real codebase — grep for the relevant
    files/patterns, don't reason from memory of similar features elsewhere.
    Also check `backlog.md` for an existing item covering the same ground
@@ -83,8 +93,10 @@ NAS's Syncthing trash-can versioning happened to be on).
    - **needs a plan** — real design/implementation work; write a plan sketch
      (see below) but do NOT create a `.claude/*.plan.md` yet — that only
      happens when Lachlan is actually about to build it.
-   - **needs more info** — if step 2's question didn't resolve it, note
-     exactly what's still missing.
+   - **needs more info** — only for the "session can't get it right now"
+     case from step 2 (unavailable diary/repro/etc). If this is actually a
+     decision only Lachlan can make, go back and ask him in-session instead
+     of classifying it this way.
    - **not worth it** — say why, briefly. A clear "no" is a valid outcome.
      A prior decision that already rules this out counts as "not worth it,"
      not "needs a plan" — cite the decision.
