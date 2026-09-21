@@ -7,7 +7,7 @@ import { advanceHold, clearActiveWorkout, earliestStartedAt, groupMemberDueNext,
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
-import { cancelScheduledBeep, isNativeAudio, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
+import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { tapSetComplete } from '../haptics'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
@@ -496,6 +496,7 @@ export default function ActiveWorkoutPage() {
     if (restTimer) {
       saveRestTimer({ ...restTimer, templateId: sessionKey })
       lastRestRef.current = restTimer
+      logDiary(`schedule effect: arming endAt=${restTimer.endAt} (in ${Math.round((restTimer.endAt - Date.now()) / 1000)}s)`)
       scheduleBeep(restTimer.endAt, {
         title: 'Rest over',
         body: nextSetLabel(restTimer),
@@ -926,6 +927,7 @@ export default function ActiveWorkoutPage() {
       // which the schedule effect immediately hands to the native beep as
       // "too close to arm — just sound it", ducking audio for no reason.
       if (native.active && native.endAt && native.endAt <= Date.now()) {
+        logDiary(`reconcile: native.active but endAt=${native.endAt} already past, treating inactive`)
         native.active = false
       }
 
@@ -949,11 +951,18 @@ export default function ActiveWorkoutPage() {
       }
 
       setRestTimer((prev) => {
-        if (!native.active) return prev ? null : prev
+        if (!native.active) {
+          if (prev) logDiary('reconcile: native inactive, clearing local restTimer')
+          return prev ? null : prev
+        }
         // A rest that started from the card while there was no local timer —
         // "Set done" on a locked phone is exactly this case.
-        if (!prev) return restTimerFromNative(current, native)
+        if (!prev) {
+          logDiary(`reconcile: no local restTimer, adopting native endAt=${native.endAt}`)
+          return restTimerFromNative(current, native)
+        }
         if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
+          logDiary(`reconcile: native endAt=${native.endAt} diverges from local endAt=${prev.endAt}, adopting native`)
           return { ...prev, endAt: native.endAt, timerId: null }
         }
         return prev

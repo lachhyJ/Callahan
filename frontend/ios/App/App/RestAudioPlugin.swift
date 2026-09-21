@@ -69,7 +69,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "schedule", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "cancel", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "beepNow", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "diagnostics", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "diagnostics", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "logDiary", returnType: CAPPluginReturnPromise)
     ]
 
     // MARK: - Diary
@@ -112,6 +113,21 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         f.dateFormat = "HH:mm:ss.SSS"
         return f
     }()
+
+    /// Lets JS write into this same diary, tagged `[js]` so its lines are
+    /// distinguishable from the native-side `record()` calls when reading the
+    /// diary back. Added 2026-09-21 alongside the `playImmediately` caller
+    /// tagging — the duplicate-beep report needed `reconcile()`/`schedule()`
+    /// decisions correlated against the native beep timeline, and there was no
+    /// way to see what JS was doing in the same window.
+    @objc func logDiary(_ call: CAPPluginCall) {
+        guard let message = call.getString("message") else {
+            call.resolve()
+            return
+        }
+        record("[js] \(message)")
+        call.resolve()
+    }
 
     @objc func diagnostics(_ call: CAPPluginCall) {
         let diary = UserDefaults.standard.stringArray(forKey: diaryKey) ?? []
@@ -275,7 +291,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         } else {
             // The rest ended while we were interrupted — better late than never;
             // the local notification will already have landed on time.
-            playImmediately()
+            playImmediately(caller: "recoverArmedRest")
         }
     }
 
@@ -650,7 +666,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 record(String(format: "ignored stale schedule (%.1fs past)", overdue))
                 standDown()
             } else {
-                playImmediately()
+                playImmediately(caller: "arm/tooCloseToArm")
             }
             return false
         }
@@ -696,7 +712,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         let seconds = endAt.timeIntervalSinceNow
         guard seconds > 0.05 else {
             previous?.stop()
-            playImmediately()
+            playImmediately(caller: "arm/baselineTooLate")
             return false
         }
 
@@ -784,12 +800,16 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func beepNow(_ call: CAPPluginCall) {
-        playImmediately()
+        playImmediately(caller: "beepNow (JS)")
         call.resolve()
     }
 
-    private func playImmediately() {
-        record("playImmediately")
+    /// `caller` names which of the four call sites triggered this — added
+    /// 2026-09-21 chasing a duplicate-beep report where the diary showed
+    /// `playImmediately` firing with no preceding `armed beep` line and no way
+    /// to tell which path it came from.
+    private func playImmediately(caller: String) {
+        record("playImmediately (\(caller))")
         if !beepIsSounding { player?.stop() }
         // Nothing is pending after an immediate beep, so the finish delegate must
         // not mistake this for an armed one arriving early.

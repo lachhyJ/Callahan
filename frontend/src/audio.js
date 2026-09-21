@@ -77,6 +77,15 @@ export function cancelScheduledBeep() {
   RestAudio.cancel().catch(() => {})
 }
 
+// Writes a line into the native diary (see restAudioDiagnostics above),
+// tagged [js] on that side. Added 2026-09-21 so reconcile()/schedule()
+// decisions can be correlated against the native beep timeline when chasing
+// a duplicate-beep report — remove alongside the rest of the diary.
+export function logDiary(message) {
+  if (!isNative) return
+  RestAudio.logDiary({ message }).catch(() => {})
+}
+
 const BEEP_SRC = '/beep.m4a'
 
 let beepEl = null
