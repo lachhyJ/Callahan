@@ -42,6 +42,7 @@ export default function RecentlyDeletedPage() {
       if (item.kind === 'workout') await restoreWorkoutSession(item.id)
       else await restoreActivity(item.id)
       setItems((current) => current.filter((i) => !(i.kind === item.kind && i.id === item.id)))
+      setRestoringKey(null)
     } catch (err) {
       setError(err.message)
       setRestoringKey(null)
