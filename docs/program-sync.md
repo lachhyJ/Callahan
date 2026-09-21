@@ -99,6 +99,13 @@ exercise merges, tempo backfill, notes backfill):
    (`sudo docker compose -f docker-compose.prod.yml stop backend` — avoids
    a write race with the running app), apply the same SQL to the real
    file, re-run the foreign-key check, restart the backend.
+
+   **When Claude Code is doing this:** overwriting the live DB file (and
+   sometimes the container stop/start) gets blocked by the harness's own
+   safety classifier — a production-infrastructure write, not a bug.
+   Expect this step to need Lachlan to run it himself. Claude prepares the
+   corrected file and the exact command; Lachlan runs the swap. No
+   credentials change hands — the file is already on his machine.
 5. Confirm the API's actually serving the new values
    (`GET /api/workouttemplates/{id}/start`, or just check it in the app).
 

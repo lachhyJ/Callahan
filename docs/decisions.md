@@ -169,6 +169,25 @@ Per-property would leave the next one trapped.
 **How to apply:** where a latent trap is guarded only by a convention every future author
 must remember, remove the trap rather than documenting it.
 
+### Every timestamp is re-tagged UTC on the way out of SQLite, once, for the whole model
+**2026-09-21.** SQLite has no native datetime type, so EF Core's SQLite provider always
+hands back `DateTimeKind.Unspecified` on read — even for a value I genuinely stored as
+UTC. That stayed invisible for over a year, because every existing use of a stored
+timestamp (a session's duration, which week it falls in) only ever did subtraction or
+date comparison, and neither cares about Kind. The first place that actually formatted a
+raw clock hour for display was the one that caught it: it showed the bare UTC digits as
+if they were already local, so an 11:35am session read as "1:35 am".
+
+Fixed once, in `AppDbContext.OnModelCreating`, with a `ValueConverter` applied to every
+`DateTime`/`DateTime?` property in the model — not the one field that happened to expose
+it. Same shape as the decimal fix above: a trap that's invisible until something finally
+exercises it doesn't stay found just because one call site got patched.
+
+**How to apply:** a bug that only ever shows up in a comparison or a subtraction can still
+be silently wrong under the hood; not crashing isn't the same as correct. If a future
+`DateTime` column is ever genuinely not UTC, it needs an explicit carve-out from this
+converter, not a workaround layered on top of it.
+
 ### Assistance is negative weight on one exercise, not a separate "(Assisted)" exercise
 **2026-09-01.** A pull-up is one exercise whose load runs continuously from assisted
 (negative) through bodyweight (zero) to weighted (positive). The separate
