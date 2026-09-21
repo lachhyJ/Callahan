@@ -42,10 +42,10 @@ public class UltimateDistanceBuilderTests
     {
         var r = Build(loads:
         [
-            new GarminLoad(new DateOnly(2026, 7, 4), 40m, IsUltimate: false),   // a run
-            new GarminLoad(new DateOnly(2026, 7, 12), 80m, IsUltimate: true),
-            new GarminLoad(new DateOnly(2026, 7, 20), 30m, IsUltimate: true),
-            new GarminLoad(new DateOnly(2026, 8, 2), 55m, IsUltimate: false),
+            new GarminLoad(new DateOnly(2026, 7, 4), 40m, TrainingLoadSource.Other),   // a run
+            new GarminLoad(new DateOnly(2026, 7, 12), 80m, TrainingLoadSource.Ultimate),
+            new GarminLoad(new DateOnly(2026, 7, 20), 30m, TrainingLoadSource.Ultimate),
+            new GarminLoad(new DateOnly(2026, 8, 2), 55m, TrainingLoadSource.Other),
         ]);
 
         var jul = r.Single(m => m.MonthStart == Jul);
@@ -57,6 +57,25 @@ public class UltimateDistanceBuilderTests
         Assert.Null(aug.UltimateTrainingLoad);       // scored, but none of it Ultimate
 
         Assert.Null(r.Single(m => m.MonthStart == Jun).TotalTrainingLoad);   // no scored session
+    }
+
+    [Fact]
+    public void TrainingLoad_GymShare_SummedSeparately_NullWhenNoneScored()
+    {
+        var r = Build(loads:
+        [
+            new GarminLoad(new DateOnly(2026, 7, 4), 40m, TrainingLoadSource.Other),    // a run
+            new GarminLoad(new DateOnly(2026, 7, 10), 60m, TrainingLoadSource.Ultimate),
+            new GarminLoad(new DateOnly(2026, 7, 15), 25m, TrainingLoadSource.Gym),
+            new GarminLoad(new DateOnly(2026, 7, 22), 35m, TrainingLoadSource.Gym),
+        ]);
+
+        var jul = r.Single(m => m.MonthStart == Jul);
+        Assert.Equal(160m, jul.TotalTrainingLoad);
+        Assert.Equal(60m, jul.UltimateTrainingLoad);
+        Assert.Equal(60m, jul.GymTrainingLoad);
+
+        Assert.Null(r.Single(m => m.MonthStart == Aug).GymTrainingLoad);   // no gym session scored
     }
 
     [Fact]

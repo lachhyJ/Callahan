@@ -9,6 +9,11 @@ public record RunLoad(DateOnly Date, decimal DistanceKm);
 public record UltimateLoad(DateOnly Date, int LivePlaySeconds);
 public record TournamentSpan(DateOnly Start, DateOnly End);
 
+// A gym session's own Garmin training load (Firstbeat/EPOC), distinct from
+// GymSetLoad's weight x reps volume - a different metric on a different
+// scale, summed separately so the two never get added together by accident.
+public record GymGarminLoad(DateOnly Date, decimal TrainingLoad);
+
 // Weekly training load (gym volume, run km, Ultimate live-play) aligned with
 // that week's mean readiness / HRV / sleep score, plus a tournament-week flag —
 // the raw material for "does recovery track load?". Deterministic and pure;
@@ -30,7 +35,8 @@ public static class LoadTrendBuilder
         IEnumerable<RunLoad> runs,
         IEnumerable<UltimateLoad> ultimate,
         IEnumerable<DailyWellnessDto> wellness,
-        IEnumerable<TournamentSpan> tournaments)
+        IEnumerable<TournamentSpan> tournaments,
+        IEnumerable<GymGarminLoad> gymGarminLoads)
     {
         var currentWeekStart = MondayOf(today);
         var earliest = currentWeekStart.AddDays(-7 * (weeks - 1));
@@ -40,11 +46,19 @@ public static class LoadTrendBuilder
         var gymByWeek = weekStarts.ToDictionary(w => w, _ => 0m);
         var runByWeek = weekStarts.ToDictionary(w => w, _ => 0m);
         var ultByWeek = weekStarts.ToDictionary(w => w, _ => 0);
+        var gymGarminByWeek = weekStarts.ToDictionary(w => w, _ => (Total: 0m, Scored: 0));
 
         foreach (var g in gymSets)
         {
             var w = MondayOf(g.Date);
             if (inWindow.Contains(w)) gymByWeek[w] += g.Volume;
+        }
+        foreach (var g in gymGarminLoads)
+        {
+            var w = MondayOf(g.Date);
+            if (!inWindow.Contains(w)) continue;
+            var cur = gymGarminByWeek[w];
+            gymGarminByWeek[w] = (cur.Total + g.TrainingLoad, cur.Scored + 1);
         }
         foreach (var r in runs)
         {
@@ -87,7 +101,8 @@ public static class LoadTrendBuilder
             Mean(readiness, w),
             Mean(hrv, w),
             Mean(sleep, w),
-            tournamentWeeks.Contains(w))).ToList();
+            tournamentWeeks.Contains(w),
+            gymGarminByWeek[w].Scored > 0 ? Math.Round(gymGarminByWeek[w].Total, 0) : null)).ToList();
     }
 
     private static void Accumulate(Dictionary<DateOnly, (double Sum, int N)> acc, DateOnly week, double value)

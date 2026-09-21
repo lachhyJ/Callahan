@@ -8,9 +8,10 @@ const PAD_LEFT = 30
 const PAD_TOP = 8
 const BAR_GAP = 8
 
-// Garmin's summed activity training load per month, the Ultimate share stacked
-// at the base. A month with no scored session (totalTrainingLoad null) draws
-// no bar rather than a zero. Same bar geometry as VolumeTrendChart.
+// Garmin's summed activity training load per month, stacked Ultimate (base) /
+// Gym (middle) / Other - mostly Running (top). A month with no scored session
+// (totalTrainingLoad null) draws no bar rather than a zero. Same bar geometry
+// as VolumeTrendChart.
 export default function TrainingLoadChart({ months }) {
   const maxLoad = Math.max(...months.map((m) => m.totalTrainingLoad ?? 0), 1)
   const step = niceStep(maxLoad)
@@ -27,6 +28,7 @@ export default function TrainingLoadChart({ months }) {
         <h2 className="trend-chart-title">Training load</h2>
         <div className="trend-chart-legend">
           <span className="trend-legend-item"><span className="trend-legend-swatch gym" />Ultimate</span>
+          <span className="trend-legend-item"><span className="trend-legend-swatch run" />Gym</span>
           <span className="trend-legend-item"><span className="trend-legend-swatch muted" />Other</span>
         </div>
       </div>
@@ -34,7 +36,7 @@ export default function TrainingLoadChart({ months }) {
         viewBox={`0 0 ${WIDTH} ${PAD_TOP + HEIGHT + 16}`}
         className="trend-chart-svg"
         role="img"
-        aria-label="Monthly Garmin training load, Ultimate share stacked at the base"
+        aria-label="Monthly Garmin training load, Ultimate and Gym shares stacked at the base"
       >
         <ChartGridLines ticks={ticks} y={yOf} x1={PAD_LEFT} x2={WIDTH} label={formatVolume} />
         {months.map((m, i) => {
@@ -47,12 +49,16 @@ export default function TrainingLoadChart({ months }) {
           if (m.totalTrainingLoad == null) return label
 
           const ultimate = m.ultimateTrainingLoad ?? 0
-          const other = Math.max(0, m.totalTrainingLoad - ultimate)
+          const gym = m.gymTrainingLoad ?? 0
+          const other = Math.max(0, m.totalTrainingLoad - ultimate - gym)
           const rx = Math.min(3, barWidth / 2)
           return (
             <g key={m.monthStart}>
               {other > 0 && (
-                <rect x={x} y={yOf(m.totalTrainingLoad)} width={barWidth} height={Math.max(1, yOf(ultimate) - yOf(m.totalTrainingLoad))} rx={rx} className="trend-bar" />
+                <rect x={x} y={yOf(m.totalTrainingLoad)} width={barWidth} height={Math.max(1, yOf(ultimate + gym) - yOf(m.totalTrainingLoad))} rx={rx} className="trend-bar" />
+              )}
+              {gym > 0 && (
+                <rect x={x} y={yOf(ultimate + gym)} width={barWidth} height={Math.max(1, yOf(ultimate) - yOf(ultimate + gym))} rx={rx} className="trend-bar-run" />
               )}
               {ultimate > 0 && (
                 <rect x={x} y={yOf(ultimate)} width={barWidth} height={Math.max(1, PAD_TOP + HEIGHT - yOf(ultimate))} rx={rx} className="trend-bar-gym" />

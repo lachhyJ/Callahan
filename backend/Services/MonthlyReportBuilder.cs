@@ -90,7 +90,7 @@ public class MonthlyReportBuilder
 
         var loads = monthActivities
             .Where(a => a.Type == ActivityType.Ultimate && a.ActivityTrainingLoad != null)
-            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value, true));
+            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value, TrainingLoadSource.Ultimate));
 
         var row = UltimateDistanceBuilder.Build(monthStart, 1, ultimate, [], loads)[0];
         return new UltimateSectionDto(

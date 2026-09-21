@@ -309,12 +309,18 @@ public class TrendsController : ControllerBase
             .Select(a => new RunLoad(a.Date, a.DistanceKm!.Value))
             .ToListAsync();
 
-        var loads = await _db.Activities
+        var activityLoads = await _db.Activities
             .Where(a => a.Date >= earliestMonthStart && a.ActivityTrainingLoad != null)
-            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value, a.Type == ActivityType.Ultimate))
+            .Select(a => new GarminLoad(a.Date, a.ActivityTrainingLoad!.Value,
+                a.Type == ActivityType.Ultimate ? TrainingLoadSource.Ultimate : TrainingLoadSource.Other))
             .ToListAsync();
 
-        var result = UltimateDistanceBuilder.Build(today, months, ultimate, runs, loads);
+        var gymLoads = await _db.WorkoutSessions
+            .Where(s => s.Date >= earliestMonthStart && s.GarminActivityTrainingLoad != null)
+            .Select(s => new GarminLoad(s.Date, s.GarminActivityTrainingLoad!.Value, TrainingLoadSource.Gym))
+            .ToListAsync();
+
+        var result = UltimateDistanceBuilder.Build(today, months, ultimate, runs, activityLoads.Concat(gymLoads));
         return Ok(result);
     }
 

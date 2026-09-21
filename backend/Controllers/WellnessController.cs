@@ -123,8 +123,13 @@ public class WellnessController : ControllerBase
             .Select(t => new TournamentSpan(t.StartDate, t.EndDate))
             .ToListAsync();
 
+        var gymGarminLoads = await _db.WorkoutSessions
+            .Where(s => s.Date >= earliest && s.GarminActivityTrainingLoad != null)
+            .Select(s => new GymGarminLoad(s.Date, s.GarminActivityTrainingLoad!.Value))
+            .ToListAsync();
+
         var result = LoadTrendBuilder.Build(
-            today, weeks, gymSets, runs, ultimate, wellness.Select(ToDto), tournaments);
+            today, weeks, gymSets, runs, ultimate, wellness.Select(ToDto), tournaments, gymGarminLoads);
         return Ok(result);
     }
 

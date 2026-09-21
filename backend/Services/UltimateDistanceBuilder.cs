@@ -11,11 +11,16 @@ namespace Callahan.Api.Services;
 // double-count a sum.
 public record UltimateDistanceActivity(DateOnly Date, decimal? DistanceKm, string Type);
 
+// Which domain a scored activity's training load belongs to - Ultimate and Gym
+// each get their own share of the monthly total, everything else (Running)
+// falls into Other.
+public enum TrainingLoadSource { Ultimate, Gym, Other }
+
 // Garmin's own per-activity training load (Firstbeat / EPOC), for one activity
-// that the watch actually scored. IsUltimate splits the monthly total into its
-// Ultimate share. Activities with no load (short / no-HR / manual) are simply
-// absent from this list.
-public record GarminLoad(DateOnly Date, decimal TrainingLoad, bool IsUltimate);
+// or gym session that the watch actually scored. Source splits the monthly
+// total into its Ultimate/Gym shares. Activities with no load (short / no-HR /
+// manual) are simply absent from this list.
+public record GarminLoad(DateOnly Date, decimal TrainingLoad, TrainingLoadSource Source);
 
 // Monthly Ultimate distance (whole-recording GPS km) with a per-session-type
 // breakdown and a count of sessions that carried no GPS distance, plus run km
@@ -73,10 +78,15 @@ public static class UltimateDistanceBuilder
             var acc = loadByMonth[m];
             acc.Total += l.TrainingLoad;
             acc.Scored++;
-            if (l.IsUltimate)
+            if (l.Source == TrainingLoadSource.Ultimate)
             {
                 acc.Ultimate += l.TrainingLoad;
                 acc.UltimateScored++;
+            }
+            else if (l.Source == TrainingLoadSource.Gym)
+            {
+                acc.Gym += l.TrainingLoad;
+                acc.GymScored++;
             }
         }
 
@@ -105,10 +115,11 @@ public static class UltimateDistanceBuilder
             // breaks the line rather than plotting a phantom drop to zero.
             decimal? totalLoad = load.Scored > 0 ? Math.Round(load.Total, 0) : null;
             decimal? ultimateLoad = load.UltimateScored > 0 ? Math.Round(load.Ultimate, 0) : null;
+            decimal? gymLoad = load.GymScored > 0 ? Math.Round(load.Gym, 0) : null;
 
             return new UltimateDistanceMonthDto(
                 m, ultimateKm, Math.Round(runByMonth[m], 2), withoutDistance, byType,
-                ultimateLoad, totalLoad);
+                ultimateLoad, totalLoad, gymLoad);
         }).ToList();
     }
 
@@ -123,7 +134,9 @@ public static class UltimateDistanceBuilder
     {
         public decimal Total;
         public decimal Ultimate;
+        public decimal Gym;
         public int Scored;
         public int UltimateScored;
+        public int GymScored;
     }
 }

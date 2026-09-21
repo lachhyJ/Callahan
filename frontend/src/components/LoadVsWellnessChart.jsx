@@ -15,8 +15,12 @@ function formatWeek(iso) {
 }
 
 // Weekly gym volume (grey bars, left axis) with mean readiness laid over it
-// (accent line, right axis); tournament weeks shaded. Descriptive only — it
-// shows whether recovery moved with load, it doesn't prescribe anything.
+// (accent line, right axis); tournament weeks shaded. Garmin training load
+// (hollow-accent bars, next to the volume bars) is a second, independent
+// metric — a completely different scale to kg lifted, so it's normalised to
+// its own max rather than sharing the left axis, the same way the readiness
+// line already gets its own right-axis scale. Descriptive only — it shows
+// whether recovery moved with load, it doesn't prescribe anything.
 // Non-interactive for v1; a metric switch (HRV / sleep) and a crosshair are
 // deferred.
 export default function LoadVsWellnessChart({ weeks }) {
@@ -32,6 +36,13 @@ export default function LoadVsWellnessChart({ weeks }) {
   for (let t = 0; t <= volMax + 1e-9; t += volStep) volTicks.push(t)
   const yVol = (v) => bottom - (v / volMax) * plotHeight
 
+  // Garmin gym training load: its own zero-based max, no labelled axis (the
+  // caption carries the "own scale" caveat instead - a second set of ticks
+  // in a chart this small would be noise).
+  const maxGymLoad = Math.max(...weeks.map((w) => w.gymTrainingLoad ?? 0), 1)
+  const yLoad = (v) => bottom - (v / maxGymLoad) * plotHeight
+  const hasGymLoad = weeks.some((w) => w.gymTrainingLoad != null)
+
   // Right axis: mean readiness, padded so a narrow band still reads.
   const readVals = weeks.map((w) => w.meanReadiness).filter((v) => v != null)
   const hasReadiness = readVals.length >= 2
@@ -43,8 +54,12 @@ export default function LoadVsWellnessChart({ weeks }) {
   const yRead = (v) => bottom - ((v - readMin) / (readMax - readMin || 1)) * plotHeight
 
   const slot = plotWidth / weeks.length
-  const barWidth = Math.max(3, slot * 0.6)
   const xCenter = (i) => PAD_LEFT + slot * i + slot / 2
+  // Each week's slot holds two narrower bars side by side (volume, then
+  // load) instead of one - same 60%-of-slot envelope the single bar used to
+  // fill, split around a small gap.
+  const pairGap = 2
+  const barWidth = Math.max(2, (slot * 0.6 - pairGap) / 2)
 
   // Readiness line, split on missing weeks.
   const pts = weeks.map((w, i) => ({ v: w.meanReadiness, i })).filter((p) => p.v != null)
@@ -74,7 +89,7 @@ export default function LoadVsWellnessChart({ weeks }) {
         viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
         className="trend-chart-svg load-vs-wellness-svg"
         role="img"
-        aria-label="Weekly gym volume with mean readiness overlaid"
+        aria-label="Weekly gym volume and Garmin training load with mean readiness overlaid"
       >
         <ChartGridLines
           ticks={volTicks}
@@ -97,12 +112,28 @@ export default function LoadVsWellnessChart({ weeks }) {
           return (
             <rect
               key={`b${i}`}
-              x={xCenter(i) - barWidth / 2}
+              x={xCenter(i) - barWidth - pairGap / 2}
               y={bottom - h}
               width={barWidth}
               height={h}
               rx={Math.min(2, barWidth / 2)}
               className={i === weeks.length - 1 ? 'trend-bar current' : 'trend-bar'}
+            />
+          )
+        })}
+
+        {hasGymLoad && weeks.map((w, i) => {
+          if (w.gymTrainingLoad == null) return null
+          const h = Math.max(2, (w.gymTrainingLoad / maxGymLoad) * plotHeight)
+          return (
+            <rect
+              key={`gl${i}`}
+              x={xCenter(i) + pairGap / 2}
+              y={yLoad(w.gymTrainingLoad)}
+              width={barWidth}
+              height={h}
+              rx={Math.min(2, barWidth / 2)}
+              className="trend-bar-run"
             />
           )
         })}
@@ -137,7 +168,7 @@ export default function LoadVsWellnessChart({ weeks }) {
       </svg>
 
       <span className="trend-chart-caption">
-        kg lifted per week · line is mean readiness{anyTournament ? ' · shaded weeks had a tournament' : ''}
+        kg lifted (dark){hasGymLoad ? ' vs Garmin training load (light, own scale)' : ''} per week · line is mean readiness{anyTournament ? ' · shaded weeks had a tournament' : ''}
       </span>
     </div>
   )

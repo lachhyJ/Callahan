@@ -55,7 +55,8 @@ public record LoadTrendWeekDto(
     double? MeanReadiness,
     double? MeanHrv,
     double? MeanSleepScore,
-    bool IsTournamentWeek);
+    bool IsTournamentWeek,
+    decimal? GymTrainingLoad);  // Σ Garmin training load over gym sessions that were scored; null if none were
 
 public record UpsertDailyWellnessRequest(
     DateOnly Date,

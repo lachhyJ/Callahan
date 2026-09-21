@@ -21,10 +21,11 @@ public class LoadTrendBuilderTests
         IEnumerable<UltimateLoad>? ult = null,
         IEnumerable<DailyWellnessDto>? wellness = null,
         IEnumerable<TournamentSpan>? tournaments = null,
+        IEnumerable<GymGarminLoad>? gymGarmin = null,
         int weeks = 4) =>
         LoadTrendBuilder.Build(
             Today, weeks,
-            gym ?? [], runs ?? [], ult ?? [], wellness ?? [], tournaments ?? []);
+            gym ?? [], runs ?? [], ult ?? [], wellness ?? [], tournaments ?? [], gymGarmin ?? []);
 
     [Fact]
     public void DenseOutput_EvenWithNoData()
@@ -42,6 +43,7 @@ public class LoadTrendBuilderTests
             Assert.Null(w.MeanHrv);
             Assert.Null(w.MeanSleepScore);
             Assert.False(w.IsTournamentWeek);
+            Assert.Null(w.GymTrainingLoad);
         });
     }
 
@@ -108,6 +110,24 @@ public class LoadTrendBuilderTests
         Assert.True(r.Single(w => w.WeekStart == Wk0).IsTournamentWeek);   // 8, 9 Aug
         Assert.True(r.Single(w => w.WeekStart == Wk1).IsTournamentWeek);   // 10 Aug
         Assert.False(r.Single(w => w.WeekStart == Wk2).IsTournamentWeek);
+    }
+
+    [Fact]
+    public void GymTrainingLoad_SumsPerWeek_DistinctFromVolume_NullWhenNoneScored()
+    {
+        var r = Build(
+            gym: [new GymSetLoad(new DateOnly(2026, 8, 11), 5000m)],   // Wk1 volume - unrelated scale
+            gymGarmin:
+            [
+                new GymGarminLoad(new DateOnly(2026, 8, 11), 30m),   // Wk1
+                new GymGarminLoad(new DateOnly(2026, 8, 13), 25m),   // Wk1
+            ]);
+
+        var wk1 = r.Single(w => w.WeekStart == Wk1);
+        Assert.Equal(55m, wk1.GymTrainingLoad);
+        Assert.Equal(5000m, wk1.GymVolume);   // the two metrics don't get mixed
+
+        Assert.Null(r.Single(w => w.WeekStart == Wk0).GymTrainingLoad);
     }
 
     [Fact]
