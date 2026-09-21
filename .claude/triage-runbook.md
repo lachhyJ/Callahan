@@ -27,6 +27,35 @@ backlog line, so the triage note is redundant. Keep `pending/` notes
 indefinitely; they're the only remaining record of the context/screenshots
 behind an unshipped idea.
 
+## Filename discipline
+
+Obsidian's default note name for a pasted-in note with no title is a bare
+`Untitled.md` / `Untitled 1.md` / `Untitled 2.md` — several unrelated triage
+items end up with these same generic names over time. `reviewed/pending/`
+and `reviewed/actioned/` are flat folders shared across every past triage
+pass, so a same-named note already sitting there is a real, recurring
+collision risk, not a hypothetical one (it happened 2026-09-21: a blind
+`mv` of a same-named new note overwrote an older `Untitled.md` already in
+`reviewed/pending/`, silently destroying it — recovered only because the
+NAS's Syncthing trash-can versioning happened to be on).
+
+- **Before writing `## Triage notes`, rename the note file itself** to a
+  short descriptive slug drawn from its own content (e.g. `Untitled.md`
+  asking about set-count persistence → `Set count should remember last
+  session.md`) if it's still `Untitled*.md` or otherwise generic. Do this
+  for every note, not just ones that happen to collide — it also makes
+  `reviewed/pending/`'s flat listing scannable instead of a wall of
+  `Untitled N.md`.
+- **Before moving any note into `reviewed/pending/` or `reviewed/actioned/`,
+  list that destination folder and confirm the target filename isn't
+  already there.** Never batch multiple notes into a single `mv note1
+  note2 ... dest/` — move one at a time, or use `mv -n` (no-clobber) as a
+  hard backstop even after the check above, so a missed collision fails
+  loudly instead of silently overwriting.
+- Images keep their original `IMG_NNNN.png` names and move alongside their
+  note — collisions there are far less likely (device-assigned sequential
+  numbers rarely repeat) but the same no-clobber discipline still applies.
+
 ## Steps, per note directly in `triage/` (not already in `reviewed/`)
 
 1. Read the note in full, including any attached images (Obsidian drops
