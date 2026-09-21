@@ -242,8 +242,17 @@ def to_strength_payload(activity):
     summary_id = activity.get("activityId")
     duration_s = activity.get("duration")
     start_local = activity.get("startTimeLocal", "")
+    start_gmt = activity.get("startTimeGMT", "")
+    # date buckets by the calendar day Lachlan actually lifted on (local time -
+    # a late-night session could roll to a different GMT date). startedAt is
+    # the matching signal against WorkoutSession.StartedAt, which the app
+    # stores in UTC — using local time here compared a naive local clock
+    # against a UTC one and was off by the whole timezone offset (10-11h for
+    # Melbourne), so every real session silently failed to match. GMT is
+    # already in the raw payload (same field fetch_laps uses for lap
+    # timestamps) - no timezone math needed, just the right field.
     activity_date = start_local.split(" ")[0].split("T")[0] if start_local else None
-    started_at = start_local.replace(" ", "T") if start_local else None
+    started_at = start_gmt.replace(" ", "T") if start_gmt else None
 
     return {
         "garminActivityId": str(summary_id) if summary_id is not None else None,
