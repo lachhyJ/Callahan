@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { dismissPendingGarminStrength, getPendingGarminStrength, linkPendingGarminStrength } from '../api/client'
+import { dismissPendingGarminStrength, getPendingGarminStrength, getWorkoutSessions, linkPendingGarminStrength } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
 import { formatDateLong } from '../dateUtils'
 
@@ -20,10 +20,30 @@ export default function GarminStrengthReviewPage() {
   const [items, setItems] = useState(null)
   const [error, setError] = useState(null)
   const [busyKey, setBusyKey] = useState(null)
+  // Every session, fetched once - the auto-match candidates are same-day
+  // only, but the right session for an activity Garmin misdated (or a day
+  // Callahan has no session logged for) can be anywhere. Fetched lazily
+  // (only once a search box is actually opened) since most pending items
+  // resolve from their same-day candidates without ever needing it.
+  const [allSessions, setAllSessions] = useState(null)
+  const [searchOpenId, setSearchOpenId] = useState(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   useEffect(() => {
     getPendingGarminStrength().then(setItems).catch((err) => setError(err.message))
   }, [])
+
+  function toggleSearch(pendingId) {
+    if (searchOpenId === pendingId) {
+      setSearchOpenId(null)
+      return
+    }
+    setSearchOpenId(pendingId)
+    setSearchQuery('')
+    if (allSessions === null) {
+      getWorkoutSessions().then(setAllSessions).catch((err) => setError(err.message))
+    }
+  }
 
   async function handleLink(pendingId, sessionId) {
     const key = `link-${pendingId}`
@@ -32,6 +52,7 @@ export default function GarminStrengthReviewPage() {
     try {
       await linkPendingGarminStrength(pendingId, sessionId)
       setItems((current) => current.filter((i) => i.id !== pendingId))
+      setSearchOpenId(null)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -115,6 +136,55 @@ export default function GarminStrengthReviewPage() {
                 </li>
               ))}
             </ul>
+          )}
+
+          <button
+            type="button"
+            className="secondary-btn garmin-strength-search-toggle"
+            onClick={() => toggleSearch(item.id)}
+          >
+            {searchOpenId === item.id ? 'Cancel' : 'Link to a different session'}
+          </button>
+
+          {searchOpenId === item.id && (
+            <div className="garmin-strength-search">
+              <input
+                type="text"
+                placeholder="Search by date or name…"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                autoFocus
+              />
+              {allSessions === null && <p className="notes">Loading sessions…</p>}
+              {allSessions && (
+                <ul className="garmin-strength-candidate-list">
+                  {allSessions
+                    .filter((s) => {
+                      const q = searchQuery.trim().toLowerCase()
+                      if (!q) return true
+                      return workoutLabel(s).toLowerCase().includes(q) || formatDateLong(s.date).toLowerCase().includes(q)
+                    })
+                    .slice(0, 20)
+                    .map((s) => (
+                      <li key={s.id}>
+                        <span>
+                          <Link to={`/sessions/${s.id}`}>{workoutLabel(s)}</Link>
+                          {` · ${formatDateLong(s.date)}`}
+                          {s.startedAt && ` · started ${formatClock(s.startedAt)}`}
+                        </span>
+                        <button
+                          type="button"
+                          className="secondary-btn"
+                          disabled={busyKey !== null}
+                          onClick={() => handleLink(item.id, s.id)}
+                        >
+                          {busyKey === `link-${item.id}` ? 'Linking…' : 'Link'}
+                        </button>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
           )}
         </div>
       ))}

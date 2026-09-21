@@ -1,5 +1,6 @@
 using Callahan.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Callahan.Api.Data;
 
@@ -63,6 +64,35 @@ public class AppDbContext : DbContext
                      .Where(p => p.ClrType == typeof(decimal) || p.ClrType == typeof(decimal?)))
         {
             property.SetProviderClrType(typeof(double));
+        }
+
+        // Every DateTime read back from the database is tagged Kind=Utc.
+        //
+        // SQLite has no native datetime type - EF Core's provider round-trips
+        // a DateTime through a string, and on the way back out Kind is always
+        // Unspecified regardless of what was written, even when the app wrote
+        // a genuinely UTC value (every DateTime this app stores comes from
+        // either JS's toISOString() or a Garmin GMT timestamp, both UTC).
+        // System.Text.Json only emits a trailing "Z" for Kind=Utc, so a value
+        // that round-tripped through the DB lost it - invisible everywhere
+        // that only ever did duration arithmetic on these fields (subtraction
+        // is Kind-agnostic), until the Garmin-strength review page tried to
+        // display a raw wall-clock hour and showed the UTC digits as if they
+        // were already local time. Same "fix it for the whole model, not one
+        // property" reasoning as the decimal conversion above - a DateTime
+        // column added later inherits this instead of quietly reintroducing
+        // the same silent trap.
+        var utcKind = new ValueConverter<DateTime, DateTime>(
+            v => v,
+            v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+        var utcKindNullable = new ValueConverter<DateTime?, DateTime?>(
+            v => v,
+            v => v.HasValue ? DateTime.SpecifyKind(v.Value, DateTimeKind.Utc) : v);
+        foreach (var property in modelBuilder.Model.GetEntityTypes()
+                     .SelectMany(t => t.GetProperties()))
+        {
+            if (property.ClrType == typeof(DateTime)) property.SetValueConverter(utcKind);
+            else if (property.ClrType == typeof(DateTime?)) property.SetValueConverter(utcKindNullable);
         }
 
         // Soft delete: everywhere in the app queries through these DbSets (or

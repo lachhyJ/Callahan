@@ -252,7 +252,15 @@ def to_strength_payload(activity):
     # already in the raw payload (same field fetch_laps uses for lap
     # timestamps) - no timezone math needed, just the right field.
     activity_date = start_local.split(" ")[0].split("T")[0] if start_local else None
-    started_at = start_gmt.replace(" ", "T") if start_gmt else None
+    # "Z" is required, not decorative: without it .NET binds this as an
+    # unspecified-kind DateTime, and on the way back out to the review page
+    # the browser's `new Date(...)` treats the bare GMT digits as if they
+    # were already local time with no conversion - a real 11:35am session
+    # rendered as "1:35 am". With "Z" it round-trips as UTC end to end and
+    # the browser correctly converts to Melbourne time for display. Matching
+    # itself was already correct either way (DateTime subtraction ignores
+    # Kind), this only fixes what gets shown to a human.
+    started_at = f"{start_gmt.replace(' ', 'T')}Z" if start_gmt else None
 
     return {
         "garminActivityId": str(summary_id) if summary_id is not None else None,

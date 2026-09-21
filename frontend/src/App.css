@@ -559,6 +559,31 @@ td {
   text-align: center;
 }
 
+.garmin-strength-search-toggle {
+  margin-top: var(--space-2xs);
+}
+
+.garmin-strength-search {
+  margin-top: var(--space-2xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+
+  input[type='text'] {
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: var(--space-2xs) var(--space-xs);
+    color: var(--text-h);
+    font-size: var(--text-sm);
+
+    &:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+  }
+}
+
 .garmin-strength-review-item {
   flex-direction: column;
   align-items: stretch;
