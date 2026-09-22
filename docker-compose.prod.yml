@@ -23,6 +23,17 @@ services:
       # backend.prod.env. Unset fails the deploy loudly rather than silently
       # mounting an empty directory and 404ing the PDF.
       - "${PROGRAM_DOCS_HOST_PATH:?set PROGRAM_DOCS_HOST_PATH in .env beside docker-compose.prod.yml}:/app/ProgramDocs:ro"
+    # Gates the frontend's depends_on below: /api/health round-trips the DB
+    # connection, so "healthy" means the backend can actually serve requests,
+    # not just that the process started. Without this a deploy's container
+    # swap has a window where nginx is already proxying to a backend that
+    # isn't ready yet, which is what was surfacing as Cloudflare 502s.
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
 
   frontend:
     build:
@@ -37,7 +48,8 @@ services:
     ports:
       - "30070:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   # Always-on trigger for the app's "Sync Garmin" button. Runs the same
   # scripts/garmin-sync image as the nightly TrueNAS cron job, but with its
