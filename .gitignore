@@ -35,6 +35,10 @@ backend.prod.env
 # OS
 .DS_Store
 
-# Claude Code — local-only settings and other threads' worktrees
+# Claude Code — local-only settings, other threads' worktrees, and plan docs.
+# Plans are transient scaffolding for work in progress; anything durable in one
+# graduates to the vault (decisions/session-log) when the work ships. Everything
+# tracked under .claude/ is durable by contrast — launch config, skills, runbooks.
 .claude/settings.local.json
 .claude/worktrees/
+.claude/plans/
