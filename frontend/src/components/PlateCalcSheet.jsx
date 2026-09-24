@@ -4,6 +4,7 @@ import {
   BAR_PRESETS,
   DUMBBELL_STEPS_KG,
   PLATE_SETS,
+  calculatePlateDelta,
   calculatePlates,
   clearCustomEquipment,
   clearEquipmentTypeOverride,
@@ -101,9 +102,32 @@ function PlatesYouHave({ available, onToggle }) {
   )
 }
 
+// "From here" plate-swap note against the last completed set on this
+// exercise — add/remove per side (barbell) or on the stack (added), rather
+// than making the athlete re-derive the change from two full breakdowns.
+function PlateDeltaNote({ delta, perSide }) {
+  if (!delta) return null
+  const { toAdd, toRemove } = delta
+  if (toAdd.length === 0 && toRemove.length === 0) {
+    return <p className="plate-calc-delta plate-calc-popover-hint">Same as last set — no change.</p>
+  }
+  const suffix = perSide ? ' per side' : ''
+  return (
+    <p className="plate-calc-delta">
+      {toAdd.length > 0 && (
+        <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
+      )}
+      {toAdd.length > 0 && toRemove.length > 0 && ' · '}
+      {toRemove.length > 0 && (
+        <>Remove {toRemove.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
+      )}
+    </p>
+  )
+}
+
 const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
-export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, onClose }) {
+export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, currentlyLoadedKg, onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined
 
   const [equipmentType, setEquipmentTypeState] = useState('barbell')
@@ -241,9 +265,40 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
   const result = equipmentType === 'barbell' && hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
   const maxPlate = Math.max(...(availablePlates.length > 0 ? availablePlates : PLATE_SETS.kg))
 
-  // Added weight hangs off a belt as a single stack: the logged weight is the
-  // added load itself, so there is no bar to subtract and no halving.
-  const addedResult = equipmentType === 'added' && hasTarget && target > 0 ? calculatePlates(target, availablePlates) : null
+  // Added weight hangs off a belt (base weight 0) or loads onto a
+  // plate-loaded machine with its own unknown frame weight (e.g. hip
+  // thrust) — either way it's a single stack, so no halving, but a
+  // machine's frame weight has to come off the target first or the
+  // breakdown asks the athlete to load plates for weight the frame
+  // already provides. Reuses the same per-exercise custom-equipment
+  // storage as barbell mode's bar weight (savedEquipment), since only one
+  // equipment type is active for a given exercise at a time.
+  const addedBaseKg = equipmentType === 'added' && savedEquipment ? savedEquipment.kg : 0
+  const belowBase = equipmentType === 'added' && hasTarget && target < addedBaseKg
+  const addedLoad = equipmentType === 'added' && hasTarget && !belowBase ? target - addedBaseKg : 0
+  const addedResult =
+    equipmentType === 'added' && hasTarget && !belowBase && addedLoad > 0 ? calculatePlates(addedLoad, availablePlates) : null
+
+  // What's still racked from the last completed set on this exercise, so a
+  // build-up session (warm-up → working sets, or a straight ramp) shows
+  // what to add/remove from there instead of a fresh breakdown from an
+  // empty bar every time. Only trusted when it came off the same bar/base
+  // weight currently selected — if the athlete just switched bar presets,
+  // the "loaded" figure isn't really comparable, so it's dropped and the
+  // sheet falls back to the full breakdown.
+  const hasLoaded = typeof currentlyLoadedKg === 'number' && !Number.isNaN(currentlyLoadedKg)
+  const loadedPerSide =
+    equipmentType === 'barbell' && hasLoaded && currentlyLoadedKg >= barWeightKg ? (currentlyLoadedKg - barWeightKg) / 2 : null
+  const plateDelta =
+    equipmentType === 'barbell' && result && loadedPerSide !== null
+      ? calculatePlateDelta(loadedPerSide, perSide, availablePlates)
+      : null
+
+  const loadedAddedLoad = equipmentType === 'added' && hasLoaded ? currentlyLoadedKg - addedBaseKg : null
+  const addedPlateDelta =
+    equipmentType === 'added' && addedResult && loadedAddedLoad !== null && loadedAddedLoad >= 0
+      ? calculatePlateDelta(loadedAddedLoad, addedLoad, availablePlates)
+      : null
 
   const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
   const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
@@ -294,6 +349,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                   <>
                     <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} barWeightKg={barWeightKg} />
                     <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
+                    <PlateDeltaNote delta={plateDelta} perSide />
                     {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
                     {result.remainder > 0 && (
                       <p className="error">Can't hit that exactly with your available plates — {result.remainder}kg short per side.</p>
@@ -413,14 +469,16 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
             {equipmentType === 'added' && (
               <>
                 {!hasTarget && (
-                  <p className="plate-calc-popover-hint">Enter the added weight on the set to see what to hang.</p>
+                  <p className="plate-calc-popover-hint">Enter the target weight on the set to see what to load.</p>
                 )}
-                {hasTarget && target === 0 && (
-                  <p className="plate-calc-popover-hint">Bodyweight only — nothing to hang.</p>
+                {belowBase && <p className="error">Below the machine's own frame weight ({addedBaseKg}kg).</p>}
+                {hasTarget && !belowBase && addedLoad === 0 && (
+                  <p className="plate-calc-popover-hint">Bodyweight only — nothing to load.</p>
                 )}
                 {addedResult && (
                   <>
-                    <p className="plate-calc-sheet-perside">{target}kg on the belt</p>
+                    <p className="plate-calc-sheet-perside">{addedLoad}kg to load</p>
+                    <PlateDeltaNote delta={addedPlateDelta} />
                     {addedResult.breakdown.length > 0 && (
                       <ul className="plate-calc-breakdown">
                         {addedResult.breakdown.map(({ plate, count }) => (
@@ -436,6 +494,56 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                     )}
                   </>
                 )}
+
+                <div className="plate-calc-sheet-bars">
+                  <span className="plate-calc-sheet-label">Base weight (frame, if any)</span>
+                  <div className="plate-calc-chip-row">
+                    {savedEquipment && (
+                      <button
+                        type="button"
+                        className={selection === SAVED_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                        onClick={selectSaved}
+                      >
+                        {savedEquipment.name || `This machine (${savedEquipment.kg}kg)`}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className={selection === CUSTOM_BAR ? 'plate-calc-chip active' : 'plate-calc-chip'}
+                      onClick={openCustomForm}
+                    >
+                      {savedEquipment ? 'Edit' : 'Set base weight'}
+                    </button>
+                  </div>
+                  {selection === CUSTOM_BAR && (
+                    <div className="plate-calc-custom-form">
+                      <input
+                        type="text"
+                        placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} frame` : 'Machine frame'}`}
+                        value={customName}
+                        onChange={(e) => setCustomName(e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="Frame weight (kg)"
+                        value={customWeight}
+                        onChange={handleCustomWeightChange}
+                        autoFocus
+                      />
+                      <div className="plate-calc-custom-actions">
+                        <button type="button" onClick={handleSaveCustom}>
+                          Save for {exerciseName || 'this exercise'}
+                        </button>
+                        {savedEquipment && (
+                          <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <PlatesYouHave available={availablePlates} onToggle={togglePlateAvailable} />
               </>

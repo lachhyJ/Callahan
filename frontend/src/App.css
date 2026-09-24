@@ -1421,6 +1421,14 @@ td {
   color: var(--text-tertiary);
 }
 
+.plate-calc-delta {
+  margin: 0;
+  text-align: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--accent);
+}
+
 .plate-calc-dumbbell-options {
   display: flex;
   flex-direction: column;

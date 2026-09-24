@@ -85,6 +85,30 @@ export function calculatePlates(perSideWeight, availablePlates) {
   return { breakdown, remainder: Math.max(remaining, 0) }
 }
 
+// Plates to add/remove per side to go from what's already loaded to a new
+// target, rather than a fresh breakdown from an empty bar — useful mid
+// build-up when the previous set's plates are still on. Diffs each
+// breakdown's own greedy fill rather than the raw weight difference, so a
+// mismatched pair (e.g. from a 15+5 split to a 20) reads as "swap the 5 for
+// a 15" instead of a same-net-weight non-answer. Assumes the athlete keeps
+// whatever plate the two fills happen to share at the same count — the
+// common case since the greedy fill is stable for nearby weights — not a
+// guaranteed-minimal plate-move count.
+export function calculatePlateDelta(fromPerSide, toPerSide, availablePlates) {
+  const fromBreakdown = calculatePlates(fromPerSide, availablePlates).breakdown
+  const toBreakdown = calculatePlates(toPerSide, availablePlates).breakdown
+  const fromCounts = new Map(fromBreakdown.map(({ plate, count }) => [plate, count]))
+  const toCounts = new Map(toBreakdown.map(({ plate, count }) => [plate, count]))
+  const toAdd = []
+  const toRemove = []
+  for (const plate of availablePlates) {
+    const diff = (toCounts.get(plate) ?? 0) - (fromCounts.get(plate) ?? 0)
+    if (diff > 0) toAdd.push({ plate, count: diff })
+    else if (diff < 0) toRemove.push({ plate, count: -diff })
+  }
+  return { toAdd, toRemove }
+}
+
 // Which plate sizes the athlete's gym actually has, per unit — device-wide
 // rather than per-exercise, since it's a property of the gym, not the
 // movement. Defaults to the full standard set until pared down.
