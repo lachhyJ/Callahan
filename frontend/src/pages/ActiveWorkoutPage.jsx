@@ -10,7 +10,7 @@ import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWork
 import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { tapSetComplete } from '../haptics'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
-import { BellIcon, CheckIcon, PlateIcon, ReorderIcon, TrashIcon } from '../icons'
+import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
 import { getEquipmentType } from '../plateCalc'
@@ -48,8 +48,16 @@ function kgToLbDisplay(weightKg) {
 // and what both history views assume (`Set {setOrder + 1}`).
 function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = false, targetDurationSeconds = null) {
   const previousByOrder = new Map(previousSets.map((p) => [p.setOrder, p]))
-  const rowAt = (setOrder, type) => {
+  const rowAt = (setOrder, defaultType) => {
     const previous = previousByOrder.get(setOrder) ?? null
+    // Warmup slots are structural (driven by warmupSets, not by what got
+    // logged), so they always stay 'Warmup'. Working slots inherit last
+    // session's own set type (Failure/Drop/Normal) when there's a previous
+    // set at this order, rather than resetting every working set to
+    // 'Normal' and losing what kind of set it actually was.
+    const type = defaultType === 'Warmup' || !previous || !SET_TYPE_OPTIONS.includes(previous.setType)
+      ? defaultType
+      : previous.setType
     return {
       setOrder,
       reps: !timeBased && previous ? String(previous.reps) : '',
@@ -1877,14 +1885,6 @@ export default function ActiveWorkoutPage() {
                       onClick={() => setOpenTypeMenu(openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx ? null : { exIdx, setIdx })}
                     >
                       {SET_TYPE_LABELS[s.type] || workingSetNumber}
-                    </button>
-                    <button
-                      type="button"
-                      className="remove-set-btn"
-                      onClick={() => removeSet(exIdx, setIdx)}
-                      aria-label={`Remove ${SET_TYPE_LABELS[s.type] ? s.type.toLowerCase() + ' ' : ''}set ${workingSetNumber}`}
-                    >
-                      <TrashIcon width={12} height={12} />
                     </button>
                     {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
                       <div className="set-type-menu">

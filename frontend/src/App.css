@@ -1762,41 +1762,6 @@ td {
 
 .set-number-cell {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-}
-
-/* A direct, always-visible remove affordance next to the set-number chip —
-   the same removeSet() the type-change menu's "Remove set" option calls,
-   surfaced here too since burying removal inside a control that reads as
-   "change set type" made it undiscoverable (reported 2026-09-21). Muted by
-   default so it doesn't compete with the chip above it; sized well under
-   its own visible box via ::after, matching .set-number/.check-btn's
-   pattern, to still clear the 44x44 touch-target minimum. */
-.remove-set-btn {
-  position: relative;
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  color: var(--text-tertiary);
-  touch-action: manipulation;
-  user-select: none;
-}
-
-.remove-set-btn::after {
-  content: '';
-  position: absolute;
-  inset: -12px;
-}
-
-.remove-set-btn:active {
-  color: var(--error-text);
 }
 
 .set-number {

@@ -112,14 +112,16 @@ function PlateDeltaNote({ delta, perSide }) {
     return <p className="plate-calc-delta plate-calc-popover-hint">Same as last set — no change.</p>
   }
   const suffix = perSide ? ' per side' : ''
+  // Remove listed before add — you strip unwanted plates off before loading
+  // new ones, so the note reads in the order you'd actually do it.
   return (
     <p className="plate-calc-delta">
-      {toAdd.length > 0 && (
-        <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
-      )}
-      {toAdd.length > 0 && toRemove.length > 0 && ' · '}
       {toRemove.length > 0 && (
         <>Remove {toRemove.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
+      )}
+      {toAdd.length > 0 && toRemove.length > 0 && ' · '}
+      {toAdd.length > 0 && (
+        <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
       )}
     </p>
   )
@@ -477,6 +479,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                 )}
                 {addedResult && (
                   <>
+                    <BarDiagram breakdown={addedResult.breakdown} maxPlate={maxPlate} barWeightKg={addedBaseKg} />
                     <p className="plate-calc-sheet-perside">{addedLoad}kg to load</p>
                     <PlateDeltaNote delta={addedPlateDelta} />
                     {addedResult.breakdown.length > 0 && (
