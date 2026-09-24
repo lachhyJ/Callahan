@@ -1575,6 +1575,18 @@ td {
   color: var(--text);
 }
 
+.weight-autofilled-mark {
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+.weight-autofilled-hint {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
 .exercise-notes-input {
   background: transparent;
   border: none;

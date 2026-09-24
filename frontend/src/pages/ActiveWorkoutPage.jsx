@@ -68,6 +68,12 @@ function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = 
         ? String(previous?.durationSeconds ?? targetDurationSeconds ?? '')
         : '',
       previous,
+      // False for anything the app put there itself (last session's value,
+      // or nothing at all) — flips true the moment the athlete types over
+      // it, or when the first working set's weight cascades down into it
+      // (see handleWeightBlur). Drives the grey "not yet confirmed" styling
+      // and, more importantly, which sets a cascade is allowed to overwrite.
+      weightIsUserEntered: false,
       completed: false,
       type,
     }
@@ -592,7 +598,18 @@ export default function ActiveWorkoutPage() {
       prev.map((ex, i) =>
         i !== exIdx
           ? ex
-          : { ...ex, sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, [field]: value })) }
+          : {
+              ...ex,
+              sets: ex.sets.map((s, j) =>
+                j !== setIdx
+                  ? s
+                  // Typing into weightKg directly (or via the lb-toggle/sign-toggle
+                  // paths, which both route through here) is as "user entered" as
+                  // it gets — stops it from being grey, and from being clobbered
+                  // by a later cascade off the first working set.
+                  : { ...s, [field]: value, ...(field === 'weightKg' ? { weightIsUserEntered: true } : {}) }
+              ),
+            }
       )
     )
   }
@@ -643,9 +660,14 @@ export default function ActiveWorkoutPage() {
         delete next[cellKey]
         return next
       })
-      // Fill weight into other still-blank working sets from the first
-      // working set only — never overwrites a value you've already typed,
-      // never touches Warmup, never touches an already-ticked set.
+      // Cascade weight from the first working set into every other working
+      // set that's still on the app's own suggestion (grey/unconfirmed) —
+      // covers both a blank added-mid-session row and a pre-filled-from-last-time
+      // row alike. Never touches Warmup, an already-ticked set, or a set the
+      // athlete has typed a different value into themselves (a deliberate
+      // ramp/pyramid). The cascaded value counts as user-entered too, same as
+      // if it had been typed directly — it won't grey back out, and a second
+      // cascade (editing set 1 again) won't re-overwrite it.
       setExercises((prev) =>
         prev.map((ex, i) => {
           if (i !== exIdx) return ex
@@ -656,9 +678,9 @@ export default function ActiveWorkoutPage() {
           return {
             ...ex,
             sets: ex.sets.map((s, j) =>
-              j === setIdx || s.type === 'Warmup' || s.completed || s.weightKg !== ''
+              j === setIdx || s.type === 'Warmup' || s.completed || s.weightIsUserEntered
                 ? s
-                : { ...s, weightKg: value }
+                : { ...s, weightKg: value, weightIsUserEntered: true }
             ),
           }
         })
@@ -1159,7 +1181,7 @@ export default function ActiveWorkoutPage() {
               ...ex,
               sets: [
                 ...ex.sets,
-                { setOrder: ex.sets.length, reps: '', weightKg: '', previous: null, completed: false, type: 'Normal' },
+                { setOrder: ex.sets.length, reps: '', weightKg: '', previous: null, weightIsUserEntered: false, completed: false, type: 'Normal' },
               ],
             }
       )
@@ -1853,6 +1875,9 @@ export default function ActiveWorkoutPage() {
             value={ex.notes}
             onChange={(e) => updateNotes(exIdx, e.target.value)}
           />
+          {ex.sets.some((s) => !s.weightIsUserEntered && s.weightKg !== '' && !s.completed) && (
+            <p className="weight-autofilled-hint">* auto-filled — not yet your value for today</p>
+          )}
           <table>
             <thead>
               <tr>
@@ -2010,8 +2035,11 @@ export default function ActiveWorkoutPage() {
                               scrollToSetRow(exIdx, setIdx, { topOffset: 90 })
                             }}
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
-                            className={s.previous && !s.completed ? 'prefilled' : ''}
+                            className={!s.weightIsUserEntered && s.weightKg !== '' && !s.completed ? 'prefilled' : ''}
                           />
+                          {!s.weightIsUserEntered && s.weightKg !== '' && !s.completed && (
+                            <span className="weight-autofilled-mark" title="Auto-filled — not yet your value for today">*</span>
+                          )}
                         </div>
                       )
                     })()}
