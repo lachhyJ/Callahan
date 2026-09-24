@@ -1698,7 +1698,8 @@ td {
   line-height: 1.4;
   display: block;
   resize: none;
-  overflow: hidden;
+  overflow-y: auto;
+  max-height: 200px;
   /* Reset the global `textarea { min-height: 60px }` — that default is for real
      multi-line fields; this one auto-grows to its content (see CueInput) and a
      one-line cue was being padded out to 60px, leaving dead space above Target. */

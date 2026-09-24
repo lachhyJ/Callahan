@@ -7,10 +7,14 @@ import { useLayoutEffect, useRef } from 'react'
 export default function CueInput({ value, onChange, onBlur, placeholder, ariaLabel }) {
   const ref = useRef(null)
 
+  // Cap growth so a pasted essay-length cue can't push the rest of the set
+  // list off screen; past this it scrolls internally instead.
+  const MAX_HEIGHT_PX = 200
+
   function fit(el) {
     if (!el) return
     el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
+    el.style.height = `${Math.min(el.scrollHeight, MAX_HEIGHT_PX)}px`
   }
 
   // Re-fit whenever the value changes from outside (initial load, a fetched
