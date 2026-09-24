@@ -4024,6 +4024,25 @@ td {
   color: var(--text-h);
 }
 
+.plate-calc-exercise-plan {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 1px solid var(--border);
+
+  ol {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2xs);
+    margin: 0;
+    padding: 0 0 0 var(--space-lg);
+    font-size: var(--text-sm);
+    color: var(--text);
+  }
+}
+
 .game-title {
   color: var(--text-h);
   font-size: var(--text-2xl);

@@ -180,6 +180,19 @@ function lastCompletedWeightKg(sets, setIdx) {
   return null
 }
 
+// Target weights for every set after this one on the same exercise, in
+// order, for the plate calculator's whole-exercise plan — skips sets with
+// no weight entered yet (nothing to plan against) rather than dropping the
+// chain at the first gap, since a later set further down the table can
+// perfectly well already have a value (auto-filled or user-entered) while
+// one in between is still blank.
+function upcomingWeightsKg(sets, setIdx) {
+  return sets
+    .slice(setIdx + 1)
+    .map((s) => (s.weightKg !== '' && s.weightKg !== null && s.weightKg !== undefined ? Number(s.weightKg) : null))
+    .filter((kg) => kg !== null && !Number.isNaN(kg))
+}
+
 // Body text for the native rest-over notification: "Trap Bar Deadlift · set 4 of 5".
 function nextSetLabel(rest) {
   const parts = [rest.exerciseName]
@@ -2279,6 +2292,7 @@ export default function ActiveWorkoutPage() {
         exerciseName={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseName : null}
         targetWeightKg={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].weightKg : ''}
         currentlyLoadedKg={openPlateCalc ? lastCompletedWeightKg(exercises[openPlateCalc.exIdx].sets, openPlateCalc.setIdx) : null}
+        upcomingWeightsKg={openPlateCalc ? upcomingWeightsKg(exercises[openPlateCalc.exIdx].sets, openPlateCalc.setIdx) : []}
         onClose={() => setOpenPlateCalc(null)}
       />
 

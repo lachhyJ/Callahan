@@ -127,9 +127,34 @@ function PlateDeltaNote({ delta, perSide }) {
   )
 }
 
+// Rest of the exercise's plate plan, chained off already-known set weights —
+// see exercisePlan in the main component for what "chained" means here.
+function ExercisePlanNote({ plan, perSide }) {
+  if (!plan || plan.upcomingSteps.length === 0) return null
+  const suffix = perSide ? ' per side' : ''
+  return (
+    <div className="plate-calc-exercise-plan">
+      <span className="plate-calc-sheet-label">Rest of this exercise</span>
+      <ol>
+        {plan.upcomingSteps.map(({ toAdd, toRemove }, i) => (
+          <li key={i}>
+            {toRemove.length === 0 && toAdd.length === 0 && 'No change'}
+            {toRemove.length > 0 && <>Remove {toRemove.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>}
+            {toAdd.length > 0 && toRemove.length > 0 && ' · '}
+            {toAdd.length > 0 && <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>}
+          </li>
+        ))}
+      </ol>
+      <p className="plate-calc-popover-hint">
+        {plan.totalMoves} plate {plan.totalMoves === 1 ? 'change' : 'changes'} total from here to the end.
+      </p>
+    </div>
+  )
+}
+
 const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
-export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, currentlyLoadedKg, onClose }) {
+export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, currentlyLoadedKg, upcomingWeightsKg = [], onClose }) {
   const open = exerciseId !== null && exerciseId !== undefined
 
   const [equipmentType, setEquipmentTypeState] = useState('barbell')
@@ -302,6 +327,43 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
       ? calculatePlateDelta(loadedAddedLoad, addedLoad, availablePlates)
       : null
 
+  // Whole-exercise plan: chain this set's target through every later set's
+  // already-known weight (whatever's currently in that field, auto-filled
+  // or typed), starting from whatever's actually loaded right now if
+  // anything is. Each step reuses the same greedy per-weight breakdown as
+  // the single-set delta above — it does not search alternate ways to
+  // build a given weight to reduce swaps further (e.g. 15kg as 10+5 instead
+  // of a single 15 plate), which is a real but separately-scoped upgrade.
+  const barbellChain =
+    equipmentType === 'barbell' && result
+      ? [loadedPerSide, perSide, ...upcomingWeightsKg.map((w) => (w - barWeightKg) / 2)].filter(
+          (v) => v !== null && v !== undefined && v >= 0,
+        )
+      : null
+  const addedChain =
+    equipmentType === 'added' && addedResult
+      ? [loadedAddedLoad, addedLoad, ...upcomingWeightsKg.map((w) => w - addedBaseKg)].filter(
+          (v) => v !== null && v !== undefined && v >= 0,
+        )
+      : null
+  const exercisePlan = (() => {
+    const chain = barbellChain ?? addedChain
+    if (!chain || chain.length < 2) return null
+    const steps = []
+    for (let i = 1; i < chain.length; i++) {
+      steps.push(calculatePlateDelta(chain[i - 1], chain[i], availablePlates))
+    }
+    const totalMoves = steps.reduce(
+      (sum, { toAdd, toRemove }) =>
+        sum + toAdd.reduce((a, { count }) => a + count, 0) + toRemove.reduce((a, { count }) => a + count, 0),
+      0,
+    )
+    // The transition into the *current* set was already shown above as the
+    // main delta — only the remaining, still-upcoming transitions belong in
+    // "rest of this exercise".
+    return { upcomingSteps: steps.slice(1), totalMoves }
+  })()
+
   const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
   const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
 
@@ -356,6 +418,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                     {result.remainder > 0 && (
                       <p className="error">Can't hit that exactly with your available plates — {result.remainder}kg short per side.</p>
                     )}
+                    <ExercisePlanNote plan={exercisePlan} perSide />
                   </>
                 )}
 
@@ -495,6 +558,7 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
                     {addedResult.remainder > 0 && (
                       <p className="error">Can't hit that exactly with your available plates — {addedResult.remainder}kg short.</p>
                     )}
+                    <ExercisePlanNote plan={exercisePlan} />
                   </>
                 )}
 
