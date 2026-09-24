@@ -7,3 +7,11 @@ public record CreatePushSubscriptionRequest(string Endpoint, PushSubscriptionKey
 public record RestTimerScheduleRequest(int DurationSeconds, string ExerciseName, string TargetReps, int NextSetNumber, int TotalSets);
 
 public record RestTimerScheduleResponse(string TimerId);
+
+public record RestTimerCurrentResponse(
+    string TimerId,
+    DateTimeOffset EndsAtUtc,
+    string ExerciseName,
+    string TargetReps,
+    int NextSetNumber,
+    int TotalSets);

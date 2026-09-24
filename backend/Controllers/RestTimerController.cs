@@ -13,10 +13,19 @@ namespace Callahan.Api.Controllers;
 [Route("api/[controller]")]
 public class RestTimerController : ControllerBase
 {
+    private sealed record PendingTimer(
+        CancellationTokenSource Cts,
+        DateTimeOffset ScheduledAtUtc,
+        DateTimeOffset EndsAtUtc,
+        string ExerciseName,
+        string TargetReps,
+        int NextSetNumber,
+        int TotalSets);
+
     // In-memory only — acceptable for a single-instance personal app. A pending
     // timer is lost if the container restarts mid-rest, which is rare and low
     // stakes (worst case: one missed alert).
-    private static readonly ConcurrentDictionary<string, CancellationTokenSource> PendingTimers = new();
+    private static readonly ConcurrentDictionary<string, PendingTimer> PendingTimers = new();
 
     private readonly ILogger<RestTimerController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
@@ -46,7 +55,9 @@ public class RestTimerController : ControllerBase
 
         var timerId = Guid.NewGuid().ToString("N");
         var cts = new CancellationTokenSource();
-        PendingTimers[timerId] = cts;
+        var scheduledAtUtc = DateTimeOffset.UtcNow;
+        var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
+        PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets);
 
         _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, cts.Token);
 
@@ -56,12 +67,45 @@ public class RestTimerController : ControllerBase
     [HttpPost("cancel/{timerId}")]
     public IActionResult Cancel(string timerId)
     {
-        if (PendingTimers.TryRemove(timerId, out var cts))
+        if (PendingTimers.TryRemove(timerId, out var timer))
         {
-            cts.Cancel();
+            timer.Cts.Cancel();
         }
 
         return Ok();
+    }
+
+    // Returns the most-recently-scheduled pending timer, for the Garmin data field
+    // to poll. There should only ever be one entry (the phone cancels before it
+    // reschedules), but that invariant isn't enforced anywhere, so order by
+    // ScheduledAtUtc — not EndsAtUtc, which isn't a proxy for scheduling order —
+    // rather than assume it.
+    //
+    // A timer disappears from PendingTimers ~PushLeadSeconds before it actually
+    // ends (see FireAfterDelay's finally). A 204 here means "no timer scheduled",
+    // not "the last-seen timer finished" — callers that have already seen a
+    // TimerId should keep counting down locally rather than treat a later 204 as
+    // a cancellation.
+    [HttpGet("current")]
+    public ActionResult<RestTimerCurrentResponse> Current()
+    {
+        var newest = PendingTimers
+            .OrderByDescending(kvp => kvp.Value.ScheduledAtUtc)
+            .Select(kvp => (TimerId: kvp.Key, Timer: kvp.Value))
+            .FirstOrDefault();
+
+        if (newest.Timer is null)
+        {
+            return NoContent();
+        }
+
+        return Ok(new RestTimerCurrentResponse(
+            newest.TimerId,
+            newest.Timer.EndsAtUtc,
+            newest.Timer.ExerciseName,
+            newest.Timer.TargetReps,
+            newest.Timer.NextSetNumber,
+            newest.Timer.TotalSets));
     }
 
     private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, CancellationToken token)
