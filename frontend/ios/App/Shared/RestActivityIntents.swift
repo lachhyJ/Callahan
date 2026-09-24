@@ -37,6 +37,12 @@ public enum CallahanDiary {
 public enum RestTimerChange {
     /// `Date` for a new end time; absent when the rest was cleared.
     public static let endAtKey = "endAt"
+    /// Names which native path cleared/moved the timer — added 2026-09-23
+    /// chasing a "silent miss" report where a rest got torn down ~45s into
+    /// its window with no diary line explaining why. `standDown()`,
+    /// `playImmediately()`'s callers were already tagged for the earlier
+    /// duplicate-beep bug; this closes the matching gap on the clear side.
+    public static let reasonKey = "reason"
 }
 
 /// The -15s / +15s / Skip / Tick buttons on the Live Activity.
@@ -74,7 +80,7 @@ struct SkipRestIntent: LiveActivityIntent {
     init() {}
 
     func perform() async throws -> some IntentResult {
-        await RestTimerStore.shared.skip()
+        await RestTimerStore.shared.skip(reason: "SkipRestIntent")
         return .result()
     }
 }
@@ -94,7 +100,7 @@ struct CompleteSetIntent: LiveActivityIntent {
     init() {}
 
     func perform() async throws -> some IntentResult {
-        await RestTimerStore.shared.completeSet()
+        await RestTimerStore.shared.completeSet(reason: "CompleteSetIntent")
         return .result()
     }
 }
@@ -140,10 +146,10 @@ actor RestTimerStore {
     /// separately — but the workout-ended path used it directly, so an armed
     /// beep survived the session it belonged to and sounded after the workout
     /// had been saved. Anything that ends a rest for good should use this.
-    func standDown() {
+    func standDown(reason: String = "RestTimerStore.standDown") {
         clear()
         bumpRevision()
-        announce(endAt: nil)
+        announce(endAt: nil, reason: reason)
     }
 
     /// Called once JS has folded the ticked sets into its own state. Subtracts
@@ -159,8 +165,9 @@ actor RestTimerStore {
 
     /// Tells the audio plugin the timer moved under it. Posted on the main queue
     /// because the plugin's session and player work belongs there.
-    private func announce(endAt: Date?) {
-        let info: [String: Any] = endAt.map { [RestTimerChange.endAtKey: $0] } ?? [:]
+    private func announce(endAt: Date?, reason: String) {
+        var info: [String: Any] = endAt.map { [RestTimerChange.endAtKey: $0] } ?? [:]
+        info[RestTimerChange.reasonKey] = reason
         Task { @MainActor in
             NotificationCenter.default.post(
                 name: .callahanRestTimerChanged, object: nil, userInfo: info
@@ -176,16 +183,16 @@ actor RestTimerStore {
         let total = max(totalSeconds, Int(moved.timeIntervalSince(Date())))
         set(endAt: moved, totalSeconds: total)
         bumpRevision()
-        announce(endAt: moved)
+        announce(endAt: moved, reason: "AdjustRestIntent")
         await updateActivities(endAt: moved, totalSeconds: total)
     }
 
     /// Skip ends the *rest*, not the activity: the card belongs to the workout
     /// and should stay up between sets with the countdown zeroed.
-    func skip() async {
+    func skip(reason: String = "RestTimerStore.skip") async {
         clear()
         bumpRevision()
-        announce(endAt: nil)
+        announce(endAt: nil, reason: reason)
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state
             state.endAt = nil
@@ -198,7 +205,7 @@ actor RestTimerStore {
     /// rest. The card's own idea of which set is next moves immediately so the
     /// button feels like the checkbox does; JS reconciles the real set rows on
     /// its next run and re-syncs from there.
-    func completeSet() async {
+    func completeSet(reason: String = "CompleteSetIntent") async {
         UserDefaults.standard.set(pendingCompletions + 1, forKey: pendingCompletionsKey)
         bumpRevision()
 
@@ -217,13 +224,13 @@ actor RestTimerStore {
                 state.endAt = end
                 state.totalSeconds = state.restSeconds
                 set(endAt: end, totalSeconds: state.restSeconds)
-                announce(endAt: end)
+                announce(endAt: end, reason: reason)
                 await activity.update(ActivityContent(state: state, staleDate: end))
             } else {
                 state.endAt = nil
                 state.totalSeconds = 0
                 clear()
-                announce(endAt: nil)
+                announce(endAt: nil, reason: "\(reason) (no rest left)")
                 await activity.update(ActivityContent(state: state, staleDate: nil))
             }
         }

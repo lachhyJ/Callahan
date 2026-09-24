@@ -259,7 +259,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             // standDown, not clear: this is the workout ending, so the armed beep
             // has to be told to stand down too rather than being left to sound
             // after the session is already saved.
-            await RestTimerStore.shared.standDown()
+            await RestTimerStore.shared.standDown(reason: "RestActivityPlugin.end (workout ended)")
             if let existing = self.currentActivity as? Activity<RestActivityAttributes> {
                 await existing.end(nil, dismissalPolicy: .immediate)
                 self.currentActivity = nil

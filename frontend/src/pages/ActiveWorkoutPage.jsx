@@ -502,6 +502,13 @@ export default function ActiveWorkoutPage() {
         body: nextSetLabel(restTimer),
       })
     } else {
+      // No prior log here before 2026-09-23 — meant this branch's
+      // cancelScheduledBeep() was invisible in the diary no matter what
+      // nulled restTimer (tick effect, skipRest, saveSession/discardSession).
+      // lastRestRef still holds whichever rest was last armed, so its endAt
+      // is useful context even though it may already be stale by the time
+      // this runs.
+      logDiary(`schedule effect: restTimer cleared, cancelling (was armed for endAt=${lastRestRef.current?.endAt ?? 'none'})`)
       clearRestTimerStore()
       cancelScheduledBeep()
     }

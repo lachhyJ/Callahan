@@ -341,9 +341,10 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc private func handleRestTimerChanged(_ note: Notification) {
         let endAt = note.userInfo?[RestTimerChange.endAtKey] as? Date
+        let reason = note.userInfo?[RestTimerChange.reasonKey] as? String ?? "unknown"
         DispatchQueue.main.async {
             guard let endAt else {
-                self.standDown()
+                self.standDown(reason: "handleRestTimerChanged (\(reason))")
                 return
             }
             self.arm(for: endAt, force: true)
@@ -664,7 +665,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             // and was already handled minutes ago.
             if overdue > Self.staleScheduleSeconds {
                 record(String(format: "ignored stale schedule (%.1fs past)", overdue))
-                standDown()
+                standDown(reason: "arm/staleSchedule")
             } else {
                 playImmediately(caller: "arm/tooCloseToArm")
             }
@@ -778,8 +779,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     ///
     /// Letting a beep you no longer strictly need finish is a third of a second;
     /// a truncated one sounds broken.
-    private func standDown() {
-        record("standDown (beepSounding=\(beepIsSounding))")
+    private func standDown(reason: String) {
+        record("standDown (beepSounding=\(beepIsSounding), caller=\(reason))")
         cancelLocalNotification()
         armedEndAt = nil
         armedAudioEnd = nil
@@ -795,7 +796,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func cancel(_ call: CAPPluginCall) {
-        standDown()
+        standDown(reason: "cancel (JS)")
         call.resolve()
     }
 
