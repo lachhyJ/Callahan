@@ -2293,6 +2293,12 @@ export default function ActiveWorkoutPage() {
         targetWeightKg={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].weightKg : ''}
         currentlyLoadedKg={openPlateCalc ? lastCompletedWeightKg(exercises[openPlateCalc.exIdx].sets, openPlateCalc.setIdx) : null}
         upcomingWeightsKg={openPlateCalc ? upcomingWeightsKg(exercises[openPlateCalc.exIdx].sets, openPlateCalc.setIdx) : []}
+        previousTargetKg={
+          openPlateCalc ? Number(exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].previous?.weightKg ?? NaN) : NaN
+        }
+        onApplyWeight={
+          openPlateCalc ? (kg) => updateSet(openPlateCalc.exIdx, openPlateCalc.setIdx, 'weightKg', String(kg)) : undefined
+        }
         onClose={() => setOpenPlateCalc(null)}
       />
 

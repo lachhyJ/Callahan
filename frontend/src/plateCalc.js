@@ -170,6 +170,15 @@ export function setAvailableDumbbells(dumbbells) {
 // nearest step below and above (either can be absent at the ends of the
 // rack) so the athlete sees both directions to round rather than just
 // whichever happens to be closer.
+// Rounds a raw number to the nearest multiple of `step` (e.g. the smallest
+// plate you've got), for turning a percentage-jump suggestion into a weight
+// you can actually load rather than one that only exists on paper. Never
+// negative — a jump off a very light weight can't round below zero.
+export function roundToStep(value, step) {
+  if (!step || step <= 0) return Math.max(0, value)
+  return Math.max(0, Math.round(value / step) * step)
+}
+
 export function nearestDumbbells(perDumbbellKg, available) {
   const sorted = [...available].sort((a, b) => a - b)
   const exact = sorted.find((d) => Math.abs(d - perDumbbellKg) < 1e-9)

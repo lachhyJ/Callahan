@@ -7,6 +7,7 @@ import {
   calculatePlateDelta,
   calculatePlates,
   clearCustomEquipment,
+  roundToStep,
   clearEquipmentTypeOverride,
   getAvailableDumbbells,
   getAvailablePlates,
@@ -154,7 +155,18 @@ function ExercisePlanNote({ plan, perSide }) {
 
 const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
-export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightKg, currentlyLoadedKg, upcomingWeightsKg = [], onClose }) {
+const PROGRESSION_PERCENTAGES = [2.5, 5, 7.5, 10]
+
+export default function PlateCalcSheet({
+  exerciseId,
+  exerciseName,
+  targetWeightKg,
+  currentlyLoadedKg,
+  upcomingWeightsKg = [],
+  previousTargetKg,
+  onApplyWeight,
+  onClose,
+}) {
   const open = exerciseId !== null && exerciseId !== undefined
 
   const [equipmentType, setEquipmentTypeState] = useState('barbell')
@@ -364,6 +376,41 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
     return { upcomingSteps: steps.slice(1), totalMoves }
   })()
 
+  // "What should my next jump be" — percentage suggestions off last
+  // session's weight for this exact set (matching how Lachlan already does
+  // this by hand: ~1.05x), each rounded to something the current equipment
+  // actually lets him load rather than a number that only exists on paper.
+  const hasPrevious = typeof previousTargetKg === 'number' && !Number.isNaN(previousTargetKg) && previousTargetKg > 0
+  const smallestPlate = availablePlates.length > 0 ? Math.min(...availablePlates) : 1.25
+  const progressionSuggestions =
+    hasPrevious && equipmentType !== 'hidden'
+      ? PROGRESSION_PERCENTAGES.map((pct) => {
+          const raw = previousTargetKg * (1 + pct / 100)
+          let achievable
+          if (equipmentType === 'barbell') {
+            achievable = barWeightKg + 2 * roundToStep((raw - barWeightKg) / 2, smallestPlate)
+          } else if (equipmentType === 'added') {
+            achievable = addedBaseKg + roundToStep(raw - addedBaseKg, smallestPlate)
+          } else {
+            // dumbbell: snap to the closer of the nearest available step
+            // below/above the raw per-dumbbell figure.
+            const perDumbbellRaw = raw / 2
+            const match = nearestDumbbells(perDumbbellRaw, availableDumbbells)
+            const chosen =
+              match.exact ??
+              (match.below === undefined
+                ? match.above
+                : match.above === undefined
+                ? match.below
+                : Math.abs(match.below - perDumbbellRaw) <= Math.abs(match.above - perDumbbellRaw)
+                ? match.below
+                : match.above)
+            achievable = chosen === undefined ? null : chosen * 2
+          }
+          return { pct, achievable }
+        }).filter(({ achievable }) => achievable !== null)
+      : []
+
   const perDumbbell = equipmentType === 'dumbbell' && hasTarget ? target / 2 : null
   const dumbbellMatch = perDumbbell !== null ? nearestDumbbells(perDumbbell, availableDumbbells) : null
 
@@ -403,6 +450,24 @@ export default function PlateCalcSheet({ exerciseId, exerciseName, targetWeightK
             <p className="plate-calc-sheet-target">
               Target weight: {hasTarget ? `${targetWeightKg}kg` : '—'}
             </p>
+
+            {progressionSuggestions.length > 0 && (
+              <div className="plate-calc-sheet-bars">
+                <span className="plate-calc-sheet-label">Next jump, off last time ({previousTargetKg}kg)</span>
+                <div className="plate-calc-chip-row">
+                  {progressionSuggestions.map(({ pct, achievable }) => (
+                    <button
+                      key={pct}
+                      type="button"
+                      className="plate-calc-chip"
+                      onClick={() => onApplyWeight?.(achievable)}
+                    >
+                      +{pct}% → {achievable}kg
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {equipmentType === 'barbell' && (
               <>
