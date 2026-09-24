@@ -10,7 +10,7 @@ import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWork
 import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { tapSetComplete } from '../haptics'
 import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
-import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
+import { BellIcon, CheckIcon, PlateIcon, ReorderIcon, TrashIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
 import { getEquipmentType } from '../plateCalc'
@@ -94,8 +94,27 @@ function exerciseFromStart(ex) {
     supersetRestSeconds: ex.supersetRestSeconds ?? null,
     readyToProgress: ex.readyToProgress ?? false,
     notes: '',
-    sets: buildInitialSets(ex.targetSets, ex.previousSets, ex.warmupSets ?? 0, ex.isTimeBased ?? false, ex.targetDurationSeconds ?? null),
+    sets: buildInitialSets(
+      initialWorkingSetCount(ex),
+      ex.previousSets,
+      ex.warmupSets ?? 0,
+      ex.isTimeBased ?? false,
+      ex.targetDurationSeconds ?? null,
+    ),
   }
+}
+
+// How many working-set rows to start with: last session's count if the
+// athlete logged more than the template prescribes (e.g. they added a set
+// mid-session), otherwise the template's own count. Mirrors the precedent
+// addAdHocExercise already sets for ad-hoc/catalog exercises
+// (`previousSets.length || 1`) — a one-off default, not a permanent bump to
+// the template. `ex.targetSets` itself is left untouched so taperSetSuggestion
+// still scales off the real program target, not whatever the athlete did.
+function initialWorkingSetCount(ex) {
+  const warmupSets = ex.warmupSets ?? 0
+  const previousWorkingSets = (ex.previousSets ?? []).filter((p) => p.setOrder >= warmupSets).length
+  return Math.max(ex.targetSets, previousWorkingSets)
 }
 
 // The persistable layout of a session: one entry per template-backed exercise,
@@ -130,6 +149,21 @@ function taperSetSuggestion(ex, taper) {
   if (!taper || taper.gymTargetPct === null || taper.gymTargetPct === undefined) return null
   if (taper.phase === 'game_day') return null
   return Math.max(1, Math.round(ex.targetSets * taper.gymTargetPct))
+}
+
+// Weight still sitting on the bar/machine right now, for the plate
+// calculator's add/remove-from-here mode: the last *completed* set before
+// this one on the same exercise, since that's the plate load the athlete
+// hasn't touched yet. Skipped sets or ones still mid-entry don't count —
+// only a logged set means the plates were actually racked at that weight.
+function lastCompletedWeightKg(sets, setIdx) {
+  for (let i = setIdx - 1; i >= 0; i--) {
+    const s = sets[i]
+    if (s.completed && s.weightKg !== '' && s.weightKg !== null && s.weightKg !== undefined) {
+      return Number(s.weightKg)
+    }
+  }
+  return null
 }
 
 // Body text for the native rest-over notification: "Trap Bar Deadlift · set 4 of 5".
@@ -1844,6 +1878,14 @@ export default function ActiveWorkoutPage() {
                     >
                       {SET_TYPE_LABELS[s.type] || workingSetNumber}
                     </button>
+                    <button
+                      type="button"
+                      className="remove-set-btn"
+                      onClick={() => removeSet(exIdx, setIdx)}
+                      aria-label={`Remove ${SET_TYPE_LABELS[s.type] ? s.type.toLowerCase() + ' ' : ''}set ${workingSetNumber}`}
+                    >
+                      <TrashIcon width={12} height={12} />
+                    </button>
                     {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
                       <div className="set-type-menu">
                         {SET_TYPE_OPTIONS.map((opt) => (
@@ -2208,6 +2250,7 @@ export default function ActiveWorkoutPage() {
         exerciseId={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseId : null}
         exerciseName={openPlateCalc ? exercises[openPlateCalc.exIdx].exerciseName : null}
         targetWeightKg={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].weightKg : ''}
+        currentlyLoadedKg={openPlateCalc ? lastCompletedWeightKg(exercises[openPlateCalc.exIdx].sets, openPlateCalc.setIdx) : null}
         onClose={() => setOpenPlateCalc(null)}
       />
 
