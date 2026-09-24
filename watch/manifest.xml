@@ -1,0 +1,29 @@
+<iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
+    <iq:application
+        id="ae554f2d-5454-4d1e-b1a5-0fc901ae950f"
+        type="datafield"
+        name="@Strings.AppName"
+        entry="CallahanDataFieldApp"
+        launcherIcon="@Drawables.LauncherIcon"
+        minApiLevel="3.2.0">
+
+        <!-- Sideload-only, not published — this id is a locally-generated
+             UUID (uuidgen), not a Garmin Connect IQ Store app id. -->
+
+        <iq:products>
+            <iq:product id="fr965"/>
+        </iq:products>
+
+        <iq:permissions>
+            <iq:uses-permission id="Communications"/>
+        </iq:permissions>
+
+        <iq:languages>
+            <iq:language>eng</iq:language>
+        </iq:languages>
+
+        <iq:barrels>
+        </iq:barrels>
+
+    </iq:application>
+</iq:manifest>
