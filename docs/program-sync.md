@@ -97,8 +97,19 @@ exercise merges, tempo backfill, notes backfill):
    they should).
 4. Only once that's clean: stop the backend container
    (`sudo docker compose -f docker-compose.prod.yml stop backend` — avoids
-   a write race with the running app), apply the same SQL to the real
-   file, re-run the foreign-key check, restart the backend.
+   a write race with the running app), **re-pull the live DB immediately
+   before overwriting and check it hasn't moved since step 1** (row counts
+   or max-id on `WorkoutSessions`/`ExerciseSets` — the tables a sync never
+   touches — against the same query run on the step-1 copy). If they've
+   moved, a session was logged in the gap: stop and re-diff against the
+   fresh pull rather than overwriting, since the write-back only ever
+   diffs the edited local copy and would silently clobber it. Only once
+   the re-pull matches: apply the same SQL to the real file, re-run the
+   foreign-key check, restart the backend.
+
+   This guard exists because a read-modify-write race in this exact
+   workflow hard-deleted a real workout session (#94) on 2026-09-25 — see
+   `decisions.md` in the vault for the incident.
 
    **When Claude Code is doing this:** overwriting the live DB file (and
    sometimes the container stop/start) gets blocked by the harness's own
