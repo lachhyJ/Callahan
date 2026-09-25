@@ -382,6 +382,13 @@ export default function ActiveWorkoutPage() {
   const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
+  // Cells actually typed into since their last blur, keyed the same as
+  // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
+  // field (e.g. tapping the plate-calc icon blurs whatever was focused)
+  // isn't an edit, and handleWeightBlur's cascade should only fire off a
+  // genuine one. A plain mutable Set, not state: it's read-then-cleared
+  // inside the same blur handler, never rendered.
+  const dirtyWeightCellsRef = useRef(new Set())
   const [openPlateCalc, setOpenPlateCalc] = useState(null)
   const [focusedRestExIdx, setFocusedRestExIdx] = useState(null)
   const [focusedSupersetRestExIdx, setFocusedSupersetRestExIdx] = useState(null)
@@ -607,6 +614,7 @@ export default function ActiveWorkoutPage() {
   }, [exercises])
 
   function updateSet(exIdx, setIdx, field, value) {
+    if (field === 'weightKg') dirtyWeightCellsRef.current.add(`${exIdx}-${setIdx}`)
     setExercises((prev) =>
       prev.map((ex, i) =>
         i !== exIdx
@@ -706,7 +714,14 @@ export default function ActiveWorkoutPage() {
         delete next[cellKey]
         return next
       })
-      cascadeWeightFromFirstWorking(exIdx, setIdx)
+      // Only cascade off a genuine edit — merely focusing then blurring a
+      // field (e.g. tapping the plate-calc icon blurs whatever was focused)
+      // isn't one, and re-cascading the same unchanged number just flips
+      // other sets to "confirmed" styling for no visible reason.
+      if (dirtyWeightCellsRef.current.has(cellKey)) {
+        dirtyWeightCellsRef.current.delete(cellKey)
+        cascadeWeightFromFirstWorking(exIdx, setIdx)
+      }
     }, 150)
   }
 
