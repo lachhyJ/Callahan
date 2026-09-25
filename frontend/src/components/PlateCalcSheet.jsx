@@ -147,7 +147,7 @@ function ExercisePlanNote({ plan, perSide }) {
         ))}
       </ol>
       <p className="plate-calc-popover-hint">
-        {plan.totalMoves} plate {plan.totalMoves === 1 ? 'change' : 'changes'} total from here to the end.
+        {plan.totalMoves} plate {plan.totalMoves === 1 ? 'change' : 'changes'}{suffix} total from here to the end.
       </p>
     </div>
   )
@@ -164,6 +164,8 @@ export default function PlateCalcSheet({
   currentlyLoadedKg,
   upcomingWeightsKg = [],
   previousTargetKg,
+  isCurrentSetWarmup = false,
+  anyWorkingSetConfirmed = false,
   onApplyWeight,
   onClose,
 }) {
@@ -171,6 +173,11 @@ export default function PlateCalcSheet({
 
   const [equipmentType, setEquipmentTypeState] = useState('barbell')
   const [hasTypeOverride, setHasTypeOverride] = useState(false)
+  // Collapsed by default once the exercise already has a confirmed working
+  // weight — a percentage jump off "last time" stops being the useful
+  // question at that point, but it should stay one click away rather than
+  // vanish, in case the wrong jump got applied and needs revisiting.
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(true)
 
   // Barbell-mode state
   const [savedEquipment, setSavedEquipment] = useState(null)
@@ -216,6 +223,15 @@ export default function PlateCalcSheet({
     setAvailablePlatesState(getAvailablePlates('kg'))
     setAvailableDumbbellsState(getAvailableDumbbells())
   }, [open, exerciseId, exerciseName])
+
+  // Separate from the reset above (which shouldn't re-fire just because
+  // applying a suggestion flips anyWorkingSetConfirmed mid-session — that
+  // would also wipe the custom-bar-weight form state). Only re-derives the
+  // collapsed/expanded default when the sheet opens for a given exercise.
+  useEffect(() => {
+    if (!open) return
+    setSuggestionsExpanded(!anyWorkingSetConfirmed)
+  }, [open, exerciseId])
 
   useEffect(() => {
     if (!open) return
@@ -346,34 +362,42 @@ export default function PlateCalcSheet({
   // the single-set delta above — it does not search alternate ways to
   // build a given weight to reduce swaps further (e.g. 15kg as 10+5 instead
   // of a single 15 plate), which is a real but separately-scoped upgrade.
+  const barbellHasBaseline = equipmentType === 'barbell' && loadedPerSide !== null && loadedPerSide !== undefined && loadedPerSide >= 0
+  const addedHasBaseline = equipmentType === 'added' && loadedAddedLoad !== null && loadedAddedLoad !== undefined && loadedAddedLoad >= 0
   const barbellChain =
     equipmentType === 'barbell' && result
-      ? [loadedPerSide, perSide, ...upcomingWeightsKg.map((w) => (w - barWeightKg) / 2)].filter(
+      ? [barbellHasBaseline ? loadedPerSide : null, perSide, ...upcomingWeightsKg.map((w) => (w - barWeightKg) / 2)].filter(
           (v) => v !== null && v !== undefined && v >= 0,
         )
       : null
   const addedChain =
     equipmentType === 'added' && addedResult
-      ? [loadedAddedLoad, addedLoad, ...upcomingWeightsKg.map((w) => w - addedBaseKg)].filter(
+      ? [addedHasBaseline ? loadedAddedLoad : null, addedLoad, ...upcomingWeightsKg.map((w) => w - addedBaseKg)].filter(
           (v) => v !== null && v !== undefined && v >= 0,
         )
       : null
   const exercisePlan = (() => {
     const chain = barbellChain ?? addedChain
+    const hasBaseline = barbellHasBaseline || addedHasBaseline
     if (!chain || chain.length < 2) return null
     const steps = []
     for (let i = 1; i < chain.length; i++) {
       steps.push(calculatePlateDelta(chain[i - 1], chain[i], availablePlates))
     }
-    const totalMoves = steps.reduce(
+    // Only drop the first computed transition when chain[0] was actually
+    // the "currently loaded" baseline (already shown above as the main
+    // delta) — without a baseline, chain[0] *is* the current target, so
+    // every computed step here is a genuinely still-upcoming one and none
+    // of them were shown elsewhere. Getting this wrong previously dropped a
+    // real transition from the visible list while still counting its moves
+    // in the total, so the total didn't match what was on screen.
+    const upcomingSteps = hasBaseline ? steps.slice(1) : steps
+    const totalMoves = upcomingSteps.reduce(
       (sum, { toAdd, toRemove }) =>
         sum + toAdd.reduce((a, { count }) => a + count, 0) + toRemove.reduce((a, { count }) => a + count, 0),
       0,
     )
-    // The transition into the *current* set was already shown above as the
-    // main delta — only the remaining, still-upcoming transitions belong in
-    // "rest of this exercise".
-    return { upcomingSteps: steps.slice(1), totalMoves }
+    return { upcomingSteps, totalMoves }
   })()
 
   // "What should my next jump be" — percentage suggestions off last
@@ -451,9 +475,19 @@ export default function PlateCalcSheet({
               Target weight: {hasTarget ? `${targetWeightKg}kg` : '—'}
             </p>
 
-            {progressionSuggestions.length > 0 && (
+            {progressionSuggestions.length > 0 && !isCurrentSetWarmup && (
               <div className="plate-calc-sheet-bars">
-                <span className="plate-calc-sheet-label">Next jump, off last time ({previousTargetKg}kg)</span>
+                <div className="plate-calc-sheet-label-row">
+                  <span className="plate-calc-sheet-label">Next jump, off last time ({previousTargetKg}kg)</span>
+                  <button
+                    type="button"
+                    className="plate-calc-suggestions-toggle"
+                    onClick={() => setSuggestionsExpanded((v) => !v)}
+                  >
+                    {suggestionsExpanded ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {suggestionsExpanded && (
                 <div className="plate-calc-chip-row">
                   {progressionSuggestions.map(({ pct, achievable }) => (
                     <button
@@ -466,6 +500,7 @@ export default function PlateCalcSheet({
                     </button>
                   ))}
                 </div>
+                )}
               </div>
             )}
 

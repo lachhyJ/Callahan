@@ -1459,6 +1459,23 @@ td {
   color: var(--text-tertiary);
 }
 
+.plate-calc-sheet-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.plate-calc-suggestions-toggle {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  color: var(--accent);
+  touch-action: manipulation;
+}
+
 .plate-calc-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -1573,12 +1590,6 @@ td {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
-}
-
-.weight-autofilled-mark {
-  color: var(--text-tertiary);
-  font-size: var(--text-sm);
-  line-height: 1;
 }
 
 .weight-autofilled-hint {

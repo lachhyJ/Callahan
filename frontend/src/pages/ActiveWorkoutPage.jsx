@@ -660,6 +660,36 @@ export default function ActiveWorkoutPage() {
     updateSet(exIdx, setIdx, 'weightKg', weightKg)
   }
 
+  // Cascade weight from the exercise's first working set into every other
+  // working set that's still on the app's own suggestion (grey/unconfirmed)
+  // — covers both a blank added-mid-session row and a pre-filled-from-last-time
+  // row alike. Never touches Warmup, an already-ticked set, or a set the
+  // athlete has typed a different value into themselves (a deliberate
+  // ramp/pyramid). The cascaded value counts as user-entered too, same as
+  // if it had been typed directly — it won't grey back out, and a second
+  // cascade (editing set 1 again) won't re-overwrite it. Shared by manual
+  // typing (handleWeightBlur) and applying a plate-calc percentage
+  // suggestion (onApplyWeight) — either path setting the first working
+  // set's weight should cascade the same way.
+  function cascadeWeightFromFirstWorking(exIdx, setIdx) {
+    setExercises((prev) =>
+      prev.map((ex, i) => {
+        if (i !== exIdx) return ex
+        const firstWorkingIdx = ex.sets.findIndex((s) => s.type !== 'Warmup')
+        const value = ex.sets[setIdx]?.weightKg
+        if (setIdx !== firstWorkingIdx || !value) return ex
+        return {
+          ...ex,
+          sets: ex.sets.map((s, j) =>
+            j === setIdx || s.type === 'Warmup' || s.completed || s.weightIsUserEntered
+              ? s
+              : { ...s, weightKg: value, weightIsUserEntered: true }
+          ),
+        }
+      })
+    )
+  }
+
   function handleWeightBlur(cellKey, exIdx, setIdx) {
     setTimeout(() => {
       setFocusedWeightCell((prev) => (prev === cellKey ? null : prev))
@@ -673,31 +703,7 @@ export default function ActiveWorkoutPage() {
         delete next[cellKey]
         return next
       })
-      // Cascade weight from the first working set into every other working
-      // set that's still on the app's own suggestion (grey/unconfirmed) —
-      // covers both a blank added-mid-session row and a pre-filled-from-last-time
-      // row alike. Never touches Warmup, an already-ticked set, or a set the
-      // athlete has typed a different value into themselves (a deliberate
-      // ramp/pyramid). The cascaded value counts as user-entered too, same as
-      // if it had been typed directly — it won't grey back out, and a second
-      // cascade (editing set 1 again) won't re-overwrite it.
-      setExercises((prev) =>
-        prev.map((ex, i) => {
-          if (i !== exIdx) return ex
-          const firstWorkingIdx = ex.sets.findIndex((s) => s.type !== 'Warmup')
-          if (setIdx !== firstWorkingIdx) return ex
-          const value = ex.sets[setIdx].weightKg
-          if (value === '') return ex
-          return {
-            ...ex,
-            sets: ex.sets.map((s, j) =>
-              j === setIdx || s.type === 'Warmup' || s.completed || s.weightIsUserEntered
-                ? s
-                : { ...s, weightKg: value, weightIsUserEntered: true }
-            ),
-          }
-        })
-      )
+      cascadeWeightFromFirstWorking(exIdx, setIdx)
     }, 150)
   }
 
@@ -1889,7 +1895,7 @@ export default function ActiveWorkoutPage() {
             onChange={(e) => updateNotes(exIdx, e.target.value)}
           />
           {ex.sets.some((s) => !s.weightIsUserEntered && s.weightKg !== '' && !s.completed) && (
-            <p className="weight-autofilled-hint">* auto-filled — not yet your value for today</p>
+            <p className="weight-autofilled-hint">Grey weights are auto-filled — not yet your value for today</p>
           )}
           <table>
             <thead>
@@ -2050,9 +2056,6 @@ export default function ActiveWorkoutPage() {
                             onBlur={() => handleWeightBlur(cellKey, exIdx, setIdx)}
                             className={!s.weightIsUserEntered && s.weightKg !== '' && !s.completed ? 'prefilled' : ''}
                           />
-                          {!s.weightIsUserEntered && s.weightKg !== '' && !s.completed && (
-                            <span className="weight-autofilled-mark" title="Auto-filled — not yet your value for today">*</span>
-                          )}
                         </div>
                       )
                     })()}
@@ -2296,8 +2299,19 @@ export default function ActiveWorkoutPage() {
         previousTargetKg={
           openPlateCalc ? Number(exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].previous?.weightKg ?? NaN) : NaN
         }
+        isCurrentSetWarmup={openPlateCalc ? exercises[openPlateCalc.exIdx].sets[openPlateCalc.setIdx].type === 'Warmup' : false}
+        anyWorkingSetConfirmed={
+          openPlateCalc
+            ? exercises[openPlateCalc.exIdx].sets.some((s) => s.type !== 'Warmup' && s.weightIsUserEntered)
+            : false
+        }
         onApplyWeight={
-          openPlateCalc ? (kg) => updateSet(openPlateCalc.exIdx, openPlateCalc.setIdx, 'weightKg', String(kg)) : undefined
+          openPlateCalc
+            ? (kg) => {
+                updateSet(openPlateCalc.exIdx, openPlateCalc.setIdx, 'weightKg', String(kg))
+                cascadeWeightFromFirstWorking(openPlateCalc.exIdx, openPlateCalc.setIdx)
+              }
+            : undefined
         }
         onClose={() => setOpenPlateCalc(null)}
       />
