@@ -35,6 +35,24 @@ file before committing.
 `dotnet ef migrations add` reads the built assembly. `--no-build` means it reads
 a *stale* one. The time it saves is the time it takes to be wrong silently.
 
+This holds for **every** `dotnet ef` subcommand, not just `add`. Scaffolding a
+migration leaves the on-disk assembly stale by construction, so the next `ef`
+call after it is the one most likely to be wrong:
+
+- `migrations remove --no-build` after a fresh `add` sees the *previous*
+  migration as the last one and deletes it, an unrelated, already-committed
+  migration, and reverts the snapshot to match. The just-scaffolded files are
+  untracked and stay on disk, which hides the damage. Always check the
+  `Removing migration 'NAME'` line names the migration you meant. Recovery:
+  `git checkout` the deleted migration and `AppDbContextModelSnapshot.cs`,
+  delete the stray scaffold, rebuild, retry.
+- `database update --no-build` against a scratch DB straight after `add` aborts
+  with `PendingModelChangesWarning`: the stale assembly's snapshot predates the
+  new column while the entity class compiled into it doesn't.
+
+Run `dotnet build` between `migrations add` and any `ef` command that verifies,
+applies or removes it.
+
 ## Rule 2 — a generated artefact is unverified until read
 
 After scaffolding, open the migration and confirm it contains the operations you
@@ -55,6 +73,15 @@ specifically that:
   `StoreDecimalsAsReal` migration), so a new decimal column emitted as `TEXT`
   is a bug, not a default
 - `AppDbContextModelSnapshot.cs` was updated in the same scaffold
+
+**Also read it for operations that assert the status quo.** Adding a column to
+a `HasData`-seeded entity makes the scaffolder emit one `UpdateData` per seed row
+re-stating the new column's default (one T4 change produced 46 of them beside 4
+`AddColumn`s). `AddColumn`'s `defaultValue` already sets existing rows, so they
+do nothing — except hand seed-management ownership of the column (see Rule 4),
+which is actively harmful if the app also writes it. Delete every `UpdateData`
+that doesn't change a value, then confirm the snapshot is still in sync with
+`dotnet ef migrations has-pending-model-changes` and an `Up` against a scratch DB.
 
 **Code generators report that they ran, not that they produced anything.**
 Exit code 0 and "Done." mean the tool completed, not that the artefact is

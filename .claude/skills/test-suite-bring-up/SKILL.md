@@ -35,6 +35,14 @@ mutations that target different failure classes:
 Revert each mutation before introducing the next. Record which mutation each
 test caught — a test that catches none of them is the finding.
 
+**Revert at edit level, not to HEAD, when the code under test is uncommitted.**
+`git checkout <file>` / `git restore <file>` resets to HEAD — which, mid-feature,
+silently deletes the very code you were testing (seen: two new exported helpers
+vanished, and the "restored" run showed 6 failures from tests importing them).
+Reverse the specific edit, or `git stash` a snapshot just before mutating and
+pop it after. Then re-run and confirm the suite returns to the **exact**
+pre-mutation pass count, not just "mostly green".
+
 ## Step 2 — a surviving mutant is a question, not a verdict
 
 Five of the six were caught. The survivor was deleting a floating-point epsilon

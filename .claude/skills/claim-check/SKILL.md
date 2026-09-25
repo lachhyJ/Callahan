@@ -53,6 +53,16 @@ priorities, not about what's in the database. When the justification for a
 destructive action is an empirical claim and the claim is cheap to check,
 check it first and report the inversion.
 
+**"Can't reproduce it here" narrows the cause; it doesn't end the
+diagnosis.** An iOS rest-timer bug failed at the gym and not at the desk, and
+was nearly parked as unreproducible. But the differences between the two
+places mapped straight onto the candidate mechanisms: Bluetooth headphones
+connecting and dropping (audio route changes), a pocketed phone staying
+screen-off longer, longer real rests leaving audio hardware cold, weaker
+network. Several can be simulated at a desk. When a symptom only appears in
+one environment, list that environment's concrete differences and test each
+against the hypotheses before calling it flaky.
+
 **A user attributing an effect to a cause has given you a hypothesis, not
 evidence.** "Why does marking it complete change the row height?" names
 `.completed` as the cause. Treat the *effect* as the claim and the *cause*
@@ -128,6 +138,18 @@ not as prose in a label.
 sweep rows are what exposed that one. That signal only appears because the
 fixture data is clean; on noisier data the same broken harness produces
 rows that differ slightly, which reads as a real small effect.
+
+**A heuristic beating the optimum is a harness bug.** A plate-move sim
+scored a greedy heuristic at 1070 moves against a "DP-optimal" 1126, and that
+got reported before anyone objected. The optimizer searched only heavy-inside
+stacks; the heuristic could produce any order. Whenever a heuristic is compared
+to a computed optimum or bound, assert heuristic ≥ optimum on every row in
+code: a violation means the two searched different spaces or scored different
+objectives, and no number is readable until it's fixed. Check the objective
+also charges every cost the real process pays, including at the ends: the same
+sim first reported a 28–38% saving because it never charged loading from empty
+or stripping at the end, and the optimizer exploited that. Counting the ends
+cut it to ~3%.
 
 **"No effect" needs its plumbing checked hardest**, because it's the result
 that requires no follow-up work to accept. A finding that demands more
@@ -235,6 +257,17 @@ Converse checked?  [looked for records that fit the precondition but not
                    the predicted symptom, and explained each?]
 Verdict:           [finding | hypothesis | needs more work]
 ```
+
+**A split by provenance needs a validated discriminator.** Imported vs
+app-logged sessions: `DeletedAt` was all NULL, `StartedAt` was backfilled by
+the importer, `WorkoutTemplateId` was NULL for early in-app rows. Each gave a
+confident 0/91 or 91/0. What worked was a provenance *artefact*: imported
+timestamps are whole-minute, app-written ones carry milliseconds (78/13), and
+it reconciled exactly against the import log and the primary-key range. A
+column's name is a claim about its semantics. Check each candidate's actual
+distribution (0% or 100% means it isn't discriminating), reconcile the chosen
+split against an independent record, and state the discriminator next to the
+number.
 
 **Can it separate?** — the sharpest line. A metric built to show the
 on/off-field labeller was over-counting measured "labeller output during

@@ -62,6 +62,12 @@ for (const { name, path } of SCREENS) {
     // fullPage would just be the viewport anyway. The top of each screen is the
     // stable part worth guarding — content further down carried the seed's
     // daily date drift regardless.
+    //
+    // Consequence: anything below the first viewport (e.g. Trends' lower sections,
+    // thousands of px down) or on a detail route (/reports/{y}/{m}) is NOT covered.
+    // Re-running this suite after such a change yields only date-drift noise. Either
+    // add a targeted entry that scrolls/navigates to the change and screenshots that
+    // element, or treat DOM + geometry checks as the verification of record.
     await expect(page).toHaveScreenshot(`${name}.png`)
   })
 }
