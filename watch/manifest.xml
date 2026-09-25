@@ -1,6 +1,6 @@
 <iq:manifest version="3" xmlns:iq="http://www.garmin.com/xml/connectiq">
     <iq:application
-        id="ae554f2d-5454-4d1e-b1a5-0fc901ae950f"
+        id="a1fd9442-a8c5-4251-a5db-f49a917c9d30"
         type="datafield"
         name="@Strings.AppName"
         entry="CallahanDataFieldApp"
