@@ -1,0 +1,8 @@
+<strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+
+    <string id="AppName">Rest Timer</string>
+
+    <string id="BaseUrlTitle">Callahan base URL</string>
+    <string id="TokenTitle">Auth token</string>
+
+</strings>
