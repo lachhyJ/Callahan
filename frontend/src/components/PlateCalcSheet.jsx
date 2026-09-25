@@ -402,9 +402,13 @@ export default function PlateCalcSheet({
   // already-known weight (whatever's currently in that field, auto-filled
   // or typed), starting from whatever's actually loaded right now if
   // anything is. Each step reuses the same greedy per-weight breakdown as
-  // the single-set delta above — it does not search alternate ways to
-  // build a given weight to reduce swaps further (e.g. 15kg as 10+5 instead
-  // of a single 15 plate), which is a real but separately-scoped upgrade.
+  // the single-set delta above. Searching alternate ways to build a weight
+  // (e.g. keeping a 15 and adding a 10 rather than swapping to 20+5) was
+  // measured against real session history and deliberately not built: with
+  // the heaviest plate innermost it saves ~3% of plate moves once loading
+  // the empty bar and stripping it at the end are counted. Any future
+  // version would also have to derive the "currently loaded" baseline from
+  // the plan rather than from the last weight's greedy fill.
   const barbellHasBaseline = equipmentType === 'barbell' && loadedPerSide !== null && loadedPerSide !== undefined && loadedPerSide >= 0
   const addedHasBaseline = equipmentType === 'added' && loadedAddedLoad !== null && loadedAddedLoad !== undefined && loadedAddedLoad >= 0
   const barbellChain =
