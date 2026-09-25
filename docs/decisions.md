@@ -704,6 +704,24 @@ hits: probe outward with `elementFromPoint` until the point stops resolving to t
 enumeration before trusting the result. And when a fix is defined by *not* changing a
 measurement, that measurement has stopped being the check.
 
+### An optimizer's saving is only as honest as the costs it's charged
+**2026-09-25.** The plate calculator plans every plate change across an exercise's
+remaining sets, building each weight the standard way (heaviest plates first). The obvious
+upgrade was to search other ways to build the same weight. For example, going from 15 to
+25kg a side, keep the 15 and add a 10 rather than swapping to 20+5. Before building it, I
+simulated both over every barbell exercise in my logged history.
+
+The first run said the search cut plate changes by 28–38%. It was wrong. The cost counted
+only changes between sets, so the optimizer built the first set out of a pile of small
+plates. Every later jump became a single add, and nothing charged it for putting those
+plates on or taking them off at the end. Once loading and stripping the bar counted, the
+saving fell to about 3%, a third of a plate change per session. It rises to about 12% only
+if you'll stack a lighter plate inside a heavier one. I didn't build it, and I didn't add
+the mode toggle I'd planned for it.
+
+**How to apply:** before trusting an optimizer's headline number, check that its cost
+includes the costs at both ends of the sequence. Anything it isn't charged for, it will use.
+
 ### A behaviour-preserving refactor is proven by diffing the output
 **2026-09-02.** Extracting shared chart rendering was validated by rendering all seven
 components to static markup with fixture data before and after the change, and diffing.
