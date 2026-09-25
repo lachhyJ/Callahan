@@ -1394,6 +1394,32 @@ td {
   overflow-y: auto;
 }
 
+.plate-calc-sheet-grab-zone {
+  /* Whole non-interactive top of the sheet (handle, title, target weight)
+     is swipe-to-close, not just the thin handle bar — the close button
+     inside is excluded in JS (handleDragStart bails on button/a/input
+     targets) rather than by carving a CSS hole out of this area. */
+  touch-action: none;
+  cursor: grab;
+}
+
+.plate-calc-sheet-handle-row {
+  display: flex;
+  justify-content: center;
+  /* 44px total tap height (min touch target) so the drag-to-close area is
+     easy to grab on a phone without the pill itself needing to look
+     oversized — padding carries the target, not the visible handle. */
+  padding: calc(var(--space-md) + 4px) 0;
+  margin: calc((var(--space-md) + 4px) * -1) 0 calc((var(--space-md) - var(--space-2xs)) * -1);
+}
+
+.plate-calc-sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border);
+}
+
 .plate-calc-sheet-subtitle {
   margin: 0;
   font-size: var(--text-sm);

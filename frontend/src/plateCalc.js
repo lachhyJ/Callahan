@@ -174,6 +174,13 @@ export function setAvailableDumbbells(dumbbells) {
 // plate you've got), for turning a percentage-jump suggestion into a weight
 // you can actually load rather than one that only exists on paper. Never
 // negative — a jump off a very light weight can't round below zero.
+// Cleans up binary floating-point noise (e.g. 66.6 / 2 = 23.299999999999997)
+// for display only — never used in the plate-breakdown math itself, which
+// stays on the raw value.
+export function roundDisplay(value) {
+  return Math.round(value * 100) / 100
+}
+
 export function roundToStep(value, step) {
   if (!step || step <= 0) return Math.max(0, value)
   return Math.max(0, Math.round(value / step) * step)

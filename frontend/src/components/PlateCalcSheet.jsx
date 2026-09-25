@@ -7,6 +7,7 @@ import {
   calculatePlateDelta,
   calculatePlates,
   clearCustomEquipment,
+  roundDisplay,
   roundToStep,
   clearEquipmentTypeOverride,
   getAvailableDumbbells,
@@ -191,6 +192,10 @@ export default function PlateCalcSheet({
   const [availableDumbbells, setAvailableDumbbellsState] = useState(() => getAvailableDumbbells())
 
   const sheetRef = useRef(null)
+  // Pointer-drag state lives in a ref, not React state — the transform is
+  // written straight to the DOM on every pointermove so dragging tracks the
+  // finger at 60fps without a re-render per frame.
+  const dragStateRef = useRef({ dragging: false, startY: 0, currentY: 0 })
 
   // The sheet is `position: fixed; bottom: 0` against the LAYOUT viewport,
   // which doesn't shrink when the keyboard opens. With no adjustment,
@@ -241,6 +246,44 @@ export default function PlateCalcSheet({
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [open, onClose])
+
+  // Swipe-down-to-close, in addition to the × button/backdrop/Escape already
+  // wired above. Only drags downward (negative delta is clamped to 0) — this
+  // is a close gesture, not a way to overshoot the sheet upward.
+  const DRAG_CLOSE_THRESHOLD_PX = 100
+
+  function handleDragStart(e) {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    // The grab zone now spans the whole non-interactive top of the sheet
+    // (handle, title, target weight) — skip starting a drag on the close
+    // button itself so its click still fires normally.
+    if (e.target.closest('button, a, input')) return
+    dragStateRef.current = { dragging: true, startY: e.clientY, currentY: 0 }
+    if (sheetRef.current) sheetRef.current.style.transition = 'none'
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+
+  function handleDragMove(e) {
+    const state = dragStateRef.current
+    if (!state.dragging) return
+    const deltaY = Math.max(0, e.clientY - state.startY)
+    state.currentY = deltaY
+    if (sheetRef.current) sheetRef.current.style.transform = `translateY(${deltaY}px)`
+  }
+
+  function handleDragEnd(e) {
+    const state = dragStateRef.current
+    if (!state.dragging) return
+    state.dragging = false
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    if (sheetRef.current) {
+      sheetRef.current.style.transition = ''
+      sheetRef.current.style.transform = ''
+    }
+    if (state.currentY > DRAG_CLOSE_THRESHOLD_PX) onClose()
+  }
 
   function selectSaved() {
     if (!savedEquipment) return
@@ -463,17 +506,28 @@ export default function PlateCalcSheet({
       >
         {open && (
           <>
-            <div className="day-detail-sheet-header">
-              <div>
-                <strong>Plate calculator</strong>
-                {exerciseName && <p className="plate-calc-sheet-subtitle">{exerciseName}</p>}
+            <div
+              className="plate-calc-sheet-grab-zone"
+              onPointerDown={handleDragStart}
+              onPointerMove={handleDragMove}
+              onPointerUp={handleDragEnd}
+              onPointerCancel={handleDragEnd}
+            >
+              <div className="plate-calc-sheet-handle-row">
+                <div className="plate-calc-sheet-handle" />
               </div>
-              <button type="button" className="sheet-close-btn" onClick={onClose} aria-label="Close">×</button>
-            </div>
+              <div className="day-detail-sheet-header">
+                <div>
+                  <strong>Plate calculator</strong>
+                  {exerciseName && <p className="plate-calc-sheet-subtitle">{exerciseName}</p>}
+                </div>
+                <button type="button" className="sheet-close-btn" onClick={onClose} aria-label="Close">×</button>
+              </div>
 
-            <p className="plate-calc-sheet-target">
-              Target weight: {hasTarget ? `${targetWeightKg}kg` : '—'}
-            </p>
+              <p className="plate-calc-sheet-target">
+                Target weight: {hasTarget ? `${targetWeightKg}kg` : '—'}
+              </p>
+            </div>
 
             {progressionSuggestions.length > 0 && !isCurrentSetWarmup && (
               <div className="plate-calc-sheet-bars">
@@ -496,7 +550,7 @@ export default function PlateCalcSheet({
                       className="plate-calc-chip"
                       onClick={() => onApplyWeight?.(achievable)}
                     >
-                      +{pct}% → {achievable}kg
+                      +{pct}% → {roundDisplay(achievable)}kg
                     </button>
                   ))}
                 </div>
@@ -512,7 +566,7 @@ export default function PlateCalcSheet({
                 {result && (
                   <>
                     <BarDiagram breakdown={result.breakdown} maxPlate={maxPlate} barWeightKg={barWeightKg} />
-                    <p className="plate-calc-sheet-perside">{perSide}kg per side</p>
+                    <p className="plate-calc-sheet-perside">{roundDisplay(perSide)}kg per side</p>
                     <PlateDeltaNote delta={plateDelta} perSide />
                     {result.breakdown.length === 0 && <p className="plate-calc-popover-hint">Just the bar — no plates needed.</p>}
                     {result.remainder > 0 && (
@@ -593,17 +647,17 @@ export default function PlateCalcSheet({
                 )}
                 {perDumbbell !== null && (
                   <>
-                    <p className="plate-calc-sheet-perside">{perDumbbell}kg per dumbbell</p>
+                    <p className="plate-calc-sheet-perside">{roundDisplay(perDumbbell)}kg per dumbbell</p>
                     {dumbbellMatch.exact !== undefined && (
                       <p className="plate-calc-popover-hint">That's a size you have — grab two.</p>
                     )}
                     {dumbbellMatch.exact === undefined && (dumbbellMatch.below !== undefined || dumbbellMatch.above !== undefined) && (
                       <div className="plate-calc-dumbbell-options">
                         {dumbbellMatch.below !== undefined && (
-                          <p>Round down: <strong>{dumbbellMatch.below}kg</strong> each — {dumbbellMatch.below * 2}kg combined</p>
+                          <p>Round down: <strong>{dumbbellMatch.below}kg</strong> each — {roundDisplay(dumbbellMatch.below * 2)}kg combined</p>
                         )}
                         {dumbbellMatch.above !== undefined && (
-                          <p>Round up: <strong>{dumbbellMatch.above}kg</strong> each — {dumbbellMatch.above * 2}kg combined</p>
+                          <p>Round up: <strong>{dumbbellMatch.above}kg</strong> each — {roundDisplay(dumbbellMatch.above * 2)}kg combined</p>
                         )}
                       </div>
                     )}
@@ -643,7 +697,7 @@ export default function PlateCalcSheet({
                 {addedResult && (
                   <>
                     <BarDiagram breakdown={addedResult.breakdown} maxPlate={maxPlate} barWeightKg={addedBaseKg} />
-                    <p className="plate-calc-sheet-perside">{addedLoad}kg to load</p>
+                    <p className="plate-calc-sheet-perside">{roundDisplay(addedLoad)}kg to load</p>
                     <PlateDeltaNote delta={addedPlateDelta} />
                     {addedResult.breakdown.length > 0 && (
                       <ul className="plate-calc-breakdown">
