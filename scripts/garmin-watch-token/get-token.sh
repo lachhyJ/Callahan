@@ -22,13 +22,46 @@ if [ -z "$account" ]; then
   exit 1
 fi
 
-password=$(security find-generic-password -s "$SERVICE" -w)
+# Credentials go to the HTTP request via environment variables read inside
+# Python, not as command-line arguments (to python3, curl, or anything
+# else) — argv is visible to any other local process via `ps` for as long
+# as the process runs. The whole login call happens inside Python (urllib)
+# rather than shelling out to curl with the JSON body on its argv, for the
+# same reason.
+export CALLAHAN_ACCOUNT="$account"
+export CALLAHAN_BASE_URL="$BASE_URL"
+export CALLAHAN_PASSWORD
+CALLAHAN_PASSWORD=$(security find-generic-password -s "$SERVICE" -w)
 
-response=$(curl -sf -X POST "$BASE_URL/api/auth/login" \
-  -H "Content-Type: application/json" \
-  -d "$(python3 -c 'import json,sys; print(json.dumps({"username": sys.argv[1], "password": sys.argv[2]}))' "$account" "$password")")
+token=$(python3 <<'PYEOF'
+import json
+import os
+import sys
+import urllib.error
+import urllib.request
 
-token=$(echo "$response" | python3 -c 'import json,sys; print(json.load(sys.stdin)["token"])')
+base_url = os.environ["CALLAHAN_BASE_URL"]
+body = json.dumps({
+    "username": os.environ["CALLAHAN_ACCOUNT"],
+    "password": os.environ["CALLAHAN_PASSWORD"],
+}).encode()
+
+req = urllib.request.Request(
+    f"{base_url}/api/auth/login",
+    data=body,
+    headers={"Content-Type": "application/json"},
+    method="POST",
+)
+try:
+    with urllib.request.urlopen(req) as resp:
+        print(json.load(resp)["token"])
+except urllib.error.HTTPError as e:
+    print(f"Login failed: {e.code} {e.reason}", file=sys.stderr)
+    sys.exit(1)
+PYEOF
+)
+
+unset CALLAHAN_ACCOUNT CALLAHAN_PASSWORD CALLAHAN_BASE_URL
 
 if command -v pbcopy >/dev/null; then
   echo -n "$token" | pbcopy
