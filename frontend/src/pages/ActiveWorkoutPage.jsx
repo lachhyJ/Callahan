@@ -667,11 +667,14 @@ export default function ActiveWorkoutPage() {
   // athlete has typed a different value into themselves (a deliberate
   // ramp/pyramid). The cascaded value counts as user-entered too, same as
   // if it had been typed directly — it won't grey back out, and a second
-  // cascade (editing set 1 again) won't re-overwrite it. Shared by manual
-  // typing (handleWeightBlur) and applying a plate-calc percentage
-  // suggestion (onApplyWeight) — either path setting the first working
-  // set's weight should cascade the same way.
-  function cascadeWeightFromFirstWorking(exIdx, setIdx) {
+  // cascade (editing set 1 again) won't re-overwrite it. Used for manual
+  // typing (handleWeightBlur) — an edit elsewhere in the exercise is treated
+  // as deliberate and left alone. `force` (used by the plate calc's
+  // percentage-jump chips, see onApplyWeight below) instead overwrites
+  // every other non-completed working set regardless of
+  // its confirmed state, since tapping a jump chip is read as "recompute my
+  // whole working weight for this exercise," not a stray edit.
+  function cascadeWeightFromFirstWorking(exIdx, setIdx, force = false) {
     setExercises((prev) =>
       prev.map((ex, i) => {
         if (i !== exIdx) return ex
@@ -681,7 +684,7 @@ export default function ActiveWorkoutPage() {
         return {
           ...ex,
           sets: ex.sets.map((s, j) =>
-            j === setIdx || s.type === 'Warmup' || s.completed || s.weightIsUserEntered
+            j === setIdx || s.type === 'Warmup' || s.completed || (!force && s.weightIsUserEntered)
               ? s
               : { ...s, weightKg: value, weightIsUserEntered: true }
           ),
@@ -2309,7 +2312,7 @@ export default function ActiveWorkoutPage() {
           openPlateCalc
             ? (kg) => {
                 updateSet(openPlateCalc.exIdx, openPlateCalc.setIdx, 'weightKg', String(kg))
-                cascadeWeightFromFirstWorking(openPlateCalc.exIdx, openPlateCalc.setIdx)
+                cascadeWeightFromFirstWorking(openPlateCalc.exIdx, openPlateCalc.setIdx, true)
               }
             : undefined
         }
