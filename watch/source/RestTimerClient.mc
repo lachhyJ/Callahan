@@ -30,7 +30,7 @@ class RestTimerClient {
     function fetchCurrent(callback as Method) as Void {
         if (USE_HARDCODED_RESPONSE) {
             var fakeEndsAt = Time.now().add(new Time.Duration(90));
-            var result = new RestTimerCurrentResult("debug-timer", fakeEndsAt, "Back Squat", "5", 2, 4);
+            var result = new RestTimerCurrentResult("debug-timer", fakeEndsAt, "Back Squat", "5", 2, 4, Time.now());
             callback.invoke(200, result);
             return;
         }

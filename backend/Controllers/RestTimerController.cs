@@ -105,7 +105,8 @@ public class RestTimerController : ControllerBase
             newest.Timer.ExerciseName,
             newest.Timer.TargetReps,
             newest.Timer.NextSetNumber,
-            newest.Timer.TotalSets));
+            newest.Timer.TotalSets,
+            DateTimeOffset.UtcNow));
     }
 
     private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, CancellationToken token)

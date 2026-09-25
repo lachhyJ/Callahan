@@ -15,6 +15,11 @@ class RestTimerCurrentResult {
     var targetReps as String;
     var nextSetNumber as Number;
     var totalSets as Number;
+    // The server's clock at the moment it answered — lets RestTimerState
+    // correct for skew between the watch's clock and the server's (plan
+    // 2.4). Garmin devices sync time via GPS/phone so skew is normally
+    // small, but it isn't zero.
+    var serverNowUtc as Moment;
 
     function initialize(
         timerIdIn as String,
@@ -22,7 +27,8 @@ class RestTimerCurrentResult {
         exerciseNameIn as String,
         targetRepsIn as String,
         nextSetNumberIn as Number,
-        totalSetsIn as Number
+        totalSetsIn as Number,
+        serverNowUtcIn as Moment
     ) {
         timerId = timerIdIn;
         endsAtUtc = endsAtUtcIn;
@@ -30,6 +36,7 @@ class RestTimerCurrentResult {
         targetReps = targetRepsIn;
         nextSetNumber = nextSetNumberIn;
         totalSets = totalSetsIn;
+        serverNowUtc = serverNowUtcIn;
     }
 
     // The response's endsAtUtc is ISO-8601, e.g. "2026-09-24T13:05:32.1234567Z".
@@ -66,7 +73,8 @@ class RestTimerCurrentResult {
             data["exerciseName"] as String,
             data["targetReps"] as String,
             data["nextSetNumber"] as Number,
-            data["totalSets"] as Number
+            data["totalSets"] as Number,
+            parseIso8601(data["serverNowUtc"] as String)
         );
     }
 }

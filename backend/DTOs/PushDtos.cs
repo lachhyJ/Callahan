@@ -14,4 +14,5 @@ public record RestTimerCurrentResponse(
     string ExerciseName,
     string TargetReps,
     int NextSetNumber,
-    int TotalSets);
+    int TotalSets,
+    DateTimeOffset ServerNowUtc);

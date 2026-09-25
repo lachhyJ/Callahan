@@ -30,6 +30,12 @@ class RestTimerState {
     private var _nextSetNumber as Number?;
     private var _totalSets as Number?;
 
+    // serverNow - deviceNow at the last successful fetch (plan 2.4). Applied
+    // to remainingSeconds() so the countdown tracks the server's clock
+    // rather than the watch's. Recomputed on every 200, including while
+    // idle, so it self-corrects — no need to persist it across a restart.
+    private var _clockOffset as Duration;
+
     function initialize(client as RestTimerClient) {
         _client = client;
         _state = STATE_IDLE;
@@ -37,6 +43,7 @@ class RestTimerState {
         // Poll on the very first tick rather than waiting a full interval.
         _pollTickCounter = POLL_INTERVAL_TICKS;
         _lastResponseCode = 200;
+        _clockOffset = new Time.Duration(0);
     }
 
     // Call once per ~1Hz tick (from onUpdate). Returns true if a rest period
@@ -70,6 +77,13 @@ class RestTimerState {
         _lastResponseCode = responseCode;
 
         if (result != null) {
+            // result.serverNowUtc - Time.now() (the moment this callback
+            // runs) is the clock offset — this fetch is a real round trip,
+            // not the hardcoded test path, so the small latency between
+            // "server stamped serverNowUtc" and "this callback observes it"
+            // is within the tolerance the plan accepts.
+            _clockOffset = result.serverNowUtc.subtract(Time.now()) as Duration;
+
             // A changed timerId (or arriving from Idle) starts a fresh
             // countdown. An unchanged timerId is just a redundant confirm —
             // nothing to do, since Counting already stopped polling.
@@ -107,7 +121,8 @@ class RestTimerState {
         if (_endsAtUtc == null) {
             return 0;
         }
-        var diff = (_endsAtUtc as Moment).subtract(Time.now()) as Duration;
+        var correctedNow = Time.now().add(_clockOffset);
+        var diff = (_endsAtUtc as Moment).subtract(correctedNow) as Duration;
         var seconds = diff.value();
         return seconds > 0 ? seconds : 0;
     }

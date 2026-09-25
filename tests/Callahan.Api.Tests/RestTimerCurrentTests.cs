@@ -130,4 +130,19 @@ public class RestTimerCurrentTests
         var body = Assert.IsType<RestTimerCurrentResponse>(ok.Value);
         Assert.True(body.EndsAtUtc >= before.AddSeconds(90));
     }
+
+    [Fact]
+    public void ServerNowUtcIsTheCurrentTimeNotTheScheduleTime()
+    {
+        var (controller, _) = NewController();
+
+        controller.Schedule(Request(90));
+        var before = DateTimeOffset.UtcNow;
+        var result = controller.Current();
+        var after = DateTimeOffset.UtcNow;
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var body = Assert.IsType<RestTimerCurrentResponse>(ok.Value);
+        Assert.InRange(body.ServerNowUtc, before, after);
+    }
 }
