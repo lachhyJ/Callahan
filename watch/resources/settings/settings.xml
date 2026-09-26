@@ -4,8 +4,4 @@
         <settingConfig type="alphaNumeric" />
     </setting>
 
-    <setting propertyKey="@Properties.AuthToken" title="@Strings.TokenTitle">
-        <settingConfig type="alphaNumeric" />
-    </setting>
-
 </settings>

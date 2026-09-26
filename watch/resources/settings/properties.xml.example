@@ -1,9 +1,9 @@
 <properties xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
 
-    <!-- v0 auth per the plan (2.2): base URL + a pasted 30-day JWT as app
-         settings, editable from Garmin Connect Mobile. No device-token
-         endpoint until this round trip is proven. -->
+    <!-- Base URL rarely changes, so it's still a real Property (editable
+         via Garmin Connect Mobile, if that path is ever reachable for a
+         sideloaded app). The auth token is NOT a property — see
+         Config.mc and GeneratedAuthToken.mc for why. -->
     <property id="BaseUrl" type="string">https://callahan.ljlab.online</property>
-    <property id="AuthToken" type="string"></property>
 
 </properties>

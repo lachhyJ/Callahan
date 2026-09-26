@@ -3,6 +3,5 @@
     <string id="AppName">Rest Timer</string>
 
     <string id="BaseUrlTitle">Callahan base URL</string>
-    <string id="TokenTitle">Auth token</string>
 
 </strings>
