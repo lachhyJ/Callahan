@@ -350,10 +350,10 @@ export function subscribeToPush(subscription) {
   })
 }
 
-export function scheduleRestTimer(durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets) {
+export function scheduleRestTimer(durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets, suppressPush = false) {
   return apiFetch('/api/resttimer/schedule', {
     method: 'POST',
-    body: JSON.stringify({ durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets }),
+    body: JSON.stringify({ durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets, suppressPush }),
   })
 }
 

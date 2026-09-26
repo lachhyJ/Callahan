@@ -823,11 +823,13 @@ export default function ActiveWorkoutPage() {
       isLastInSuperset: descriptor.isLastInSuperset ?? true,
     })
     // Native schedules its own local notification in scheduleBeep, which fires
-    // on the device clock instead of arriving over APNs a few seconds late.
-    // Booking the server push too would double the alert.
-    if (isNativeAudio) return
+    // on the device clock instead of arriving over APNs a few seconds late —
+    // booking the server push too would double the alert. Still schedule
+    // server-side either way (suppressing the push when native) so
+    // PendingTimers has an entry for the Garmin watch data field to poll;
+    // that's the one thing native itself has no server-side record of.
     try {
-      const { timerId } = await scheduleRestTimer(duration, descriptor.exerciseName, descriptor.targetReps, descriptor.nextSetNumber, descriptor.totalSets)
+      const { timerId } = await scheduleRestTimer(duration, descriptor.exerciseName, descriptor.targetReps, descriptor.nextSetNumber, descriptor.totalSets, isNativeAudio)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
     } catch {
       // Local countdown still works even if the backend push couldn't be scheduled.
@@ -1092,7 +1094,7 @@ export default function ActiveWorkoutPage() {
       if (!prev) return prev
       if (prev.timerId) {
         cancelRestTimer(prev.timerId).catch(() => {})
-        scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets)
+        scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets, isNativeAudio)
           .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
           .catch(() => {})
       }

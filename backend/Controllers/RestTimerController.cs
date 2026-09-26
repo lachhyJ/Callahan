@@ -59,7 +59,7 @@ public class RestTimerController : ControllerBase
         var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
         PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets);
 
-        _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, cts.Token);
+        _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.SuppressPush, cts.Token);
 
         return Ok(new RestTimerScheduleResponse(timerId));
     }
@@ -109,7 +109,7 @@ public class RestTimerController : ControllerBase
             DateTimeOffset.UtcNow));
     }
 
-    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, CancellationToken token)
+    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, bool suppressPush, CancellationToken token)
     {
         try
         {
@@ -126,6 +126,15 @@ public class RestTimerController : ControllerBase
         finally
         {
             PendingTimers.TryRemove(timerId, out _);
+        }
+
+        // Native callers already alert locally on the device clock (see
+        // ActiveWorkoutPage.jsx's startRestTimer) and only schedule here so
+        // the Garmin watch data field has something to poll — a push on top
+        // of that would double the alert.
+        if (suppressPush)
+        {
+            return;
         }
 
         try
