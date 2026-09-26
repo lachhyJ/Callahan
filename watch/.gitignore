@@ -1,1 +1,6 @@
 bin/
+
+# Bakes in a real 30-day JWT via scripts/garmin-watch-token/bake-and-build.sh
+# — never commit the real one. properties.xml.example is the tracked
+# placeholder/template; copy it to properties.xml on first setup.
+resources/settings/properties.xml
