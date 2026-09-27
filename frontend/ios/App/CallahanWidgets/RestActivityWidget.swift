@@ -388,7 +388,9 @@ private struct LoadedSet: View {
 
     var body: some View {
         Group {
-            if context.state.loadedSetLine.isEmpty {
+            if context.state.isWorkoutDone {
+                Text(context.state.doneLabel)
+            } else if context.state.loadedSetLine.isEmpty {
                 Text("0:00")
             } else {
                 Text(context.state.loadedSetLine)

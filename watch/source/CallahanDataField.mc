@@ -22,6 +22,16 @@ class CallahanDataField extends WatchUi.DataField {
         Graphics.FONT_XTINY
     ] as Array<Graphics.FontType>;
 
+    // The next-set load has letters in it ("80 kg x 8"), which the
+    // number-only fonts can't render.
+    private const TEXT_VALUE_FONT_CANDIDATES = [
+        Graphics.FONT_LARGE,
+        Graphics.FONT_MEDIUM,
+        Graphics.FONT_SMALL,
+        Graphics.FONT_TINY,
+        Graphics.FONT_XTINY
+    ] as Array<Graphics.FontType>;
+
     private const MESSAGE_FONT_CANDIDATES = [
         Graphics.FONT_MEDIUM,
         Graphics.FONT_SMALL,
@@ -32,6 +42,8 @@ class CallahanDataField extends WatchUi.DataField {
     // caps label above their value — added after Lachlan pointed out ours
     // didn't, and it made the field harder to place at a glance next to them.
     private const LABEL = "REST";
+    private const NEXT_LABEL = "NEXT";
+    private const DONE_LABEL = "WORKOUT";
     private const LABEL_FONT = Graphics.FONT_XTINY;
 
     private var _config as Config;
@@ -67,8 +79,12 @@ class CallahanDataField extends WatchUi.DataField {
             drawCentered(dc, "auth", MESSAGE_FONT_CANDIDATES);
         } else if (_state.isCounting()) {
             drawCounting(dc);
+        } else if (_state.isNextSet()) {
+            drawNextSet(dc);
+        } else if (_state.isDone()) {
+            drawLabeledValue(dc, DONE_LABEL, _state.doneLabel(), TEXT_VALUE_FONT_CANDIDATES, null);
         } else {
-            drawLabeledValue(dc, "–", CLOCK_FONT_CANDIDATES, null);
+            drawLabeledValue(dc, LABEL, "–", CLOCK_FONT_CANDIDATES, null);
         }
     }
 
@@ -79,7 +95,18 @@ class CallahanDataField extends WatchUi.DataField {
         var secondsStr = seconds < 10 ? "0" + seconds : seconds.toString();
         var clock = minutes.toString() + ":" + secondsStr;
 
-        drawLabeledValue(dc, clock, CLOCK_FONT_CANDIDATES, _state.exerciseName());
+        drawLabeledValue(dc, LABEL, clock, CLOCK_FONT_CANDIDATES, _state.exerciseName());
+    }
+
+    // Nothing loaded (fresh exercise, bodyweight with no reps typed) falls
+    // back to the exercise name as the value — still says what's next.
+    private function drawNextSet(dc as Dc) as Void {
+        var load = _state.nextSetLoad();
+        if (load.length() > 0) {
+            drawLabeledValue(dc, NEXT_LABEL, load, TEXT_VALUE_FONT_CANDIDATES, _state.exerciseName());
+        } else {
+            drawLabeledValue(dc, NEXT_LABEL, _state.exerciseName(), TEXT_VALUE_FONT_CANDIDATES, null);
+        }
     }
 
     // A data field's region varies a lot in both shape and size depending on
@@ -93,7 +120,7 @@ class CallahanDataField extends WatchUi.DataField {
     // Stacks LABEL (always) / value (fit to width) / secondaryText (only if
     // it fits both width and remaining height) — matches the label-above-
     // value convention every native field on the same screen already uses.
-    private function drawLabeledValue(dc as Dc, valueText as String, valueCandidates as Array<Graphics.FontType>, secondaryText as String?) as Void {
+    private function drawLabeledValue(dc as Dc, label as String, valueText as String, valueCandidates as Array<Graphics.FontType>, secondaryText as String?) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
         var margin = 8;
@@ -122,11 +149,11 @@ class CallahanDataField extends WatchUi.DataField {
 
         // A field too small for all three lines still has room for the label
         // line itself — so when the exercise name can't go below as a third
-        // line, put it in the label's place instead of the static "REST".
+        // line, put it in the label's place instead of the static label.
         // Which exercise the rest is for is more useful at a glance than a
         // generic word, and it's the one piece of information this field
         // shows that no native field already covers.
-        var labelText = LABEL;
+        var labelText = label;
         if (!showSecondary && secondaryText != null && secondaryText.length() > 0
             && dc.getTextWidthInPixels(secondaryText, LABEL_FONT) <= width - margin) {
             labelText = secondaryText;

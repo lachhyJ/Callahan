@@ -1,3 +1,5 @@
+import { formatLoadWeight } from '../utils/format'
+
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
 async function apiFetch(path, options = {}) {
@@ -350,10 +352,22 @@ export function subscribeToPush(subscription) {
   })
 }
 
-export function scheduleRestTimer(durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets, suppressPush = false) {
+// `rest` is the page's restTimer shape. Weight goes over pre-formatted so the
+// Garmin field shows exactly what the Live Activity does.
+export function scheduleRestTimer(durationSeconds, rest, suppressPush = false) {
   return apiFetch('/api/resttimer/schedule', {
     method: 'POST',
-    body: JSON.stringify({ durationSeconds, exerciseName, targetReps, nextSetNumber, totalSets, suppressPush }),
+    body: JSON.stringify({
+      durationSeconds,
+      exerciseName: rest.exerciseName,
+      targetReps: rest.targetReps == null ? '' : String(rest.targetReps),
+      nextSetNumber: rest.nextSetNumber,
+      totalSets: rest.totalSets,
+      suppressPush,
+      targetWeight: rest.isBodyweight ? '' : formatLoadWeight(rest.targetWeightKg),
+      enteredReps: rest.enteredReps == null ? '' : String(rest.enteredReps),
+      doneLabel: rest.doneLabel ?? '',
+    }),
   })
 }
 

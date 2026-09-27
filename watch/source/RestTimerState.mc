@@ -11,6 +11,12 @@ class RestTimerState {
 
     const STATE_IDLE = 0;
     const STATE_COUNTING = 1;
+    // Countdown reached zero: show what the next set is loaded to until the
+    // phone schedules the next rest. There's no "set started" signal to
+    // leave on — data fields get no input — so the next timerId is the exit.
+    const STATE_NEXT_SET = 2;
+    // Countdown reached zero after the session's last set: show doneLabel.
+    const STATE_DONE = 3;
 
     // Data-field onUpdate runs ~1Hz while visible — piggyback on that as the
     // tick source rather than a separate Timer. Poll every 5th tick,
@@ -42,6 +48,9 @@ class RestTimerState {
     private var _targetReps as String?;
     private var _nextSetNumber as Number?;
     private var _totalSets as Number?;
+    private var _targetWeight as String = "";
+    private var _enteredReps as String = "";
+    private var _doneLabel as String = "";
 
     // serverNow - deviceNow at the last successful fetch (plan 2.4). Applied
     // to remainingSeconds() so the countdown tracks the server's clock
@@ -67,7 +76,7 @@ class RestTimerState {
         var justFinished = false;
 
         if (_state == STATE_COUNTING && remainingSeconds() <= 0) {
-            _state = STATE_IDLE;
+            _state = _doneLabel.length() > 0 ? STATE_DONE : STATE_NEXT_SET;
             _timerId = null;
             _endsAtUtc = null;
             justFinished = true;
@@ -106,6 +115,9 @@ class RestTimerState {
                 _targetReps = result.targetReps;
                 _nextSetNumber = result.nextSetNumber;
                 _totalSets = result.totalSets;
+                _targetWeight = result.targetWeight;
+                _enteredReps = result.enteredReps;
+                _doneLabel = result.doneLabel;
             }
             return;
         }
@@ -126,6 +138,29 @@ class RestTimerState {
 
     function isCounting() as Boolean {
         return _state == STATE_COUNTING;
+    }
+
+    function isNextSet() as Boolean {
+        return _state == STATE_NEXT_SET;
+    }
+
+    function isDone() as Boolean {
+        return _state == STATE_DONE;
+    }
+
+    function doneLabel() as String {
+        return _doneLabel;
+    }
+
+    // "80 kg x 8", preferring the reps typed into the row over the
+    // programmed target (often a range) — same rule as the Live Activity's
+    // loadedSetLine. "x", not "×": not every Garmin system font has the glyph.
+    function nextSetLoad() as String {
+        var reps = _enteredReps.length() > 0 ? _enteredReps : (_targetReps != null ? _targetReps : "");
+        if (_targetWeight.length() > 0 && reps.length() > 0) {
+            return _targetWeight + " x " + reps;
+        }
+        return _targetWeight.length() > 0 ? _targetWeight : reps;
     }
 
     // 0 is RestTimerClient's sentinel for "not configured" — CallahanDataField

@@ -588,14 +588,16 @@ export default function ActiveWorkoutPage() {
   // keeps the exercise/set line populated once the rest has ended — the effect
   // above sets it, and effects run in declaration order.
   useEffect(() => {
+    const upcoming = nextSetDescriptor(exercises)
+    const allDone = !upcoming && exercises?.some((ex) => ex.sets.length > 0)
     syncWorkoutActivity({
       rest: restTimer,
-      lastSet: nextSetDescriptor(exercises) ?? lastRestRef.current,
+      lastSet: upcoming ?? (allDone ? { ...lastRestRef.current, doneLabel: workoutDoneLabel() } : lastRestRef.current),
       sessionStartedAt: startedAt.getTime(),
       templateName,
       templateSubtitle,
     })
-  }, [restTimer, startedAt, exercises, templateName, templateSubtitle])
+  }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -792,6 +794,13 @@ export default function ActiveWorkoutPage() {
     }, 150)
   }
 
+  // What the watch and Live Activity say once nothing is left: a nudge toward
+  // the finishers list until one has been added, then a plain sign-off.
+  function workoutDoneLabel() {
+    const finisherAdded = finishers.some((f) => exercises.some((ex) => ex.exerciseId === f.exerciseId))
+    return !finisherAdded && finishers.length > 0 ? 'Finisher?' : 'Finished'
+  }
+
   // Takes a full rest descriptor ({ exerciseName, targetReps, targetWeightKg,
   // enteredReps, nextSetNumber, totalSets, restSeconds }) rather than an
   // exercise + set number, so the caller can describe the next set of a
@@ -802,6 +811,7 @@ export default function ActiveWorkoutPage() {
       cancelRestTimer(restTimer.timerId).catch(() => {})
     }
     const duration = descriptor.restSeconds || 90
+    const doneLabel = descriptor.workoutDone ? workoutDoneLabel() : ''
     // Web: unlock the beep element inside this tap so the countdown effect can
     // sound it later, and a backgrounded phone falls back to the server push.
     // Native: no unlock needed, and the beep and notification are both armed
@@ -821,6 +831,8 @@ export default function ActiveWorkoutPage() {
       totalSets: descriptor.totalSets,
       restSeconds: duration,
       isLastInSuperset: descriptor.isLastInSuperset ?? true,
+      isBodyweight: descriptor.isBodyweight ?? false,
+      doneLabel,
     })
     // Native schedules its own local notification in scheduleBeep, which fires
     // on the device clock instead of arriving over APNs a few seconds late —
@@ -829,7 +841,7 @@ export default function ActiveWorkoutPage() {
     // PendingTimers has an entry for the Garmin watch data field to poll;
     // that's the one thing native itself has no server-side record of.
     try {
-      const { timerId } = await scheduleRestTimer(duration, descriptor.exerciseName, descriptor.targetReps, descriptor.nextSetNumber, descriptor.totalSets, isNativeAudio)
+      const { timerId } = await scheduleRestTimer(duration, { ...descriptor, doneLabel }, isNativeAudio)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
     } catch {
       // Local countdown still works even if the backend push couldn't be scheduled.
@@ -1094,7 +1106,7 @@ export default function ActiveWorkoutPage() {
       if (!prev) return prev
       if (prev.timerId) {
         cancelRestTimer(prev.timerId).catch(() => {})
-        scheduleRestTimer(newRemaining, prev.exerciseName, prev.targetReps, prev.nextSetNumber, prev.totalSets, isNativeAudio)
+        scheduleRestTimer(newRemaining, prev, isNativeAudio)
           .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
           .catch(() => {})
       }

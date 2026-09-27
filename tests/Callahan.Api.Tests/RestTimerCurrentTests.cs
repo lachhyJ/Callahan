@@ -113,6 +113,36 @@ public class RestTimerCurrentTests
     }
 
     [Fact]
+    public void EchoesNextSetLoadAndDoneLabel()
+    {
+        var (controller, _) = NewController();
+
+        controller.Schedule(new RestTimerScheduleRequest(90, "Back Squat", "5", 6, 5, TargetWeight: "100 kg", EnteredReps: "5", DoneLabel: "Finisher?"));
+        var result = controller.Current();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var body = Assert.IsType<RestTimerCurrentResponse>(ok.Value);
+        Assert.Equal("100 kg", body.TargetWeight);
+        Assert.Equal("5", body.EnteredReps);
+        Assert.Equal("Finisher?", body.DoneLabel);
+    }
+
+    [Fact]
+    public void OmittedNextSetFieldsComeBackEmptyNotNull()
+    {
+        // An older phone build won't send the new fields; the watch reads
+        // them as strings, so null would crash its parser.
+        var (controller, _) = NewController();
+
+        controller.Schedule(Request(90));
+        var body = Assert.IsType<RestTimerCurrentResponse>(Assert.IsType<OkObjectResult>(controller.Current().Result).Value);
+
+        Assert.Equal("", body.TargetWeight);
+        Assert.Equal("", body.EnteredReps);
+        Assert.Equal("", body.DoneLabel);
+    }
+
+    [Fact]
     public void ReturnsNoContentAfterCancel()
     {
         var (controller, _) = NewController();

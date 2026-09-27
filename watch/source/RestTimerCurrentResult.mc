@@ -20,6 +20,13 @@ class RestTimerCurrentResult {
     // 2.4). Garmin devices sync time via GPS/phone so skew is normally
     // small, but it isn't zero.
     var serverNowUtc as Moment;
+    // The set coming up after this rest: pre-formatted weight ("80 kg", or
+    // empty for bodyweight), the reps typed into its row (may be empty), and
+    // a non-empty doneLabel ("Finisher?" / "Finished") when there's no next
+    // set at all.
+    var targetWeight as String;
+    var enteredReps as String;
+    var doneLabel as String;
 
     function initialize(
         timerIdIn as String,
@@ -28,7 +35,10 @@ class RestTimerCurrentResult {
         targetRepsIn as String,
         nextSetNumberIn as Number,
         totalSetsIn as Number,
-        serverNowUtcIn as Moment
+        serverNowUtcIn as Moment,
+        targetWeightIn as String,
+        enteredRepsIn as String,
+        doneLabelIn as String
     ) {
         timerId = timerIdIn;
         endsAtUtc = endsAtUtcIn;
@@ -37,6 +47,9 @@ class RestTimerCurrentResult {
         nextSetNumber = nextSetNumberIn;
         totalSets = totalSetsIn;
         serverNowUtc = serverNowUtcIn;
+        targetWeight = targetWeightIn;
+        enteredReps = enteredRepsIn;
+        doneLabel = doneLabelIn;
     }
 
     // The response's endsAtUtc is ISO-8601, e.g. "2026-09-24T13:05:32.1234567Z".
@@ -74,7 +87,15 @@ class RestTimerCurrentResult {
             data["targetReps"] as String,
             data["nextSetNumber"] as Number,
             data["totalSets"] as Number,
-            parseIso8601(data["serverNowUtc"] as String)
+            parseIso8601(data["serverNowUtc"] as String),
+            stringOrEmpty(data["targetWeight"]),
+            stringOrEmpty(data["enteredReps"]),
+            stringOrEmpty(data["doneLabel"])
         );
+    }
+
+    // Tolerates a backend deployed before these fields existed.
+    private static function stringOrEmpty(value) as String {
+        return value instanceof String ? value : "";
     }
 }

@@ -1,4 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
+import { formatLoadWeight } from './utils/format'
 
 // Lock-screen / Dynamic Island rest timer. Native only: the web build has no
 // equivalent and the PWA keeps relying on the push notification alone.
@@ -9,12 +10,6 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 const RestActivity = registerPlugin('RestActivity')
 
 const available = Capacitor.isNativePlatform()
-
-function formatWeight(weightKg) {
-  const n = Number(weightKg)
-  if (!weightKg || Number.isNaN(n) || n === 0) return ''
-  return `${Number.isInteger(n) ? n : Math.round(n * 10) / 10} kg`
-}
 
 // The activity belongs to the workout, not to a rest period: it goes up when a
 // session starts and comes down when it is finished or discarded, so Skip zeroes
@@ -31,7 +26,7 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
     totalSeconds: rest ? rest.totalSeconds : 0,
     exerciseName: detail.exerciseName ?? 'Workout',
     targetReps: detail.targetReps == null ? '' : String(detail.targetReps),
-    targetWeight: detail.isBodyweight ? '' : formatWeight(detail.targetWeightKg),
+    targetWeight: detail.isBodyweight ? '' : formatLoadWeight(detail.targetWeightKg),
     // What is actually typed into the next set's reps box, as opposed to the
     // programmed target, which is often a range. The card shows this in the slot
     // the countdown vacates when the rest ends.
@@ -46,6 +41,8 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
     // button should run straight past into the next exercise. Defaults true so
     // a lone exercise (no descriptor field at all) behaves as it always has.
     isLastInSuperset: detail.isLastInSuperset ?? true,
+    // Non-empty once the session has nothing left: "Finisher?" / "Finished".
+    doneLabel: detail.doneLabel ?? '',
     sessionStartedAt: sessionStartedAt ?? Date.now(),
   }).catch(() => {
     // A Live Activity is a nicety on top of the push notification — if the user

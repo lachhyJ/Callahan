@@ -305,5 +305,10 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   // rather than from the top of the session: an earlier, unrelated exercise
   // with leftover incomplete work (skipped past on the way into this one)
   // shouldn't be resurrected just because this group finished.
-  return nextSetDescriptor(exercises, groupEnd + 1) ?? sameExercise
+  //
+  // Nothing left anywhere ahead: sameExercise then describes a set past the
+  // end, which native reads as "Last set done". workoutDone says so outright,
+  // for surfaces (the Garmin field) that would otherwise show that phantom
+  // set's load.
+  return nextSetDescriptor(exercises, groupEnd + 1) ?? { ...sameExercise, workoutDone: true }
 }

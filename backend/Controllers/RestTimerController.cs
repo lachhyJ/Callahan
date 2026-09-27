@@ -17,10 +17,7 @@ public class RestTimerController : ControllerBase
         CancellationTokenSource Cts,
         DateTimeOffset ScheduledAtUtc,
         DateTimeOffset EndsAtUtc,
-        string ExerciseName,
-        string TargetReps,
-        int NextSetNumber,
-        int TotalSets);
+        RestTimerScheduleRequest Request);
 
     // In-memory only — acceptable for a single-instance personal app. A pending
     // timer is lost if the container restarts mid-rest, which is rare and low
@@ -57,7 +54,7 @@ public class RestTimerController : ControllerBase
         var cts = new CancellationTokenSource();
         var scheduledAtUtc = DateTimeOffset.UtcNow;
         var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
-        PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets);
+        PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request);
 
         _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.SuppressPush, cts.Token);
 
@@ -99,14 +96,18 @@ public class RestTimerController : ControllerBase
             return NoContent();
         }
 
+        var request = newest.Timer.Request;
         return Ok(new RestTimerCurrentResponse(
             newest.TimerId,
             newest.Timer.EndsAtUtc,
-            newest.Timer.ExerciseName,
-            newest.Timer.TargetReps,
-            newest.Timer.NextSetNumber,
-            newest.Timer.TotalSets,
-            DateTimeOffset.UtcNow));
+            request.ExerciseName,
+            request.TargetReps,
+            request.NextSetNumber,
+            request.TotalSets,
+            DateTimeOffset.UtcNow,
+            request.TargetWeight ?? "",
+            request.EnteredReps ?? "",
+            request.DoneLabel ?? ""));
     }
 
     private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, bool suppressPush, CancellationToken token)

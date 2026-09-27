@@ -20,6 +20,13 @@ export function formatWeight(v) {
 
 // "15.1k" / "840" — chart-axis and summary volumes, where the exact kilo is
 // noise and the magnitude is the point.
+// "115 kg" for a set's load readout; empty when nothing is loaded.
+export function formatLoadWeight(weightKg) {
+  const n = Number(weightKg)
+  if (!weightKg || Number.isNaN(n) || n === 0) return ''
+  return `${Number.isInteger(n) ? n : Math.round(n * 10) / 10} kg`
+}
+
 export function formatVolume(v) {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
   return String(Math.round(v))

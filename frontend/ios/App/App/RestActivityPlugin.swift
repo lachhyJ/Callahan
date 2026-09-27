@@ -201,7 +201,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             totalSets: call.getInt("totalSets") ?? 1,
             restSeconds: call.getInt("restSeconds") ?? 0,
             enteredReps: call.getString("enteredReps") ?? "",
-            isLastInSuperset: call.getBool("isLastInSuperset") ?? true
+            isLastInSuperset: call.getBool("isLastInSuperset") ?? true,
+            doneLabel: call.getString("doneLabel") ?? ""
         )
         self.currentEndAt = endAt
         Task {

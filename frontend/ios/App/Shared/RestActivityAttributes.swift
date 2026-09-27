@@ -40,7 +40,14 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         /// still rests as normal.
         var isLastInSuperset: Bool = true
 
+        /// Non-empty once the session has nothing left to do — "Finisher?"
+        /// until a finisher has been added, then "Finished". The app still
+        /// counts nextSetNumber past totalSets here, so without this the card
+        /// can only say the *exercise* is done, not the workout.
+        var doneLabel: String = ""
+
         var isResting: Bool { endAt != nil }
+        var isWorkoutDone: Bool { !doneLabel.isEmpty }
 
         /// Start of the rest period, for the progress bar. Only meaningful while
         /// resting.
@@ -69,6 +76,7 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         /// set is done — the app counts nextSetNumber past totalSets at that
         /// point, and "Next: set 6 of 5" is nonsense to read on a lock screen.
         var nextSetLine: String {
+            if isWorkoutDone { return "All sets done" }
             guard nextSetNumber <= totalSets else { return "Last set done" }
             var line = "Next: set \(nextSetNumber) of \(totalSets)"
             let detail = [targetWeight, targetReps.isEmpty ? "" : "\(targetReps) reps"]

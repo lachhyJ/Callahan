@@ -184,6 +184,19 @@ describe('restDescriptorAfterSet', () => {
     expect(d.nextSetNumber).toBe(4)
     expect(d.totalSets).toBe(3)
     expect(d.nextSetNumber).toBeGreaterThan(d.totalSets) // native renders "Last set done"
+    expect(d.workoutDone).toBe(true)
+  })
+
+  it('does not mark the workout done while a later exercise still has work', () => {
+    const ex = session()
+    ex[0].sets[2].completed = true
+    expect(restDescriptorAfterSet(ex, 0, 2).workoutDone).toBeUndefined()
+  })
+
+  it('does not mark the workout done mid-exercise', () => {
+    const ex = session()
+    ex[1].sets[0].completed = true
+    expect(restDescriptorAfterSet(ex, 1, 0).workoutDone).toBeUndefined()
   })
 
   it('skips a fully-completed exercise to reach the next one with work left', () => {
