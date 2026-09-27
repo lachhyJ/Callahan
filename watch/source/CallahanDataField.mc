@@ -9,6 +9,31 @@ import Toybox.WatchUi;
 // reads RestTimerState and draws.
 class CallahanDataField extends WatchUi.DataField {
 
+    // Largest-to-smallest — NUMBER_HOT is the biggest of the number-only
+    // fonts, THAI_HOT bigger still but reserved for genuinely huge fields.
+    // Ordering confirmed against the SDK docs (Graphics.html), not assumed:
+    // an earlier version of this file had HOT and MEDIUM backwards.
+    private const CLOCK_FONT_CANDIDATES = [
+        Graphics.FONT_NUMBER_HOT,
+        Graphics.FONT_NUMBER_MEDIUM,
+        Graphics.FONT_NUMBER_MILD,
+        Graphics.FONT_MEDIUM,
+        Graphics.FONT_SMALL,
+        Graphics.FONT_XTINY
+    ] as Array<Graphics.FontType>;
+
+    private const MESSAGE_FONT_CANDIDATES = [
+        Graphics.FONT_MEDIUM,
+        Graphics.FONT_SMALL,
+        Graphics.FONT_XTINY
+    ] as Array<Graphics.FontType>;
+
+    // Native fields (TIMER, ELAPSED, ACTIVE CALORIES) always show a small
+    // caps label above their value — added after Lachlan pointed out ours
+    // didn't, and it made the field harder to place at a glance next to them.
+    private const LABEL = "REST";
+    private const LABEL_FONT = Graphics.FONT_XTINY;
+
     private var _config as Config;
     private var _state as RestTimerState;
 
@@ -37,13 +62,13 @@ class CallahanDataField extends WatchUi.DataField {
         dc.clear();
 
         if (!_config.isConfigured()) {
-            drawCentered(dc, "Set base URL + token", Graphics.FONT_SMALL);
+            drawCentered(dc, "Set base URL + token", MESSAGE_FONT_CANDIDATES);
         } else if (_state.hasError()) {
-            drawCentered(dc, "auth", Graphics.FONT_MEDIUM);
+            drawCentered(dc, "auth", MESSAGE_FONT_CANDIDATES);
         } else if (_state.isCounting()) {
             drawCounting(dc);
         } else {
-            drawCentered(dc, "–", Graphics.FONT_LARGE);
+            drawLabeledValue(dc, "–", CLOCK_FONT_CANDIDATES, null);
         }
     }
 
@@ -54,34 +79,74 @@ class CallahanDataField extends WatchUi.DataField {
         var secondsStr = seconds < 10 ? "0" + seconds : seconds.toString();
         var clock = minutes.toString() + ":" + secondsStr;
 
+        drawLabeledValue(dc, clock, CLOCK_FONT_CANDIDATES, _state.exerciseName());
+    }
+
+    // A data field's region varies a lot in both shape and size depending on
+    // how many other fields share the activity screen — a 1-field slot and a
+    // half-width slot in a 2-field row can have the same height but very
+    // different width. Rather than guess a size class from getObscurityFlags
+    // (tried first; missed the narrow-but-tall case entirely, see git log),
+    // measure the actual rendered width against the field's real width every
+    // draw and pick the largest font that fits.
+    //
+    // Stacks LABEL (always) / value (fit to width) / secondaryText (only if
+    // it fits both width and remaining height) — matches the label-above-
+    // value convention every native field on the same screen already uses.
+    private function drawLabeledValue(dc as Dc, valueText as String, valueCandidates as Array<Graphics.FontType>, secondaryText as String?) as Void {
         var width = dc.getWidth();
         var height = dc.getHeight();
-        var exercise = _state.exerciseName();
+        var margin = 8;
 
-        // Stack the clock and exercise name by their actual font heights
-        // rather than fixed offsets — fixed offsets overlapped on the 965's
-        // real font metrics (see the first sim run). Real layout tuning
-        // (obscurity-aware onLayout, per plan 2.5) is step 5, after the
-        // first real sideload; this just fixes the overlap.
-        var clockFont = Graphics.FONT_NUMBER_MEDIUM;
-        var exerciseFont = Graphics.FONT_XTINY;
-        var clockHeight = dc.getFontHeight(clockFont);
-        var gap = 4;
+        var labelHeight = dc.getFontHeight(LABEL_FONT);
+        var labelGap = 2;
 
-        if (exercise.length() > 0) {
-            var exerciseHeight = dc.getFontHeight(exerciseFont);
-            var totalHeight = clockHeight + gap + exerciseHeight;
-            var clockY = (height - totalHeight) / 2 + clockHeight / 2;
-            var exerciseY = clockY + clockHeight / 2 + gap + exerciseHeight / 2;
+        // Reserve room for the label first — fitFont alone only checked
+        // width, so it happily picked a value font tall enough to fill the
+        // whole field on its own, leaving the label nowhere to go (drawn
+        // off the top edge and clipped). Constrain the value font to what's
+        // left after the label instead.
+        var valueFont = fitFontBox(dc, valueText, valueCandidates, width - margin, height - labelHeight - labelGap);
+        var valueHeight = dc.getFontHeight(valueFont);
 
-            dc.drawText(width / 2, clockY, clockFont, clock, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-            dc.drawText(width / 2, exerciseY, exerciseFont, exercise, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
-        } else {
-            dc.drawText(width / 2, height / 2, clockFont, clock, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        var secondaryFont = Graphics.FONT_XTINY;
+        var secondaryGap = 4;
+        var showSecondary = secondaryText != null && secondaryText.length() > 0
+            && dc.getTextWidthInPixels(secondaryText, secondaryFont) <= width - margin
+            && labelHeight + labelGap + valueHeight + secondaryGap + dc.getFontHeight(secondaryFont) <= height;
+
+        var totalHeight = labelHeight + labelGap + valueHeight;
+        if (showSecondary) {
+            totalHeight += secondaryGap + dc.getFontHeight(secondaryFont);
+        }
+
+        // A field too small for all three lines still has room for the label
+        // line itself — so when the exercise name can't go below as a third
+        // line, put it in the label's place instead of the static "REST".
+        // Which exercise the rest is for is more useful at a glance than a
+        // generic word, and it's the one piece of information this field
+        // shows that no native field already covers.
+        var labelText = LABEL;
+        if (!showSecondary && secondaryText != null && secondaryText.length() > 0
+            && dc.getTextWidthInPixels(secondaryText, LABEL_FONT) <= width - margin) {
+            labelText = secondaryText;
+        }
+
+        var labelY = (height - totalHeight) / 2 + labelHeight / 2;
+        var valueY = labelY + labelHeight / 2 + labelGap + valueHeight / 2;
+
+        dc.drawText(width / 2, labelY, LABEL_FONT, labelText, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        dc.drawText(width / 2, valueY, valueFont, valueText, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        if (showSecondary) {
+            var secondaryHeight = dc.getFontHeight(secondaryFont);
+            var secondaryY = valueY + valueHeight / 2 + secondaryGap + secondaryHeight / 2;
+            dc.drawText(width / 2, secondaryY, secondaryFont, secondaryText, Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
         }
     }
 
-    private function drawCentered(dc as Dc, text as String, font as FontDefinition) as Void {
+    private function drawCentered(dc as Dc, text as String, candidates as Array<Graphics.FontType>) as Void {
+        var font = fitFont(dc, text, candidates, dc.getWidth() - 8);
         dc.drawText(
             dc.getWidth() / 2,
             dc.getHeight() / 2,
@@ -89,5 +154,29 @@ class CallahanDataField extends WatchUi.DataField {
             text,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER
         );
+    }
+
+    // Largest candidate whose rendered width fits maxWidth; falls back to the
+    // smallest candidate (accepting clipping) if even that doesn't fit —
+    // better than picking nothing.
+    private function fitFont(dc as Dc, text as String, candidates as Array<Graphics.FontType>, maxWidth as Number) as Graphics.FontType {
+        for (var i = 0; i < candidates.size(); i++) {
+            if (dc.getTextWidthInPixels(text, candidates[i]) <= maxWidth) {
+                return candidates[i];
+            }
+        }
+        return candidates[candidates.size() - 1];
+    }
+
+    // Same as fitFont but also constrains font height, not just width — for
+    // callers that need to reserve vertical space for something else (a
+    // label above, a secondary line below).
+    private function fitFontBox(dc as Dc, text as String, candidates as Array<Graphics.FontType>, maxWidth as Number, maxHeight as Number) as Graphics.FontType {
+        for (var i = 0; i < candidates.size(); i++) {
+            if (dc.getTextWidthInPixels(text, candidates[i]) <= maxWidth && dc.getFontHeight(candidates[i]) <= maxHeight) {
+                return candidates[i];
+            }
+        }
+        return candidates[candidates.size() - 1];
     }
 }
