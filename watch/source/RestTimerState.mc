@@ -13,9 +13,22 @@ class RestTimerState {
     const STATE_COUNTING = 1;
 
     // Data-field onUpdate runs ~1Hz while visible — piggyback on that as the
-    // tick source rather than a separate Timer. Poll every 5th tick while
-    // idle: one request per ~5s, not one per onUpdate call.
+    // tick source rather than a separate Timer. Poll every 5th tick,
+    // Idle or Counting alike: one request per ~5s, not one per onUpdate
+    // call. Decided 2026-09-27 over the plan's original "stop polling
+    // entirely while Counting" — that missed a mid-rest ±15s/skip
+    // adjustment on the phone until the countdown it was already watching
+    // ran out. The activity's HR/BLE radio use dwarfs one extra request
+    // every 5s, so the battery case for stopping wasn't worth the miss.
     private const POLL_INTERVAL_TICKS = 5;
+
+    // A 204 arriving while Counting is ambiguous (plan 1.3): the server
+    // also drops a timer's entry ~PushLeadSeconds (3s) before it actually
+    // fires, which is not a real cancellation. Only treat a 204 as a
+    // genuine skip/cancel when there's still meaningfully more than that
+    // window left — otherwise let tick() finish the countdown to zero as
+    // normal. Set comfortably above the 3s lead-in plus poll jitter.
+    private const AMBIGUOUS_204_WINDOW_SECONDS = 8;
 
     private var _client as RestTimerClient;
     private var _state as Number;
@@ -51,16 +64,13 @@ class RestTimerState {
     // side effect the DataField triggers, not something this class reaches
     // out and does itself.
     function tick() as Boolean {
-        if (_state == STATE_COUNTING) {
-            var remaining = remainingSeconds();
-            if (remaining <= 0) {
-                _state = STATE_IDLE;
-                _timerId = null;
-                _endsAtUtc = null;
-                _pollTickCounter = POLL_INTERVAL_TICKS;
-                return true;
-            }
-            return false;
+        var justFinished = false;
+
+        if (_state == STATE_COUNTING && remainingSeconds() <= 0) {
+            _state = STATE_IDLE;
+            _timerId = null;
+            _endsAtUtc = null;
+            justFinished = true;
         }
 
         _pollTickCounter += 1;
@@ -69,7 +79,8 @@ class RestTimerState {
             _fetchInFlight = true;
             _client.fetchCurrent(method(:onFetchResult));
         }
-        return false;
+
+        return justFinished;
     }
 
     function onFetchResult(responseCode as Number, result as RestTimerCurrentResult?) as Void {
@@ -100,10 +111,17 @@ class RestTimerState {
         }
 
         // No result: either a 204 (nothing pending) or a transport/auth
-        // error. Per plan 1.3, the server drops an entry ~3s before it
-        // actually fires — a 204 here is NOT a cancel signal once we're
-        // already Counting. Only fire()-via-tick() (hitting zero) or a
-        // different timerId showing up ends a countdown.
+        // error. A 204 while Counting is ambiguous — see
+        // AMBIGUOUS_204_WINDOW_SECONDS above — so only treat it as a real
+        // skip/cancel once there's clearly more than the server's own
+        // early-removal window left. Close, and it's indistinguishable
+        // from the natural end; tick() finishes the countdown to zero
+        // either way, which is harmless within that window.
+        if (_state == STATE_COUNTING && responseCode == 204 && remainingSeconds() > AMBIGUOUS_204_WINDOW_SECONDS) {
+            _state = STATE_IDLE;
+            _timerId = null;
+            _endsAtUtc = null;
+        }
     }
 
     function isCounting() as Boolean {
