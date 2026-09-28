@@ -9,8 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Callahan.Api.Tests;
 
 // Garmin's training metrics are parsed out of RawJson on the activity create /
-// re-sync path, and backfillable in bulk for rows synced before the columns
-// existed.
+// re-sync path.
 public class ActivitiesGarminMetricsTests
 {
     private const string Blob = """

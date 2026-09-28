@@ -131,12 +131,11 @@ public class ActivitiesController : ControllerBase
             .Include(a => a.ActivitySessionType)
             .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
             .Include(a => a.Laps)
-            .Include(a => a.Track)
             .Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // The on/off segments for one Ultimate game's timeline. Recomputed from the
@@ -193,7 +192,6 @@ public class ActivitiesController : ControllerBase
                 .Include(a => a.ActivitySessionType)
                 .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
                 .Include(a => a.Laps)
-                .Include(a => a.Track)
                 .Include(a => a.Tournament)
                 .FirstOrDefaultAsync(a => a.GarminActivityId == request.GarminActivityId);
             if (existing is not null)
@@ -211,7 +209,7 @@ public class ActivitiesController : ControllerBase
                 existing.RawJson = request.RawJson ?? existing.RawJson;
                 GarminActivityMetrics.Apply(existing, existing.RawJson);
                 await _db.SaveChangesAsync();
-                return Ok(ToDto(existing));
+                return Ok(await ToDtoAsync(existing));
             }
         }
 
@@ -248,7 +246,7 @@ public class ActivitiesController : ControllerBase
         _db.Activities.Add(activity);
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // Set an activity's session-type labels. PrimaryId is the primary label
@@ -308,7 +306,7 @@ public class ActivitiesController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     [HttpDelete("{id}")]
@@ -355,7 +353,7 @@ public class ActivitiesController : ControllerBase
         activity.DeletedAt = null;
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // High-speed laps are exactly what Garmin's own IntensityType already
@@ -493,7 +491,7 @@ public class ActivitiesController : ControllerBase
         activity.ConeDistanceM = request.ConeDistanceM;
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // Manual final score for an Ultimate game - Garmin has no team score, so
@@ -519,7 +517,7 @@ public class ActivitiesController : ControllerBase
         activity.FinalScoreAgainst = request.FinalScoreAgainst;
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // Manual override for the auto-attach sweep - sets or clears (null) which
@@ -533,7 +531,7 @@ public class ActivitiesController : ControllerBase
         var activity = await _db.Activities
             .Include(a => a.ActivitySessionType)
             .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
-            .Include(a => a.Laps).Include(a => a.Track).Include(a => a.Tournament)
+            .Include(a => a.Laps).Include(a => a.Tournament)
             .FirstOrDefaultAsync(a => a.Id == id);
         if (activity is null) return NotFound();
 
@@ -553,7 +551,7 @@ public class ActivitiesController : ControllerBase
 
         await _db.SaveChangesAsync();
 
-        return Ok(ToDto(activity));
+        return Ok(await ToDtoAsync(activity));
     }
 
     // Recompute an activity's lap/track-derived columns. Shared by ReplaceLaps
@@ -643,7 +641,18 @@ public class ActivitiesController : ControllerBase
         l.LapIndex, l.IntensityType, l.DistanceM, l.DurationSeconds, l.MovingDurationSeconds,
         l.AvgSpeedMps, l.MaxSpeedMps, l.AvgHeartRate, l.MaxHeartRate, l.FieldState);
 
-    private static ActivityDto ToDto(Activity a) => new(
+    // The DTO's track sample count, without loading the track: the blob is
+    // 65-100 KB and only SampleCount (a real column) is needed here. Uses the
+    // track when a caller already loaded it for classification.
+    private async Task<ActivityDto> ToDtoAsync(Activity a)
+    {
+        var trackSampleCount = a.Track?.SampleCount
+            ?? await _db.ActivityTracks.Where(t => t.ActivityId == a.Id).Select(t => (int?)t.SampleCount).FirstOrDefaultAsync()
+            ?? 0;
+        return ToDto(a, trackSampleCount);
+    }
+
+    private static ActivityDto ToDto(Activity a, int trackSampleCount) => new(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
         a.ActivitySessionTypeId, a.ActivitySessionType?.Name,
         a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
@@ -653,7 +662,7 @@ public class ActivitiesController : ControllerBase
         a.LivePlaySeconds,
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
         a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
-        a.Track?.SampleCount ?? 0,
+        trackSampleCount,
         a.TournamentId, a.Tournament?.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
         BuildSessionTypeList(a));
