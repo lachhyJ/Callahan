@@ -99,20 +99,12 @@ public class StreaksController : ControllerBase
             .OrderByDescending(s => s.Date)
             .ToListAsync();
 
-        var workouts = workoutSessions.Select(s => new WorkoutSessionSummaryDto(
-            s.Id, s.Date, s.Name, s.Notes, s.Sets.Count(set => set.SetType != SetType.Warmup),
-            s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null,
-            s.WorkoutTemplate != null ? s.WorkoutTemplate.Subtitle : null,
-            s.StartedAt, s.FinishedAt,
-            WorkoutSessionsController.CategorySummary(s.Sets))).ToList();
+        var workouts = workoutSessions.Select(WorkoutSessionsController.ToSummaryDto).ToList();
 
         var runs = await _db.Activities
             .Where(a => a.Type == ActivityType.Running)
             .OrderByDescending(a => a.Date)
-            .Select(a => new ActivityDto(a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
-                a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
-                a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM))
+            .Select(ActivitiesController.ListProjection)
             .ToListAsync();
 
         if (workouts.Count == 0 && runs.Count == 0)

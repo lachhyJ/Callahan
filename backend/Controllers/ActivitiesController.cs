@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Text.Json;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
@@ -74,19 +75,7 @@ public class ActivitiesController : ControllerBase
             .Include(a => a.ActivitySessionType)
             .Include(a => a.Tournament)
             .OrderByDescending(a => a.Date)
-            .Select(a => new ActivityDto(
-                a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
-                a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
-                a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
-                a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM,
-                a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
-                a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
-                a.LivePlaySeconds,
-                a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
-                a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
-                a.Track == null ? 0 : a.Track.SampleCount,
-                a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
-                a.FinalScoreFor, a.FinalScoreAgainst))
+            .Select(ListProjection)
             .ToListAsync();
 
         // The tag set is a second query, not part of the projection above: a
@@ -641,6 +630,25 @@ public class ActivitiesController : ControllerBase
         l.LapIndex, l.IntensityType, l.DistanceM, l.DurationSeconds, l.MovingDurationSeconds,
         l.AvgSpeedMps, l.MaxSpeedMps, l.AvgHeartRate, l.MaxHeartRate, l.FieldState);
 
+    // An ActivityDto built in SQL, for list reads: no entity is materialised,
+    // so neither the track blob nor RawJson is ever loaded. The session-type
+    // list is filled in separately (see GetAll). Shared with the streak detail
+    // page, whose own copy of this had already fallen behind.
+    internal static readonly Expression<Func<Activity, ActivityDto>> ListProjection = a => new ActivityDto(
+        a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
+        a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,
+        a.Laps.Count, a.Laps.Count(l => l.IntensityType == ActivityLap.ActiveIntensityType),
+        a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM,
+        a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
+        a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
+        a.LivePlaySeconds,
+        a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
+        a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
+        a.Track == null ? 0 : a.Track.SampleCount,
+        a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
+        a.FinalScoreFor, a.FinalScoreAgainst,
+        null);
+
     // The DTO's track sample count, without loading the track: the blob is
     // 65-100 KB and only SampleCount (a real column) is needed here. Uses the
     // track when a caller already loaded it for classification.
@@ -655,7 +663,7 @@ public class ActivitiesController : ControllerBase
     private static ActivityDto ToDto(Activity a, int trackSampleCount) => new(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
         a.ActivitySessionTypeId, a.ActivitySessionType?.Name,
-        a.Laps.Count, a.Laps.Count(l => l.IntensityType == "ACTIVE"),
+        a.Laps.Count, a.Laps.Count(l => l.IntensityType == ActivityLap.ActiveIntensityType),
         a.HighSpeedDistanceM == null ? null : a.HighSpeedDistanceM / 1000, a.ConeDistanceM,
         a.OnFieldSeconds, a.OffFieldSeconds, a.MixedSeconds, a.PointsPlayed,
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
