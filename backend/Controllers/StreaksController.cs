@@ -53,34 +53,7 @@ public class StreaksController : ControllerBase
             var qualifies = new bool[weekCount];
             for (var i = 0; i < weekCount; i++) qualifies[i] = def.Qualifies(gymCounts[i], runCounts[i]);
 
-            var best = 0;
-            var run = 0;
-            foreach (var q in qualifies)
-            {
-                run = q ? run + 1 : 0;
-                best = Math.Max(best, run);
-            }
-
-            // The current (in-progress) week hasn't finished, so it can't yet
-            // break a streak — fall back to last week when this week hasn't
-            // qualified (yet), rather than treating it as a miss.
-            var lastIndex = weekCount - 1;
-            var startIndex = qualifies[lastIndex] ? lastIndex
-                : lastIndex - 1 >= 0 && qualifies[lastIndex - 1] ? lastIndex - 1
-                : -1;
-
-            var current = 0;
-            if (startIndex >= 0)
-            {
-                current = 1;
-                var idx = startIndex - 1;
-                while (idx >= 0 && qualifies[idx])
-                {
-                    current++;
-                    idx--;
-                }
-            }
-
+            var (current, best) = WeeklyConsistencyService.Streak(qualifies);
             return new StreakDto(def.Type, def.Label, current, best);
         }).ToList();
 

@@ -38,4 +38,28 @@ public static class WeeklyConsistencyService
         }
         return buckets;
     }
+
+    // Current and best run of qualifying weeks, oldest week first. The current
+    // (in-progress) week hasn't finished, so it can't yet break a streak: when
+    // it hasn't qualified (yet), the current streak is counted back from last
+    // week instead of being treated as a miss.
+    public static (int Current, int Best) Streak(bool[] qualifiesByWeek)
+    {
+        var best = 0;
+        var run = 0;
+        foreach (var q in qualifiesByWeek)
+        {
+            run = q ? run + 1 : 0;
+            best = Math.Max(best, run);
+        }
+
+        var lastIndex = qualifiesByWeek.Length - 1;
+        var startIndex = lastIndex >= 0 && qualifiesByWeek[lastIndex] ? lastIndex
+            : lastIndex - 1 >= 0 && qualifiesByWeek[lastIndex - 1] ? lastIndex - 1
+            : -1;
+
+        var current = 0;
+        for (var idx = startIndex; idx >= 0 && qualifiesByWeek[idx]; idx--) current++;
+        return (current, best);
+    }
 }
