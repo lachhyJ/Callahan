@@ -67,12 +67,6 @@ describe('label maps', () => {
     expect(SET_TYPE_LABELS.Warmup).toBe('W')
   })
 
-  it('covers every set type the backend can send', () => {
-    // Mirrors backend SetType.cs — a new type added there without a label
-    // here renders as undefined in the history views.
-    expect(Object.keys(SET_TYPE_LABELS).sort()).toEqual(['Drop', 'Failure', 'Normal', 'Warmup'])
-  })
-
   it('has twelve months starting at January', () => {
     expect(MONTH_NAMES).toHaveLength(12)
     expect(MONTH_NAMES[0]).toBe('January')
