@@ -11,7 +11,7 @@ import {
   DUMBBELL_STEPS_KG, PLATE_SETS, calculatePlates, getAvailablePlates,
   getCustomEquipment, getEquipmentType, guessEquipmentType, hydratePlateCalcSettings,
   nearestDumbbells, clearCustomEquipment,
-  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta, calculatePlateDelta } from './plateCalc'
+  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta, calculatePlateDelta, plateLoadFor } from './plateCalc'
 
 // The storage-backed helpers are the ones with real branching (fallbacks,
 // validation, order preservation), so they need a localStorage. A map stub
@@ -250,16 +250,18 @@ describe('server sync', () => {
   })
 })
 
-describe('calculatePlates in added-weight mode', () => {
-  const kg = PLATE_SETS.kg
-
-  it('fills the whole target as one stack, with no halving', () => {
-    // 20kg hung from a belt is one 20 — not the 10-per-side a bar would give.
-    expect(calculatePlates(20, kg).breakdown).toEqual([{ plate: 20, count: 1 }])
+describe('plateLoadFor', () => {
+  it('halves a barbell load after taking the bar off', () => {
+    expect(plateLoadFor('barbell', 100, 20)).toBe(40)
   })
 
-  it('reports a shortfall against the plates on hand', () => {
-    expect(calculatePlates(21, kg).remainder).toBe(1)
+  // 20kg hung from a belt is one 20 - not the 10-per-side a bar would give.
+  it('loads added weight as one stack, with no halving', () => {
+    expect(plateLoadFor('added', 20, 0)).toBe(20)
+  })
+
+  it('takes a plate-loaded machine frame off first', () => {
+    expect(plateLoadFor('added', 100, 30)).toBe(70)
   })
 })
 

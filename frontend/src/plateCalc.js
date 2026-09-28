@@ -317,3 +317,10 @@ export function describePlateDelta({ toAdd, toRemove }, perSide) {
   if (toAdd.length > 0) parts.push(`Add ${list(toAdd)}${suffix}`)
   return parts.join(' · ')
 }
+
+// What actually goes on for a total weight: per side of a barbell (the bar's
+// own weight off, then halved), or one stack for added weight (a belt, base 0,
+// or a plate-loaded machine's frame weight off - no halving either way).
+export function plateLoadFor(equipmentType, totalKg, baseKg) {
+  return equipmentType === 'barbell' ? (totalKg - baseKg) / 2 : totalKg - baseKg
+}

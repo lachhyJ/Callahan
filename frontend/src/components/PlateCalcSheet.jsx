@@ -11,6 +11,7 @@ import {
   roundToStep,
   clearEquipmentTypeOverride,
   describePlateDelta,
+  plateLoadFor,
   getAvailableDumbbells,
   getAvailablePlates,
   getCustomEquipment,
@@ -376,7 +377,7 @@ export default function PlateCalcSheet({
   const hasTarget = targetWeightKg !== '' && targetWeightKg !== undefined && !Number.isNaN(target)
 
   const belowBar = equipmentType === 'barbell' && hasTarget && target < barWeightKg
-  const perSide = equipmentType === 'barbell' && hasTarget && !belowBar ? (target - barWeightKg) / 2 : 0
+  const perSide = equipmentType === 'barbell' && hasTarget && !belowBar ? plateLoadFor('barbell', target, barWeightKg) : 0
   const result = equipmentType === 'barbell' && hasTarget && !belowBar ? calculatePlates(perSide, availablePlates) : null
   const maxPlate = Math.max(...(availablePlates.length > 0 ? availablePlates : PLATE_SETS.kg))
 
@@ -390,7 +391,7 @@ export default function PlateCalcSheet({
   // equipment type is active for a given exercise at a time.
   const addedBaseKg = equipmentType === 'added' && savedEquipment ? savedEquipment.kg : 0
   const belowBase = equipmentType === 'added' && hasTarget && target < addedBaseKg
-  const addedLoad = equipmentType === 'added' && hasTarget && !belowBase ? target - addedBaseKg : 0
+  const addedLoad = equipmentType === 'added' && hasTarget && !belowBase ? plateLoadFor('added', target, addedBaseKg) : 0
   const addedResult =
     equipmentType === 'added' && hasTarget && !belowBase && addedLoad > 0 ? calculatePlates(addedLoad, availablePlates) : null
 
@@ -403,13 +404,13 @@ export default function PlateCalcSheet({
   // sheet falls back to the full breakdown.
   const hasLoaded = typeof currentlyLoadedKg === 'number' && !Number.isNaN(currentlyLoadedKg)
   const loadedPerSide =
-    equipmentType === 'barbell' && hasLoaded && currentlyLoadedKg >= barWeightKg ? (currentlyLoadedKg - barWeightKg) / 2 : null
+    equipmentType === 'barbell' && hasLoaded && currentlyLoadedKg >= barWeightKg ? plateLoadFor('barbell', currentlyLoadedKg, barWeightKg) : null
   const plateDelta =
     equipmentType === 'barbell' && result && loadedPerSide !== null
       ? calculatePlateDelta(loadedPerSide, perSide, availablePlates)
       : null
 
-  const loadedAddedLoad = equipmentType === 'added' && hasLoaded ? currentlyLoadedKg - addedBaseKg : null
+  const loadedAddedLoad = equipmentType === 'added' && hasLoaded ? plateLoadFor('added', currentlyLoadedKg, addedBaseKg) : null
   const addedPlateDelta =
     equipmentType === 'added' && addedResult && loadedAddedLoad !== null && loadedAddedLoad >= 0
       ? calculatePlateDelta(loadedAddedLoad, addedLoad, availablePlates)
@@ -430,13 +431,13 @@ export default function PlateCalcSheet({
   const addedHasBaseline = equipmentType === 'added' && loadedAddedLoad !== null && loadedAddedLoad !== undefined && loadedAddedLoad >= 0
   const barbellChain =
     equipmentType === 'barbell' && result
-      ? [barbellHasBaseline ? loadedPerSide : null, perSide, ...upcomingWeightsKg.map((w) => (w - barWeightKg) / 2)].filter(
+      ? [barbellHasBaseline ? loadedPerSide : null, perSide, ...upcomingWeightsKg.map((w) => plateLoadFor('barbell', w, barWeightKg))].filter(
           (v) => v !== null && v !== undefined && v >= 0,
         )
       : null
   const addedChain =
     equipmentType === 'added' && addedResult
-      ? [addedHasBaseline ? loadedAddedLoad : null, addedLoad, ...upcomingWeightsKg.map((w) => w - addedBaseKg)].filter(
+      ? [addedHasBaseline ? loadedAddedLoad : null, addedLoad, ...upcomingWeightsKg.map((w) => plateLoadFor('added', w, addedBaseKg))].filter(
           (v) => v !== null && v !== undefined && v >= 0,
         )
       : null
