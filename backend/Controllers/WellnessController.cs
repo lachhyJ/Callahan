@@ -47,10 +47,11 @@ public class WellnessController : ControllerBase
             .Where(w => w.Date >= cutoff)
             .Where(HasReadableMetric)
             .OrderByDescending(w => w.Date)
+            .Select(WellnessMapping.Projection)
             .FirstOrDefaultAsync();
 
         if (wellness is null) return NoContent();
-        return Ok(ToDto(wellness));
+        return Ok(wellness);
     }
 
     [HttpGet]
@@ -60,8 +61,7 @@ public class WellnessController : ControllerBase
         if (start is not null) query = query.Where(w => w.Date >= start);
         if (end is not null) query = query.Where(w => w.Date <= end);
 
-        var wellness = await query.OrderBy(w => w.Date).ToListAsync();
-        return Ok(wellness.Select(ToDto).ToList());
+        return Ok(await query.OrderBy(w => w.Date).Select(WellnessMapping.Projection).ToListAsync());
     }
 
     // Phase 5: the latest day read against a trailing personal baseline, as
@@ -75,6 +75,7 @@ public class WellnessController : ControllerBase
             .Where(w => w.Date >= cutoff)
             .Where(HasReadableMetric)
             .OrderByDescending(w => w.Date)
+            .Select(WellnessMapping.Projection)
             .FirstOrDefaultAsync();
 
         if (latest is null) return NoContent();
@@ -83,11 +84,10 @@ public class WellnessController : ControllerBase
         var baseline = await _db.DailyWellness
             .Where(w => w.Date >= windowStart && w.Date < latest.Date)
             .OrderBy(w => w.Date)
+            .Select(WellnessMapping.Projection)
             .ToListAsync();
 
-        var insight = ReadinessInsightCalculator.Compute(
-            ToDto(latest),
-            baseline.Select(ToDto).ToList());
+        var insight = ReadinessInsightCalculator.Compute(latest, baseline);
         return Ok(insight);
     }
 
@@ -118,6 +118,7 @@ public class WellnessController : ControllerBase
         var wellness = await _db.DailyWellness
             .Where(w => w.Date >= earliest)
             .OrderBy(w => w.Date)
+            .Select(WellnessMapping.Projection)
             .ToListAsync();
 
         var tournaments = await _db.Tournaments
@@ -131,7 +132,7 @@ public class WellnessController : ControllerBase
             .ToListAsync();
 
         var result = LoadTrendBuilder.Build(
-            today, weeks, gymSets, runs, ultimate, wellness.Select(ToDto), tournaments, gymGarminLoads);
+            today, weeks, gymSets, runs, ultimate, wellness, tournaments, gymGarminLoads);
         return Ok(result);
     }
 

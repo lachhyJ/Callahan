@@ -50,11 +50,10 @@ public class MonthlyReportBuilder
 
         var taperEvents = await _db.Tournaments.Where(t => t.TaperDays != null).ToListAsync();
 
-        var wellnessRows = (await _db.DailyWellness
-                .Where(w => w.Date >= trailingStart && w.Date <= monthEnd)
-                .ToListAsync())
-            .Select(WellnessMapping.ToDto)
-            .ToList();
+        var wellnessRows = await _db.DailyWellness
+            .Where(w => w.Date >= trailingStart && w.Date <= monthEnd)
+            .Select(WellnessMapping.Projection)
+            .ToListAsync();
         var monthWellness = wellnessRows.Where(w => w.Date >= monthStart && w.Date <= monthEnd).ToList();
         var trailingWellness = wellnessRows.Where(w => w.Date >= trailingStart && w.Date < trailingEndExclusive).ToList();
 
