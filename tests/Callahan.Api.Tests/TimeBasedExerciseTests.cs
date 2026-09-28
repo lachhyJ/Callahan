@@ -202,7 +202,10 @@ public class TimeBasedExerciseTests : IDisposable
     {
         var bench = AddExercise("Bench Press", ExerciseCategory.Push);
         var plank = AddExercise("Copenhagen Plank", ExerciseCategory.Core, timeBased: true);
-        AddSession(Aug, Normal(bench.Id, 0, 50m, 10), Timed(plank.Id, 0, 30));
+        // GetTrends windows back from DateTime.Now, so this session has to be
+        // dated inside the current month - a fixed date falls out of the window.
+        var today = DateOnly.FromDateTime(DateTime.Now);
+        AddSession(new DateOnly(today.Year, today.Month, 1), Normal(bench.Id, 0, 50m, 10), Timed(plank.Id, 0, 30));
 
         var controller = new TrendsController(_db);
         var result = await controller.GetTrends(months: 3);
