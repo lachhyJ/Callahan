@@ -59,6 +59,11 @@ services:
   # unchanged; this is additive and all sync writes are idempotent.
   garmin-sync-trigger:
     build: ./scripts/garmin-sync
+    # Tagged with the name the nightly cron runs, so every deploy rebuilds the
+    # cron's image too. Without it compose tagged its own copy and the cron
+    # kept running a hand-built image — which went stale and skipped Garmin
+    # strength activities for a week (found 2026-09-28).
+    image: callahan-garmin-sync
     entrypoint: ["python", "trigger_server.py"]
     restart: unless-stopped
     # Same gitignored env file the cron job uses (Garmin + Callahan creds).

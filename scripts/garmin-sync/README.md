@@ -71,9 +71,10 @@ Daily is enough — this isn't a live feed, and the 14-day lookback (see
 `--days`) means a missed run or two doesn't lose anything; re-synced
 activities are idempotent via `GarminActivityId`.
 
-Rebuild the image (`docker build` above) whenever `garmin_sync.py` or
-`requirements.txt` changes — a `git pull` alone won't update the running
-image.
+Every deploy rebuilds this image: the `garmin-sync-trigger` service in
+`docker-compose.prod.yml` builds `scripts/garmin-sync` and tags it
+`callahan-garmin-sync`, the name the cron runs. The manual `docker build`
+above is only needed on a fresh host before the first deploy.
 
 ## On-demand sync (the app's "Sync Garmin" button)
 
@@ -103,8 +104,8 @@ nightly cron `docker run --rm` is untouched — the button is additive and
 every write is idempotent, so the two can even overlap harmlessly.
 
 `deploy.sh`'s `docker compose ... up -d --build` builds and (re)starts this
-service on every deploy — no manual `docker build` step for it, unlike the
-cron image.
+service on every deploy, and since it's tagged `callahan-garmin-sync` that
+same build refreshes the cron's image.
 
 ## Mapped activity types
 
