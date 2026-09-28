@@ -795,7 +795,7 @@ export default function ActiveWorkoutPage() {
   // What the watch and Live Activity say once nothing is left: a nudge toward
   // the finishers list until one has been added, then a plain sign-off.
   function workoutDoneLabel() {
-    const finisherAdded = finishers.some((f) => exercises.some((ex) => ex.exerciseId === f.exerciseId))
+    const finisherAdded = finishers.some((f) => exercises?.some((ex) => ex.exerciseId === f.exerciseId))
     return !finisherAdded && finishers.length > 0 ? 'Finisher?' : 'Finished'
   }
 
