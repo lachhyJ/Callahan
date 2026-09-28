@@ -1,11 +1,25 @@
 # ultimate-stream-explore
 
-**Exploration scaffolding, not part of Callahan.** Answers one question: can
-on-field vs sideline be recovered from an Ultimate game's GPS-speed / HR
-stream when the watch was *never lap-pressed*? If yes, it's worth wiring
-stream inference into the app; if no, the answer is "press the lap button".
+Started as exploration of one question: can on-field vs sideline be
+recovered from an Ultimate game's GPS stream when the watch was *never
+lap-pressed*? It could, and `segment.py`'s approach now ships as
+`backend/Services/FieldGeometry.cs`. This directory is where that classifier
+is still tuned and checked.
 
-Nothing here touches the Callahan database, the API, or the running sync.
+Nothing here touches the Callahan API or the running sync; the DB readers
+only ever read.
+
+| File | Role |
+|---|---|
+| `segment.py` | The reference implementation. FieldGeometry.cs cites it line by line; new ideas are tried here first. |
+| `diagnose.py` | Instrumentation and parameter sweep over the committed fixtures. Asserts its constants match `FieldGeometryOptions` in the C# on every import. |
+| `holdout.py` | The frozen tune / held-out split: two games per tournament that the sweep never sees. |
+| `holdout_check.py` | Scores candidate settings on the held-out games (`--rotate TOURNAMENT` holds out a whole tournament instead). |
+| `fixtures_from_db.py` | Regenerates the committed test fixtures and `baselines.json` from a Callahan DB copy. |
+| `make_fixtures.py` | The same from a raw `--dump-stream`, for a game not in the DB yet. Its `analyse()` produces the baselines. |
+| `explore.py` | The failed speed-threshold approach, kept as a record of why. |
+
+The flow below is the original exploration, kept for the reasoning.
 
 ## Flow
 
@@ -28,8 +42,9 @@ Nothing here touches the Callahan database, the API, or the running sync.
    ```
 
    Per game: on-field vs sideline minutes, points-played estimate, and a
-   one-char-per-minute ASCII timeline. Validated against 6 real games
-   (April 2026 tournament) and the athlete's own recollection.
+   one-char-per-minute ASCII timeline. First validated against 6 real games
+   (April 2026 tournament) and the athlete's own recollection; the fixtures
+   now cover every tournament game.
 
 ## What works: geometry, not speed
 

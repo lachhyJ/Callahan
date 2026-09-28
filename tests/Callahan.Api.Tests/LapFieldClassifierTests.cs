@@ -4,7 +4,7 @@ using Callahan.Api.Services;
 namespace Callahan.Api.Tests;
 
 // The classifier is geometry-based now; its real coverage is FieldGeometryTests
-// against the six real games. This file covers the lap <-> geometry seam: the
+// against the real tournament games. This file covers the lap <-> geometry seam: the
 // Garmin short-circuit, the no-track and no-laps branches, and the three-way
 // per-lap label (incl. the Mixed case a merged lap must produce).
 public class LapFieldClassifierTests

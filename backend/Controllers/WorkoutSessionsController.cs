@@ -69,9 +69,8 @@ public class WorkoutSessionsController : ControllerBase
         s.StartedAt, s.FinishedAt,
         CategorySummary(s.Sets));
 
-    // Untitled (template-less) sessions fall back to this — and in practice
-    // that's every session, since none of the real history carries a
-    // WorkoutTemplateId (Hevy-imported, not started via the templated flow).
+    // Untitled (template-less) sessions fall back to this, which covers all
+    // the Hevy-imported history (none of it carries a WorkoutTemplateId).
     // Exercise names ran on forever for a 6-exercise session; category is
     // short, always available, and closer to how the program names its own
     // days ("Lower & Power") than a growing exercise list ever was.

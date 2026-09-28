@@ -51,8 +51,8 @@ public class AppDbContext : DbContext
         // lexicographic, not numeric. On real data `WeightKg > 9` matched 21
         // rows where `CAST(WeightKg AS REAL) > 9` matched 1211, because '10'
         // sorts before '9'. Nothing was wrong, because every comparison in the
-        // app materialises first (see the warning on ExerciseSet.WeightKg), but
-        // that is a rule a future query can break silently.
+        // app materialised first, but that is a rule a future query can break
+        // silently.
         //
         // Applied across the model rather than per-property on purpose: a
         // decimal column added later inherits the fix instead of quietly

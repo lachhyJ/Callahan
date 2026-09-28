@@ -21,11 +21,6 @@ public record DailyWellnessDto(
     int? BodyBatteryLow,
     int? AvgStressLevel);
 
-// All metric fields default to null so the sync can post a partial payload
-// (e.g. a watch that doesn't report training readiness) without the binder
-// rejecting it. Null in a field means "Garmin has no value for this date" -
-// PUT /api/wellness overwrites with null rather than ignoring it, so a
-// retracted score stops being claimed.
 // Phase 5 readiness insight: today's wellness read against a trailing personal
 // baseline, delivered as finished plain-language strings (see
 // ReadinessInsightCalculator). The client only renders these.
@@ -58,6 +53,11 @@ public record LoadTrendWeekDto(
     bool IsTournamentWeek,
     decimal? GymTrainingLoad);  // Σ Garmin training load over gym sessions that were scored; null if none were
 
+// All metric fields default to null so the sync can post a partial payload
+// (e.g. a watch that doesn't report training readiness) without the binder
+// rejecting it. Null in a field means "Garmin has no value for this date" -
+// PUT /api/wellness overwrites with null rather than ignoring it, so a
+// retracted score stops being claimed.
 public record UpsertDailyWellnessRequest(
     DateOnly Date,
     int? SleepSeconds = null,

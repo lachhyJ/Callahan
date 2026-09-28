@@ -3,7 +3,6 @@
 // data in the background and hands it back too — the network round-trip
 // (Cloudflare tunnel + cold WKWebView boot) is the measured launch-latency
 // cost, not query time, so removing the *wait* is what actually helps.
-// See ~/moxie-vault/30-projects/callahan/backlog.md "Launch feels slow".
 //
 // Bumped whenever a cached DTO's shape changes, so an old cached response
 // from before a deploy is never handed to code that no longer expects it.

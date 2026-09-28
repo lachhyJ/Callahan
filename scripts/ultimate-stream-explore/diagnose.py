@@ -2,8 +2,8 @@
 """Diagnostic instrumentation for the on/off-field geometry classifier.
 
 Loads every committed test fixture directly (gzipped {t,lat,lon,spd} arrays
-— the same shape PUT /api/activities/{id}/track stores) and re-runs
-segment.py's analyse() with extra instrumentation:
+— the same shape PUT /api/activities/{id}/track stores) and re-runs the
+segment.py classifier with extra instrumentation:
 
   - fitted theta/halfw/halfl per game, and the derived centre threshold
     (halfw * CENTRE_FACTOR)

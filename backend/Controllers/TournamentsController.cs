@@ -39,8 +39,9 @@ public class TournamentsController : ControllerBase
     }
 
     // Links every Ultimate activity in [StartDate, EndDate] that isn't already
-    // attached to a tournament. Shared by Create, Update and the explicit
-    // attach-games endpoint - see the comment on AttachGames for why it only
+    // attached to a tournament. Shared by Update (when the dates change) and
+    // the explicit attach-games endpoint, which the client calls straight
+    // after Create - see the comment on AttachGames for why it only
     // ever claims unattached games.
     private async Task<int> AttachGamesAsync(Tournament tournament)
     {

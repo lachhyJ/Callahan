@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { isoDate, trainingDayIso, startOfWeek, endOfWeek, formatDateRange, formatDateMedium } from './dateUtils'
 
-// These run under TZ=Australia/Melbourne (see vite.config.js) because every
+// These run under TZ=Australia/Melbourne (package.json's test script) because every
 // bug this file guards against is a timezone bug. Under UTC they'd all pass
 // trivially and prove nothing.
 

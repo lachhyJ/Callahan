@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Offline on/off-field segmentation explorer for un-lapped Ultimate games.
+"""FAILED approach (speed thresholding), kept as a record; the live reference
+is segment.py - see README.md.
+
+Offline on/off-field segmentation explorer for un-lapped Ultimate games.
 
 Reads a JSON dump from `garmin_sync.py --dump-stream` (an array of game
 objects, each with `metricDescriptors` + `activityDetailMetrics`) and tries to

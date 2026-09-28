@@ -55,7 +55,7 @@ public sealed record FieldGeometryOptions(
 }
 
 // Pure. No DbContext, no I/O. A direct port of segment.py, validated against
-// six real games (see tests/Callahan.Api.Tests/Fixtures). The Python file
+// every real tournament game so far (see tests/Callahan.Api.Tests/Fixtures). The Python file
 // stays as the reference implementation and the place new ideas are tried.
 public static class FieldGeometry
 {

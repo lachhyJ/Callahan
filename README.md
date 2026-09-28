@@ -82,7 +82,7 @@ silent switch, ducks your music rather than stopping it, and fires while backgro
 Backend:
 ```bash
 cd backend
-dotnet run --urls http://localhost:5080
+dotnet run --launch-profile http
 ```
 
 Frontend:
@@ -91,7 +91,7 @@ cd frontend
 npm install
 npm run dev
 ```
-Frontend expects the backend at `http://localhost:5080` by default (`VITE_API_BASE` env var to override).
+Frontend expects the backend at `http://localhost:8080` by default (the `http` launch profile's port) (`VITE_API_BASE` env var to override).
 
 ## Running locally with Docker
 
