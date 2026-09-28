@@ -535,8 +535,10 @@ export function markMonthlyReportViewed(year, month) {
 // Resolves with the trigger's summary { ok, wellness, durationMs, log[] };
 // rejects with a readable message on 409 (already running) or 502 (not set
 // up / unreachable / the sync itself failed).
-export function syncGarmin(wellness = false) {
-  return apiFetch(`/api/sync/garmin?wellness=${wellness ? 'true' : 'false'}`, { method: 'POST' })
+// Activities and the last few days of sleep/HRV/readiness, so a morning press
+// also picks up last night's wellness rather than waiting for the noon cron.
+export function syncGarmin() {
+  return apiFetch('/api/sync/garmin?wellness=true', { method: 'POST' })
 }
 
 // Usage tracking. Deliberately does not go through apiFetch: a fire-and-forget
