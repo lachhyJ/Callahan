@@ -257,14 +257,6 @@ export default function ActiveWorkoutPage() {
   const [finishers, setFinishers] = useState([])
   const [pickableExercises, setPickableExercises] = useState(null)
   const [showExercisePicker, setShowExercisePicker] = useState(false)
-  const [exercisePickerQuery, setExercisePickerQuery] = useState('')
-  // Creating a brand-new exercise from inside the picker. The category starts
-  // unset and Create stays disabled until one is picked - defaulting it to
-  // "Other" just meant every exercise created in a hurry landed there.
-  const [creatingNewExercise, setCreatingNewExercise] = useState(false)
-  const [newExerciseCategory, setNewExerciseCategory] = useState(null)
-  const [creatingExercise, setCreatingExercise] = useState(false)
-  const [createExerciseError, setCreateExerciseError] = useState(null)
   const [error, setError] = useState(null)
   // A set-completion validation message (missing reps/hold time) needs to
   // interrupt with a popup, not just render an easy-to-miss inline <p> — the
@@ -1163,10 +1155,6 @@ export default function ActiveWorkoutPage() {
 
   function openExercisePicker() {
     setShowExercisePicker(true)
-    setExercisePickerQuery('')
-    setCreatingNewExercise(false)
-    setNewExerciseCategory(null)
-    setCreateExerciseError(null)
     if (pickableExercises === null) {
       getPickableExercises().then(setPickableExercises).catch(() => setPickableExercises([]))
     }
@@ -1202,21 +1190,12 @@ export default function ActiveWorkoutPage() {
     ])
   }
 
-  // Creates the exercise, then adds it to this workout in the same tap - the
-  // picker is only ever open because something is about to be logged, so
-  // stopping at "created" would leave the user to find it again.
-  async function handleCreateExercise(name) {
-    setCreateExerciseError(null)
-    setCreatingExercise(true)
-    try {
-      const created = await createExercise({ name, category: newExerciseCategory })
-      setPickableExercises((prev) => [...(prev ?? []), { ...created, templateNames: [] }])
-      await addAdHocExercise(created)
-    } catch (err) {
-      setCreateExerciseError(err.message)
-    } finally {
-      setCreatingExercise(false)
-    }
+  // A brand-new exercise from the picker joins the cached catalog and is added
+  // in the same tap - the picker is only ever open because something is about
+  // to be logged, so stopping at "created" would leave the user to find it again.
+  async function handleExerciseCreated(created) {
+    setPickableExercises((prev) => [...(prev ?? []), { ...created, templateNames: [] }])
+    await addAdHocExercise(created)
   }
 
   // Whether the exercise order or superset links differ from what this session
@@ -2069,108 +2048,15 @@ export default function ActiveWorkoutPage() {
 
       <button type="button" className="add-exercise-btn" onClick={openExercisePicker}>+ Add an exercise</button>
 
-      {showExercisePicker && (() => {
-        const query = exercisePickerQuery.trim().toLowerCase()
-        const options = (pickableExercises ?? []).filter(
-          (e) => !addedExerciseIds.has(e.id) && e.name.toLowerCase().includes(query)
-        )
-        const fromOtherTemplates = options.filter((e) => e.templateNames.length > 0)
-        const rest = options.filter((e) => e.templateNames.length === 0)
-        // Offer to create only once the search has ruled the name out.
-        // `pickableExercises` is the whole catalog, including anything already
-        // added to this workout (which only `options` filters out), so it's the
-        // right list to check against - see shouldOfferCreate for why the match
-        // is case- and whitespace-insensitive.
-        const typedName = exercisePickerQuery.trim()
-        const offerCreate = shouldOfferCreate(exercisePickerQuery, pickableExercises)
-
-        return (
-          <>
-            <div className="sheet-backdrop visible" onClick={() => setShowExercisePicker(false)} />
-            <div className="day-detail-sheet exercise-picker-sheet open" role="dialog" aria-modal="true" aria-label="Add an exercise">
-              <div className="day-detail-sheet-header">
-                <strong>Add an exercise</strong>
-                <button type="button" className="sheet-close-btn" onClick={() => setShowExercisePicker(false)}>×</button>
-              </div>
-              <input
-                type="text"
-                autoFocus
-                placeholder="Search exercises…"
-                value={exercisePickerQuery}
-                onChange={(e) => setExercisePickerQuery(e.target.value)}
-                className="exercise-picker-search"
-              />
-              {pickableExercises === null && <p>Loading exercises…</p>}
-              <div className="exercise-picker-list">
-                {fromOtherTemplates.length > 0 && (
-                  <>
-                    <h3 className="exercise-picker-group-heading">From your other templates</h3>
-                    {fromOtherTemplates.map((e) => (
-                      <button key={e.id} type="button" className="exercise-picker-item" onClick={() => addAdHocExercise(e)}>
-                        <span>{e.name}</span>
-                        <span className="exercise-picker-meta">{e.templateNames.join(', ')}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-                {rest.length > 0 && (
-                  <>
-                    {fromOtherTemplates.length > 0 && <h3 className="exercise-picker-group-heading">All exercises</h3>}
-                    {rest.map((e) => (
-                      <button key={e.id} type="button" className="exercise-picker-item" onClick={() => addAdHocExercise(e)}>
-                        <span>{e.name}</span>
-                      </button>
-                    ))}
-                  </>
-                )}
-                {pickableExercises !== null && options.length === 0 && !offerCreate && <p>No matching exercises.</p>}
-              </div>
-
-              {offerCreate && (
-                <div className="exercise-create">
-                  {!creatingNewExercise ? (
-                    <button
-                      type="button"
-                      className="exercise-create-open"
-                      onClick={() => setCreatingNewExercise(true)}
-                    >
-                      + Create "{typedName}"
-                    </button>
-                  ) : (
-                    <>
-                      <p className="exercise-create-label">
-                        New exercise "{typedName}" — pick a category
-                      </p>
-                      <div className="exercise-create-categories">
-                        {EXERCISE_CATEGORIES.map((c) => (
-                          <button
-                            key={c}
-                            type="button"
-                            className={c === newExerciseCategory
-                              ? 'exercise-create-category active'
-                              : 'exercise-create-category'}
-                            onClick={() => setNewExerciseCategory(c)}
-                          >
-                            {c}
-                          </button>
-                        ))}
-                      </div>
-                      {createExerciseError && <p className="error">{createExerciseError}</p>}
-                      <button
-                        type="button"
-                        disabled={creatingExercise || newExerciseCategory === null}
-                        onClick={() => handleCreateExercise(typedName)}
-                      >
-                        {creatingExercise ? 'Creating…' : `Create and add`}
-                      </button>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
-          </>
-        )
-      })()}
+      {showExercisePicker && (
+        <ExercisePickerSheet
+          pickable={pickableExercises}
+          addedExerciseIds={addedExerciseIds}
+          onPick={addAdHocExercise}
+          onCreated={handleExerciseCreated}
+          onClose={() => setShowExercisePicker(false)}
+        />
+      )}
 
       {restTimer && (() => {
         const remainingSeconds = Math.max(0, Math.round((restTimer.endAt - now.getTime()) / 1000))
@@ -2263,4 +2149,133 @@ export default function ActiveWorkoutPage() {
       {setValidationSheet}
     </main>
   )
+}
+
+// The "Add an exercise" sheet: search the catalog, pick one, or create a new
+// exercise when the search rules the name out. Mounted fresh each time it
+// opens, so the search and create form always start empty. The catalog itself
+// is cached by the page across opens.
+function ExercisePickerSheet({ pickable, addedExerciseIds, onPick, onCreated, onClose }) {
+  const [exercisePickerQuery, setExercisePickerQuery] = useState('')
+  // Creating a brand-new exercise from inside the picker. The category starts
+  // unset and Create stays disabled until one is picked - defaulting it to
+  // "Other" just meant every exercise created in a hurry landed there.
+  const [creatingNewExercise, setCreatingNewExercise] = useState(false)
+  const [newExerciseCategory, setNewExerciseCategory] = useState(null)
+  const [creatingExercise, setCreatingExercise] = useState(false)
+  const [createExerciseError, setCreateExerciseError] = useState(null)
+
+  async function handleCreate(name) {
+    setCreateExerciseError(null)
+    setCreatingExercise(true)
+    try {
+      const created = await createExercise({ name, category: newExerciseCategory })
+      await onCreated(created)
+    } catch (err) {
+      setCreateExerciseError(err.message)
+    } finally {
+      setCreatingExercise(false)
+    }
+  }
+
+    const query = exercisePickerQuery.trim().toLowerCase()
+    const options = (pickable ?? []).filter(
+      (e) => !addedExerciseIds.has(e.id) && e.name.toLowerCase().includes(query)
+    )
+    const fromOtherTemplates = options.filter((e) => e.templateNames.length > 0)
+    const rest = options.filter((e) => e.templateNames.length === 0)
+    // Offer to create only once the search has ruled the name out.
+    // `pickable` is the whole catalog, including anything already
+    // added to this workout (which only `options` filters out), so it's the
+    // right list to check against - see shouldOfferCreate for why the match
+    // is case- and whitespace-insensitive.
+    const typedName = exercisePickerQuery.trim()
+    const offerCreate = shouldOfferCreate(exercisePickerQuery, pickable)
+
+    return (
+      <>
+        <div className="sheet-backdrop visible" onClick={onClose} />
+        <div className="day-detail-sheet exercise-picker-sheet open" role="dialog" aria-modal="true" aria-label="Add an exercise">
+          <div className="day-detail-sheet-header">
+            <strong>Add an exercise</strong>
+            <button type="button" className="sheet-close-btn" onClick={onClose}>×</button>
+          </div>
+          <input
+            type="text"
+            autoFocus
+            placeholder="Search exercises…"
+            value={exercisePickerQuery}
+            onChange={(e) => setExercisePickerQuery(e.target.value)}
+            className="exercise-picker-search"
+          />
+          {pickable === null && <p>Loading exercises…</p>}
+          <div className="exercise-picker-list">
+            {fromOtherTemplates.length > 0 && (
+              <>
+                <h3 className="exercise-picker-group-heading">From your other templates</h3>
+                {fromOtherTemplates.map((e) => (
+                  <button key={e.id} type="button" className="exercise-picker-item" onClick={() => onPick(e)}>
+                    <span>{e.name}</span>
+                    <span className="exercise-picker-meta">{e.templateNames.join(', ')}</span>
+                  </button>
+                ))}
+              </>
+            )}
+            {rest.length > 0 && (
+              <>
+                {fromOtherTemplates.length > 0 && <h3 className="exercise-picker-group-heading">All exercises</h3>}
+                {rest.map((e) => (
+                  <button key={e.id} type="button" className="exercise-picker-item" onClick={() => onPick(e)}>
+                    <span>{e.name}</span>
+                  </button>
+                ))}
+              </>
+            )}
+            {pickable !== null && options.length === 0 && !offerCreate && <p>No matching exercises.</p>}
+          </div>
+
+          {offerCreate && (
+            <div className="exercise-create">
+              {!creatingNewExercise ? (
+                <button
+                  type="button"
+                  className="exercise-create-open"
+                  onClick={() => setCreatingNewExercise(true)}
+                >
+                  + Create "{typedName}"
+                </button>
+              ) : (
+                <>
+                  <p className="exercise-create-label">
+                    New exercise "{typedName}" — pick a category
+                  </p>
+                  <div className="exercise-create-categories">
+                    {EXERCISE_CATEGORIES.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        className={c === newExerciseCategory
+                          ? 'exercise-create-category active'
+                          : 'exercise-create-category'}
+                        onClick={() => setNewExerciseCategory(c)}
+                      >
+                        {c}
+                      </button>
+                    ))}
+                  </div>
+                  {createExerciseError && <p className="error">{createExerciseError}</p>}
+                  <button
+                    type="button"
+                    disabled={creatingExercise || newExerciseCategory === null}
+                    onClick={() => handleCreate(typedName)}
+                  >
+                    {creatingExercise ? 'Creating…' : `Create and add`}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </>
+    )
 }
