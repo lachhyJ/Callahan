@@ -1,4 +1,6 @@
+using System.Net;
 using System.Text.Json;
+using Callahan.Api.Data;
 using Callahan.Api.Models;
 using WebPush;
 using WebPushSubscription = WebPush.PushSubscription;
@@ -11,11 +13,16 @@ public class PushNotificationService
 {
     private readonly IConfiguration _config;
     private readonly ILogger<PushNotificationService> _logger;
+    private readonly IHttpClientFactory? _httpClientFactory;
+    private readonly AppDbContext? _db;
 
-    public PushNotificationService(IConfiguration config, ILogger<PushNotificationService> logger)
+    public PushNotificationService(IConfiguration config, ILogger<PushNotificationService> logger,
+        IHttpClientFactory? httpClientFactory = null, AppDbContext? db = null)
     {
         _config = config;
         _logger = logger;
+        _httpClientFactory = httpClientFactory;
+        _db = db;
     }
 
     public async Task SendToAllAsync(List<Models.PushSubscription> subscriptions, string title, string body)
@@ -34,7 +41,9 @@ public class PushNotificationService
         }
 
         var vapidDetails = new VapidDetails(subject, publicKey, privateKey);
-        var client = new WebPushClient();
+        // A factory client rather than WebPushClient's own: that one news up an
+        // HttpClient per instance, and nothing ever disposed it.
+        var client = _httpClientFactory is null ? new WebPushClient() : new WebPushClient(_httpClientFactory.CreateClient("webpush"));
         // Confirmed on-device: an empty title doesn't collapse to just the OS's
         // "from Callahan" line — iOS fills the blank with "Callahan" anyway, so
         // you get two duplicate mentions instead of one. Real title it is.
@@ -49,12 +58,21 @@ public class PushNotificationService
             ["headers"] = new Dictionary<string, object> { ["Urgency"] = "high" },
         };
 
+        var expired = new List<Models.PushSubscription>();
         foreach (var sub in subscriptions)
         {
             try
             {
                 var pushSubscription = new WebPushSubscription(sub.Endpoint, sub.P256dh, sub.Auth);
                 await client.SendNotificationAsync(pushSubscription, payload, options);
+            }
+            catch (WebPushException ex) when (ex.StatusCode is HttpStatusCode.NotFound or HttpStatusCode.Gone)
+            {
+                // The push service says this subscription no longer exists (the
+                // browser unsubscribed, or the PWA was removed). Without pruning,
+                // every later push retried it forever.
+                _logger.LogInformation("Push subscription {Id} has expired; removing it", sub.Id);
+                expired.Add(sub);
             }
             catch (Exception ex)
             {
@@ -64,6 +82,12 @@ public class PushNotificationService
                 // whatever triggered it.
                 _logger.LogWarning(ex, "Push failed for subscription {Id}", sub.Id);
             }
+        }
+
+        if (expired.Count > 0 && _db is not null)
+        {
+            _db.PushSubscriptions.RemoveRange(expired);
+            await _db.SaveChangesAsync();
         }
     }
 }

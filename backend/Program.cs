@@ -36,6 +36,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
 builder.Services.AddSingleton<TokenService>();
+builder.Services.AddHttpClient("webpush");
 builder.Services.AddScoped<PushNotificationService>();
 builder.Services.AddScoped<MonthlyReportBuilder>();
 builder.Services.AddHttpClient<TaperConsultService>(client =>
