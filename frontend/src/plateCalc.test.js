@@ -209,10 +209,19 @@ describe('server sync', () => {
     expect(api.deletePlateCalcSetting).toHaveBeenCalledWith('customEquipment.11')
   })
 
-  it('does not reject when the server call fails', async () => {
-    api.putPlateCalcSetting.mockRejectedValueOnce(new Error('offline'))
-    expect(() => setAvailablePlates('kg', [25])).not.toThrow()
-    await Promise.resolve()
+  // The failure path is an async rejection, which a not.toThrow() around the
+  // synchronous call could never see. So the server call returns a rejected
+  // promise that records whether anyone attached a rejection handler to it.
+  it('handles a failed server write rather than leaving the rejection unhandled', async () => {
+    const failure = Promise.reject(new Error('offline'))
+    failure.catch(() => {}) // keep the test runner itself quiet
+    let handled = false
+    api.putPlateCalcSetting.mockReturnValueOnce({
+      then: (onOk, onErr) => { if (onErr) handled = true; return failure.then(onOk, onErr) },
+      catch: (onErr) => { handled = true; return failure.catch(onErr) },
+    })
+    setAvailablePlates('kg', [25])
+    expect(handled).toBe(true)
   })
 
   it('hydrate writes JSON values and raw strings into localStorage the way the getters read them', async () => {

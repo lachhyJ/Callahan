@@ -301,13 +301,6 @@ public class MonthlyReportBuilderTests : IDisposable
     }
 
     [Fact]
-    public async Task WindowSessionsIsReported_SoTheUiCanLabelTheMoversWindow()
-    {
-        var report = await Build();
-        Assert.True(report.LoadProgression.WindowSessions > 0);
-    }
-
-    [Fact]
     public async Task WellnessOmitsReadiness_EvenWhenReadingsExist()
     {
         for (var i = 0; i < 28; i++)

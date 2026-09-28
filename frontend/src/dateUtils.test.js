@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isoDate, trainingDayIso, startOfWeek, endOfWeek, formatDateRange } from './dateUtils'
+import { isoDate, trainingDayIso, startOfWeek, endOfWeek, formatDateRange, formatDateMedium } from './dateUtils'
 
 // These run under TZ=Australia/Melbourne (see vite.config.js) because every
 // bug this file guards against is a timezone bug. Under UTC they'd all pass
@@ -44,9 +44,20 @@ describe('trainingDayIso', () => {
     expect(trainingDayIso(new Date('2026-01-01T00:15:00+11:00'))).toBe('2025-12-31')
   })
 
-  it('rolls back across the start of daylight saving', () => {
+  it('rolls back the night before daylight saving starts', () => {
     // AEDT begins 2026-10-04; clocks jump 2am -> 3am.
     expect(trainingDayIso(new Date('2026-10-04T00:30:00+10:00'))).toBe('2026-10-03')
+  })
+
+  // The two cases a "subtract three hours" shortcut gets wrong: across the jump
+  // 03:30 AEDT is only 2.5 real hours after midnight, and in the repeated hour
+  // at the end of daylight saving 02:30 AEST is 3.5 real hours after.
+  it('treats the first hour after the daylight-saving jump as the new day', () => {
+    expect(trainingDayIso(new Date('2026-10-04T03:30:00+11:00'))).toBe('2026-10-04')
+  })
+
+  it('treats the repeated hour when daylight saving ends as the previous day', () => {
+    expect(trainingDayIso(new Date('2026-04-05T02:30:00+10:00'))).toBe('2026-04-04')
   })
 
   it('defaults to now, and never returns a date ahead of the real one', () => {
@@ -70,7 +81,7 @@ describe('startOfWeek / endOfWeek', () => {
 
 describe('formatDateRange', () => {
   it('collapses to a single date when start and end match', () => {
-    expect(formatDateRange('2026-05-30', '2026-05-30')).toBe(formatDateRange('2026-05-30', '2026-05-30'))
+    expect(formatDateRange('2026-05-30', '2026-05-30')).toBe(formatDateMedium('2026-05-30'))
     expect(formatDateRange('2026-05-30', '2026-05-30')).not.toContain('–')
   })
 

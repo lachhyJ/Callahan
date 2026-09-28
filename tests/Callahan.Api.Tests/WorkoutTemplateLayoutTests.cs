@@ -90,8 +90,10 @@ public class WorkoutTemplateLayoutTests
 
         var result = await new WorkoutTemplatesController(db).UpdateLayout(1, new UpdateTemplateLayoutRequest(
         [
-            new TemplateLayoutItemDto(slots[0], 0, false),
-            new TemplateLayoutItemDto(slots[1], 1, false),
+            // Swapped, so a controller that wrote the partial payload before
+            // rejecting it would visibly change the order.
+            new TemplateLayoutItemDto(slots[1], 0, false),
+            new TemplateLayoutItemDto(slots[0], 1, false),
         ]));
 
         Assert.IsType<BadRequestObjectResult>(result);
@@ -111,12 +113,14 @@ public class WorkoutTemplateLayoutTests
 
         var result = await new WorkoutTemplatesController(db).UpdateLayout(1, new UpdateTemplateLayoutRequest(
         [
-            new TemplateLayoutItemDto(a[0], 0, false),
-            new TemplateLayoutItemDto(b[1], 1, false),
+            // Orders that differ from the seeded ones, so a partial write shows.
+            new TemplateLayoutItemDto(a[0], 1, false),
+            new TemplateLayoutItemDto(b[1], 0, false),
         ]));
 
         Assert.IsType<BadRequestObjectResult>(result);
         Assert.Equal(1, await db.WorkoutTemplateExercises.CountAsync(te => te.Id == b[1] && te.ExerciseOrder == 1));
+        Assert.Equal(1, await db.WorkoutTemplateExercises.CountAsync(te => te.Id == a[0] && te.ExerciseOrder == 0));
     }
 
     [Fact]
