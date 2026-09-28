@@ -67,12 +67,10 @@ export function earliestStartedAt(sessionKey, candidate) {
 // round-robin, which only holds because sets are always ticked in order.
 export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) {
   if (!exercises) return null
-  for (let i = Math.max(0, fromIdx); i < exercises.length; i++) {
-    if (exercises[i].sets.every((s) => s.completed)) continue
-    const [groupStart, groupEnd] = supersetGroupBounds(exercises, i)
-    const target = groupEnd > groupStart ? groupMemberDueNext(exercises, groupStart, groupEnd) : null
-    const j = target ? target.j : exercises[i].sets.findIndex((s) => !s.completed)
-    const ti = target ? target.i : i
+  const due = ambientTarget(exercises, Math.max(0, fromIdx))
+  if (due) {
+    const { i: ti, j } = due
+    const [groupStart, groupEnd] = supersetGroupBounds(exercises, ti)
     const ex = exercises[ti]
     return {
       exerciseName: ex.exerciseName,
@@ -83,11 +81,11 @@ export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) 
       holdLabel: holdLabelFor(ex, ex.sets[j]),
       nextSetNumber: j + 1,
       totalSets: ex.sets.length,
-      restSeconds: groupRestSeconds(exercises, groupStart, groupEnd, target ? target.i : i),
+      restSeconds: groupRestSeconds(exercises, groupStart, groupEnd, ti),
       // Whether ticking *this* set should fire a rest at all — the lock-screen
       // card needs this to make the same call the checkbox does in
       // armRestAfterSet, since it cannot call back into JS to ask.
-      isLastInSuperset: !suppressesRest(exercises, target ? target.i : i),
+      isLastInSuperset: !suppressesRest(exercises, ti),
       following: withFollowing ? followingDescriptor(exercises, ti, j) : null,
     }
   }
@@ -209,6 +207,66 @@ export function nextIncompleteInGroup(exercises, groupStart, groupEnd, fromIdx) 
     if (j !== -1) return { i, j }
   }
   return null
+}
+
+// Which set is due next with nothing just ticked to anchor from: the first
+// exercise with work left, resolved through its superset's rotation. This is
+// nextSetDescriptor's scan, shared so a card press completes exactly the set
+// the card was showing.
+export function ambientTarget(exercises, fromIdx) {
+  for (let i = fromIdx; i < exercises.length; i++) {
+    if (exercises[i].sets.every((s) => s.completed)) continue
+    const [groupStart, groupEnd] = supersetGroupBounds(exercises, i)
+    const target = groupEnd > groupStart ? groupMemberDueNext(exercises, groupStart, groupEnd) : null
+    const j = target ? target.j : exercises[i].sets.findIndex((s) => !s.completed)
+    return { i: target ? target.i : i, j }
+  }
+  return null
+}
+
+// Which set is due right after ticking one on exIdx — restDescriptorAfterSet's
+// targeting: a second (or third...) native completion in the same batch should
+// land on whoever's turn is next in rotation, not just the next row of
+// whichever exercise happens to sit first in the array.
+function targetAfterTick(exercises, exIdx) {
+  const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
+  if (groupEnd > groupStart) {
+    const next = nextIncompleteInGroup(exercises, groupStart, groupEnd, exIdx)
+    if (next) return next
+  }
+  if (exercises[exIdx].sets.some((s) => !s.completed)) {
+    return { i: exIdx, j: exercises[exIdx].sets.findIndex((s) => !s.completed) }
+  }
+  return ambientTarget(exercises, groupEnd + 1)
+}
+
+// Fold sets ticked from the Live Activity into the workout's own state.
+//
+// The card can only bank a count — it has no access to the set rows — so this
+// walks forward from wherever the workout is now, ticking whichever set is
+// actually due next in rotation order (not just array order — a mid-superset
+// press otherwise lands on the wrong exercise's set, completing member A's
+// row ahead of B's turn even when B was due). A set confirmed from a locked
+// phone has no typed reps, so the programmed target stands in; that is what
+// the athlete was being asked to do and what the card was showing them when
+// they pressed it. Sets with neither a typed nor a target rep count are left
+// alone rather than saved as a blank.
+export function applyNativeCompletions(exercises, count) {
+  if (!exercises || count <= 0) return null
+  const next = exercises.map((ex) => ({ ...ex, sets: ex.sets.map((set) => ({ ...set })) }))
+  let applied = 0
+  let target = ambientTarget(next, 0)
+  while (target && applied < count) {
+    const ex = next[target.i]
+    const set = ex.sets[target.j]
+    const reps = set.reps !== '' ? set.reps : (ex.targetReps ?? '')
+    if (reps === '' || reps == null) break
+    set.reps = String(reps)
+    set.completed = true
+    applied += 1
+    target = targetAfterTick(next, target.i)
+  }
+  return applied > 0 ? { exercises: next, applied } : null
 }
 
 // Advance a hold countdown at a 1s tick. Returns null while time remains on the

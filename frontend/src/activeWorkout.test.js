@@ -12,6 +12,7 @@ import {
   isSupersetRestOwner,
   isSupersetGroupConfigOwner,
   advanceHold,
+  applyNativeCompletions,
 } from './activeWorkout'
 
 // The suite runs on plain node by deliberate choice (see vite.config.js), and
@@ -540,5 +541,55 @@ describe('advanceHold', () => {
   it('a non-per-side hold just finishes when it hits zero', () => {
     const step = advanceHold({ ...side1, delaySeconds: 0 }, single, T0)
     expect(step).toEqual({ type: 'finish', beep: true, seconds: 30 })
+  })
+})
+
+// Sets ticked from the lock-screen card arrive as a bare count; this folds
+// them in, in the order the card would have walked them.
+describe('applyNativeCompletions', () => {
+  const done = (result) => result.exercises.map((e) => e.sets.map((s) => (s.completed ? 'x' : '.')).join(''))
+
+  it('ticks a lone exercise in order, filling blank reps from the target', () => {
+    const ex = [exercise('Squat', 120, '5', [set(100, '', false), set(100, '', false), set(100, '', false)])]
+    const result = applyNativeCompletions(ex, 2)
+    expect(result.applied).toBe(2)
+    expect(done(result)).toEqual(['xx.'])
+    expect(result.exercises[0].sets[0].reps).toBe('5')
+    expect(ex[0].sets[0].completed).toBe(false) // input untouched
+  })
+
+  it('rotates through a superset rather than finishing one member first', () => {
+    const ex = [
+      { ...exercise('A', 60, '8', [set(20, 8), set(20, 8)]), supersetWithNext: true },
+      { ...exercise('B', 60, '8', [set(20, 8), set(20, 8)]), supersetWithNext: false },
+    ]
+    expect(done(applyNativeCompletions(ex, 3))).toEqual(['xx', 'x.'])
+  })
+
+  // 5+3+3: once the two short members are done, the long one's last sets are
+  // the only work left and are ticked back to back.
+  it('handles an uneven superset', () => {
+    const five = Array.from({ length: 5 }, () => set(20, 8))
+    const three = () => Array.from({ length: 3 }, () => set(20, 8))
+    const ex = [
+      { ...exercise('Long', 60, '8', five), supersetWithNext: true },
+      { ...exercise('Mid', 60, '8', three()), supersetWithNext: true },
+      { ...exercise('End', 60, '8', three()), supersetWithNext: false },
+    ]
+    expect(done(applyNativeCompletions(ex, 11))).toEqual(['xxxxx', 'xxx', 'xxx'])
+    expect(done(applyNativeCompletions(ex, 10))).toEqual(['xxxx.', 'xxx', 'xxx'])
+  })
+
+  it('moves on to the next exercise once a group is finished', () => {
+    const ex = [
+      exercise('A', 60, '8', [set(20, 8, true)]),
+      exercise('B', 60, '10', [set(30, 10), set(30, 10)]),
+    ]
+    expect(done(applyNativeCompletions(ex, 1))).toEqual(['x', 'x.'])
+  })
+
+  it('stops rather than saving a set with no reps at all', () => {
+    const ex = [exercise('A', 60, null, [set(20, ''), set(20, '')])]
+    expect(applyNativeCompletions(ex, 1)).toBeNull()
   })
 })
