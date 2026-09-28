@@ -24,20 +24,18 @@ function readBuildInfo() {
       branch: 'main', // deploy.sh always deploys from main
       commit: process.env.CALLAHAN_GIT_COMMIT,
       dirty: false, // deploy.sh always deploys from a `git reset --hard`, so the tree is always clean
-      builtAt: new Date().toISOString(),
     }
   }
 
   const git = (...args) => execFileSync('git', args, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
   try {
     const root = git('rev-parse', '--show-toplevel')
-    const dirty = git('status', '--porcelain').length > 0
+    const dirty = git('status', '--porcelain', '--untracked-files=no').length > 0
     return {
       worktree: path.basename(root),
       branch: git('rev-parse', '--abbrev-ref', 'HEAD'),
       commit: git('rev-parse', '--short', 'HEAD'),
       dirty,
-      builtAt: new Date().toISOString(),
     }
   } catch {
     // No git available (e.g. building from a tarball) — the label just won't

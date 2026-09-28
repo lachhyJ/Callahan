@@ -287,7 +287,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     private func recoverArmedRest() {
         guard let target = armedEndAt else { return }
         if target.timeIntervalSinceNow > 0.25 {
-            arm(for: target, force: true)
+            arm(for: target)
         } else {
             // The rest ended while we were interrupted — better late than never;
             // the local notification will already have landed on time.
@@ -347,7 +347,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                 self.standDown(reason: "handleRestTimerChanged (\(reason))")
                 return
             }
-            self.arm(for: endAt, force: true)
+            self.arm(for: endAt)
         }
     }
 
@@ -643,16 +643,8 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Arms the beep for `endAt`. Uses the audio clock rather than a Timer so it
     /// survives the app being backgrounded — a suspended process's timers do not
     /// fire, but an armed audio player keeps the app alive and sounds on time.
-    ///
-    /// Idempotent unless `force`: the JS effect that calls this re-runs on state
-    /// that has nothing to do with the timer, and a re-arm is not free — see the
-    /// clock discussion on the type.
     @discardableResult
-    private func arm(for endAt: Date, force: Bool) -> Bool {
-        if !force, let armed = armedEndAt, player != nil,
-           abs(armed.timeIntervalSince(endAt)) < Self.earlyToleranceSeconds {
-            return true
-        }
+    private func arm(for endAt: Date) -> Bool {
 
         let overdue = -endAt.timeIntervalSinceNow
         guard endAt.timeIntervalSinceNow > 0.25 else {
@@ -755,6 +747,9 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         armedTitle = call.getString("title") ?? "Rest over"
         armedBody = call.getString("body") ?? "Next set."
 
+        // Idempotent: the JS effect that calls this re-runs on state that has
+        // nothing to do with the timer, and a re-arm is not free — see the clock
+        // discussion on the type.
         let alreadyArmed = armedEndAt.map {
             player != nil && abs($0.timeIntervalSince(endAt)) < Self.earlyToleranceSeconds
         } ?? false
@@ -763,7 +758,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
             return
         }
 
-        let ok = arm(for: endAt, force: false)
+        let ok = arm(for: endAt)
         call.resolve(["scheduled": ok, "inSeconds": endAt.timeIntervalSinceNow])
     }
 
@@ -855,7 +850,7 @@ extension RestAudioPlugin: AVAudioPlayerDelegate {
            Date() < target.addingTimeInterval(-Self.earlyToleranceSeconds) {
             // Let the music back up for the gap, then re-arm on the remainder.
             stopDucking()
-            arm(for: target, force: true)
+            arm(for: target)
             return
         }
         armedEndAt = nil

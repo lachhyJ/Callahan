@@ -118,16 +118,12 @@ actor RestTimerStore {
     private let totalKey = "callahan.rest.totalSeconds"
     /// Sets ticked from the card that JS has not applied yet.
     private let pendingCompletionsKey = "callahan.rest.pendingCompletions"
-    /// Bumped on every native mutation so JS can tell "nothing happened" from
-    /// "adjusted back to the same value".
-    private let revisionKey = "callahan.rest.revision"
 
     var endAt: Date? {
         let t = UserDefaults.standard.double(forKey: endAtKey)
         return t > 0 ? Date(timeIntervalSince1970: t) : nil
     }
     var totalSeconds: Int { UserDefaults.standard.integer(forKey: totalKey) }
-    var revision: Int { UserDefaults.standard.integer(forKey: revisionKey) }
     var pendingCompletions: Int { UserDefaults.standard.integer(forKey: pendingCompletionsKey) }
 
     func set(endAt: Date, totalSeconds: Int) {
@@ -148,7 +144,6 @@ actor RestTimerStore {
     /// had been saved. Anything that ends a rest for good should use this.
     func standDown(reason: String = "RestTimerStore.standDown") {
         clear()
-        bumpRevision()
         announce(endAt: nil, reason: reason)
     }
 
@@ -157,10 +152,6 @@ actor RestTimerStore {
     /// swallowed by the acknowledgement of the ones before it.
     func acknowledgeCompletions(_ count: Int) {
         UserDefaults.standard.set(max(0, pendingCompletions - count), forKey: pendingCompletionsKey)
-    }
-
-    private func bumpRevision() {
-        UserDefaults.standard.set(revision + 1, forKey: revisionKey)
     }
 
     /// Tells the audio plugin the timer moved under it. Posted on the main queue
@@ -182,7 +173,6 @@ actor RestTimerStore {
         let moved = max(Date().addingTimeInterval(1), current.addingTimeInterval(Double(deltaSeconds)))
         let total = max(totalSeconds, Int(moved.timeIntervalSince(Date())))
         set(endAt: moved, totalSeconds: total)
-        bumpRevision()
         announce(endAt: moved, reason: "AdjustRestIntent")
         await updateActivities(endAt: moved, totalSeconds: total)
     }
@@ -191,7 +181,6 @@ actor RestTimerStore {
     /// and should stay up between sets with the countdown zeroed.
     func skip(reason: String = "RestTimerStore.skip") async {
         clear()
-        bumpRevision()
         announce(endAt: nil, reason: reason)
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state
@@ -207,7 +196,6 @@ actor RestTimerStore {
     /// its next run and re-syncs from there.
     func completeSet(reason: String = "CompleteSetIntent") async {
         UserDefaults.standard.set(pendingCompletions + 1, forKey: pendingCompletionsKey)
-        bumpRevision()
 
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state

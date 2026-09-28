@@ -21,7 +21,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "isSupported", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "ackCompletions", returnType: CAPPluginReturnPromise)
     ]
@@ -122,31 +121,26 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     ///
     /// While the app is backgrounded the Live Activity's buttons are the only way
     /// to change the timer, and they cannot reach the webview's localStorage — so
-    /// JS asks for this on resume and adopts it. `revision` increments on every
-    /// native mutation, which distinguishes "nothing happened" from "adjusted and
-    /// landed back on the same value".
+    /// JS asks for this on resume and adopts it.
     @objc func getState(_ call: CAPPluginCall) {
         guard #available(iOS 16.2, *) else {
-            call.resolve(["active": false, "revision": 0])
+            call.resolve(["active": false])
             return
         }
         Task {
             let endAt = await RestTimerStore.shared.endAt
             let total = await RestTimerStore.shared.totalSeconds
-            let revision = await RestTimerStore.shared.revision
             let pending = await RestTimerStore.shared.pendingCompletions
             if let endAt {
                 call.resolve([
                     "active": true,
                     "endAt": endAt.timeIntervalSince1970 * 1000,
                     "totalSeconds": total,
-                    "revision": revision,
                     "pendingCompletions": pending
                 ])
             } else {
                 call.resolve([
                     "active": false,
-                    "revision": revision,
                     "pendingCompletions": pending
                 ])
             }

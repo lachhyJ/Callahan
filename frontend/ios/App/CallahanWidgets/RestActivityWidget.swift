@@ -319,7 +319,7 @@ private struct ControlRow: View {
                 Countdown(context: context,
                           font: .system(size: compact ? 22 : 26, weight: .semibold, design: .rounded))
                     .layoutPriority(1)
-                    .frame(width: restOver ? (compact ? 70 : 90) : (compact ? 110 : 150), alignment: .center)
+                    .frame(width: compact ? 110 : 150, alignment: .center)
             }
             Spacer(minLength: 0)
 

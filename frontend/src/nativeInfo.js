@@ -9,7 +9,7 @@ import { Capacitor, registerPlugin } from '@capacitor/core'
 const AppInfo = registerPlugin('AppInfo')
 const isNative = Capacitor.isNativePlatform()
 
-// { branch, commit, dirty, builtAt, provisioningExpiresAt } or null on the
+// { branch, commit, dirty, provisioningExpiresAt } or null on the
 // web / on any failure. provisioningExpiresAt is an ISO string or null (no
 // embedded profile — always true in the Simulator, which isn't code-signed
 // with one at all).

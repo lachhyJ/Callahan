@@ -37,8 +37,7 @@ public class AppInfoPlugin: CAPPlugin, CAPBridgedPlugin {
         var result: [String: Any] = [
             "branch": NativeBuildInfo.branch,
             "commit": NativeBuildInfo.commit,
-            "dirty": NativeBuildInfo.dirty,
-            "builtAt": NativeBuildInfo.builtAt
+            "dirty": NativeBuildInfo.dirty
         ]
         // Omitted rather than `NSNull()` when absent — plain JSON `undefined`
         // on the JS side, which the falsy checks there already expect.

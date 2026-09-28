@@ -24,14 +24,12 @@ if [ -z "$REPO_ROOT" ]; then
 else
   BRANCH=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
   COMMIT=$(git -C "$REPO_ROOT" rev-parse --short HEAD)
-  if [ -n "$(git -C "$REPO_ROOT" status --porcelain)" ]; then
+  if [ -n "$(git -C "$REPO_ROOT" status --porcelain --untracked-files=no)" ]; then
     DIRTY="true"
   else
     DIRTY="false"
   fi
 fi
-
-BUILT_AT=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
 cat > "$OUT" <<EOF
 // Generated at build time by generate_build_info.sh — do not edit, do not commit.
@@ -39,6 +37,5 @@ enum NativeBuildInfo {
     static let branch = "$BRANCH"
     static let commit = "$COMMIT"
     static let dirty = $DIRTY
-    static let builtAt = "$BUILT_AT"
 }
 EOF
