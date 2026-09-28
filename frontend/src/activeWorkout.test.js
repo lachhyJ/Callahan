@@ -135,6 +135,47 @@ function exercise(name, restSeconds, targetReps, sets) {
   return { exerciseName: name, restSeconds, targetReps, sets }
 }
 
+describe('nextSetDescriptor following', () => {
+  function session() {
+    return [
+      exercise('Bench Press', 120, '6', [set(80, 6, true), set(80, 6, false)]),
+      exercise('Barbell Row', 90, '8', [set(60, 8, false), set(60, 8, false)]),
+    ]
+  }
+
+  it('is null while the pointed set is not the exercise\'s last', () => {
+    const ex = session()
+    ex[0].sets[0].completed = false
+    expect(nextSetDescriptor(ex).following).toBeNull()
+  })
+
+  it('previews the next exercise (with its own rest) on the exercise\'s last set', () => {
+    const d = nextSetDescriptor(session())
+    expect(d.exerciseName).toBe('Bench Press')
+    expect(d.following).toMatchObject({
+      exerciseName: 'Barbell Row',
+      nextSetNumber: 1,
+      totalSets: 2,
+      restSeconds: 90,
+    })
+  })
+
+  it('flags workoutDone on the last set of the whole session', () => {
+    const ex = session()
+    ex[0].sets[1].completed = true
+    ex[1].sets[0].completed = true
+    expect(nextSetDescriptor(ex).following).toEqual({ workoutDone: true })
+  })
+
+  it('keeps the card\'s own rest separate from the running rest on rollover', () => {
+    const ex = session()
+    ex[0].sets[1].completed = true
+    const d = restDescriptorAfterSet(ex, 0, 1)
+    expect(d.restSeconds).toBe(120) // Bench's rest, running now
+    expect(d.cardRestSeconds).toBe(90) // Row's, for the set the card points at
+  })
+})
+
 describe('restDescriptorAfterSet', () => {
   // Two exercises, three working sets each. Bench is done bar its last set.
   function session() {
@@ -171,8 +212,29 @@ describe('restDescriptorAfterSet', () => {
     expect(d.totalSets).toBe(3)
     expect(d.targetReps).toBe('8')
     expect(d.targetWeightKg).toBe('60')
-    // rest length comes from the exercise about to be worked, not the one just finished
-    expect(d.restSeconds).toBe(90)
+    // the rest belongs to the exercise just finished (Bench 120), not the one
+    // about to be worked (Row 90)
+    expect(d.restSeconds).toBe(120)
+  })
+
+  it('describes a timed hold by its duration, with per-side suffix', () => {
+    const ex = [
+      { ...exercise('Bench Press', 120, '6', [set(80, 6, true)]) },
+      {
+        ...exercise('Single Leg Balance', 60, '', [
+          { weightKg: '', reps: '', durationSeconds: '30', completed: false },
+        ]),
+        isTimeBased: true,
+        isPerSide: true,
+      },
+    ]
+    const d = restDescriptorAfterSet(ex, 0, 0)
+    expect(d.exerciseName).toBe('Single Leg Balance')
+    expect(d.holdLabel).toBe('30s/side')
+    ex[1].isPerSide = false
+    expect(restDescriptorAfterSet(ex, 0, 0).holdLabel).toBe('30s')
+    ex[1].isTimeBased = false
+    expect(restDescriptorAfterSet(ex, 0, 0).holdLabel).toBe('')
   })
 
   it('returns an over-the-end descriptor after the last set of the last exercise', () => {
@@ -208,7 +270,7 @@ describe('restDescriptorAfterSet', () => {
     const d = restDescriptorAfterSet(ex, 0, 0)
     expect(d.exerciseName).toBe('C')
     expect(d.nextSetNumber).toBe(1)
-    expect(d.restSeconds).toBe(120)
+    expect(d.restSeconds).toBe(100) // A's own rest, the exercise just ticked
   })
 })
 

@@ -168,6 +168,26 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    @available(iOS 16.2, *)
+    private static func parseFollowing(_ o: JSObject) -> RestActivityAttributes.ContentState.Following? {
+        if let done = o["doneLabel"] as? String, !done.isEmpty {
+            return .init(exerciseName: "", targetReps: "", targetWeight: "", enteredReps: "",
+                         nextSetNumber: 1, totalSets: 1, restSeconds: 0, isLastInSuperset: true,
+                         doneLabel: done)
+        }
+        guard let name = o["exerciseName"] as? String else { return nil }
+        return .init(
+            exerciseName: name,
+            targetReps: o["targetReps"] as? String ?? "",
+            targetWeight: o["targetWeight"] as? String ?? "",
+            enteredReps: o["enteredReps"] as? String ?? "",
+            nextSetNumber: o["nextSetNumber"] as? Int ?? 1,
+            totalSets: o["totalSets"] as? Int ?? 1,
+            restSeconds: o["restSeconds"] as? Int ?? 0,
+            isLastInSuperset: o["isLastInSuperset"] as? Bool ?? true
+        )
+    }
+
     @objc func sync(_ call: CAPPluginCall) {
         guard #available(iOS 16.2, *) else {
             call.resolve(["started": false, "reason": "unsupported"])
@@ -202,7 +222,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             restSeconds: call.getInt("restSeconds") ?? 0,
             enteredReps: call.getString("enteredReps") ?? "",
             isLastInSuperset: call.getBool("isLastInSuperset") ?? true,
-            doneLabel: call.getString("doneLabel") ?? ""
+            doneLabel: call.getString("doneLabel") ?? "",
+            following: (call.getObject("following")).flatMap(Self.parseFollowing)
         )
         self.currentEndAt = endAt
         Task {

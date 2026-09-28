@@ -268,17 +268,14 @@ function applyNativeCompletions(exercises, count) {
 function restTimerFromNative(exercises, native) {
   const detail = nextSetDescriptor(exercises)
   if (!detail) return null
+  // Spread the whole descriptor so nothing the sync/schedule paths read
+  // (bodyweight, hold label, superset flag) is silently dropped.
   return {
+    ...detail,
     endAt: native.endAt,
     totalSeconds: native.totalSeconds || detail.restSeconds,
     timerId: null,
-    exerciseName: detail.exerciseName,
-    targetReps: detail.targetReps,
-    targetWeightKg: detail.targetWeightKg,
-    enteredReps: detail.enteredReps,
-    nextSetNumber: detail.nextSetNumber,
-    totalSets: detail.totalSets,
-    restSeconds: detail.restSeconds,
+    doneLabel: '',
   }
 }
 
@@ -596,6 +593,7 @@ export default function ActiveWorkoutPage() {
       sessionStartedAt: startedAt.getTime(),
       templateName,
       templateSubtitle,
+      workoutDoneLabel: workoutDoneLabel(),
     })
   }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
 
@@ -827,9 +825,12 @@ export default function ActiveWorkoutPage() {
       // Activity can read "115 kg x 6" rather than just the rep target.
       targetWeightKg: descriptor.targetWeightKg,
       enteredReps: descriptor.enteredReps,
+      holdLabel: descriptor.holdLabel ?? '',
+      following: descriptor.following ?? null,
       nextSetNumber: descriptor.nextSetNumber,
       totalSets: descriptor.totalSets,
       restSeconds: duration,
+      cardRestSeconds: descriptor.cardRestSeconds ?? duration,
       isLastInSuperset: descriptor.isLastInSuperset ?? true,
       isBodyweight: descriptor.isBodyweight ?? false,
       doneLabel,

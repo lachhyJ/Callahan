@@ -37,6 +37,18 @@ export function isTimeSet(s) {
   return s.durationSeconds !== '' && s.durationSeconds != null
 }
 
+// How a set's load reads to the watch and Live Activity. A timed hold has no
+// weight or reps — only a duration — so it is carried as a pre-formatted
+// `holdLabel` ("30s" / "30s/side"), which the consumers show in the slot
+// weight x reps would otherwise fill. Falls back to the exercise's target
+// duration when the set itself has none typed yet.
+function holdLabelFor(ex, set) {
+  if (!ex.isTimeBased || !set) return ''
+  const seconds = Number(set.durationSeconds) || Number(ex.targetDurationSeconds) || 0
+  if (seconds <= 0) return ''
+  return `${seconds}s${ex.isPerSide ? '/side' : ''}`
+}
+
 // The earlier of the candidate and whatever is already banked for this session.
 export function earliestStartedAt(sessionKey, candidate) {
   const banked = restoreStartedAt(sessionKey, candidate)
@@ -53,20 +65,22 @@ export function earliestStartedAt(sessionKey, candidate) {
 // groupMemberDueNext rather than nextIncompleteInGroup: whichever member has
 // completed the fewest sets so far is the one whose turn is next in the
 // round-robin, which only holds because sets are always ticked in order.
-export function nextSetDescriptor(exercises, fromIdx = 0) {
+export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) {
   if (!exercises) return null
   for (let i = Math.max(0, fromIdx); i < exercises.length; i++) {
     if (exercises[i].sets.every((s) => s.completed)) continue
     const [groupStart, groupEnd] = supersetGroupBounds(exercises, i)
     const target = groupEnd > groupStart ? groupMemberDueNext(exercises, groupStart, groupEnd) : null
     const j = target ? target.j : exercises[i].sets.findIndex((s) => !s.completed)
-    const ex = exercises[target ? target.i : i]
+    const ti = target ? target.i : i
+    const ex = exercises[ti]
     return {
       exerciseName: ex.exerciseName,
       targetReps: ex.targetReps,
       targetWeightKg: ex.sets[j].weightKg,
       isBodyweight: ex.isBodyweight ?? false,
       enteredReps: ex.sets[j].reps,
+      holdLabel: holdLabelFor(ex, ex.sets[j]),
       nextSetNumber: j + 1,
       totalSets: ex.sets.length,
       restSeconds: groupRestSeconds(exercises, groupStart, groupEnd, target ? target.i : i),
@@ -74,9 +88,28 @@ export function nextSetDescriptor(exercises, fromIdx = 0) {
       // card needs this to make the same call the checkbox does in
       // armRestAfterSet, since it cannot call back into JS to ask.
       isLastInSuperset: !suppressesRest(exercises, target ? target.i : i),
+      following: withFollowing ? followingDescriptor(exercises, ti, j) : null,
     }
   }
   return null
+}
+
+// What the lock-screen card should read once its own last set of an exercise
+// is ticked. The card can only count set numbers up; it cannot look ahead into
+// the workout, so without this it says "Last set done" straight through the
+// rest that follows. Null unless (ti, j) is that exercise's last remaining set;
+// `{ workoutDone: true }` when nothing at all is left after it. Built by ticking a copy and asking what the
+// ambient card would then describe — the same answer the app reaches on its
+// next sync, so the card doesn't jump when the webview wakes.
+function followingDescriptor(exercises, ti, j) {
+  const ex = exercises[ti]
+  if (ex.sets.some((s, k) => k !== j && !s.completed)) return null
+  const ticked = exercises.map((e, idx) =>
+    idx !== ti ? e : { ...e, sets: e.sets.map((s, k) => (k === j ? { ...s, completed: true } : s)) }
+  )
+  // Nothing left after it: say so, and let the caller supply the label (only the
+  // page knows whether a finisher has been added — "Finisher?" vs "Finished").
+  return nextSetDescriptor(ticked, 0, false) ?? { workoutDone: true }
 }
 
 // The rest duration for a set inside superset group [groupStart, groupEnd]:
@@ -272,6 +305,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
     targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
     isBodyweight: ex.isBodyweight ?? false,
     enteredReps: ex.sets[setIdx + 1]?.reps,
+    holdLabel: holdLabelFor(ex, ex.sets[setIdx + 1]),
     nextSetNumber: setIdx + 2,
     totalSets: ex.sets.length,
     restSeconds,
@@ -291,6 +325,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
         targetWeightKg: nx.sets[next.j].weightKg,
         isBodyweight: nx.isBodyweight ?? false,
         enteredReps: nx.sets[next.j].reps,
+        holdLabel: holdLabelFor(nx, nx.sets[next.j]),
         nextSetNumber: next.j + 1,
         totalSets: nx.sets.length,
         restSeconds,
@@ -310,5 +345,15 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   // end, which native reads as "Last set done". workoutDone says so outright,
   // for surfaces (the Garmin field) that would otherwise show that phantom
   // set's load.
-  return nextSetDescriptor(exercises, groupEnd + 1) ?? { ...sameExercise, workoutDone: true }
+  //
+  // The rest still belongs to the exercise just finished: it describes the
+  // rest *after* the set that was ticked, so it keeps that exercise's own
+  // restSeconds rather than the next exercise's (decided 2026-09-22).
+  const upcoming = nextSetDescriptor(exercises, groupEnd + 1)
+  // `cardRestSeconds` keeps the upcoming set's own rest for the lock-screen
+  // card, which reads it as "the rest that ticking the set I'm pointed at
+  // starts" — that is the next exercise's, not the countdown running now.
+  return upcoming
+    ? { ...upcoming, restSeconds, cardRestSeconds: upcoming.restSeconds }
+    : { ...sameExercise, workoutDone: true }
 }

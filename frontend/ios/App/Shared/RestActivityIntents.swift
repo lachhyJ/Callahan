@@ -211,19 +211,44 @@ actor RestTimerStore {
 
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state
+            // A tick on a real set always rests, including an exercise's last one
+            // (the rest belongs to the exercise just done — `restSeconds` here is
+            // already that exercise's own). Only a tick past the end, or on a
+            // finished workout, has nothing to rest for.
+            let tickedRealSet = state.nextSetNumber <= state.totalSets && !state.isWorkoutDone
             let advanced = state.nextSetNumber + 1
-            state.nextSetNumber = advanced
+            // Ticking the exercise's last set: read the rest length off this card
+            // *before* it is repointed at whatever comes next.
+            let restForTick = state.restSeconds
+            let restIsLastInSuperset = state.isLastInSuperset
+            if tickedRealSet, advanced > state.totalSets, let next = state.following, !next.doneLabel.isEmpty {
+                // Nothing follows this exercise: the card reads the done label
+                // once the rest ends, still counting past the end as before.
+                state.doneLabel = next.doneLabel
+                state.nextSetNumber = advanced
+                state.following = nil
+            } else if tickedRealSet, advanced > state.totalSets, let next = state.following {
+                state.exerciseName = next.exerciseName
+                state.targetReps = next.targetReps
+                state.targetWeight = next.targetWeight
+                state.enteredReps = next.enteredReps
+                state.nextSetNumber = next.nextSetNumber
+                state.totalSets = next.totalSets
+                state.restSeconds = next.restSeconds
+                state.isLastInSuperset = next.isLastInSuperset
+                state.following = nil
+            } else {
+                state.nextSetNumber = advanced
+            }
             // A non-last superset member runs straight into the next exercise
             // with no rest — only the group's last member's rest stands for the
             // round (see `isLastInSuperset`'s doc comment / suppressesRest in
-            // activeWorkout.js). Past the last set there is also nothing left
-            // to rest for — the card says "Last set done" and the countdown
-            // stays at zero either way.
-            if state.isLastInSuperset, advanced <= state.totalSets, state.restSeconds > 0 {
-                let end = Date().addingTimeInterval(Double(state.restSeconds))
+            // activeWorkout.js).
+            if restIsLastInSuperset, tickedRealSet, restForTick > 0 {
+                let end = Date().addingTimeInterval(Double(restForTick))
                 state.endAt = end
-                state.totalSeconds = state.restSeconds
-                set(endAt: end, totalSeconds: state.restSeconds)
+                state.totalSeconds = restForTick
+                set(endAt: end, totalSeconds: restForTick)
                 announce(endAt: end, reason: reason)
                 await activity.update(ActivityContent(state: state, staleDate: end))
             } else {

@@ -11,36 +11,21 @@ const RestActivity = registerPlugin('RestActivity')
 
 const available = Capacitor.isNativePlatform()
 
-// The activity belongs to the workout, not to a rest period: it goes up when a
-// session starts and comes down when it is finished or discarded, so Skip zeroes
-// the countdown instead of tearing the card down. `rest` is null between sets.
-export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateName, templateSubtitle } = {}) {
-  if (!available) return
-  const detail = rest ?? lastSet ?? {}
-  RestActivity.sync({
-    // Fixed for the whole session — the card's header reads these instead of a
-    // generic "Workout". Blank for an ad-hoc session, which falls back natively.
-    templateName: templateName ?? '',
-    templateSubtitle: templateSubtitle ?? '',
-    endAt: rest ? rest.endAt : undefined,
-    totalSeconds: rest ? rest.totalSeconds : 0,
-    exerciseName: detail.exerciseName ?? 'Workout',
-    targetReps: detail.targetReps == null ? '' : String(detail.targetReps),
-    targetWeight: detail.isBodyweight ? '' : formatLoadWeight(detail.targetWeightKg),
-    // What is actually typed into the next set's reps box, as opposed to the
-    // programmed target, which is often a range. The card shows this in the slot
-    // the countdown vacates when the rest ends.
-    enteredReps: detail.enteredReps == null ? '' : String(detail.enteredReps),
-    nextSetNumber: detail.nextSetNumber ?? 1,
-    totalSets: detail.totalSets ?? 1,
+// The card-facing fields for one set descriptor. Weight goes over pre-formatted
+// so the card, the watch and the app all render the same string; a timed hold
+// has no reps or weight, so its duration rides in the weight slot.
+function setFields(detail) {
+  return {
+    ...setFields(detail),
     // Lets the card's "Set done" button start the next rest itself, without
-    // waking this webview to ask how long it should be.
-    restSeconds: detail.restSeconds ?? rest?.totalSeconds ?? 0,
-    // Whether ticking the set the card is currently pointed at should fire a
-    // rest at all — false for a non-last superset member, which the "Set done"
-    // button should run straight past into the next exercise. Defaults true so
-    // a lone exercise (no descriptor field at all) behaves as it always has.
-    isLastInSuperset: detail.isLastInSuperset ?? true,
+    // waking this webview to ask how long it should be. That is the rest for the
+    // set the card points at, which after an exercise rollover differs from the
+    // countdown running now (`restSeconds`) — hence cardRestSeconds.
+    restSeconds: detail.cardRestSeconds ?? detail.restSeconds ?? rest?.totalSeconds ?? 0,
+    // What the card should switch to when its last set of this exercise is
+    // ticked (see followingDescriptor in activeWorkout.js). Absent when nothing
+    // follows. Carries its own restSeconds: the rest for *its* set, not this one.
+    following: followingFields(detail.following, workoutDoneLabel),
     // Non-empty once the session has nothing left: "Finisher?" / "Finished".
     doneLabel: detail.doneLabel ?? '',
     sessionStartedAt: sessionStartedAt ?? Date.now(),

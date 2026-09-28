@@ -46,6 +46,29 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         /// can only say the *exercise* is done, not the workout.
         var doneLabel: String = ""
 
+        /// What this card becomes when its own last set of the exercise is
+        /// ticked: the next exercise's first set. The card cannot look ahead into
+        /// the workout (the webview is asleep when a button runs), so JS sends this
+        /// alongside and `completeSet` swaps to it — otherwise the whole rest after
+        /// an exercise reads "Last set done". Nil when nothing follows.
+        var following: Following? = nil
+
+        struct Following: Codable, Hashable {
+            var exerciseName: String
+            var targetReps: String
+            var targetWeight: String
+            var enteredReps: String
+            var nextSetNumber: Int
+            var totalSets: Int
+            /// The rest that ticking *this* set starts — its own exercise's, not the
+            /// one being left.
+            var restSeconds: Int
+            var isLastInSuperset: Bool
+            /// Set instead of the fields above when nothing follows: the card
+            /// becomes this ("Finisher?" / "Finished") rather than "Last set done".
+            var doneLabel: String = ""
+        }
+
         var isResting: Bool { endAt != nil }
         var isWorkoutDone: Bool { !doneLabel.isEmpty }
 

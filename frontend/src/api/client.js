@@ -360,12 +360,13 @@ export function scheduleRestTimer(durationSeconds, rest, suppressPush = false) {
     body: JSON.stringify({
       durationSeconds,
       exerciseName: rest.exerciseName,
-      targetReps: rest.targetReps == null ? '' : String(rest.targetReps),
+      targetReps: rest.holdLabel || rest.targetReps == null ? '' : String(rest.targetReps),
       nextSetNumber: rest.nextSetNumber,
       totalSets: rest.totalSets,
       suppressPush,
-      targetWeight: rest.isBodyweight ? '' : formatLoadWeight(rest.targetWeightKg),
-      enteredReps: rest.enteredReps == null ? '' : String(rest.enteredReps),
+      // A timed hold's duration ("30s" / "30s/side") rides in the weight slot.
+      targetWeight: rest.holdLabel || (rest.isBodyweight ? '' : formatLoadWeight(rest.targetWeightKg)),
+      enteredReps: rest.holdLabel || rest.enteredReps == null ? '' : String(rest.enteredReps),
       doneLabel: rest.doneLabel ?? '',
     }),
   })
