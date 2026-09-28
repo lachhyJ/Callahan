@@ -29,9 +29,14 @@ services:
     # not just that the process started. Without this a deploy's container
     # swap has a window where nginx is already proxying to a backend that
     # isn't ready yet, which is what was surfacing as Cloudflare 502s.
+    #
+    # Checked every 2s while starting, so the gate opens quickly on a deploy,
+    # then every 30s for the container's life (it was 5s forever, ~17k
+    # requests a day). start_interval needs Docker Engine 25+; the NAS has 27.
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/api/health"]
-      interval: 5s
+      interval: 30s
+      start_interval: 2s
       timeout: 3s
       retries: 5
       start_period: 15s
@@ -80,3 +85,12 @@ services:
       - /mnt/tank/callahan-data/garmin-sync-state:/data
     depends_on:
       - backend
+    # trigger_server.py's /health, so a wedged sidecar shows as unhealthy in
+    # `docker ps` instead of only as a failing Sync button. The slim image has
+    # no curl, hence Python.
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8099/health', timeout=3)"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -28,5 +28,10 @@ fi
 
 sudo docker compose -f docker-compose.prod.yml up -d --build
 
+# Each build leaves the previous images untagged ("dangling"); nothing else on
+# the host prunes them (453 had piled up by 2026-09-29). Dangling images only -
+# anything a container or tag still uses is kept. Never fails the deploy.
+sudo docker image prune -f >/dev/null || true
+
 git rev-parse HEAD > .deployed_sha
 echo "Deployed $(cat .deployed_sha) ($(git log -1 --format=%s))"
