@@ -7,6 +7,7 @@ import {
   updateSeason,
 } from '../api/client'
 import { formatDateRange, isoDate } from '../dateUtils'
+import ConfirmSheet from './ConfirmSheet'
 
 const BLANK = () => ({
   name: '',
@@ -28,6 +29,7 @@ export default function SeasonsSection({ tournaments }) {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState(null)
 
   function load() {
     getSeasons().then(setSeasons).catch((err) => setError(err.message))
@@ -78,7 +80,7 @@ export default function SeasonsSection({ tournaments }) {
   }
 
   async function handleDelete(id) {
-    if (!window.confirm('Delete this season? Its tournaments stay, just unlinked.')) return
+    setConfirmingDeleteId(null)
     try {
       await deleteSeason(id)
       load()
@@ -177,11 +179,20 @@ export default function SeasonsSection({ tournaments }) {
             <div className="games-header-actions">
               <button type="button" className="secondary-btn" onClick={() => startEdit(s)}>Edit</button>
               <button type="button" className="secondary-btn" onClick={() => handleAttach(s.id)}>Link tournaments</button>
-              <button type="button" className="secondary-btn" onClick={() => handleDelete(s.id)}>Delete</button>
+              <button type="button" className="secondary-btn" onClick={() => setConfirmingDeleteId(s.id)}>Delete</button>
             </div>
           </div>
         ))}
       </div>
+      <ConfirmSheet
+        open={confirmingDeleteId != null}
+        variant="danger"
+        title="Delete this season?"
+        body="Its tournaments stay, just unlinked. This cannot be undone."
+        confirmLabel="Delete season"
+        onConfirm={() => handleDelete(confirmingDeleteId)}
+        onCancel={() => setConfirmingDeleteId(null)}
+      />
     </section>
   )
 }

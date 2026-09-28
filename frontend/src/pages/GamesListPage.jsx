@@ -13,6 +13,7 @@ import { formatHoursMinutes } from '../utils/format'
 import { summariseGames } from '../utils/tournamentStats'
 import GameRow from '../components/GameRow'
 import SeasonsSection from '../components/SeasonsSection'
+import ConfirmSheet from '../components/ConfirmSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 
 // One-line weekend teaser under a tournament header — null when none of its
@@ -39,6 +40,7 @@ export default function GamesListPage() {
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
   const [lastAttached, setLastAttached] = useState(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(null)
 
   function load() {
     Promise.all([
@@ -108,13 +110,19 @@ export default function GamesListPage() {
     }
   }
 
-  async function handleDelete(t) {
+  // Not recoverable (no Recently Deleted for tournaments), and it takes any
+  // taper check-ins with it — so the danger sheet, not an OS alert.
+  function deleteConsequences(t) {
     const gameCount = t.gameCount ?? 0
-    const consequences = [
+    return [
       gameCount > 0 ? `Its ${gameCount} game${gameCount === 1 ? '' : 's'} stay, just ungrouped.` : null,
       t.taperDays != null ? 'Its taper check-ins are deleted.' : null,
+      'This cannot be undone.',
     ].filter(Boolean).join(' ')
-    if (!window.confirm(`Delete ${t.name}? ${consequences}`)) return
+  }
+
+  async function handleDelete(t) {
+    setConfirmingDelete(null)
     try {
       await deleteTournament(t.id)
       setLastAttached(null)
@@ -263,12 +271,21 @@ export default function GamesListPage() {
               {gs.map((g) => <GameRow key={g.id} game={g} />)}
               <div className="games-header-actions">
                 <button type="button" className="secondary-btn" onClick={() => startEdit(tournament)}>Edit</button>
-                <button type="button" className="secondary-btn" onClick={() => handleDelete(tournament)}>Delete</button>
+                <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(tournament)}>Delete</button>
               </div>
             </div>
           )
         })}
       </div>
+      <ConfirmSheet
+        open={confirmingDelete != null}
+        variant="danger"
+        title={confirmingDelete ? `Delete ${confirmingDelete.name}?` : ''}
+        body={confirmingDelete ? deleteConsequences(confirmingDelete) : ''}
+        confirmLabel="Delete tournament"
+        onConfirm={() => handleDelete(confirmingDelete)}
+        onCancel={() => setConfirmingDelete(null)}
+      />
     </main>
   )
 }

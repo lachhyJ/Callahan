@@ -43,7 +43,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
