@@ -101,16 +101,4 @@ public class ProgramController : ControllerBase
         return Ok(new { html });
     }
 
-    [HttpGet("pdf")]
-    public IActionResult GetPdf()
-    {
-        var path = _config["ProgramPdf:Path"];
-        if (string.IsNullOrEmpty(path) || !System.IO.File.Exists(path))
-        {
-            return NotFound(new { error = "Program PDF isn't configured on this server." });
-        }
-
-        var stream = System.IO.File.OpenRead(path);
-        return File(stream, "application/pdf");
-    }
 }

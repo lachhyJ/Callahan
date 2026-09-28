@@ -69,45 +69,4 @@ public class ActivitiesGarminMetricsTests
         Assert.Null(saved.ActivityTrainingLoad);
         Assert.Null(saved.TrainingEffectLabel);
     }
-
-    [Fact]
-    public async Task Backfill_PopulatesRowsSyncedBeforeTheColumnsExisted_AndIsIdempotent()
-    {
-        using var conn = new SqliteConnection("DataSource=:memory:");
-        using var db = NewDb(conn);
-
-        // Simulate a pre-existing row: RawJson present, metric columns still null.
-        db.Activities.Add(new Activity
-        {
-            Date = new DateOnly(2026, 9, 6),
-            Type = ActivityType.Ultimate,
-            Source = ActivitySource.Garmin,
-            DurationSeconds = 2743,
-            RawJson = Blob,
-        });
-        db.Activities.Add(new Activity
-        {
-            Date = new DateOnly(2026, 9, 7),
-            Type = ActivityType.Ultimate,
-            Source = ActivitySource.Manual,
-            DurationSeconds = 1800,
-            RawJson = null, // manual entry, nothing to parse
-        });
-        await db.SaveChangesAsync();
-
-        var controller = new ActivitiesController(db);
-
-        var first = Assert.IsType<BackfillGarminMetricsResponse>(
-            Assert.IsType<OkObjectResult>((await controller.BackfillGarminMetrics()).Result).Value);
-        Assert.Equal(1, first.Scanned);   // the null-RawJson row is not scanned
-        Assert.Equal(1, first.Updated);
-
-        var saved = await db.Activities.SingleAsync(a => a.RawJson != null);
-        Assert.Equal(85m, saved.ActivityTrainingLoad);
-
-        var second = Assert.IsType<BackfillGarminMetricsResponse>(
-            Assert.IsType<OkObjectResult>((await controller.BackfillGarminMetrics()).Result).Value);
-        Assert.Equal(1, second.Scanned);
-        Assert.Equal(0, second.Updated);   // nothing changes on a re-run
-    }
 }

@@ -168,7 +168,7 @@ public class ActivitiesController : ControllerBase
             .Select(s => new FieldSegmentDto(s.OnField, (int)Math.Round(s.StartT), (int)Math.Round(s.EndT)))
             .ToList();
 
-        return Ok(new FieldTimelineDto(totalSeconds, segments, FieldGeometry.Version));
+        return Ok(new FieldTimelineDto(totalSeconds, segments));
     }
 
     [HttpPost]
@@ -405,17 +405,6 @@ public class ActivitiesController : ControllerBase
             activity.HighSpeedDistanceM == null ? null : activity.HighSpeedDistanceM / 1000));
     }
 
-    [HttpGet("{id}/laps")]
-    public async Task<ActionResult<ActivityLapsResponse>> GetLaps(int id)
-    {
-        var activity = await _db.Activities.Include(a => a.Laps).FirstOrDefaultAsync(a => a.Id == id);
-        if (activity is null) return NotFound();
-
-        return Ok(new ActivityLapsResponse(
-            activity.Laps.OrderBy(l => l.LapIndex).Select(ToLapDto).ToList(),
-            activity.HighSpeedDistanceM == null ? null : activity.HighSpeedDistanceM / 1000));
-    }
-
     // Re-run the geometry classifier over every Ultimate Game activity with
     // laps or a track, in place, with no Garmin traffic - the raw track is
     // stored. This is what makes shipping provisional thresholds safe: retuning
@@ -454,33 +443,6 @@ public class ActivitiesController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new ReclassifyResponse(LapFieldClassifier.Version, changes.Count, changes));
-    }
-
-    // Re-parse Garmin's training metrics (load, aerobic/anaerobic training
-    // effect, effect label) out of the already-stored RawJson for every
-    // activity that has one, in place, with no Garmin traffic - the sync path
-    // does this per activity, this catches rows synced before the columns
-    // existed and picks up any change to GarminActivityMetrics.Parse.
-    [HttpPost("garmin-metrics/backfill")]
-    public async Task<ActionResult<BackfillGarminMetricsResponse>> BackfillGarminMetrics()
-    {
-        var candidates = await _db.Activities
-            .Where(a => a.RawJson != null)
-            .ToListAsync();
-
-        var updated = 0;
-        foreach (var activity in candidates)
-        {
-            var before = (activity.ActivityTrainingLoad, activity.AerobicTrainingEffect,
-                activity.AnaerobicTrainingEffect, activity.TrainingEffectLabel);
-            GarminActivityMetrics.Apply(activity, activity.RawJson);
-            var after = (activity.ActivityTrainingLoad, activity.AerobicTrainingEffect,
-                activity.AnaerobicTrainingEffect, activity.TrainingEffectLabel);
-            if (before != after) updated++;
-        }
-
-        await _db.SaveChangesAsync();
-        return Ok(new BackfillGarminMetricsResponse(candidates.Count, updated));
     }
 
     // The GPS stream for one Ultimate activity. Deletes-and-reinserts the

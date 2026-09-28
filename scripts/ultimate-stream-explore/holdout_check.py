@@ -28,9 +28,7 @@ CANDIDATES = [
 
 def load_tracks(db_path, before="2026-04-01", after=None):
     db = sqlite3.connect(db_path)
-    cols = {r[1] for r in db.execute("PRAGMA table_info(ActivityTracks)")}
-    blob = "SamplesJson" if "SamplesJson" in cols else "Samples"
-    q = ("SELECT a.Id, a.Date, a.Notes, a.OnFieldSeconds, a.PointsPlayed, t." + blob +
+    q = ("SELECT a.Id, a.Date, a.Notes, a.OnFieldSeconds, a.PointsPlayed, t.SamplesJson" +
          " FROM Activities a JOIN ActivityTracks t ON t.ActivityId = a.Id "
          "WHERE a.Type = 1 AND a.PointsPlayed IS NOT NULL")
     if before:

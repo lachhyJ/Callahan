@@ -21,7 +21,7 @@ public record TaperRecommendationDto(
     decimal? RunThisWeekDistanceKm,
     int TapersCompleted);
 
-public record TaperCheckInDto(int Id, DateOnly Date, int Energy, int Soreness, int Motivation, string? Context, bool IsDebrief);
+public record TaperCheckInDto(int Id, DateOnly Date, int Energy, int Soreness, int Motivation, string? Context);
 
 public record UpsertTaperCheckInRequest(DateOnly Date, int Energy, int Soreness, int Motivation, string? Context);
 

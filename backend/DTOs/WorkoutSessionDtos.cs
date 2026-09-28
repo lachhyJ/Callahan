@@ -30,4 +30,3 @@ public record CreateWorkoutSessionRequest(
     List<CreateExerciseSetRequest> Sets,
     List<CreateExerciseNoteRequest>? ExerciseNotes);
 
-public record WeeklyVolumeDto(DateOnly WeekStart, decimal Volume);

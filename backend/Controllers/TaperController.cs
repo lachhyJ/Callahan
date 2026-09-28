@@ -42,8 +42,8 @@ public class TaperController : ControllerBase
     private Task<Tournament?> FindTaperAsync(int id) =>
         _db.Tournaments.FirstOrDefaultAsync(t => t.Id == id && t.TaperDays != null);
 
-    private static TaperCheckInDto ToCheckInDto(TaperCheckIn c, DateOnly eventDate) =>
-        new(c.Id, c.Date, c.Energy, c.Soreness, c.Motivation, c.Context, c.Date > eventDate);
+    private static TaperCheckInDto ToCheckInDto(TaperCheckIn c) =>
+        new(c.Id, c.Date, c.Energy, c.Soreness, c.Motivation, c.Context);
 
     [HttpGet("events")]
     public async Task<ActionResult<List<TaperEventDto>>> GetEvents([FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null)
@@ -176,7 +176,7 @@ public class TaperController : ControllerBase
             .OrderBy(c => c.Date)
             .ToListAsync();
 
-        return Ok(checkIns.Select(c => ToCheckInDto(c, taperEvent.StartDate)).ToList());
+        return Ok(checkIns.Select(ToCheckInDto).ToList());
     }
 
     [HttpPut("events/{eventId}/checkins")]
@@ -218,7 +218,7 @@ public class TaperController : ControllerBase
         existing.Context = request.Context;
 
         await _db.SaveChangesAsync();
-        return Ok(ToCheckInDto(existing, taperEvent.StartDate));
+        return Ok(ToCheckInDto(existing));
     }
 
     [HttpPost("events/{eventId}/consult")]

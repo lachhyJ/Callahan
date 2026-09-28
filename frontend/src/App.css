@@ -3075,11 +3075,6 @@ td {
   font-size: var(--text-sm);
 }
 
-.activity-type-menu .suggested-option {
-  color: var(--text-h);
-  font-weight: 500;
-}
-
 .suggested-tag {
   margin-left: var(--space-2xs);
   font-size: var(--text-xs);

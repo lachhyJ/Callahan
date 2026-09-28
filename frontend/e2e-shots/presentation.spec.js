@@ -19,7 +19,7 @@ async function prepare(page) {
 
 const SHOTS = [
   { name: 'dashboard', path: '/dashboard' },
-  { name: 'games', path: '/games' },
+  { name: 'games', path: '/ultimate' },
   { name: 'wellness', path: '/wellness' },
   { name: 'trends', path: '/trends' },
 ]

@@ -11,9 +11,7 @@ ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
 # build context is just this directory, with no .git, and this base image
 # has no git binary either. deploy.sh computes these on the NAS instead.
 ARG CALLAHAN_GIT_COMMIT=""
-ARG CALLAHAN_GIT_BRANCH=""
 ENV CALLAHAN_GIT_COMMIT=$CALLAHAN_GIT_COMMIT
-ENV CALLAHAN_GIT_BRANCH=$CALLAHAN_GIT_BRANCH
 RUN npm run build
 
 FROM nginx:alpine AS runtime

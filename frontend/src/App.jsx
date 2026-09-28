@@ -33,7 +33,6 @@ import TaperPage from './pages/TaperPage'
 import WellnessPage from './pages/WellnessPage'
 import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
 import GarminStrengthReviewPage from './pages/GarminStrengthReviewPage'
-import PlateCalculatorPage from './pages/PlateCalculatorPage'
 import ReportsPage from './pages/ReportsPage'
 import ReportDetailPage from './pages/ReportDetailPage'
 import './App.css'
@@ -44,7 +43,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/plate-calculator', '/reports', '/wellness']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -295,7 +294,6 @@ function AppRoutes() {
           <Route path="/exercises/:exerciseId" element={<ProtectedRoute><ExerciseDetailPage /></ProtectedRoute>} />
           <Route path="/sessions/:sessionId" element={<ProtectedRoute><WorkoutSessionDetailPage /></ProtectedRoute>} />
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
-          <Route path="/games" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
           <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
@@ -308,7 +306,6 @@ function AppRoutes() {
           <Route path="/wellness" element={<ProtectedRoute><WellnessPage /></ProtectedRoute>} />
           <Route path="/recently-deleted" element={<ProtectedRoute><RecentlyDeletedPage /></ProtectedRoute>} />
           <Route path="/garmin-strength-review" element={<ProtectedRoute><GarminStrengthReviewPage /></ProtectedRoute>} />
-          <Route path="/plate-calculator" element={<ProtectedRoute><PlateCalculatorPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/:year/:month" element={<ProtectedRoute><ReportDetailPage /></ProtectedRoute>} />
           {/* Muscle balance folded into Trends — keep old bookmarks/PWA shortcuts working. */}

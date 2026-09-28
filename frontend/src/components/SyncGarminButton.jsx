@@ -26,7 +26,7 @@ function summarise(result) {
 // as the "Synced …" confirmation fades rather than sitting dead afterwards.
 const COOLDOWN_MS = 6000
 
-export default function SyncGarminButton({ variant = 'labelled', onSynced, onResult, className }) {
+export default function SyncGarminButton({ variant = 'labelled', onSynced, onResult }) {
   const [syncing, setSyncing] = useState(false)
   const [cooling, setCooling] = useState(false)
   const [msg, setMsg] = useState(null) // { text, isError } — labelled variant only
@@ -74,7 +74,7 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
     return (
       <button
         type="button"
-        className={className ? `icon-link ${className}` : 'icon-link'}
+        className="icon-link"
         onClick={run}
         disabled={disabled}
         title="Sync Garmin"
@@ -86,7 +86,7 @@ export default function SyncGarminButton({ variant = 'labelled', onSynced, onRes
   }
 
   return (
-    <div className={className ? `sync-garmin ${className}` : 'sync-garmin'}>
+    <div className="sync-garmin">
       <button type="button" className="secondary-btn sync-garmin-btn" onClick={run} disabled={disabled}>
         {icon}
         {syncing ? 'Syncing…' : 'Sync Garmin'}

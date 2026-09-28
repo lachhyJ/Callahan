@@ -10,7 +10,7 @@ import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
-import { trackAction, trackTiming } from '../usage'
+import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
 
 
@@ -179,33 +179,17 @@ export default function DashboardPage() {
   }, [syncResult])
 
   function loadSessions() {
-    // Temporary launch-perf instrumentation (Sep 2026). Times the two fetches
-    // the whole Dashboard render is gated on. Read alongside the backend
-    // "Callahan.Api.RequestTiming" logs: a large gap between this number and
-    // the server-side elapsed is network/tunnel/cold-start, not query cost.
-    // Only the live network fetch is timed - the synchronous cache paint
-    // below (if any) isn't a network round-trip and would make these numbers
-    // meaningless.
-    const t0 = performance.now()
-    const mark = (label) => {
-      const ms = performance.now() - t0
-      console.info(`[perf] dashboard ${label} ${Math.round(ms)}ms`)
-      if (label === 'populated') trackTiming('dashboard-populated', ms)
-    }
-    const timed = (name, p) => p.then((r) => { mark(name); return r })
-
     // Stale-while-revalidate: setWorkouts/setActivities fire immediately with
     // last launch's cached response (if any), painting the calendar before
     // the network round-trip even starts, then fire again with the live
     // result once it lands. See swrCache.js.
     const workoutsPromise = staleWhileRevalidate(
-      'workoutsessions', () => timed('workoutsessions', getWorkoutSessions()), setWorkouts,
+      'workoutsessions', getWorkoutSessions, setWorkouts,
     )
     const activitiesPromise = staleWhileRevalidate(
-      'activities', () => timed('activities', getActivities()), setActivities,
+      'activities', getActivities, setActivities,
     )
     Promise.all([workoutsPromise, activitiesPromise])
-      .then(() => mark('populated'))
       .catch((err) => setError(err.message))
   }
 

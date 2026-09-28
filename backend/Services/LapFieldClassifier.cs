@@ -34,17 +34,6 @@ public static class LapClassifierMethod
     // adjacent same-state laps - a missed press or a mid-point/mid-sideline press.
     public const string GeometryFromLaps = "GeometryFromLaps";
 
-    // --- retired speed-era values. Kept so old Activity rows stay decodable. ---
-    [Obsolete("speed-based classifier, removed 2026-08 - real ultimate is too slow for it")]
-    public const string TooFewLaps = "TooFewLaps";
-    [Obsolete("speed-based classifier, removed 2026-08")]
-    public const string NoSeparation = "NoSeparation";
-    [Obsolete("speed-based classifier, removed 2026-08")]
-    public const string AdaptiveSplit = "AdaptiveSplit";
-    [Obsolete("speed-based classifier, removed 2026-08")]
-    public const string AlternatingClean = "AlternatingClean";
-    [Obsolete("speed-based classifier, removed 2026-08")]
-    public const string AlternatingBroken = "AlternatingBroken";
 }
 
 // Retuning is a change here + a Version bump + one POST /api/activities/laps/reclassify.

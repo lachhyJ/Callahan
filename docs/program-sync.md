@@ -14,9 +14,9 @@ scratch each time.
 
 ## Where the source file lives
 
-`ultimate_athlete_program.pdf` is authored and stored in Nextcloud, not the
+The program document (markdown since 2026-09-08) is authored and stored in Nextcloud, not the
 repo — the app serves a synced copy, mounted read-only at `/app/ProgramDocs`
-and pointed at by `ProgramPdf:Path` in the backend's prod env file. The host
+and pointed at by `ProgramDoc:MarkdownPath` in the backend's prod env file. The host
 directory behind that mount is a personal Nextcloud folder, so it's set per
 host in an untracked `.env` (`PROGRAM_DOCS_HOST_PATH` — see `.env.example`)
 rather than committed here.

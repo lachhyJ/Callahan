@@ -44,10 +44,9 @@ const SCREENS = [
   { name: 'program', path: '/program' },
   { name: 'wellness', path: '/wellness' },
   { name: 'exercises', path: '/exercises' },
-  { name: 'games', path: '/games' },
+  { name: 'games', path: '/ultimate' },
   { name: 'streaks', path: '/streaks' },
   { name: 'reports', path: '/reports' },
-  { name: 'plate-calculator', path: '/plate-calculator' },
 ]
 
 for (const { name, path } of SCREENS) {

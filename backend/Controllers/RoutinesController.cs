@@ -75,19 +75,6 @@ public class RoutinesController : ControllerBase
         return Ok(routines.Select(r => ToDto(r, today)).ToList());
     }
 
-    [HttpGet("{id}")]
-    public async Task<ActionResult<RoutineDto>> Get(int id)
-    {
-        var routine = await _db.Routines
-            .Include(r => r.Items)
-            .Include(r => r.Completions)
-            .FirstOrDefaultAsync(r => r.Id == id);
-
-        if (routine is null) return NotFound();
-
-        return Ok(ToDto(routine, Today()));
-    }
-
     // Marking a day done twice is the obvious thing to do by accident - tapping
     // the button again, or editing the note afterwards - so this upserts rather
     // than failing on the unique index.

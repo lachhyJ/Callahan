@@ -141,11 +141,6 @@ public record ReclassifyResponse(
     int Reclassified,
     List<ReclassifyChange> Changes);
 
-// POST /api/activities/garmin-metrics/backfill - Scanned is every activity
-// with a RawJson blob; Updated is how many had a training-metric field change
-// as a result (0 on a re-run once every row is parsed).
-public record BackfillGarminMetricsResponse(int Scanned, int Updated);
-
 public record UpdateConeDistanceRequest(int? ConeDistanceM);
 
 public record UpdateActivityTournamentRequest(int? TournamentId);
@@ -169,8 +164,7 @@ public record FieldSegmentDto(bool OnField, int StartSec, int EndSec);
 
 public record FieldTimelineDto(
     int TotalSeconds,
-    List<FieldSegmentDto> Segments,
-    int GeometryVersion);
+    List<FieldSegmentDto> Segments);
 
 public record DeletedActivityDto(
     int Id,

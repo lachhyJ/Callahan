@@ -6,8 +6,11 @@ tests/**/bin/
 tests/**/obj/
 
 # Node
-frontend/node_modules/
+node_modules/
 frontend/dist/
+
+# Written by deploy.sh on the NAS checkout: the commit currently live.
+.deployed_sha
 
 # Xcode — regenerated on every build by generate_build_info.sh
 frontend/ios/App/App/BuildInfo.generated.swift

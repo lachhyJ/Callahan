@@ -20,10 +20,10 @@ git reset --hard "$REF"
 # below rather than this quietly creating one.
 if [ -f .env ]; then
   sed -i '/^CALLAHAN_GIT_COMMIT=/d;/^CALLAHAN_GIT_BRANCH=/d' .env
-  {
-    echo "CALLAHAN_GIT_COMMIT=$(git rev-parse --short HEAD)"
-    echo "CALLAHAN_GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)"
-  } >> .env
+  # The branch is always main here (the checkout above), so only the commit
+  # is passed; vite.config.js defaults the branch to main. The sed still
+  # clears a CALLAHAN_GIT_BRANCH line left by older deploys.
+  echo "CALLAHAN_GIT_COMMIT=$(git rev-parse --short HEAD)" >> .env
 fi
 
 sudo docker compose -f docker-compose.prod.yml up -d --build

@@ -269,7 +269,7 @@ export function guessEquipmentType(exerciseName) {
   return 'barbell'
 }
 
-export const EQUIPMENT_TYPES = ['barbell', 'dumbbell', 'added', 'hidden']
+const EQUIPMENT_TYPES = ['barbell', 'dumbbell', 'added', 'hidden']
 
 // Per-exercise override on top of the name guess above — 'barbell' /
 // 'dumbbell' / 'added' / 'hidden' when the athlete has corrected it for a

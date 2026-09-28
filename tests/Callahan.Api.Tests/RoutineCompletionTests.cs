@@ -117,8 +117,9 @@ public class RoutineCompletionTests
 
         await controller.MarkDone(1, new MarkRoutineDoneRequest(null, "done before work"));
 
-        var result = await controller.Get(1);
-        var dto = Assert.IsType<RoutineDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        var result = await controller.GetAll();
+        var dto = Assert.IsType<List<RoutineDto>>(Assert.IsType<OkObjectResult>(result.Result).Value)
+            .Single(r => r.Id == 1);
 
         Assert.NotNull(dto.Today);
         Assert.Equal("done before work", dto.Today!.Notes);

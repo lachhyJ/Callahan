@@ -19,8 +19,6 @@ public static class GarminStrengthMatcher
     // the same day won't both fall inside it.
     private static readonly TimeSpan ToleranceWindow = TimeSpan.FromMinutes(45);
 
-    public record Candidate(int SessionId, string? Name, DateTime? StartedAt, DateTime? FinishedAt, string? CategorySummary);
-
     // Sessions on the Garmin activity's date, not already linked to a
     // different Garmin activity, whose StartedAt falls within
     // ToleranceWindow of the activity's start (or - for a session logged

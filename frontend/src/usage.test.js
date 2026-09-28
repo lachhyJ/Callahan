@@ -3,7 +3,7 @@ import { normalisePath } from './usage'
 
 describe('normalisePath', () => {
   it('leaves static routes alone', () => {
-    for (const p of ['/', '/dashboard', '/trends', '/history', '/wellness', '/reports', '/plate-calculator', '/recently-deleted']) {
+    for (const p of ['/', '/dashboard', '/trends', '/history', '/wellness', '/reports', '/plan', '/recently-deleted']) {
       expect(normalisePath(p)).toBe(p)
     }
   })

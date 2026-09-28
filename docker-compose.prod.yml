@@ -14,14 +14,15 @@ services:
       - backend.prod.env
     volumes:
       - /mnt/tank/callahan-data:/app/App_Data
-      # Read-only: the program PDF lives in Nextcloud, not this repo — that's
+      # Read-only: the program document lives in Nextcloud, not this repo — that's
       # the actual authoring surface (see docs/program-sync.md). The host path
       # is a personal directory, so it's kept out of the repo in an untracked
       # .env beside this file (see .env.example); `git reset --hard` in
       # deploy.sh leaves untracked files alone, so it survives deploys. The
-      # container side must stay /app/ProgramDocs to match ProgramPdf__Path in
-      # backend.prod.env. Unset fails the deploy loudly rather than silently
-      # mounting an empty directory and 404ing the PDF.
+      # container side must stay /app/ProgramDocs to match
+      # ProgramDoc__MarkdownPath in backend.prod.env. Unset fails the deploy
+      # loudly rather than silently mounting an empty directory and leaving the
+      # Program page showing "not configured".
       - "${PROGRAM_DOCS_HOST_PATH:?set PROGRAM_DOCS_HOST_PATH in .env beside docker-compose.prod.yml}:/app/ProgramDocs:ro"
     # Gates the frontend's depends_on below: /api/health round-trips the DB
     # connection, so "healthy" means the backend can actually serve requests,
@@ -43,7 +44,6 @@ services:
         VITE_VAPID_PUBLIC_KEY: BNdG1ygvo2x1yrr86vLjAbIlejJrQ9eN_YlILa_BEqNPAwN4JbBIIvzxQpaQAJ-WnAAQyreh4hVv4wlWyz8uNSA
         # Set by deploy.sh into .env before this runs — see frontend/Dockerfile.
         CALLAHAN_GIT_COMMIT: ${CALLAHAN_GIT_COMMIT:-}
-        CALLAHAN_GIT_BRANCH: ${CALLAHAN_GIT_BRANCH:-}
     restart: unless-stopped
     ports:
       - "30070:80"

@@ -21,7 +21,7 @@ function readBuildInfo() {
   if (process.env.CALLAHAN_GIT_COMMIT) {
     return {
       worktree: 'Callahan',
-      branch: process.env.CALLAHAN_GIT_BRANCH || 'main',
+      branch: 'main', // deploy.sh always deploys from main
       commit: process.env.CALLAHAN_GIT_COMMIT,
       dirty: false, // deploy.sh always deploys from a `git reset --hard`, so the tree is always clean
       builtAt: new Date().toISOString(),
