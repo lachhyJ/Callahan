@@ -226,8 +226,14 @@ function AnkleStrip({ ankle, items, days, onChange }) {
   )
 }
 
+// The Monday of the week the current training day falls in. Between midnight
+// and 3am on a Monday that's still last week, matching the backend's "today".
+function currentTrainingWeek() {
+  return isoDate(startOfWeek(new Date(`${trainingDayIso()}T00:00:00`)))
+}
+
 export default function PlanPage() {
-  const [weekStart, setWeekStart] = useState(() => isoDate(startOfWeek(new Date())))
+  const [weekStart, setWeekStart] = useState(currentTrainingWeek)
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState(null)
   const [routines, setRoutines] = useState([])
@@ -252,7 +258,7 @@ export default function PlanPage() {
     setWeekStart(isoDate(d))
   }
 
-  const thisWeek = isoDate(startOfWeek(new Date()))
+  const thisWeek = currentTrainingWeek()
   const today = trainingDayIso()
 
   return (
