@@ -585,7 +585,6 @@ public class ActivitiesController : ControllerBase
             activity.LivePlayDistanceM = summary.LivePlayDistanceM;
             activity.AlternationViolations = summary.AlternationViolations;
             activity.LapClassifierMethod = summary.Method;
-            activity.OnFieldSpeedThresholdMps = summary.ThresholdMps;   // null now; kept for old rows
             activity.LapClassifierVersion = LapFieldClassifier.Version;
             return;
         }
@@ -603,7 +602,6 @@ public class ActivitiesController : ControllerBase
         activity.LivePlayDistanceM = null;
         activity.AlternationViolations = null;
         activity.LapClassifierMethod = null;
-        activity.OnFieldSpeedThresholdMps = null;
         activity.LapClassifierVersion = null;
     }
 
@@ -643,7 +641,7 @@ public class ActivitiesController : ControllerBase
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.LivePlaySeconds,
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
-        a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
+        a.AlternationViolations, a.LapClassifierMethod, a.LapClassifierVersion,
         a.Track == null ? 0 : a.Track.SampleCount,
         a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
@@ -669,7 +667,7 @@ public class ActivitiesController : ControllerBase
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.LivePlaySeconds,
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
-        a.AlternationViolations, a.LapClassifierMethod, a.OnFieldSpeedThresholdMps, a.LapClassifierVersion,
+        a.AlternationViolations, a.LapClassifierMethod, a.LapClassifierVersion,
         trackSampleCount,
         a.TournamentId, a.Tournament?.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,

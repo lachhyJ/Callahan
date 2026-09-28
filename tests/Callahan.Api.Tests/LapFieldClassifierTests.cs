@@ -62,7 +62,6 @@ public class LapFieldClassifierTests
         Assert.Equal(LapFieldState.OnField, r.StateByLapIndex[2]);   // ACTIVE
         Assert.Equal(LapFieldState.OffField, r.StateByLapIndex[3]);  // RECOVERY
         Assert.Equal(LapFieldState.OffField, r.StateByLapIndex[5]);  // COOLDOWN
-        Assert.Null(r.ThresholdMps);
         AssertSecondsAccounted(r, laps);
     }
 

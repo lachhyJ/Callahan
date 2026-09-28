@@ -57,7 +57,6 @@ public sealed record LapFieldSummary(
     // LapIndex -> LapFieldState. Empty for GeometryNoLaps / NoTrack.
     IReadOnlyDictionary<int, string> StateByLapIndex,
     string Method,
-    decimal? ThresholdMps,   // always null now - kept for the DTO / old rows
     int OnFieldSeconds,
     int OffFieldSeconds,
     int MixedSeconds,
@@ -144,7 +143,7 @@ public static class LapFieldClassifier
         if (geometry is null || samples is null || samples.Count == 0)
         {
             return new LapFieldSummary(
-                EmptyStates, LapClassifierMethod.NoTrack, null,
+                EmptyStates, LapClassifierMethod.NoTrack,
                 0, 0, 0, 0, 0m, all.Count, 0);
         }
 
@@ -161,7 +160,7 @@ public static class LapFieldClassifier
         if (withWindow.Count < opts.MinLapsForBoundaries)
         {
             return new LapFieldSummary(
-                EmptyStates, LapClassifierMethod.GeometryNoLaps, null,
+                EmptyStates, LapClassifierMethod.GeometryNoLaps,
                 geometry.OnFieldSeconds, geometry.OffFieldSeconds, 0,
                 geometry.PointsPlayed, (decimal)geometry.OnFieldDistanceM,
                 UnknownLapCount: all.Count, AlternationViolations: 0,
@@ -235,7 +234,7 @@ public static class LapFieldClassifier
 
         return new LapFieldSummary(
             all.ToDictionary(l => l.Index, l => l.State),
-            method, null,
+            method,
             onSec, offSec, mixSec,
             pointsOverride ?? onLapCount, onDist, unknown, alternationViolations,
             livePlaySeconds, livePlayDistanceM);

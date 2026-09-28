@@ -32,7 +32,6 @@ public record ActivityDto(
     decimal? LivePlayDistanceKm = null,
     int? AlternationViolations = null,
     string? LapClassifierMethod = null,
-    decimal? OnFieldSpeedThresholdMps = null,
     int? LapClassifierVersion = null,
     // Number of GPS samples in the activity's synced track (0 = no track). The
     // sync uses this to fetch the stream only once per activity.

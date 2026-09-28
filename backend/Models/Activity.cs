@@ -62,11 +62,10 @@ public class Activity
     // Count of adjacent lap pairs that shared an on/off state - i.e. missed
     // lap presses. 0 means a clean capture. Doubles as feedback on lapping.
     public int? AlternationViolations { get; set; }
-    // Audit trail: which classifier path ran (LapClassifierMethod.*), what
-    // speed boundary it derived, and at what algorithm version - so a wrong
-    // call is diagnosable later without re-running anything.
+    // Audit trail: which classifier path ran (LapClassifierMethod.*) and at what
+    // algorithm version - so a wrong call is diagnosable later without
+    // re-running anything.
     public string? LapClassifierMethod { get; set; }
-    public decimal? OnFieldSpeedThresholdMps { get; set; }
     public int? LapClassifierVersion { get; set; }
 
     // The full Garmin activity summary as received, stored verbatim and never
