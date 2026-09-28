@@ -53,6 +53,18 @@ export default defineConfig({
   server: {
     port: Number(process.env.PORT) || 5173,
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Libraries in their own chunk: React and friends change far less often
+        // than the app, so a deploy that only touches app code leaves this
+        // file's hash (and the copy the phone has cached) untouched.
+        codeSplitting: {
+          groups: [{ name: 'vendor', test: /node_modules/ }],
+        },
+      },
+    },
+  },
   test: {
     // Plain node — everything under test is pure logic. Component tests would
     // need jsdom; there aren't any yet, and the bugs worth catching here have
