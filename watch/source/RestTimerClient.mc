@@ -1,6 +1,5 @@
 import Toybox.Communications;
 import Toybox.Lang;
-import Toybox.Time;
 
 // Wraps GET /api/resttimer/current. No timer/countdown logic lives here —
 // that's RestTimerState (step 4). This module only knows how to ask the
@@ -8,12 +7,6 @@ import Toybox.Time;
 //
 // PORTS to a full watch app unchanged.
 class RestTimerClient {
-
-    // Set true to bypass the network entirely and feed back a fixed 90s
-    // countdown, for exercising RestTimerState/the DataField draw path in
-    // the simulator before the backend round trip (real token, real phone)
-    // is wired up. Flip back to false before any real sideload.
-    private const USE_HARDCODED_RESPONSE = false;
 
     private var _config as Config;
     private var _pendingCallback as Method?;
@@ -28,13 +21,6 @@ class RestTimerClient {
     // negative BLE_* error code on a transport failure (phone out of range,
     // GCM killed, etc.) — see plan's edge-case table.
     function fetchCurrent(callback as Method) as Void {
-        if (USE_HARDCODED_RESPONSE) {
-            var fakeEndsAt = Time.now().add(new Time.Duration(90));
-            var result = new RestTimerCurrentResult("debug-timer", fakeEndsAt, "Back Squat", "5", 2, 4, Time.now(), "100 kg", "", "");
-            callback.invoke(200, result);
-            return;
-        }
-
         if (!_config.isConfigured()) {
             callback.invoke(0, null);
             return;

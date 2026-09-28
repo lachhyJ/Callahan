@@ -128,7 +128,7 @@ class CallahanDataField extends WatchUi.DataField {
         var labelHeight = dc.getFontHeight(LABEL_FONT);
         var labelGap = 2;
 
-        // Reserve room for the label first — fitFont alone only checked
+        // Reserve room for the label first — a width-only fit only checked
         // width, so it happily picked a value font tall enough to fill the
         // whole field on its own, leaving the label nowhere to go (drawn
         // off the top edge and clipped). Constrain the value font to what's
@@ -173,7 +173,7 @@ class CallahanDataField extends WatchUi.DataField {
     }
 
     private function drawCentered(dc as Dc, text as String, candidates as Array<Graphics.FontType>) as Void {
-        var font = fitFont(dc, text, candidates, dc.getWidth() - 8);
+        var font = fitFontBox(dc, text, candidates, dc.getWidth() - 8, dc.getHeight());
         dc.drawText(
             dc.getWidth() / 2,
             dc.getHeight() / 2,
@@ -183,21 +183,9 @@ class CallahanDataField extends WatchUi.DataField {
         );
     }
 
-    // Largest candidate whose rendered width fits maxWidth; falls back to the
-    // smallest candidate (accepting clipping) if even that doesn't fit —
+    // Largest candidate that fits both maxWidth and maxHeight; falls back to
+    // the smallest candidate (accepting clipping) if even that doesn't fit —
     // better than picking nothing.
-    private function fitFont(dc as Dc, text as String, candidates as Array<Graphics.FontType>, maxWidth as Number) as Graphics.FontType {
-        for (var i = 0; i < candidates.size(); i++) {
-            if (dc.getTextWidthInPixels(text, candidates[i]) <= maxWidth) {
-                return candidates[i];
-            }
-        }
-        return candidates[candidates.size() - 1];
-    }
-
-    // Same as fitFont but also constrains font height, not just width — for
-    // callers that need to reserve vertical space for something else (a
-    // label above, a secondary line below).
     private function fitFontBox(dc as Dc, text as String, candidates as Array<Graphics.FontType>, maxWidth as Number, maxHeight as Number) as Graphics.FontType {
         for (var i = 0; i < candidates.size(); i++) {
             if (dc.getTextWidthInPixels(text, candidates[i]) <= maxWidth && dc.getFontHeight(candidates[i]) <= maxHeight) {

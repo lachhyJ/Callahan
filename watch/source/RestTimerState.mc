@@ -46,8 +46,6 @@ class RestTimerState {
     private var _endsAtUtc as Moment?;
     private var _exerciseName as String?;
     private var _targetReps as String?;
-    private var _nextSetNumber as Number?;
-    private var _totalSets as Number?;
     private var _targetWeight as String = "";
     private var _enteredReps as String = "";
     private var _doneLabel as String = "";
@@ -113,8 +111,6 @@ class RestTimerState {
                 _endsAtUtc = result.endsAtUtc;
                 _exerciseName = result.exerciseName;
                 _targetReps = result.targetReps;
-                _nextSetNumber = result.nextSetNumber;
-                _totalSets = result.totalSets;
                 _targetWeight = result.targetWeight;
                 _enteredReps = result.enteredReps;
                 _doneLabel = result.doneLabel;
@@ -182,13 +178,6 @@ class RestTimerState {
 
     function exerciseName() as String {
         return _exerciseName != null ? _exerciseName : "";
-    }
-
-    function setLabel() as String {
-        if (_nextSetNumber == null || _totalSets == null) {
-            return "";
-        }
-        return _targetReps + " reps · Set " + _nextSetNumber + "/" + _totalSets;
     }
 
     static function vibrateRestOver() as Void {
