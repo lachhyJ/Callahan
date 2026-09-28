@@ -21,6 +21,8 @@ import { KEYBOARD_ACCESSORY_HEIGHT, useKeyboardInset } from '../useKeyboardInset
 
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
+// How long typing in a set row must pause before the Live Activity is updated.
+const ACTIVITY_SYNC_DEBOUNCE_MS = 300
 
 function formatDuration(ms) {
   return formatClock(Math.floor(ms / 1000))
@@ -503,18 +505,35 @@ export default function ActiveWorkoutPage() {
   // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
   // keeps the exercise/set line populated once the rest has ended — the effect
   // above sets it, and effects run in declaration order.
+  //
+  // `exercises` changes on every keystroke in a set row, and each sync is a
+  // bridge call plus a Live Activity update. So a change to the rows alone is
+  // sent once typing pauses; anything else - above all a rest starting,
+  // moving or ending - goes straight through and cancels a pending one.
+  const activitySyncTimerRef = useRef(null)
+  // undefined, never a real restTimer value, so the first sync after mount is immediate.
+  const lastSyncedRestRef = useRef(undefined)
   useEffect(() => {
-    const upcoming = nextSetDescriptor(exercises)
-    const allDone = !upcoming && exercises?.some((ex) => ex.sets.length > 0)
-    syncWorkoutActivity({
-      rest: restTimer,
-      lastSet: upcoming ?? (allDone ? { ...lastRestRef.current, doneLabel: workoutDoneLabel() } : lastRestRef.current),
-      sessionStartedAt: startedAt.getTime(),
-      templateName,
-      templateSubtitle,
-      workoutDoneLabel: workoutDoneLabel(),
-    })
+    const send = () => {
+      activitySyncTimerRef.current = null
+      const upcoming = nextSetDescriptor(exercises)
+      const allDone = !upcoming && exercises?.some((ex) => ex.sets.length > 0)
+      syncWorkoutActivity({
+        rest: restTimer,
+        lastSet: upcoming ?? (allDone ? { ...lastRestRef.current, doneLabel: workoutDoneLabel() } : lastRestRef.current),
+        sessionStartedAt: startedAt.getTime(),
+        templateName,
+        templateSubtitle,
+        workoutDoneLabel: workoutDoneLabel(),
+      })
+    }
+    clearTimeout(activitySyncTimerRef.current)
+    const restChanged = lastSyncedRestRef.current !== restTimer
+    lastSyncedRestRef.current = restTimer
+    if (restChanged) send()
+    else activitySyncTimerRef.current = setTimeout(send, ACTIVITY_SYNC_DEBOUNCE_MS)
   }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
+  useEffect(() => () => clearTimeout(activitySyncTimerRef.current), [])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }

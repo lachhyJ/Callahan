@@ -13,16 +13,26 @@ const isNative = Capacitor.isNativePlatform()
 // web / on any failure. provisioningExpiresAt is an ISO string or null (no
 // embedded profile — always true in the Simulator, which isn't code-signed
 // with one at all).
+// Read once per app load: it's fixed at build time and the Dashboard footer
+// and the expiry banner both ask for it.
+let statusPromise = null
+
 export function getNativeStatus() {
   if (!isNative) return Promise.resolve(null)
-  return AppInfo.getStatus().catch(() => null)
+  statusPromise ??= AppInfo.getStatus().catch(() => null)
+  return statusPromise
+}
+
+// Whole days until an ISO instant, rounded up (so "expires later today" is 1).
+export function daysUntil(isoDate, now = Date.now()) {
+  return Math.ceil((new Date(isoDate).getTime() - now) / (24 * 60 * 60 * 1000))
 }
 
 export function nativeBuildTag({ branch, commit, dirty, provisioningExpiresAt }) {
   const base = `native · ${branch}@${commit}${dirty ? '+' : ''}`
   if (!provisioningExpiresAt) return base
 
-  const days = Math.ceil((new Date(provisioningExpiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000))
+  const days = daysUntil(provisioningExpiresAt)
   const signingText = days <= 0 ? 'signing expired' : days === 1 ? 'signing expires in 1 day' : `signing expires in ${days}d`
   return `${base} · ${signingText}`
 }

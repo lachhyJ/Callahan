@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './auth/AuthContext'
-import { getNativeStatus } from './nativeInfo'
+import { daysUntil, getNativeStatus } from './nativeInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { playBeepNow } from './audio'
@@ -202,11 +202,6 @@ function GlobalRestBar({ restTimer, isTicking, now }) {
 // in the days before, while the app can still be opened.
 const BANNER_WINDOW_DAYS = 2
 const BANNER_DISMISS_KEY = 'callahan_provisioning_banner_dismissed_on'
-
-function daysUntil(isoDate) {
-  const ms = new Date(isoDate).getTime() - Date.now()
-  return Math.ceil(ms / (24 * 60 * 60 * 1000))
-}
 
 function ProvisioningBanner() {
   const [nativeStatus, setNativeStatus] = useState(null)
