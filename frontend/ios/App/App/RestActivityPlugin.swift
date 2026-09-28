@@ -72,14 +72,12 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// for the didBecomeActive path (where currentEndAt could be for a rest
     /// that has not actually ended yet, e.g. the app being reopened mid-rest).
     @objc private func handleBeepFinished() {
-        guard #available(iOS 16.2, *) else { return }
         diary("beepFinished received (currentEndAt=\(currentEndAt.map { String($0.timeIntervalSince1970) } ?? "nil"))")
         currentEndAt = nil
         Task { await retireCountdown(reason: "beepFinished") }
     }
 
     private func retireExpiredRest() {
-        guard #available(iOS 16.2, *) else { return }
         guard let endAt = currentEndAt, endAt <= Date() else { return }
         currentEndAt = nil
         Task { await retireCountdown(reason: "becomeActive") }
@@ -90,7 +88,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// Leaves `targetWeight`/`targetReps`/`enteredReps` untouched — they
     /// already describe the set this rest was for, which is the same set the
     /// card should now be prompting, so nothing else needs to change.
-    @available(iOS 16.2, *)
     private func retireCountdown(reason: String) async {
         await RestTimerStore.shared.clear()
         guard let activity = self.currentActivity as? Activity<RestActivityAttributes> else {
@@ -123,10 +120,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// to change the timer, and they cannot reach the webview's localStorage — so
     /// JS asks for this on resume and adopts it.
     @objc func getState(_ call: CAPPluginCall) {
-        guard #available(iOS 16.2, *) else {
-            call.resolve(["active": false])
-            return
-        }
         Task {
             let endAt = await RestTimerStore.shared.endAt
             let total = await RestTimerStore.shared.totalSeconds
@@ -151,10 +144,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// rather than zeroing means a press that lands while the app is waking is
     /// not swallowed by the acknowledgement of the ones before it.
     @objc func ackCompletions(_ call: CAPPluginCall) {
-        guard #available(iOS 16.2, *) else {
-            call.resolve()
-            return
-        }
         let count = call.getInt("count") ?? 0
         Task {
             await RestTimerStore.shared.acknowledgeCompletions(count)
@@ -162,7 +151,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    @available(iOS 16.2, *)
     private static func parseFollowing(_ o: JSObject) -> RestActivityAttributes.ContentState.Following? {
         if let done = o["doneLabel"] as? String, !done.isEmpty {
             return .init(exerciseName: "", targetReps: "", targetWeight: "", enteredReps: "",
@@ -183,10 +171,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func sync(_ call: CAPPluginCall) {
-        guard #available(iOS 16.2, *) else {
-            call.resolve(["started": false, "reason": "unsupported"])
-            return
-        }
         guard ActivityAuthorizationInfo().areActivitiesEnabled else {
             // The user can switch Live Activities off per-app in Settings. Not an
             // error: the push notification still covers the alert.
@@ -267,10 +251,6 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func end(_ call: CAPPluginCall) {
-        guard #available(iOS 16.2, *) else {
-            call.resolve()
-            return
-        }
         Task {
             // standDown, not clear: this is the workout ending, so the armed beep
             // has to be told to stand down too rather than being left to sound

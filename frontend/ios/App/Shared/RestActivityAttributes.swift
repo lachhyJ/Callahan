@@ -8,7 +8,6 @@ import Foundation
 /// rest, not the activity. That means everything that changes as you move through
 /// the session (exercise, set, rest countdown) has to live in ContentState;
 /// Attributes hold only what is fixed for the whole workout.
-@available(iOS 16.1, *)
 struct RestActivityAttributes: ActivityAttributes, Equatable {
 
     struct ContentState: Codable, Hashable {

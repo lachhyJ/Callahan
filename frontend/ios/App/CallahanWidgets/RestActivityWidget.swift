@@ -18,7 +18,6 @@ import WidgetKit
 ///     show and renders "1:--" rather than shrinking;
 ///   • an unprioritised `minWidth` loses the width negotiation to a long exercise
 ///     name and truncates anyway, so give the timer `layoutPriority`.
-@available(iOS 16.2, *)
 struct RestActivityWidget: Widget {
 
     var body: some WidgetConfiguration {
@@ -121,14 +120,12 @@ struct RestActivityWidget: Widget {
 /// that fresh content. `isStale` is OR'd in as a fallback for the one case
 /// this app doesn't proactively update for — the system's own passive
 /// detection of a `staleDate` that has quietly passed.
-@available(iOS 16.2, *)
 extension ActivityViewContext<RestActivityAttributes> {
     var restOver: Bool { !state.isResting || isStale }
 }
 
 // MARK: - Pieces
 
-@available(iOS 16.2, *)
 private struct Countdown: View {
     let context: ActivityViewContext<RestActivityAttributes>
     var font: Font
@@ -157,7 +154,6 @@ private struct Countdown: View {
 /// broken however much width it is given. A value computed at update time is
 /// accurate whenever the card changes — which is every set — and looks
 /// intentional in between. Hevy shows a coarse elapsed for the same reason.
-@available(iOS 16.2, *)
 private struct ElapsedLabel: View {
     let since: Date
     /// True in the Dynamic Island's expanded view — see `ExerciseRow`'s own
@@ -196,7 +192,6 @@ private struct ElapsedLabel: View {
 /// Truncates rather than pushing the elapsed readout off the card — the elapsed
 /// time is a fixed short string and the session name is the elastic one, so the
 /// name is what gives way when a long template subtitle meets a narrow island.
-@available(iOS 16.2, *)
 private struct SessionLabel: View {
     let context: ActivityViewContext<RestActivityAttributes>
     var font: Font
@@ -220,7 +215,6 @@ private struct SessionLabel: View {
     }
 }
 
-@available(iOS 16.2, *)
 private struct ExerciseRow: View {
     let context: ActivityViewContext<RestActivityAttributes>
     /// True in the Dynamic Island's expanded view. This row carries the
@@ -259,7 +253,6 @@ private struct ExerciseRow: View {
     }
 }
 
-@available(iOS 16.2, *)
 private struct ProgressBar: View {
     let context: ActivityViewContext<RestActivityAttributes>
 
@@ -282,7 +275,6 @@ private struct ProgressBar: View {
 /// row. Once it is over the adjust buttons have nothing to adjust, so the row
 /// becomes the thing you actually want at that point — tick the set you just did
 /// and start the next rest, without unlocking the phone.
-@available(iOS 16.2, *)
 private struct ControlRow: View {
     let context: ActivityViewContext<RestActivityAttributes>
     /// True in the Dynamic Island's expanded view, which gets noticeably less
@@ -297,7 +289,7 @@ private struct ControlRow: View {
 
     var body: some View {
         HStack(spacing: compact ? 4 : 8) {
-            if #available(iOS 17.0, *), !restOver {
+            if !restOver {
                 Button(intent: AdjustRestIntent(deltaSeconds: -15)) {
                     Text("-15s").font(.subheadline.weight(.medium))
                         .lineLimit(1)
@@ -323,42 +315,40 @@ private struct ControlRow: View {
             }
             Spacer(minLength: 0)
 
-            if #available(iOS 17.0, *) {
-                if restOver {
-                    if hasSetsLeft {
-                        // Tick only, no caption. There is exactly one action on
-                        // this card and it sits under a line that already says
-                        // which set is next — "Set done" spent width restating
-                        // that, and width is what the loaded-set readout needs.
-                        Button(intent: CompleteSetIntent()) {
-                            Image(systemName: "checkmark")
-                                .font(.subheadline.weight(.bold))
-                                .frame(minWidth: 24)
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .tint(RestActivityWidget.accent)
-                        .controlSize(compact ? .small : .regular)
-                        .accessibilityLabel("Set done")
-                    }
-                } else {
-                    Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
-                        Text("+15s").font(.subheadline.weight(.medium))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.gray)
-                    .controlSize(compact ? .small : .regular)
-
-                    Button(intent: SkipRestIntent()) {
-                        Text("Skip").font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.75)
+            if restOver {
+                if hasSetsLeft {
+                    // Tick only, no caption. There is exactly one action on
+                    // this card and it sits under a line that already says
+                    // which set is next — "Set done" spent width restating
+                    // that, and width is what the loaded-set readout needs.
+                    Button(intent: CompleteSetIntent()) {
+                        Image(systemName: "checkmark")
+                            .font(.subheadline.weight(.bold))
+                            .frame(minWidth: 24)
                     }
                     .buttonStyle(.borderedProminent)
                     .tint(RestActivityWidget.accent)
                     .controlSize(compact ? .small : .regular)
+                    .accessibilityLabel("Set done")
                 }
+            } else {
+                Button(intent: AdjustRestIntent(deltaSeconds: 15)) {
+                    Text("+15s").font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .buttonStyle(.bordered)
+                .tint(.gray)
+                .controlSize(compact ? .small : .regular)
+
+                Button(intent: SkipRestIntent()) {
+                    Text("Skip").font(.subheadline.weight(.semibold))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(RestActivityWidget.accent)
+                .controlSize(compact ? .small : .regular)
             }
         }
     }
@@ -371,7 +361,6 @@ private struct ControlRow: View {
 /// is longer than a bare countdown ever is, and half a number is worse than a
 /// small one. Falls back to a zeroed clock when there is nothing loaded, which
 /// is what the card showed between sets before any of this existed.
-@available(iOS 16.2, *)
 private struct LoadedSet: View {
     let context: ActivityViewContext<RestActivityAttributes>
     /// True in the Dynamic Island's expanded view — see `ControlRow`'s own
@@ -406,7 +395,6 @@ private struct LoadedSet: View {
     }
 }
 
-@available(iOS 16.2, *)
 private struct LockScreenView: View {
     let context: ActivityViewContext<RestActivityAttributes>
 

@@ -57,7 +57,6 @@ public enum RestTimerChange {
 /// webview is suspended in the background and cannot be told about a button press
 /// at the time it happens. The JS reconciles from RestTimerStore when it next
 /// runs — see RestActivityPlugin.getState().
-@available(iOS 17.0, *)
 struct AdjustRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Adjust rest"
 
@@ -73,7 +72,6 @@ struct AdjustRestIntent: LiveActivityIntent {
     }
 }
 
-@available(iOS 17.0, *)
 struct SkipRestIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Skip rest"
 
@@ -93,7 +91,6 @@ struct SkipRestIntent: LiveActivityIntent {
 /// webview's state, so the completion is banked as a count here and applied when
 /// JS next runs. That makes it safe to press several times across a locked
 /// session without losing any of them.
-@available(iOS 17.0, *)
 struct CompleteSetIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Complete set"
 
@@ -110,7 +107,6 @@ struct CompleteSetIntent: LiveActivityIntent {
 /// Deliberately plain UserDefaults in the app's own container: the widget renders
 /// from the activity's ContentState, which iOS delivers to it, so nothing outside
 /// this process needs to read this — which is what lets us avoid App Groups.
-@available(iOS 16.2, *)
 actor RestTimerStore {
     static let shared = RestTimerStore()
 
