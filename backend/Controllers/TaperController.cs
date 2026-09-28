@@ -5,6 +5,7 @@ using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using static Callahan.Api.Services.CalendarDates;
 
 namespace Callahan.Api.Controllers;
 
@@ -24,11 +25,6 @@ public class TaperController : ControllerBase
         _consultService = consultService;
     }
 
-    private static DateOnly MondayOf(DateOnly date)
-    {
-        var offsetFromMonday = ((int)date.DayOfWeek + 6) % 7; // Mon=0 ... Sun=6
-        return date.AddDays(-offsetFromMonday);
-    }
 
     // A "taper event" is a Tournament with TaperDays set - the two were separate
     // entities until 2026-09-04. The taper surfaces count down to StartDate, so

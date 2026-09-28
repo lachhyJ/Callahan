@@ -29,10 +29,12 @@ public class PlanController : ControllerBase
         _time = time ?? TimeProvider.System;
     }
 
-    // Monday-first, matching dateUtils.startOfWeek and the Calendar grid.
-    private static DateOnly MondayOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
+    private static DateOnly MondayOf(DateOnly d) => CalendarDates.MondayOf(d);
 
-    private DateOnly Today() => _time.Today();
+    // The training day (3am cutoff), like routines and the frontend: between
+    // midnight and 3am the day still in progress is yesterday's, so its slots
+    // aren't "missed" yet.
+    private DateOnly Today() => CalendarDates.TrainingDay(_time.LocalNow());
 
     [HttpGet]
     public async Task<ActionResult<WeekPlanDto>> Get([FromQuery] DateOnly? weekStart)

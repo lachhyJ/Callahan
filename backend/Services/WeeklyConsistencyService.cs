@@ -1,3 +1,4 @@
+using static Callahan.Api.Services.CalendarDates;
 namespace Callahan.Api.Services;
 
 public record WeeklyConsistencyDefinition(string Type, string Label, Func<int, int, bool> Qualifies);
@@ -17,12 +18,6 @@ public static class WeeklyConsistencyService
         new("run1", "1+ run", (gym, run) => run >= 1),
     ];
 
-    // Monday-first week start, matching the frontend's convention (dateUtils.js).
-    public static DateOnly MondayOf(DateOnly date)
-    {
-        var offsetFromMonday = ((int)date.DayOfWeek + 6) % 7; // Mon=0 ... Sun=6
-        return date.AddDays(-offsetFromMonday);
-    }
 
     // Per-week gym/run counts keyed by the Monday of each week, for every
     // week that has at least one workout or run in it. Callers needing a

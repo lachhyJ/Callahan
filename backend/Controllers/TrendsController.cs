@@ -25,9 +25,10 @@ public class TrendsController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<TrendPointDto>>> GetTrends([FromQuery] int months = 6)
     {
+        months = Math.Clamp(months, 1, 24);
         var today = _time.Today();
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = CalendarDates.MonthOf(today);
+        var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         // Warmups excluded, matching every other volume figure in the app —
         // the taper section, the push/pull comparison, and the load-vs-recovery
@@ -89,9 +90,10 @@ public class TrendsController : ControllerBase
     [HttpGet("exercises")]
     public async Task<ActionResult<List<LiftTrendDto>>> GetLiftTrends([FromQuery] int months = 6)
     {
+        months = Math.Clamp(months, 1, 24);
         var today = _time.Today();
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = CalendarDates.MonthOf(today);
+        var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         var sets = await _db.ExerciseSets
             .Where(s => s.SetType != SetType.Warmup && s.DurationSeconds == null && s.WorkoutSession.Date >= earliestMonthStart)
@@ -169,9 +171,10 @@ public class TrendsController : ControllerBase
     [HttpGet("runs")]
     public async Task<ActionResult<List<RunTypeTrendDto>>> GetRunTypeTrends([FromQuery] int months = 6)
     {
+        months = Math.Clamp(months, 1, 24);
         var today = _time.Today();
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = CalendarDates.MonthOf(today);
+        var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         var runs = await _db.Activities
             .Where(a => a.Type == ActivityType.Running && a.Date >= earliestMonthStart && a.ActivitySessionTypeId != null)
@@ -234,8 +237,8 @@ public class TrendsController : ControllerBase
     {
         months = Math.Clamp(months, 1, 24);
         var today = _time.Today();
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = CalendarDates.MonthOf(today);
+        var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         // The current program: every exercise in any Day A/B/C template, keyed
         // to its shallowest slot position (1 = first lift of a session). The
@@ -295,8 +298,8 @@ public class TrendsController : ControllerBase
     {
         months = Math.Clamp(months, 1, 24);
         var today = _time.Today();
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = CalendarDates.MonthOf(today);
+        var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         var ultimate = await _db.Activities
             .Where(a => a.Type == ActivityType.Ultimate && a.Date >= earliestMonthStart)

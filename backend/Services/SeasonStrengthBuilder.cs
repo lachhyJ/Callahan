@@ -1,4 +1,5 @@
 using Callahan.Api.DTOs;
+using static Callahan.Api.Services.CalendarDates;
 
 namespace Callahan.Api.Services;
 
@@ -33,8 +34,8 @@ public static class SeasonStrengthBuilder
         IEnumerable<SeasonInput> seasons,
         IReadOnlyDictionary<int, int> programOrder)
     {
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = MonthOf(today);
+        var earliestMonthStart = WindowStart(today, months);
         var windowEnd = currentMonthStart.AddMonths(1).AddDays(-1);
 
         var monthStarts = Enumerable.Range(0, months)
@@ -109,7 +110,6 @@ public static class SeasonStrengthBuilder
         return new SeasonStrengthDto(monthDtos, series, seasonDtos, bandDtos);
     }
 
-    private static DateOnly MonthOf(DateOnly d) => new(d.Year, d.Month, 1);
     private static DateOnly Later(DateOnly a, DateOnly b) => a > b ? a : b;
     private static DateOnly Earlier(DateOnly a, DateOnly b) => a < b ? a : b;
 }

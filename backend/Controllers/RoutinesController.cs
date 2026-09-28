@@ -27,20 +27,7 @@ public class RoutinesController : ControllerBase
         _time = time ?? TimeProvider.System;
     }
 
-    // The training day, not the calendar day - the same 3am cutoff the frontend
-    // applies in dateUtils.trainingDayIso. An ankle circuit done at 00:30 is the
-    // tail of the previous day's training, and if this used the raw calendar day
-    // the tick would land on a different date than everything else in the app
-    // records for the same session.
-    private const int TrainingDayCutoffHour = 3;
-
-    private static DateOnly TrainingDay(DateTime now)
-    {
-        var day = DateOnly.FromDateTime(now);
-        return now.Hour < TrainingDayCutoffHour ? day.AddDays(-1) : day;
-    }
-
-    private DateOnly Today() => TrainingDay(_time.LocalNow());
+    private DateOnly Today() => CalendarDates.TrainingDay(_time.LocalNow());
 
     private static RoutineDto ToDto(Routine r, DateOnly today)
     {

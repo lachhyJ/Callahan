@@ -1,4 +1,5 @@
 using Callahan.Api.DTOs;
+using static Callahan.Api.Services.CalendarDates;
 
 namespace Callahan.Api.Services;
 
@@ -20,13 +21,6 @@ public record GymGarminLoad(DateOnly Date, decimal TrainingLoad);
 // descriptive only, it draws no conclusions.
 public static class LoadTrendBuilder
 {
-    // Monday-first week start, matching the frontend's convention (dateUtils.js)
-    // and the copies in WorkoutSessionsController / WeeklyConsistencyService.
-    public static DateOnly MondayOf(DateOnly date)
-    {
-        var offsetFromMonday = ((int)date.DayOfWeek + 6) % 7; // Mon=0 ... Sun=6
-        return date.AddDays(-offsetFromMonday);
-    }
 
     public static List<LoadTrendWeekDto> Build(
         DateOnly today,

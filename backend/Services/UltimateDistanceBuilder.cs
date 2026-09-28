@@ -1,4 +1,5 @@
 using Callahan.Api.DTOs;
+using static Callahan.Api.Services.CalendarDates;
 
 namespace Callahan.Api.Services;
 
@@ -29,7 +30,6 @@ public record GarminLoad(DateOnly Date, decimal TrainingLoad, TrainingLoadSource
 // Descriptive only; it draws no conclusions.
 public static class UltimateDistanceBuilder
 {
-    public static DateOnly MonthOf(DateOnly d) => new(d.Year, d.Month, 1);
 
     public static List<UltimateDistanceMonthDto> Build(
         DateOnly today,
@@ -38,8 +38,8 @@ public static class UltimateDistanceBuilder
         IEnumerable<RunLoad> runs,
         IEnumerable<GarminLoad> loads)
     {
-        var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
-        var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
+        var currentMonthStart = MonthOf(today);
+        var earliestMonthStart = WindowStart(today, months);
         var monthStarts = Enumerable.Range(0, months)
             .Select(i => earliestMonthStart.AddMonths(i))
             .ToList();

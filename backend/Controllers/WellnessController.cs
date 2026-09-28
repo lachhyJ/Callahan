@@ -98,7 +98,7 @@ public class WellnessController : ControllerBase
     {
         weeks = Math.Clamp(weeks, 1, 52);
         var today = _time.Today();
-        var earliest = LoadTrendBuilder.MondayOf(today).AddDays(-7 * (weeks - 1));
+        var earliest = CalendarDates.MondayOf(today).AddDays(-7 * (weeks - 1));
 
         var gymSets = await _db.ExerciseSets
             .Where(s => s.WorkoutSession.Date >= earliest && s.DurationSeconds == null)

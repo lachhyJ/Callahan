@@ -137,5 +137,5 @@ public class StreaksController : ControllerBase
         return Ok(new StreakDetailDto(definition.Type, definition.Label, weeks));
     }
 
-    private static DateOnly MondayOf(DateOnly date) => WeeklyConsistencyService.MondayOf(date);
+    private static DateOnly MondayOf(DateOnly date) => CalendarDates.MondayOf(date);
 }
