@@ -598,11 +598,23 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
 
     // MARK: - API
 
+    /// JS calls prepare on every set tick (twice, from two call sites). Only the
+    /// first successful one does anything: re-requesting notification permission
+    /// and re-setting the session category each time was redundant, and could
+    /// land inside a beep's duck window. activate() sets the category itself
+    /// before any play, so nothing depends on prepare having run recently.
+    private var prepared = false
+
     @objc func prepare(_ call: CAPPluginCall) {
+        if prepared {
+            call.resolve(["ready": true])
+            return
+        }
         record("prepare")
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         do {
             try configureSession(ducking: false)
+            prepared = true
             call.resolve(["ready": true])
         } catch {
             call.resolve(["ready": false, "reason": error.localizedDescription])
