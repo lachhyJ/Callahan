@@ -28,18 +28,10 @@ import os
 import statistics
 import sys
 
+import diagnose as d  # the classifier primitives + constants, guarded against FieldGeometry.cs
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "tests", "Callahan.Api.Tests", "Fixtures"))
-
-# --- segment.py constants, kept in sync by hand (they are the C# defaults too) ---
-WIN = 100.0
-FAST = 4.0
-MIN_DWELL = 75.0
-EZ_FRAC = 0.55
-EZ_MIN_S = 25.0
-EZ_MAX_SPD = 2.5
-FOLLOW_S = 60.0
-FOLLOW_FRAC = 0.5
 
 
 def haversine(lat1, lon1, lat2, lon2):
@@ -51,112 +43,35 @@ def haversine(lat1, lon1, lat2, lon2):
     return 2 * r * math.asin(min(1.0, math.sqrt(h)))
 
 
-def project(t, lat, lon, spd):
-    mla = statistics.mean(lat)
-    mlo = statistics.mean(lon)
-    mlat, mlon = 111320.0, 111320.0 * math.cos(math.radians(mla))
-    xy = [((lon[i] - mlo) * mlon, (lat[i] - mla) * mlat, spd[i]) for i in range(len(t))]
-    fast = [(x, y) for x, y, s in xy if s >= FAST]
-    src = fast if len(fast) >= 40 else [(x, y) for x, y, _ in xy]
-    mx = statistics.mean(p[0] for p in src)
-    my = statistics.mean(p[1] for p in src)
-    cxx = statistics.pvariance([p[0] for p in src])
-    cyy = statistics.pvariance([p[1] for p in src])
-    cxy = sum((p[0] - mx) * (p[1] - my) for p in src) / len(src)
-    th = 0.5 * math.atan2(2 * cxy, cxx - cyy)
-    ct, st = math.cos(th), math.sin(th)
-    along, cross = [], []
-    for x, y, s in xy:
-        dx, dy = x - mx, y - my
-        along.append(dx * ct + dy * st)
-        cross.append(-dx * st + dy * ct)
-    fc = [c for c, s in zip(cross, spd) if s >= FAST]
-    c0 = statistics.median(fc) if len(fc) >= 40 else statistics.median(cross)
-    return along, [c - c0 for c in cross], th, c0
-
-
-def roll(t, vals, win, fn):
-    n = len(t)
-    out = [0.0] * n
-    lo = hi = 0
-    for i in range(n):
-        while t[lo] < t[i] - win / 2:
-            lo += 1
-        if hi < lo:
-            hi = lo
-        while hi < n and t[hi] <= t[i] + win / 2:
-            hi += 1
-        out[i] = fn(vals[lo:hi]) if hi > lo else fn([vals[i]])
-    return out
-
-
-def spread(xs):
-    if len(xs) < 4:
-        return 0.0
-    s = sorted(xs)
-    n = len(s)
-    return s[int(n * 0.9)] - s[int(n * 0.1)]
-
-
-def merge(t, lab, mind):
-    out = list(lab)
-    i = 0
-    while i < len(out):
-        j = i
-        while j < len(out) and out[j] == out[i]:
-            j += 1
-        if j > i and (t[j - 1] - t[i]) < mind and i > 0:
-            for k in range(i, j):
-                out[k] = out[i - 1]
-            i = 0
-        else:
-            i = j
-    return out
-
-
-def runs(lab):
-    r = []
-    i = 0
-    while i < len(lab):
-        j = i
-        while j < len(lab) and lab[j] == lab[i]:
-            j += 1
-        r.append((lab[i], i, j - 1))
-        i = j
-    return r
-
-
 def analyse(t, lat, lon, spd):
-    along, cross, th, c0 = project(t, lat, lon, spd)
-    fc = sorted(abs(c) for c, s in zip(cross, spd) if s >= FAST)
-    halfw = fc[int(len(fc) * 0.9)] if len(fc) > 20 else 18.0
-    fa = sorted(abs(a) for a, s in zip(along, spd) if s >= FAST)
-    halfl = fa[int(len(fa) * 0.9)] if len(fa) > 20 else 45.0
+    """The baselines.json numbers FieldGeometryTests compares against.
 
-    lat_spread = roll(t, cross, WIN, spread)
-    abs_cross = roll(t, [abs(c) for c in cross], WIN, statistics.median)
-    onfield = merge(t, [(ls > halfw * 0.8) or (ac < halfw * 0.55)
-                        for ls, ac in zip(lat_spread, abs_cross)], MIN_DWELL)
+    On-field labelling and the field fit come from diagnose.analyse(); only the
+    dwell list (needed for live play, which diagnose doesn't report) is walked
+    here, with the same acceptance rules as diagnose.points_played()."""
+    r = d.analyse(t, lat, lon, spd)
+    along, onfield, halfw, halfl = r["along"], r["onfield"], r["halfw"], r["halfl"]
 
-    inez = [abs(a) > halfl * EZ_FRAC for a in along]
+    inez = [abs(a) > halfl * d.EZ_FRAC for a in along]
     dwells = []
-    for state, i0, i1 in runs(inez):
-        if not state or t[i1] - t[i0] < EZ_MIN_S:
+    for state, i0, i1 in d.runs(inez):
+        if not state or t[i1] - t[i0] < d.EZ_MIN_S:
             continue
-        if statistics.mean(spd[i0:i1 + 1]) > EZ_MAX_SPD:
+        if statistics.mean(spd[i0:i1 + 1]) > d.EZ_MAX_SPD:
             continue
         if sum(onfield[i0:i1 + 1]) < (i1 - i0 + 1) / 2:
             continue
         j = i1
-        while j < len(t) - 1 and t[j] - t[i1] < FOLLOW_S:
+        while j < len(t) - 1 and t[j] - t[i1] < d.FOLLOW_S:
             j += 1
         follow = onfield[i1:j + 1]
-        if not follow or sum(follow) < len(follow) * FOLLOW_FRAC:
+        if not follow or sum(follow) < len(follow) * d.FOLLOW_FRAC:
             continue
         dwells.append((i0, i1))
     pts = len(dwells)
+    assert pts == r["pts"], "dwell walk disagrees with diagnose.points_played"
 
-    on = sum(t[i] - t[i - 1] for i in range(1, len(t)) if onfield[i - 1])
+    on = r["on"]
     # Live play (segment.py b2): time + GPS distance over the on-field windows
     # between consecutive accepted dwells. Matches GeometryResult.LivePlay*.
     live = sum(t[i] - t[i - 1]

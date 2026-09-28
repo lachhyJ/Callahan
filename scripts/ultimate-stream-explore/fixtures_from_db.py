@@ -25,7 +25,7 @@ import sqlite3
 import statistics
 import sys
 
-import make_fixtures as mf  # analyse() + the segment.py constants it mirrors
+import make_fixtures as mf  # analyse(), built on diagnose.py's guarded primitives
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "tests", "Callahan.Api.Tests", "Fixtures"))

@@ -13,9 +13,10 @@ segment.py's analyse() with extra instrumentation:
     last point start + FOLLOW_S] — i.e. dropping pre-game warmup and any
     trailing cooldown/handshake time (does NOT touch a mid-game halftime
     gap, which is reported separately as the largest inter-point gap)
-  - a small parameter sweep over CENTRE_FACTOR / MIN_DWELL / WIN
+  - a small parameter sweep over CENTRE_FACTOR / MIN_DWELL / WIN, run on the
+    tune set only (holdout.py) so holdout_check.py stays independent
 
-Run: python3 diagnose.py
+Run: python3 diagnose.py [--rotate TOURNAMENT]
 """
 import gzip
 import json
@@ -256,6 +257,8 @@ def load_fixture(path):
 
 
 def main():
+    import holdout  # imports nothing from here; kept local so make_fixtures' import stays light
+    rotate = sys.argv[sys.argv.index("--rotate") + 1] if "--rotate" in sys.argv else None
     games = sorted(f for f in os.listdir(FIXTURES) if f.startswith("game-") and f.endswith(".json.gz"))
     baselines = json.load(open(os.path.join(FIXTURES, "baselines.json")))["games"]
 
@@ -320,9 +323,12 @@ def main():
 
     print()
     print("=" * 100)
-    print("STEP 4: parameter sweep (all six games, aggregate on%, min pts, max pts)")
+    held = holdout.heldout_games(baselines, rotate)
+    tune = [f for f in games if int(f[5:7]) not in held]
+    print(f"STEP 4: parameter sweep over the {len(tune)} tune games "
+          f"(held out: {sorted(held)}; aggregate on%, pts per game)")
     print("=" * 100)
-    all_fixtures = [load_fixture(os.path.join(FIXTURES, f)) for f in games]
+    all_fixtures = [load_fixture(os.path.join(FIXTURES, f)) for f in tune]
 
     def sweep(label, **kwargs):
         tot_on = tot_dur = 0.0

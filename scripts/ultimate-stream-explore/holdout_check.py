@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Held-out validation of the point-detector follow-filter relaxation.
+"""Held-out validation of the point-detector follow-filter settings.
 
-The FOLLOW_S/FOLLOW_FRAC sweep was tuned on the six April fixture games. This
-scores the SAME candidate settings against the eleven Feb/Mar games (Regionals,
-Big C), which were never used in that tuning — so agreement here is evidence
-rather than a restatement of the fit.
+Scores each candidate setting on the held-out fixtures (holdout.py): two games
+per tournament that diagnose.py's sweep never sees, so agreement here is
+evidence rather than a restatement of the fit. `--rotate TOURNAMENT` holds out
+that whole tournament instead - does the setting survive an unseen field?
 
-Usage:  python3 holdout_check.py /path/to/callahan-ro.db
+Reads the committed fixtures; no DB needed.
+
+Usage:  python3 holdout_check.py [--rotate Regionals|BigC|Nationals]
 """
-import json
-import os
-import sqlite3
 import sys
 
 import diagnose as d
+import holdout
 
 # The shipped default is FOLLOW_S=60 / FRAC=0.50 (a93a610); diagnose.py pulls
 # it live from FieldGeometry.cs and this row mirrors it. The rest are the
@@ -26,32 +26,17 @@ CANDIDATES = [
 ]
 
 
-def load_tracks(db_path, before="2026-04-01", after=None):
-    db = sqlite3.connect(db_path)
-    q = ("SELECT a.Id, a.Date, a.Notes, a.OnFieldSeconds, a.PointsPlayed, t.SamplesJson" +
-         " FROM Activities a JOIN ActivityTracks t ON t.ActivityId = a.Id "
-         "WHERE a.Type = 1 AND a.PointsPlayed IS NOT NULL")
-    if before:
-        q += " AND a.Date < '" + before + "'"
-    if after:
-        q += " AND a.Date >= '" + after + "'"
-    q += " ORDER BY a.Date, a.Id"
-    out = []
-    for aid, date, notes, onsec, pts, raw in db.execute(q):
-        s = json.loads(raw)
-        t = [float(x) for x in s["t"]]
-        out.append((aid, date, notes, onsec, pts, t, s["lat"], s["lon"], s["spd"]))
-    return out
-
-
 def main():
-    db_path = sys.argv[1]
-    games = load_tracks(db_path)
-    print("Held-out set: " + str(len(games)) + " Feb/Mar games (never used in tuning)\n")
+    rotate = sys.argv[sys.argv.index("--rotate") + 1] if "--rotate" in sys.argv else None
+    base = {g["game"]: g for g in holdout.baselines()}
+    held = sorted(holdout.heldout_games(base.values(), rotate))
+    what = f"all of {rotate}" if rotate else "mixed split"
+    print(f"Held-out set ({what}): games {held} - excluded from diagnose.py's sweep\n")
 
     results = {label: [] for label, _ in CANDIDATES}
     print(f"{'game':34} {'on%':>5} " + " ".join(f"{lab.split('(')[0].strip()[:14]:>14}" for lab, _ in CANDIDATES))
-    for aid, date, notes, onsec, stored_pts, t, lat, lon, spd in games:
+    for game in held:
+        t, lat, lon, spd = d.load_fixture(holdout.fixture_path(game))
         r = d.analyse(t, lat, lon, spd)
         cells = []
         for label, kw in CANDIDATES:
@@ -59,7 +44,7 @@ def main():
             mpp = (r["on"] / 60 / pts) if pts else float("nan")
             results[label].append((pts, mpp))
             cells.append(f"{pts:>3}p {mpp:>4.1f}m/p")
-        name = (notes or str(aid))[:32]
+        name = f"{game:02d} {base[game]['tournament']} {base[game]['name'] or ''}"[:32]
         print(f"{name:34} {r['on']/r['dur']:>4.0%} " + " ".join(f"{c:>14}" for c in cells))
 
     print("\n--- summary (held-out) ---")
