@@ -1,4 +1,4 @@
-import { buildTicks, niceStep } from '../utils/chartScale'
+import { buildTicks, linearScale, niceStep, splitOnGaps } from '../utils/chartScale'
 import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 320
@@ -39,21 +39,10 @@ export default function MetricTrendChart({ points, baselineAvg, ariaLabel }) {
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
 
   const xFor = (i) => PAD_LEFT + (points.length <= 1 ? plotWidth / 2 : (i / (points.length - 1)) * plotWidth)
-  const yFor = (v) => PAD_TOP + plotHeight - ((v - yMin) / (yMax - yMin)) * plotHeight
+  const yFor = linearScale({ min: yMin, max: yMax, top: PAD_TOP, height: plotHeight })
 
   // Split into segments so a run of missing days lifts the pen.
-  const segments = []
-  let cur = []
-  let prevI = null
-  for (const p of real) {
-    if (prevI != null && p.i !== prevI + 1) {
-      segments.push(cur)
-      cur = []
-    }
-    cur.push(p)
-    prevI = p.i
-  }
-  if (cur.length) segments.push(cur)
+  const segments = splitOnGaps(real)
 
   const drawable = segments.filter((s) => s.length >= 2)
   const linePaths = drawable.map((s) =>

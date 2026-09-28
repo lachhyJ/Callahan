@@ -1,3 +1,5 @@
+import { splitOnGaps } from '../utils/chartScale'
+
 const WIDTH = 300
 const HEIGHT = 40
 const PAD_Y = 5
@@ -26,18 +28,7 @@ export default function WellnessSparkline({ values, baselineAvg }) {
 
   // Split into segments so a run of missing days lifts the pen rather than
   // drawing a straight line across the gap.
-  const segments = []
-  let cur = []
-  let prevI = null
-  for (const p of real) {
-    if (prevI != null && p.i !== prevI + 1) {
-      segments.push(cur)
-      cur = []
-    }
-    cur.push(p)
-    prevI = p.i
-  }
-  if (cur.length) segments.push(cur)
+  const segments = splitOnGaps(real)
 
   const paths = segments
     .filter((s) => s.length > 0)

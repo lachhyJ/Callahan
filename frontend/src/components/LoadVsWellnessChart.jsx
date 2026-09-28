@@ -1,4 +1,4 @@
-import { niceStep } from '../utils/chartScale'
+import { buildTicks, niceStep, splitOnGaps } from '../utils/chartScale'
 import ChartGridLines from './ChartGridLines'
 import { formatVolume } from '../utils/format'
 
@@ -39,8 +39,7 @@ export default function LoadVsWellnessChart({ weeks }) {
   const maxVol = Math.max(...weeks.map((w) => w.gymVolume), 1)
   const volStep = niceStep(maxVol)
   const volMax = Math.max(volStep, Math.ceil(maxVol / volStep) * volStep)
-  const volTicks = []
-  for (let t = 0; t <= volMax + 1e-9; t += volStep) volTicks.push(t)
+  const volTicks = buildTicks(0, volMax, volStep, 2)
   const yVol = (v) => bottom - (v / volMax) * plotHeight
 
   // Garmin gym training load: its own zero-based max, no labelled axis (the
@@ -70,18 +69,7 @@ export default function LoadVsWellnessChart({ weeks }) {
 
   // Readiness line, split on missing weeks.
   const pts = weeks.map((w, i) => ({ v: w.meanReadiness, i })).filter((p) => p.v != null)
-  const segments = []
-  let cur = []
-  let prev = null
-  for (const p of pts) {
-    if (prev != null && p.i !== prev + 1) {
-      segments.push(cur)
-      cur = []
-    }
-    cur.push(p)
-    prev = p.i
-  }
-  if (cur.length) segments.push(cur)
+  const segments = splitOnGaps(pts)
   const linePaths = segments
     .filter((s) => s.length >= 2)
     .map((s) => s.map((p, k) => `${k === 0 ? 'M' : 'L'} ${xCenter(p.i).toFixed(1)} ${yRead(p.v).toFixed(1)}`).join(' '))

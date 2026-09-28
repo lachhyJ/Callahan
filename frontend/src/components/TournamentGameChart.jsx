@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { buildTicks, niceStep } from '../utils/chartScale'
+import { buildTicks, linearScale, niceStep } from '../utils/chartScale'
 import ChartGridLines from './ChartGridLines'
 
 const WIDTH = 320
@@ -34,7 +34,7 @@ export default function TournamentGameChart({ points, unitLabel, caption }) {
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
 
   const xFor = (i) => PAD_LEFT + (i / (points.length - 1)) * plotWidth
-  const yFor = (v) => PAD_TOP + plotHeight - ((v - yMin) / (yMax - yMin)) * plotHeight
+  const yFor = linearScale({ min: yMin, max: yMax, top: PAD_TOP, height: plotHeight })
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i)} ${yFor(p.value)}`).join(' ')
   const areaPath = `${linePath} L ${xFor(points.length - 1)} ${PAD_TOP + plotHeight} L ${xFor(0)} ${PAD_TOP + plotHeight} Z`

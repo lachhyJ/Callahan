@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildTicks, linearScale, niceStep } from './chartScale'
+import { buildTicks, linearScale, niceStep, splitOnGaps } from './chartScale'
 
 describe('niceStep', () => {
   it('picks a round step for the rough range/3', () => {
@@ -73,5 +73,16 @@ describe('linearScale', () => {
   it('does not divide by zero on a flat series', () => {
     const flat = linearScale({ min: 7, max: 7, top: 0, height: 50 })
     expect(Number.isFinite(flat(7))).toBe(true)
+  })
+})
+
+describe('splitOnGaps', () => {
+  it('starts a new segment wherever an index is skipped', () => {
+    const pts = [0, 1, 3, 4, 5, 8].map((i) => ({ i }))
+    expect(splitOnGaps(pts).map((s) => s.map((p) => p.i))).toEqual([[0, 1], [3, 4, 5], [8]])
+  })
+
+  it('returns no segments for no points', () => {
+    expect(splitOnGaps([])).toEqual([])
   })
 })

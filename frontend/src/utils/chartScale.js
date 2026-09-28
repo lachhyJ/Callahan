@@ -28,9 +28,27 @@ export function buildTicks(min, max, step, decimals = 1) {
   return ticks
 }
 
+// Splits index-tagged points into runs of consecutive indexes, so a line can
+// lift the pen across missing days/weeks instead of drawing a straight line
+// over the gap. `points` must be in index order.
+export function splitOnGaps(points) {
+  const segments = []
+  let cur = []
+  let prevI = null
+  for (const p of points) {
+    if (prevI != null && p.i !== prevI + 1) {
+      segments.push(cur)
+      cur = []
+    }
+    cur.push(p)
+    prevI = p.i
+  }
+  if (cur.length) segments.push(cur)
+  return segments
+}
+
 // Maps a data value onto an SVG y coordinate: `min` sits at the bottom of the
-// plot, `max` at the top, y growing downwards. Three charts carried this same
-// expression inline.
+// plot, `max` at the top, y growing downwards.
 export function linearScale({ min, max, top, height }) {
   const span = max - min
   return (v) => top + height - (span === 0 ? 0 : ((v - min) / span) * height)
