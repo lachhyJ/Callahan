@@ -33,12 +33,13 @@ export default defineConfig({
 
   expect: {
     toHaveScreenshot: {
-      // A ratio tolerance scales with image size and hides small-but-real changes —
-      // confirmed live 2026-09-04: 1% ratio missed a full accent-colour swap because
-      // the affected element was a small fraction of a 440x956 frame. An absolute cap
-      // still allows AA/font-hinting jitter (a handful to low hundreds of edge
-      // pixels) without hiding a real, contained change.
-      maxDiffPixels: 100,
+      // Exact match. With the clock, timezone and seed pinned (e2e/anchor.js),
+      // repeated runs on this machine render identical pixels, so any tolerance
+      // only hides real changes: at the previous 100-pixel allowance a new Back
+      // button (~80 px) and a changed streak digit (4 px) both passed. If
+      // anti-aliasing noise ever shows up (a different machine or OS), raise
+      // this to a small number rather than back to 100.
+      maxDiffPixels: 0,
     },
   },
 
