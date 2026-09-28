@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityScore, updateActivityTournament } from '../api/client'
-import { activityLabel, formatDuration } from '../utils/activityLabel'
+import { activityLabel } from '../utils/activityLabel'
+import { formatClock } from '../utils/format'
 import { formatDateLong } from '../dateUtils'
 import FieldTimeline from '../components/FieldTimeline'
 import FieldSplitBar from '../components/FieldSplitBar'
@@ -128,7 +129,7 @@ export default function UltimateGameDetailPage() {
         <p className="notes">
           {activity.type === 'Ultimate'
             ? 'No on/off-field data for this activity yet — it needs to be classified as “Game” with a synced GPS track.'
-            : `${formatDuration(activity.durationSeconds)} logged.`}
+            : `${formatClock(activity.durationSeconds)} logged.`}
         </p>
       )}
 

@@ -3,13 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { getStreakDetail } from '../api/client'
 import { CheckIcon } from '../icons'
 import SessionList from '../components/SessionList'
-
-function formatWeekLabel(iso) {
-  const start = new Date(`${iso}T00:00:00`)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  return `${start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
-}
+import { formatWeekRange } from '../dateUtils'
 
 export default function StreakDetailPage() {
   const { type } = useParams()
@@ -42,7 +36,7 @@ export default function StreakDetailPage() {
             {detail.weeks.map((w) => (
               <div key={w.weekStart} className={w.qualifies ? 'streak-week qualifies' : 'streak-week'}>
                 <div className="streak-week-header">
-                  <span>{formatWeekLabel(w.weekStart)}</span>
+                  <span>{formatWeekRange(w.weekStart)}</span>
                   {w.qualifies && <CheckIcon />}
                 </div>
 

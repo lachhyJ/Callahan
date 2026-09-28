@@ -12,18 +12,11 @@ import { workoutLabel } from '../components/SessionList'
 import ActivitySessionRow from '../components/ActivitySessionRow'
 import { useActivityClassification } from '../hooks/useActivityClassification'
 import { TrashIcon } from '../icons'
-import { endOfWeek, formatTimeOfDay, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
+import { endOfWeek, formatTimeOfDay, formatWeekRange, isoDate, shortWeekdayAndDay, startOfWeek } from '../dateUtils'
 import { formatSessionDuration } from '../utils/format'
 
 const WEEKS_PER_PAGE = 6
 const UNDO_WINDOW_MS = 6000
-
-function formatWeekLabel(weekStartIso) {
-  const start = new Date(`${weekStartIso}T00:00:00`)
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  return `${start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – ${end.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
-}
 
 function addWeeks(d, n) {
   const result = new Date(d)
@@ -226,7 +219,7 @@ export default function HistoryPage() {
               return (
                 <div key={week.weekStart} ref={isTarget ? targetRef : null} className={className}>
                   <div className="history-week-header">
-                    <span>{formatWeekLabel(week.weekStart)}</span>
+                    <span>{formatWeekRange(week.weekStart)}</span>
                     {week.items.length > 0 && (
                       <span className="history-week-count">
                         {week.items.length} session{week.items.length === 1 ? '' : 's'}

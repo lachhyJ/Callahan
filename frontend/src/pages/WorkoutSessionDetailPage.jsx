@@ -3,19 +3,16 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
 import { formatDateLong, formatTimeOfDay } from '../dateUtils'
-import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
+import { SET_TYPE_LABELS, formatLoggedSet, formatSessionDuration } from '../utils/format'
 
 const UNDO_WINDOW_MS = 6000
 
 
 
+// Same "48 min" / "1h 12m" as the History row that links here.
 function formatDuration(startedAt, finishedAt) {
   if (!startedAt || !finishedAt) return null
-  const ms = new Date(finishedAt) - new Date(startedAt)
-  const minutes = Math.round(ms / 60000)
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
+  return formatSessionDuration((new Date(finishedAt) - new Date(startedAt)) / 1000)
 }
 
 // No "Garmin" label - the line only ever appears on a Garmin-linked session,
@@ -157,7 +154,7 @@ export default function WorkoutSessionDetailPage() {
                 <li key={s.id}>
                   <span className="history-set-number">Set {s.setOrder + 1}</span>
                   <span className={`history-set-type set-type-${s.setType.toLowerCase()}`}>{SET_TYPE_LABELS[s.setType]}</span>
-                  <span>{s.reps} × {formatWeight(s.weightKg)} kg</span>
+                  <span>{formatLoggedSet(s)}</span>
                 </li>
               ))}
             </ul>

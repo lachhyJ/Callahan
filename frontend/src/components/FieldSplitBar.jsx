@@ -1,4 +1,4 @@
-import { formatHoursMinutes } from '../utils/activityLabel'
+import { formatHoursMinutes } from '../utils/format'
 
 // A two-segment split: live play vs everything else (waiting on the line
 // between points, subbing on, mixed lap-press time, off the field). The

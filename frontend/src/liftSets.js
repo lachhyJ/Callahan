@@ -1,3 +1,5 @@
+import { formatWeight } from './utils/format'
+
 // Rendering for a logged set, matching the backend's LiftBasis (see
 // LiftProgress.cs). The set that actually happened is always shown; the
 // estimate only appears when it's trustworthy for that exercise, and is
@@ -6,10 +8,7 @@
 
 export const LIFT_BASIS = { e1rm: 'E1Rm', setVolume: 'SetVolume', assisted: 'Assisted' }
 
-function kg(v) {
-  const n = Number(v)
-  return Number.isInteger(n) ? String(n) : n.toFixed(1)
-}
+const kg = formatWeight
 
 // "240 kg × 12 (e1RM 336 kg)" · "40 kg × 18" · "−14 kg × 8" (assisted)
 // · "× 9" (pure bodyweight, where the load carries no information)

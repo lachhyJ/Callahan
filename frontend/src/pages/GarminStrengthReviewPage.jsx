@@ -2,19 +2,9 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dismissPendingGarminStrength, getPendingGarminStrength, getWorkoutSessions, linkPendingGarminStrength } from '../api/client'
 import { workoutLabel } from '../components/SessionList'
-import { formatDateLong } from '../dateUtils'
+import { formatDateLong, formatTimeOfDay } from '../dateUtils'
+import { formatSessionDuration } from '../utils/format'
 
-function formatClock(dateTime) {
-  if (!dateTime) return null
-  return new Date(dateTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
-
-function formatDuration(seconds) {
-  const minutes = Math.round(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  const mins = minutes % 60
-  return hours > 0 ? `${hours}h ${mins}min` : `${mins}min`
-}
 
 export default function GarminStrengthReviewPage() {
   const [items, setItems] = useState(null)
@@ -97,9 +87,9 @@ export default function GarminStrengthReviewPage() {
           <div className="history-item-row">
             <span className="history-item-main">
               <strong>{formatDateLong(item.date)}</strong>{' '}
-              {item.startedAt && <span>started {formatClock(item.startedAt)}</span>}
+              {item.startedAt && <span>started {formatTimeOfDay(item.startedAt)}</span>}
               <p className="notes">
-                {formatDuration(item.durationSeconds)}
+                {formatSessionDuration(item.durationSeconds)}
                 {item.calories != null && ` · ${item.calories} cal`}
                 {item.avgHeartRate != null && ` · ${item.avgHeartRate} bpm avg`}
                 {item.notes && ` · "${item.notes}"`}
@@ -123,7 +113,7 @@ export default function GarminStrengthReviewPage() {
                 <li key={c.sessionId}>
                   <span>
                     <Link to={`/sessions/${c.sessionId}`}>{workoutLabel(c)}</Link>
-                    {c.startedAt && ` · started ${formatClock(c.startedAt)}`}
+                    {c.startedAt && ` · started ${formatTimeOfDay(c.startedAt)}`}
                   </span>
                   <button
                     type="button"
@@ -170,7 +160,7 @@ export default function GarminStrengthReviewPage() {
                         <span>
                           <Link to={`/sessions/${s.id}`}>{workoutLabel(s)}</Link>
                           {` · ${formatDateLong(s.date)}`}
-                          {s.startedAt && ` · started ${formatClock(s.startedAt)}`}
+                          {s.startedAt && ` · started ${formatTimeOfDay(s.startedAt)}`}
                         </span>
                         <button
                           type="button"

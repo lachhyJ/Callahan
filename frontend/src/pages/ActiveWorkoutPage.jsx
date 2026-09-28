@@ -15,7 +15,7 @@ import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
 import { getEquipmentType } from '../plateCalc'
 import { trainingDayIso } from '../dateUtils'
-import { SET_TYPE_LABELS, formatClock } from '../utils/format'
+import { SET_TYPE_LABELS, formatClock, formatLoggedSet } from '../utils/format'
 import PlateCalcSheet from '../components/PlateCalcSheet'
 import { KEYBOARD_ACCESSORY_HEIGHT, useKeyboardInset } from '../useKeyboardInset'
 
@@ -23,10 +23,7 @@ const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
 
 function formatDuration(ms) {
-  const totalSeconds = Math.floor(ms / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return formatClock(Math.floor(ms / 1000))
 }
 
 
@@ -289,14 +286,8 @@ function completedSetsFor(ex) {
 function loggedSummary(ex) {
   const done = completedSetsFor(ex)
   if (done.length === 0) return null
-  if (ex.isTimeBased) {
-    const suffix = ex.isPerSide ? ' (per side)' : ''
-    return done.map((s) => `${s.durationSeconds}s`).join(' · ') + suffix
-  }
-  if (ex.isBodyweight) {
-    return done.map((s) => `${s.reps} reps`).join(' · ')
-  }
-  return done.map((s) => `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`).join(' · ')
+  const suffix = ex.isTimeBased && ex.isPerSide ? ' (per side)' : ''
+  return done.map((s) => formatLoggedSet(s, { isBodyweight: ex.isBodyweight })).join(' · ') + suffix
 }
 
 // Planned sets never marked done — flagged on the finish screen so it's not
@@ -1491,7 +1482,7 @@ export default function ActiveWorkoutPage() {
             ? 'This is the only set, so removing it removes the exercise from the session too.'
             : "This set hasn't been logged — you can add it back with “+ Add set”.",
         detail: set.completed
-          ? (ex.isBodyweight ? `${set.reps} reps` : `${set.weightKg === '' ? 0 : set.weightKg}kg × ${set.reps}`)
+          ? formatLoggedSet(set, { isBodyweight: ex.isBodyweight, isPerSide: ex.isPerSide })
           : null,
         confirmLabel: 'Remove set',
         onConfirm: () => confirmRemoveSet(confirming.exIdx, confirming.setIdx),
@@ -1591,9 +1582,7 @@ export default function ActiveWorkoutPage() {
             <ul className="summary-set-list">
               {sets.map((s, i) => (
                 <li key={i}>
-                  {ex.isBodyweight
-                    ? `${s.reps} reps`
-                    : `${s.weightKg === '' ? 0 : s.weightKg}kg × ${s.reps}`}{s.type !== 'Normal' ? ` (${s.type})` : ''}
+                  {formatLoggedSet(s, { isBodyweight: ex.isBodyweight, isPerSide: ex.isPerSide })}{s.type !== 'Normal' ? ` (${s.type})` : ''}
                 </li>
               ))}
             </ul>
@@ -1977,11 +1966,9 @@ export default function ActiveWorkoutPage() {
                     )}
                   </td>
                   <td className="previous-cell">
-                    {ex.isTimeBased
-                      ? (s.previous?.durationSeconds != null ? `${s.previous.durationSeconds}s` : '—')
-                      : ex.isBodyweight
-                      ? (s.previous ? `${s.previous.reps} reps` : '—')
-                      : (s.previous ? `${s.previous.weightKg}kg x ${s.previous.reps}` : '—')}
+                    {s.previous && (!ex.isTimeBased || s.previous.durationSeconds != null)
+                      ? formatLoggedSet(s.previous, { isBodyweight: ex.isBodyweight })
+                      : '—'}
                   </td>
                   {ex.isTimeBased ? (
                     <td colSpan={2}>

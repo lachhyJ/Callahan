@@ -53,6 +53,16 @@ export function shortWeekdayAndDay(isoDateStr) {
   return `${weekday} ${d.getDate()}`
 }
 
+// "31 Aug – 6 Sept" — the Monday-to-Sunday span of a week, from its Monday's
+// ISO date. Locale-default, like the other short labels.
+export function formatWeekRange(weekStartIso) {
+  const start = new Date(`${weekStartIso}T00:00:00`)
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  const fmt = { day: 'numeric', month: 'short' }
+  return `${start.toLocaleDateString(undefined, fmt)} – ${end.toLocaleDateString(undefined, fmt)}`
+}
+
 // "6:42 pm" — time-of-day for a session's start, from an ISO datetime
 // string (e.g. WorkoutSession.StartedAt). Locale-default deliberately, like
 // shortWeekdayAndDay: time-of-day format (12h/24h) is a device setting, not

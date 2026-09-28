@@ -9,7 +9,7 @@ import {
   attachTournamentGames,
 } from '../api/client'
 import { formatDateRange, isoDate } from '../dateUtils'
-import { formatHoursMinutes } from '../utils/activityLabel'
+import { formatHoursMinutes } from '../utils/format'
 import { summariseGames } from '../utils/tournamentStats'
 import GameRow from '../components/GameRow'
 import SeasonsSection from '../components/SeasonsSection'

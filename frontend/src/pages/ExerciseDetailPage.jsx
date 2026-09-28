@@ -4,7 +4,7 @@ import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updat
 import CueInput from '../components/CueInput'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
-import { SET_TYPE_LABELS, formatWeight } from '../utils/format'
+import { SET_TYPE_LABELS, formatLoggedSet, formatWeight } from '../utils/format'
 
 const PAGE_SIZE = 10
 
@@ -311,7 +311,7 @@ export default function ExerciseDetailPage() {
                   <li key={s.setOrder}>
                     <span className="history-set-number">Set {s.setOrder + 1}</span>
                     <span className={`history-set-type set-type-${s.setType.toLowerCase()}`}>{SET_TYPE_LABELS[s.setType]}</span>
-                    <span>{s.reps} × {formatWeight(s.weightKg)} kg</span>
+                    <span>{formatLoggedSet(s)}</span>
                   </li>
                 ))}
               </ul>

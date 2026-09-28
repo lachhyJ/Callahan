@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MONTH_NAMES, SET_TYPE_LABELS, formatClock, formatVolume, formatWeight } from './format'
+import { MONTH_NAMES, SET_TYPE_LABELS, formatClock, formatLoggedSet, formatVolume, formatWeight } from './format'
 
 describe('formatWeight', () => {
   it('drops the decimal on whole kilos', () => {
@@ -77,5 +77,34 @@ describe('label maps', () => {
     expect(MONTH_NAMES).toHaveLength(12)
     expect(MONTH_NAMES[0]).toBe('January')
     expect(MONTH_NAMES[11]).toBe('December')
+  })
+})
+
+describe('formatLoggedSet', () => {
+  it('shows a loaded set as weight then reps', () => {
+    expect(formatLoggedSet({ reps: 8, weightKg: 60 })).toBe('60 kg × 8')
+    expect(formatLoggedSet({ reps: 5, weightKg: '102.5' })).toBe('102.5 kg × 5')
+  })
+
+  it('shows assisted (negative) load as a signed weight', () => {
+    expect(formatLoggedSet({ reps: 8, weightKg: -14 })).toBe('-14 kg × 8')
+  })
+
+  it('shows reps alone for bodyweight or nothing loaded', () => {
+    expect(formatLoggedSet({ reps: 12, weightKg: 20 }, { isBodyweight: true })).toBe('12 reps')
+    expect(formatLoggedSet({ reps: 12, weightKg: 0 })).toBe('12 reps')
+    expect(formatLoggedSet({ reps: 12, weightKg: '' })).toBe('12 reps')
+  })
+
+  // Holds are stored with reps 0 and no weight - the bug this replaced
+  // rendered them as "0 × 0 kg".
+  it('shows a timed hold as its duration', () => {
+    expect(formatLoggedSet({ reps: 0, weightKg: 0, durationSeconds: 30 })).toBe('30s')
+    expect(formatLoggedSet({ reps: 0, weightKg: 0, durationSeconds: 30 }, { isPerSide: true })).toBe('30s/side')
+  })
+
+  it('ignores an empty duration on a normal set', () => {
+    expect(formatLoggedSet({ reps: 8, weightKg: 60, durationSeconds: null })).toBe('60 kg × 8')
+    expect(formatLoggedSet({ reps: 8, weightKg: 60, durationSeconds: '' })).toBe('60 kg × 8')
   })
 })

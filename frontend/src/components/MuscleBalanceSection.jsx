@@ -3,12 +3,9 @@ import { Link } from 'react-router-dom'
 import { getMuscleBalance } from '../api/client'
 import { endOfWeek, isoDate, startOfWeek } from '../dateUtils'
 import MuscleHeatmap from './MuscleHeatmap'
+import { formatWeight } from '../utils/format'
 
 const WEEK_FORMAT = { month: 'short', day: 'numeric' }
-
-function formatSetCount(v) {
-  return Number(v) % 1 === 0 ? String(v) : Number(v).toFixed(1)
-}
 
 // Keeps a sliver visible for near-zero counts, mirroring the old min-width: 4px.
 function barScale(setCount, maxCount) {
@@ -84,7 +81,7 @@ export default function MuscleBalanceSection() {
               <div className="muscle-bar-track">
                 <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(b.setCount, maxCount)})` }} />
               </div>
-              <span className="muscle-bar-value">{formatSetCount(b.setCount)}</span>
+              <span className="muscle-bar-value">{formatWeight(b.setCount)}</span>
             </div>
           ))}
         </div>
