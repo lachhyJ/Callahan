@@ -32,6 +32,13 @@ currently live.
 
 Live at `callahan.ljlab.online`.
 
+Pushes that touch only `docs/**` or `*.md` don't deploy (`paths-ignore`), so the
+app's build footer shows the last *code* commit. After any push, say which commit
+the footer should now read — the latest commit, or the last non-docs one.
+
+The workflow reads the NAS address and SSH user from the `NAS_HOST` / `NAS_USER`
+repo secrets; third-party actions are pinned to commit SHAs (bump deliberately).
+
 ## Concurrent work — Callahan-specific
 `~/.claude/rules/concurrent-work.md` carries the worktree-per-thread workflow and the
 "ask before non-trivial work in the primary checkout" rule. Callahan-specific:

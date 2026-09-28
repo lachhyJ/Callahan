@@ -3,6 +3,13 @@ name: Deploy to NAS
 on:
   push:
     branches: [main]
+    # A docs-only push changes nothing that runs, but the frontend image is
+    # stamped with the commit, so it would still rebuild and restart nginx.
+    # The build footer then shows the last *code* commit, not the last commit;
+    # CLAUDE.md asks each session to say what the footer should read.
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
   workflow_dispatch:
     inputs:
       sha:
@@ -66,16 +73,19 @@ jobs:
         run: npm ci && npm test
         working-directory: frontend
 
-      - uses: tailscale/github-action@v4
+      # Third-party actions that receive deploy credentials are pinned to a
+      # commit, not a moving tag: a republished tag would otherwise run with
+      # the Tailscale OAuth secret and the deploy key. Bump deliberately.
+      - uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
         with:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
 
-      - uses: appleboy/ssh-action@v1
+      - uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 # v1
         with:
-          host: 100.69.5.111
-          username: truenas_admin
+          host: ${{ secrets.NAS_HOST }}
+          username: ${{ secrets.NAS_USER }}
           key: ${{ secrets.NAS_DEPLOY_SSH_KEY }}
           script: ${{ github.event.inputs.sha }}
 
