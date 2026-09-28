@@ -9,7 +9,7 @@ import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } f
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { tapSetComplete } from '../haptics'
-import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
+import PushPrompt from '../components/PushPrompt'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
@@ -366,8 +366,6 @@ export default function ActiveWorkoutPage() {
     const saved = loadRestTimer()
     return saved && saved.templateId === sessionKey ? saved : null
   })
-  const [pushEnabled, setPushEnabled] = useState(false)
-  const [pushError, setPushError] = useState(null)
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
@@ -464,7 +462,6 @@ export default function ActiveWorkoutPage() {
     }
 
     getFinishers().then(setFinishers).catch(() => {})
-    hasActiveSubscription().then(setPushEnabled).catch(() => {})
   }, [templateId, isCustom, sessionKey])
 
   useEffect(() => {
@@ -1113,16 +1110,6 @@ export default function ActiveWorkoutPage() {
     setRestTimer(null)
   }
 
-  async function handleEnableAlerts() {
-    setPushError(null)
-    try {
-      await enablePushNotifications()
-      setPushEnabled(true)
-    } catch (err) {
-      setPushError(err.message)
-    }
-  }
-
   function setType(exIdx, setIdx, type) {
     updateSet(exIdx, setIdx, 'type', type)
     setOpenTypeMenu(null)
@@ -1763,13 +1750,9 @@ export default function ActiveWorkoutPage() {
         </div>
       )}
 
-      {!pushEnabled && pushSupported() && (
-        <div className="push-prompt">
-          <span><BellIcon /> Get a rest-timer alert even if your phone locks</span>
-          <button type="button" className="secondary-btn" onClick={handleEnableAlerts}>Enable rest alerts</button>
-          {pushError && <p className="error">{pushError}</p>}
-        </div>
-      )}
+      <PushPrompt buttonLabel="Enable rest alerts">
+        <BellIcon /> Get a rest-timer alert even if your phone locks
+      </PushPrompt>
 
       {exercises.map((ex, exIdx) => {
         const isResting = restTimer?.exerciseName === ex.exerciseName

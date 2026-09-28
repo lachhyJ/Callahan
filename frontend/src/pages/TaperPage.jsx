@@ -8,7 +8,7 @@ import {
   getTaperRecommendation,
   upsertTaperCheckIn,
 } from '../api/client'
-import { enablePushNotifications, hasActiveSubscription, pushSupported } from '../push'
+import PushPrompt from '../components/PushPrompt'
 import { formatDateLong, isoDate } from '../dateUtils'
 
 const PHASE_LABELS = {
@@ -163,9 +163,6 @@ export default function TaperPage() {
   const [consulting, setConsulting] = useState(false)
   const [consultError, setConsultError] = useState(null)
 
-  const [pushEnabled, setPushEnabled] = useState(true)
-  const [pushError, setPushError] = useState(null)
-
   const [tab, setTab] = useState('today')
 
   function refresh() {
@@ -174,9 +171,6 @@ export default function TaperPage() {
   }
 
   useEffect(refresh, [])
-  useEffect(() => {
-    hasActiveSubscription().then(setPushEnabled).catch(() => {})
-  }, [])
 
   const upcoming = recommendation?.upcomingEvent
   const hasTargets = recommendation && recommendation.phase !== 'none' && recommendation.phase !== 'build'
@@ -267,16 +261,6 @@ export default function TaperPage() {
     }
   }
 
-  async function handleEnablePush() {
-    setPushError(null)
-    try {
-      await enablePushNotifications()
-      setPushEnabled(true)
-    } catch (err) {
-      setPushError(err.message)
-    }
-  }
-
   const isDebriefDate = upcoming && checkInDate > upcoming.date
   const windowDates = upcoming ? buildWindow(upcoming.date, upcoming.taperDays) : []
   const checkInsByDate = new Map((checkIns ?? []).map((c) => [c.date, c]))
@@ -361,13 +345,9 @@ export default function TaperPage() {
               {hasTargets ? (
                 <>
                   <h2 className="section-gap">{isDebriefDate ? 'Debrief' : 'Daily check-in'}</h2>
-                  {!pushEnabled && pushSupported() && (
-                    <div className="push-prompt">
-                      <span>Get an evening reminder if you miss a check-in</span>
-                      <button type="button" className="secondary-btn" onClick={handleEnablePush}>Enable notifications</button>
-                      {pushError && <p className="error">{pushError}</p>}
-                    </div>
-                  )}
+                  <PushPrompt buttonLabel="Enable notifications">
+                    Get an evening reminder if you miss a check-in
+                  </PushPrompt>
                   <form onSubmit={handleCheckInSubmit} className="section-gap">
                     <label>
                       Date
