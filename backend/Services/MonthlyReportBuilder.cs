@@ -34,7 +34,6 @@ public class MonthlyReportBuilder
 
         var workouts = await _db.WorkoutSessions
             .Include(s => s.WorkoutTemplate)
-            .Include(s => s.Sets)
             .Where(s => s.Date >= trailingStart && s.Date <= monthEnd)
             .ToListAsync();
 
@@ -394,6 +393,8 @@ public class MonthlyReportBuilder
     {
         var results = new List<TaperSectionDto>();
 
+        List<ExerciseSet>? monthSets = null;
+        List<Activity>? monthRuns = null;
         foreach (var ev in taperEvents)
         {
             var taperStart = ev.StartDate.AddDays(-ev.TaperDays!.Value);
@@ -411,11 +412,13 @@ public class MonthlyReportBuilder
             // covers at least a third of the report month.
             var overlap = overlapFraction >= (1m / 3m) ? "substantial" : "partial";
 
-            var monthSets = await _db.ExerciseSets
+            // The month's working sets and runs don't depend on the taper, so
+            // they're loaded once, on the first overlapping taper.
+            monthSets ??= await _db.ExerciseSets
                 .Where(s => s.SetType != SetType.Warmup && s.WorkoutSession.Date >= monthStart && s.WorkoutSession.Date <= monthEnd)
                 .Include(s => s.WorkoutSession)
                 .ToListAsync();
-            var monthRuns = await _db.Activities
+            monthRuns ??= await _db.Activities
                 .Where(a => a.Type == ActivityType.Running && a.Date >= monthStart && a.Date <= monthEnd)
                 .ToListAsync();
 
