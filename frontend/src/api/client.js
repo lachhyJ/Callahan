@@ -1,4 +1,4 @@
-import { formatLoadWeight } from '../utils/format'
+import { setSlotFields } from '../utils/setSlot'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
@@ -352,21 +352,15 @@ export function subscribeToPush(subscription) {
   })
 }
 
-// `rest` is the page's restTimer shape. Weight goes over pre-formatted so the
-// Garmin field shows exactly what the Live Activity does.
+// `rest` is the page's restTimer shape. The set's strings come from the same
+// helper as the Live Activity's, so the Garmin field shows exactly what it does.
 export function scheduleRestTimer(durationSeconds, rest, suppressPush = false) {
   return apiFetch('/api/resttimer/schedule', {
     method: 'POST',
     body: JSON.stringify({
       durationSeconds,
-      exerciseName: rest.exerciseName,
-      targetReps: rest.holdLabel || rest.targetReps == null ? '' : String(rest.targetReps),
-      nextSetNumber: rest.nextSetNumber,
-      totalSets: rest.totalSets,
+      ...setSlotFields(rest),
       suppressPush,
-      // A timed hold's duration ("30s" / "30s/side") rides in the weight slot.
-      targetWeight: rest.holdLabel || (rest.isBodyweight ? '' : formatLoadWeight(rest.targetWeightKg)),
-      enteredReps: rest.holdLabel || rest.enteredReps == null ? '' : String(rest.enteredReps),
       doneLabel: rest.doneLabel ?? '',
     }),
   })

@@ -1,5 +1,5 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
-import { formatLoadWeight } from './utils/format'
+import { setSlotFields } from './utils/setSlot'
 
 // Lock-screen / Dynamic Island rest timer. Native only: the web build has no
 // equivalent and the PWA keeps relying on the push notification alone.
@@ -11,20 +11,11 @@ const RestActivity = registerPlugin('RestActivity')
 
 const available = Capacitor.isNativePlatform()
 
-// The card-facing fields for one set descriptor. Weight goes over pre-formatted
-// so the card, the watch and the app all render the same string; a timed hold
-// has no reps or weight, so its duration rides in the weight slot.
+// The card-facing fields for one set descriptor: the shared slot strings
+// (utils/setSlot.js — the watch gets the same ones) plus the card-only flag.
 function setFields(detail) {
   return {
-    exerciseName: detail.exerciseName ?? 'Workout',
-    targetReps: detail.holdLabel || detail.targetReps == null ? '' : String(detail.targetReps),
-    targetWeight: detail.holdLabel || (detail.isBodyweight ? '' : formatLoadWeight(detail.targetWeightKg)),
-    // What is actually typed into the next set's reps box, as opposed to the
-    // programmed target, which is often a range. The card shows this in the slot
-    // the countdown vacates when the rest ends.
-    enteredReps: detail.holdLabel || detail.enteredReps == null ? '' : String(detail.enteredReps),
-    nextSetNumber: detail.nextSetNumber ?? 1,
-    totalSets: detail.totalSets ?? 1,
+    ...setSlotFields(detail),
     // Whether ticking the set the card is pointed at should fire a rest at all —
     // false for a non-last superset member, which "Set done" runs straight past.
     // Defaults true so a lone exercise behaves as it always has.
