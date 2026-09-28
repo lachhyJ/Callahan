@@ -57,8 +57,11 @@ public class RoutinesController : ControllerBase
     {
         var routines = await _db.Routines
             .Include(r => r.Items)
-            .Include(r => r.Completions)
+            // Only the recent ones ToDto shows: the daily routine gains a
+            // completion row every day, forever.
+            .Include(r => r.Completions.OrderByDescending(c => c.Date).Take(RecentCompletions))
             .OrderBy(r => r.SortOrder)
+            .AsSplitQuery()
             .ToListAsync();
 
         var today = Today();

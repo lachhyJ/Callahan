@@ -127,6 +127,34 @@ public class RoutineCompletionTests
     }
 }
 
+// The list reads only the latest 30 completions, not the routine's whole
+// history (the daily one gains a row every day). Today's tick and the newest-
+// first order must survive that bound.
+public class RoutineRecentCompletionsTests
+{
+    [Fact]
+    public async Task OnlyTheLatest30AreReturned_NewestFirst_IncludingToday()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
+        db.Database.EnsureCreated();
+        var today = new DateOnly(2026, 9, 15);
+        for (var i = 0; i < 40; i++)
+            db.RoutineCompletions.Add(new Callahan.Api.Models.RoutineCompletion { RoutineId = 1, Date = today.AddDays(-i) });
+        db.SaveChanges();
+
+        var controller = new RoutinesController(db, FixedTimeProvider.Melbourne(new DateTime(2026, 9, 15, 12, 0, 0)));
+        var routine = Assert.IsType<List<RoutineDto>>(Assert.IsType<OkObjectResult>((await controller.GetAll()).Result).Value)
+            .Single(r => r.Id == 1);
+
+        Assert.Equal(30, routine.Recent.Count);
+        Assert.Equal(today, routine.Recent[0].Date);
+        Assert.Equal(today.AddDays(-29), routine.Recent[^1].Date);
+        Assert.Equal(today, routine.Today!.Date);
+    }
+}
+
 // The 3am training-day rule, mirrored from the frontend's dateUtils: an
 // undated tap at 00:30 lands on the previous day. Driven through MarkDone on a
 // pinned clock, so it tests the public behaviour rather than a private helper.
