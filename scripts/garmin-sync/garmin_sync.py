@@ -456,20 +456,10 @@ def cmd_dump_stream(client, start, end, activity_id):
     (scripts/ultimate-stream-explore/) - the point is to see what
     get_activity_details actually returns (resolution, metric keys) before any
     on/off-field inference is built on it."""
-    if activity_id is not None:
-        targets = [{"activityId": activity_id, "activityName": None, "startTimeLocal": None, "duration": None}]
-    else:
-        activities = fetch_activities_between(client, start, end)
-        targets = [a for a in activities
-                   if TYPE_MAP.get(a.get("activityType", {}).get("typeKey")) == "Ultimate"]
-        if not targets:
-            log(f"No Ultimate activities between {start} and {end}. "
-                f"Check the date window, or run --dump to see what's there.")
-            print("[]")
-            return
-        log(f"Found {len(targets)} Ultimate activit{'y' if len(targets) == 1 else 'ies'} "
-            f"between {start} and {end}.")
-
+    targets = _stream_targets(client, start, end, activity_id)
+    if not targets:
+        print("[]")
+        return
     out = []
     for a in targets:
         aid = a["activityId"]
@@ -504,12 +494,17 @@ def cmd_dump_stream(client, start, end, activity_id):
 
 
 def _stream_targets(client, start, end, activity_id):
+    """The one given activity, or every Ultimate activity in the window. A
+    given id carries no list-endpoint metadata, so those keys read None."""
     if activity_id is not None:
         return [{"activityId": activity_id, "activityName": None}]
     activities = fetch_activities_between(client, start, end)
     targets = [a for a in activities
                if TYPE_MAP.get(a.get("activityType", {}).get("typeKey")) == "Ultimate"]
-    if not targets:
+    if targets:
+        log(f"Found {len(targets)} Ultimate activit{'y' if len(targets) == 1 else 'ies'} "
+            f"between {start} and {end}.")
+    else:
         log(f"No Ultimate activities between {start} and {end}. Run --dump to see what's there.")
     return targets
 
