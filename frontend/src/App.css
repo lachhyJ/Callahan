@@ -211,6 +211,16 @@ form,
   gap: var(--space-sm);
 }
 
+/* A tab panel that stays mounted while hidden (TaperPage) but takes no part in
+   the page's flex layout, so its children space exactly as if unwrapped. */
+.taper-tab-panel {
+  display: contents;
+}
+
+.taper-tab-panel[hidden] {
+  display: none;
+}
+
 label {
   display: flex;
   flex-direction: column;

@@ -139,29 +139,7 @@ export default function TaperPage() {
   const [events, setEvents] = useState(null)
   const [error, setError] = useState(null)
 
-  const [date, setDate] = useState('')
-  // Optional: a tournament that runs more than one day. Blank means it ends
-  // the day it starts. The taper always counts down to `date` either way.
-  const [endDate, setEndDate] = useState('')
-  const [name, setName] = useState('')
-  const [taperDays, setTaperDays] = useState(10)
-  const [saving, setSaving] = useState(false)
-
   const [checkIns, setCheckIns] = useState(null)
-  const [checkInDate, setCheckInDate] = useState(todayIso())
-  const [energy, setEnergy] = useState(null)
-  const [soreness, setSoreness] = useState(null)
-  const [motivation, setMotivation] = useState(null)
-  const [context, setContext] = useState('')
-  const [checkInSaving, setCheckInSaving] = useState(false)
-  const [checkInError, setCheckInError] = useState(null)
-  const [checkInSaved, setCheckInSaved] = useState(false)
-
-  const [question, setQuestion] = useState('')
-  const [consultAnswer, setConsultAnswer] = useState(null)
-  const [consultCompared, setConsultCompared] = useState(false)
-  const [consulting, setConsulting] = useState(false)
-  const [consultError, setConsultError] = useState(null)
 
   const [tab, setTab] = useState('today')
 
@@ -179,32 +157,10 @@ export default function TaperPage() {
   useEffect(() => {
     if (upcomingId) {
       getTaperCheckIns(upcomingId).then(setCheckIns).catch((err) => setError(err.message))
-      // Re-sync to today whenever the active tournament changes — a stale
-      // date from a previous tournament's window can fall outside the new
-      // one's, since each has its own taper length.
-      setCheckInDate(todayIso())
     } else {
       setCheckIns(null)
     }
   }, [upcomingId])
-
-  async function handleCreate(e) {
-    e.preventDefault()
-    setError(null)
-    setSaving(true)
-    try {
-      await createTaperEvent({ date, endDate, name, taperDays: Number(taperDays) || 10 })
-      setDate('')
-      setEndDate('')
-      setName('')
-      setTaperDays(10)
-      refresh()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
-    }
-  }
 
   // Removes the taper, not the tournament: since the two were merged the same
   // row also groups the games played at it, and those outlive the taper. To
@@ -219,49 +175,6 @@ export default function TaperPage() {
     }
   }
 
-  async function handleCheckInSubmit(e) {
-    e.preventDefault()
-    if (!upcoming || !energy || !soreness || !motivation) return
-    setCheckInError(null)
-    setCheckInSaving(true)
-    try {
-      await upsertTaperCheckIn(upcoming.id, { date: checkInDate, energy, soreness, motivation, context })
-      const updated = await getTaperCheckIns(upcoming.id)
-      setCheckIns(updated)
-      setEnergy(null)
-      setSoreness(null)
-      setMotivation(null)
-      setContext('')
-      setCheckInSaved(true)
-      setTimeout(() => setCheckInSaved(false), 2500)
-    } catch (err) {
-      setCheckInError(err.message)
-    } finally {
-      setCheckInSaving(false)
-    }
-  }
-
-  async function handleConsult(e) {
-    e.preventDefault()
-    if (!upcoming) return
-    // Otherwise the question textarea keeps its focus ring while the page
-    // scrolls to the answer once it lands — reads as a stray highlight.
-    e.target.querySelector('textarea')?.blur()
-    setConsultError(null)
-    setConsultAnswer(null)
-    setConsulting(true)
-    try {
-      const result = await getTaperConsult(upcoming.id, question)
-      setConsultAnswer(result.answer)
-      setConsultCompared(result.comparedToPriorTaper)
-    } catch (err) {
-      setConsultError(err.message)
-    } finally {
-      setConsulting(false)
-    }
-  }
-
-  const isDebriefDate = upcoming && checkInDate > upcoming.date
   const windowDates = upcoming ? buildWindow(upcoming.date, upcoming.taperDays) : []
   const checkInsByDate = new Map((checkIns ?? []).map((c) => [c.date, c]))
 
@@ -278,12 +191,7 @@ export default function TaperPage() {
           <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
             <p className="page-subtitle">No upcoming tournament set — add one below.</p>
           </div>
-          <TournamentsTab
-            date={date} setDate={setDate} name={name} setName={setName}
-            endDate={endDate} setEndDate={setEndDate}
-            taperDays={taperDays} setTaperDays={setTaperDays} saving={saving}
-            handleCreate={handleCreate} events={events} handleDelete={handleDelete}
-          />
+          <TournamentsTab events={events} onCreated={refresh} onDelete={handleDelete} />
         </>
       )}
 
@@ -302,82 +210,55 @@ export default function TaperPage() {
             ))}
           </nav>
 
-          {tab === 'today' && (
-            <>
-              <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-                  <span className="streak-label">{upcoming.name || 'Tournament'}</span>
-                  <span className="page-subtitle">{formatDateLong(upcoming.date)}</span>
-                </div>
-                <p className="streak-value" style={{ fontSize: 'var(--text-lg)' }}>
-                  {PHASE_LABELS[recommendation.phase] ?? recommendation.phase}
-                </p>
-                <PhaseStepper phase={recommendation.phase} />
-                <p className="page-subtitle">{recommendation.message}</p>
+          {/* Hidden rather than unmounted, so a half-typed form or a consult
+              answer survives switching tabs. */}
+          <div className="taper-tab-panel" hidden={tab !== 'today'}>
+            <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                <span className="streak-label">{upcoming.name || 'Tournament'}</span>
+                <span className="page-subtitle">{formatDateLong(upcoming.date)}</span>
               </div>
+              <p className="streak-value" style={{ fontSize: 'var(--text-lg)' }}>
+                {PHASE_LABELS[recommendation.phase] ?? recommendation.phase}
+              </p>
+              <PhaseStepper phase={recommendation.phase} />
+              <p className="page-subtitle">{recommendation.message}</p>
+            </div>
 
-              {hasTargets && (
-                <div className="muscle-bar-list section-gap">
-                  <div className="muscle-bar-row">
-                    <span className="muscle-bar-label">Gym</span>
-                    <div className="muscle-bar-track">
-                      <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.gymThisWeekVolume, recommendation.gymBaselineVolume)})` }} />
-                      <div className="muscle-bar-target" style={{ left: `${(recommendation.gymTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.gymTargetPct ?? 0) * 100)}%`} />
-                    </div>
-                    <span className="muscle-bar-value">{formatVolume(recommendation.gymThisWeekVolume)}</span>
+            {hasTargets && (
+              <div className="muscle-bar-list section-gap">
+                <div className="muscle-bar-row">
+                  <span className="muscle-bar-label">Gym</span>
+                  <div className="muscle-bar-track">
+                    <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.gymThisWeekVolume, recommendation.gymBaselineVolume)})` }} />
+                    <div className="muscle-bar-target" style={{ left: `${(recommendation.gymTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.gymTargetPct ?? 0) * 100)}%`} />
                   </div>
-                  <div className="muscle-bar-row">
-                    <span className="muscle-bar-label">Running</span>
-                    <div className="muscle-bar-track">
-                      <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.runThisWeekDistanceKm, recommendation.runBaselineDistanceKm)})` }} />
-                      <div className="muscle-bar-target" style={{ left: `${(recommendation.runTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.runTargetPct ?? 0) * 100)}%`} />
-                    </div>
-                    <span className="muscle-bar-value">{formatDistance(recommendation.runThisWeekDistanceKm)}</span>
-                  </div>
-                  <p className="page-subtitle">
-                    Target: about {Math.round((recommendation.gymTargetPct ?? 0) * 100)}% of your recent weekly average
-                    (gym ~{formatVolume(recommendation.gymBaselineVolume)}, running ~{formatDistance(recommendation.runBaselineDistanceKm)}).
-                    General taper guidance, not personalized coaching.
-                  </p>
+                  <span className="muscle-bar-value">{formatVolume(recommendation.gymThisWeekVolume)}</span>
                 </div>
-              )}
+                <div className="muscle-bar-row">
+                  <span className="muscle-bar-label">Running</span>
+                  <div className="muscle-bar-track">
+                    <div className="muscle-bar-fill" style={{ transform: `scaleX(${barScale(recommendation.runThisWeekDistanceKm, recommendation.runBaselineDistanceKm)})` }} />
+                    <div className="muscle-bar-target" style={{ left: `${(recommendation.runTargetPct ?? 0) * 100}%` }} title={`Target: ${Math.round((recommendation.runTargetPct ?? 0) * 100)}%`} />
+                  </div>
+                  <span className="muscle-bar-value">{formatDistance(recommendation.runThisWeekDistanceKm)}</span>
+                </div>
+                <p className="page-subtitle">
+                  Target: about {Math.round((recommendation.gymTargetPct ?? 0) * 100)}% of your recent weekly average
+                  (gym ~{formatVolume(recommendation.gymBaselineVolume)}, running ~{formatDistance(recommendation.runBaselineDistanceKm)}).
+                  General taper guidance, not personalized coaching.
+                </p>
+              </div>
+            )}
 
-              {hasTargets ? (
-                <>
-                  <h2 className="section-gap">{isDebriefDate ? 'Debrief' : 'Daily check-in'}</h2>
-                  <PushPrompt buttonLabel="Enable notifications">
-                    Get an evening reminder if you miss a check-in
-                  </PushPrompt>
-                  <form onSubmit={handleCheckInSubmit} className="section-gap">
-                    <label>
-                      Date
-                      <input
-                        type="date"
-                        value={checkInDate}
-                        min={addDays(upcoming.date, -upcoming.taperDays)}
-                        max={addDays(upcoming.date, 3)}
-                        onChange={(e) => setCheckInDate(e.target.value)}
-                      />
-                    </label>
-                    <RatingInput label="Energy" value={energy} onChange={setEnergy} />
-                    <RatingInput label="Soreness" value={soreness} onChange={setSoreness} />
-                    <RatingInput label="Motivation" value={motivation} onChange={setMotivation} />
-                    <label>
-                      {isDebriefDate ? "How'd it go? What would you change?" : 'Anything unusual today? (bad sleep, hard work day, travel...)'}
-                      <textarea value={context} onChange={(e) => setContext(e.target.value)} />
-                    </label>
-                    {checkInError && <p className="error">{checkInError}</p>}
-                    <button type="submit" disabled={checkInSaving || !energy || !soreness || !motivation}>
-                      {checkInSaving ? 'Saving…' : 'Save check-in'}
-                    </button>
-                    {checkInSaved && <p className="save-confirm">✓ Saved</p>}
-                  </form>
-                </>
-              ) : (
-                <p className="page-subtitle section-gap">Check-ins open once the taper window starts, {upcoming.taperDays} days before {upcoming.date}.</p>
-              )}
-            </>
-          )}
+            {hasTargets ? (
+              <>
+                <CheckInForm key={upcoming.id} upcoming={upcoming} onSaved={setCheckIns} />
+              </>
+            ) : (
+              <p className="page-subtitle section-gap">Check-ins open once the taper window starts, {upcoming.taperDays} days before {upcoming.date}.</p>
+            )}
+          </div>
 
           {tab === 'history' && (
             <div className="section-gap">
@@ -409,50 +290,53 @@ export default function TaperPage() {
             </div>
           )}
 
-          {tab === 'ask' && (
-            <>
-              {recommendation.tapersCompleted === 0 && (
-                <div className="empty-state section-gap">
-                  <p>Complete this taper to unlock comparisons with future ones.</p>
-                </div>
-              )}
-              <form onSubmit={handleConsult} className="section-gap">
-                <label>
-                  Question (optional — defaults to a general check)
-                  <textarea
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Anything I should know about this taper?"
-                  />
-                </label>
-                <button type="submit" disabled={consulting}>{consulting ? 'Asking…' : 'Ask'}</button>
-              </form>
-              {consulting && <p className="page-subtitle">Thinking — this can take several seconds…</p>}
-              {consultError && <p className="error">{consultError}</p>}
-              {consultAnswer && (
-                <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
-                  <ConsultAnswer text={consultAnswer} />
-                  {consultCompared && <p className="page-subtitle">(Compared against your last taper)</p>}
-                </div>
-              )}
-            </>
-          )}
+          <div className="taper-tab-panel" hidden={tab !== 'ask'}>
+            {recommendation.tapersCompleted === 0 && (
+              <div className="empty-state section-gap">
+                <p>Complete this taper to unlock comparisons with future ones.</p>
+              </div>
+            )}
+            <ConsultTab upcoming={upcoming} />
+          </div>
 
-          {tab === 'tournaments' && (
-            <TournamentsTab
-              date={date} setDate={setDate} name={name} setName={setName}
-              endDate={endDate} setEndDate={setEndDate}
-            taperDays={taperDays} setTaperDays={setTaperDays} saving={saving}
-              handleCreate={handleCreate} events={events} handleDelete={handleDelete}
-            />
-          )}
+          <div className="taper-tab-panel" hidden={tab !== 'tournaments'}>
+            <TournamentsTab events={events} onCreated={refresh} onDelete={handleDelete} />
+          </div>
         </>
       )}
     </main>
   )
 }
 
-function TournamentsTab({ date, setDate, endDate, setEndDate, name, setName, taperDays, setTaperDays, saving, handleCreate, events, handleDelete }) {
+// Owns its own add-tournament form; the page only needs to refetch after.
+function TournamentsTab({ events, onCreated, onDelete }) {
+  const [date, setDate] = useState('')
+  // Optional: a tournament that runs more than one day. Blank means it ends
+  // the day it starts. The taper always counts down to `date` either way.
+  const [endDate, setEndDate] = useState('')
+  const [name, setName] = useState('')
+  const [taperDays, setTaperDays] = useState(10)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleCreate(e) {
+    e.preventDefault()
+    setError(null)
+    setSaving(true)
+    try {
+      await createTaperEvent({ date, endDate, name, taperDays: Number(taperDays) || 10 })
+      setDate('')
+      setEndDate('')
+      setName('')
+      setTaperDays(10)
+      onCreated()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <>
       <h2 className="section-gap">Add a tournament</h2>
@@ -473,6 +357,7 @@ function TournamentsTab({ date, setDate, endDate, setEndDate, name, setName, tap
           Taper length (days)
           <input type="number" min="1" max="21" value={taperDays} onChange={(e) => setTaperDays(e.target.value)} />
         </label>
+        {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving || !date}>{saving ? 'Saving…' : 'Add tournament'}</button>
       </form>
       <p className="trend-chart-caption section-gap">
@@ -492,10 +377,133 @@ function TournamentsTab({ date, setDate, endDate, setEndDate, name, setName, tap
                     {formatDateLong(ev.date)} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
                   </div>
                 </div>
-                <button type="button" className="secondary-btn" onClick={() => handleDelete(ev.id, ev.name || 'this tournament')}>End taper</button>
+                <button type="button" className="secondary-btn" onClick={() => onDelete(ev.id, ev.name || 'this tournament')}>End taper</button>
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// The daily check-in (or post-tournament debrief) form. Keyed on the upcoming
+// tournament by the page, so switching tournaments starts it fresh on today —
+// a stale date from a previous window can fall outside the new one's.
+function CheckInForm({ upcoming, onSaved }) {
+  const [checkInDate, setCheckInDate] = useState(todayIso())
+  const [energy, setEnergy] = useState(null)
+  const [soreness, setSoreness] = useState(null)
+  const [motivation, setMotivation] = useState(null)
+  const [context, setContext] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState(null)
+  const [saved, setSaved] = useState(false)
+
+  const isDebriefDate = checkInDate > upcoming.date
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    if (!energy || !soreness || !motivation) return
+    setError(null)
+    setSaving(true)
+    try {
+      await upsertTaperCheckIn(upcoming.id, { date: checkInDate, energy, soreness, motivation, context })
+      onSaved(await getTaperCheckIns(upcoming.id))
+      setEnergy(null)
+      setSoreness(null)
+      setMotivation(null)
+      setContext('')
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <h2 className="section-gap">{isDebriefDate ? 'Debrief' : 'Daily check-in'}</h2>
+      <PushPrompt buttonLabel="Enable notifications">
+        Get an evening reminder if you miss a check-in
+      </PushPrompt>
+      <form onSubmit={handleSubmit} className="section-gap">
+        <label>
+          Date
+          <input
+            type="date"
+            value={checkInDate}
+            min={addDays(upcoming.date, -upcoming.taperDays)}
+            max={addDays(upcoming.date, 3)}
+            onChange={(e) => setCheckInDate(e.target.value)}
+          />
+        </label>
+        <RatingInput label="Energy" value={energy} onChange={setEnergy} />
+        <RatingInput label="Soreness" value={soreness} onChange={setSoreness} />
+        <RatingInput label="Motivation" value={motivation} onChange={setMotivation} />
+        <label>
+          {isDebriefDate ? "How'd it go? What would you change?" : 'Anything unusual today? (bad sleep, hard work day, travel...)'}
+          <textarea value={context} onChange={(e) => setContext(e.target.value)} />
+        </label>
+        {error && <p className="error">{error}</p>}
+        <button type="submit" disabled={saving || !energy || !soreness || !motivation}>
+          {saving ? 'Saving…' : 'Save check-in'}
+        </button>
+        {saved && <p className="save-confirm">✓ Saved</p>}
+      </form>
+    </>
+  )
+}
+
+// The AI consult: strictly additive to the deterministic numbers above it, and
+// its own failure never touches them (see TaperConsultService).
+function ConsultTab({ upcoming }) {
+  const [question, setQuestion] = useState('')
+  const [answer, setAnswer] = useState(null)
+  const [compared, setCompared] = useState(false)
+  const [consulting, setConsulting] = useState(false)
+  const [error, setError] = useState(null)
+
+  async function handleConsult(e) {
+    e.preventDefault()
+    // Otherwise the question textarea keeps its focus ring while the page
+    // scrolls to the answer once it lands — reads as a stray highlight.
+    e.target.querySelector('textarea')?.blur()
+    setError(null)
+    setAnswer(null)
+    setConsulting(true)
+    try {
+      const result = await getTaperConsult(upcoming.id, question)
+      setAnswer(result.answer)
+      setCompared(result.comparedToPriorTaper)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setConsulting(false)
+    }
+  }
+
+  return (
+    <>
+      <form onSubmit={handleConsult} className="section-gap">
+        <label>
+          Question (optional — defaults to a general check)
+          <textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="Anything I should know about this taper?"
+          />
+        </label>
+        <button type="submit" disabled={consulting}>{consulting ? 'Asking…' : 'Ask'}</button>
+      </form>
+      {consulting && <p className="page-subtitle">Thinking — this can take several seconds…</p>}
+      {error && <p className="error">{error}</p>}
+      {answer && (
+        <div className="streak-card section-gap" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+          <ConsultAnswer text={answer} />
+          {compared && <p className="page-subtitle">(Compared against your last taper)</p>}
         </div>
       )}
     </>
