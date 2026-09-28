@@ -49,6 +49,15 @@ internal static class TestFixtures
         return (start, samples);
     }
 
+    // The same fixture as the exact PUT /api/activities/{id}/track request body,
+    // for tests that go through the production decode rather than LoadTrack.
+    public static string LoadTrackPayload(int game)
+    {
+        using var gz = new GZipStream(Resource($"game-{game:00}.json.gz"), CompressionMode.Decompress);
+        using var reader = new StreamReader(gz);
+        return reader.ReadToEnd();
+    }
+
     public static Baselines LoadBaselines()
     {
         using var r = Resource("baselines.json");

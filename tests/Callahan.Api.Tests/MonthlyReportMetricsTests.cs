@@ -331,12 +331,11 @@ public class LiftBasisStabilityTests
 {
     private static LiftSetInput S(decimal kg, int reps) => new(kg, reps);
 
-    // The basis must be a property of the exercise, not of the date range
-    // being viewed — otherwise the same lift reads as set volume in the
-    // monthly report and as e1RM on /trends, purely because the two look at
-    // different windows. Seen live 2026-09-01.
+    // BasisFor is a pure function of whatever history it's handed, so a window
+    // gives a different answer from the full history - which is why callers
+    // must pass the full history (LiftTrendsBasisTests checks /trends does).
     [Fact]
-    public void BasisIsUnchangedByLookingAtASubsetOfHistory()
+    public void BasisFor_IsAPureFunctionOfItsInput_SoCallersMustPassFullHistory()
     {
         // Full history is high-rep; a recent window happens to be low-rep.
         List<LiftSetInput> full = [S(40, 20), S(40, 18), S(40, 16), S(45, 10), S(45, 11)];
