@@ -5,7 +5,7 @@ using Callahan.Api.Services;
 
 namespace Callahan.Api.Tests;
 
-// The six real AUC D2 games (10-12 Apr 2026) as the exact wire/storage payload
+// The real tournament games (17 across three tournaments; see baselines.json) as the exact wire/storage payload
 // of PUT /api/activities/{id}/track, longitudes shifted by a per-game constant
 // so no field location is in the repo (output-neutral: project() subtracts the
 // per-game longitude mean).

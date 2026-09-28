@@ -10,8 +10,18 @@ namespace Callahan.Api.Tests;
 // won't reproduce CPython bit-for-bit, and an exact suite would be flaky.
 public class FieldGeometryTests
 {
+    // Every game in baselines.json, not a hard-coded count: fixtures_from_db.py
+    // regenerates however many tournament games exist.
     public static IEnumerable<object[]> Games =>
-        Enumerable.Range(1, 17).Select(g => new object[] { g });
+        TestFixtures.LoadBaselines().Games.Select(b => new object[] { b.Game });
+
+    [Fact]
+    public void EveryBaselineHasATrackFixture_AndViceVersa()
+    {
+        var embedded = typeof(TestFixtures).Assembly.GetManifestResourceNames()
+            .Count(n => n.Contains(".game-") && n.EndsWith(".json.gz"));
+        Assert.Equal(TestFixtures.LoadBaselines().Games.Count, embedded);
+    }
 
     public static IEnumerable<object[]> Tournaments =>
         new[] { "Regionals", "BigC", "Nationals" }.Select(t => new object[] { t });

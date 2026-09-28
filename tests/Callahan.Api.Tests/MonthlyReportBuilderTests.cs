@@ -382,10 +382,7 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
 
         var row = Assert.Single(_db.MonthlyReports);
         Assert.Equal(viewedAt, row.ViewedAt);
-        // Must track MonthlyReportsController.CurrentReportSchemaVersion — the
-        // assertion is "a stale row was upgraded to current", not "current is 1".
-        // Bump this alongside it.
-        Assert.Equal(3, row.SchemaVersion);
+        Assert.Equal(MonthlyReportsController.CurrentReportSchemaVersion, row.SchemaVersion);
         Assert.DoesNotContain("old shape", row.ReportJson);
     }
 

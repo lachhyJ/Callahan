@@ -11,7 +11,7 @@ import {
   DUMBBELL_STEPS_KG, PLATE_SETS, calculatePlates, getAvailablePlates,
   getCustomEquipment, getEquipmentType, guessEquipmentType, hydratePlateCalcSettings,
   nearestDumbbells, clearCustomEquipment,
-  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta } from './plateCalc'
+  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta, calculatePlateDelta } from './plateCalc'
 
 // The storage-backed helpers are the ones with real branching (fallbacks,
 // validation, order preservation), so they need a localStorage. A map stub
@@ -272,5 +272,28 @@ describe('describePlateDelta', () => {
   it('omits the side suffix and empty halves', () => {
     expect(describePlateDelta({ toRemove: [], toAdd: [{ plate: 2.5, count: 2 }, { plate: 1.25, count: 1 }] }, false))
       .toBe('Add 2×2.5kg, 1×1.25kg')
+  })
+})
+
+// Per side, in kg, against the standard plate set.
+describe('calculatePlateDelta', () => {
+  const kg = PLATE_SETS.kg
+
+  it('adds only the difference when the new weight builds on the old one', () => {
+    expect(calculatePlateDelta(45, 47.5, kg)).toEqual({ toAdd: [{ plate: 2.5, count: 1 }], toRemove: [] })
+  })
+
+  // The canonical breakdown swaps the 15 for a 25 rather than adding a 10 on
+  // top: the known naive answer the 2026-09-25 decision chose not to optimise.
+  it('swaps plates when the canonical breakdowns differ', () => {
+    expect(calculatePlateDelta(15, 25, kg)).toEqual({ toAdd: [{ plate: 25, count: 1 }], toRemove: [{ plate: 15, count: 1 }] })
+  })
+
+  it('is empty when nothing changes', () => {
+    expect(calculatePlateDelta(60, 60, kg)).toEqual({ toAdd: [], toRemove: [] })
+  })
+
+  it('strips everything going back to an empty bar', () => {
+    expect(calculatePlateDelta(25, 0, kg)).toEqual({ toAdd: [], toRemove: [{ plate: 25, count: 1 }] })
   })
 })

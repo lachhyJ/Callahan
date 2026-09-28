@@ -38,7 +38,7 @@ public class MonthlyReportsController : ControllerBase
     // 3: added the Ultimate section - monthly whole-recording GPS km across
     // Ultimate activities, its per-session-type split, and a count of sessions
     // logged without GPS distance. v2 snapshots have no such field and rebuild.
-    private const int CurrentReportSchemaVersion = 3;
+    internal const int CurrentReportSchemaVersion = 3;
 
     public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder, TimeProvider? time = null)
     {
