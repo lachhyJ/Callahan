@@ -96,10 +96,9 @@ public class MonthlyReportsController : ControllerBase
 
         // Provisional (unsnapshotted) month — nothing to persist yet, but we
         // still want "viewed" to survive if it locks later without another
-        // real view. If unlocked and no row exists yet, create a lightweight
-        // row carrying just ViewedAt; GetOrComputeAsync treats a
-        // present-but-not-yet-locked-month row as "not locked" via the
-        // separate lock day check, so this doesn't accidentally freeze data.
+        // real view, so store a row carrying ViewedAt. Its ReportJson is only
+        // the month so far: GetOrComputeAsync rebuilds any snapshot computed
+        // before the lock date, so it never becomes the locked report.
         var dto = await _builder.BuildAsync(year, month);
         row = new MonthlyReport
         {
@@ -146,11 +145,20 @@ public class MonthlyReportsController : ControllerBase
     private async Task<MonthlyReportDto> GetOrComputeAsync(int year, int month, DateOnly today)
     {
         var followingMonthStart = new DateOnly(year, month, 1).AddMonths(1);
-        var shouldBeLocked = today >= followingMonthStart.AddDays(LockDayOfFollowingMonth - 1);
+        var lockDate = followingMonthStart.AddDays(LockDayOfFollowingMonth - 1);
+        var shouldBeLocked = today >= lockDate;
 
         var existing = await _db.MonthlyReports.FirstOrDefaultAsync(r => r.Year == year && r.Month == month);
 
-        if (existing is not null && shouldBeLocked && existing.SchemaVersion >= CurrentReportSchemaVersion)
+        // A row can exist before the lock day - MarkViewed stores one when a
+        // report is first opened mid-month - so the lock is only final if the
+        // snapshot was computed on or after the lock date. An earlier one holds
+        // part of the month and is rebuilt here like an old-schema row.
+        var snapshotIsFinal = existing is not null
+            && existing.SchemaVersion >= CurrentReportSchemaVersion
+            && DateOnly.FromDateTime(existing.ComputedAt.ToLocalTime()) >= lockDate;
+
+        if (shouldBeLocked && snapshotIsFinal)
         {
             // Already snapshotted at the current shape and past the lock
             // point — immutable, return as-is.
@@ -160,8 +168,9 @@ public class MonthlyReportsController : ControllerBase
 
         if (shouldBeLocked)
         {
-            // Past the lock point with no snapshot, or one written under an
-            // older report shape — compute and store. Rebuilding overwrites
+            // Past the lock point with no snapshot, one written under an older
+            // report shape, or one computed before the month locked — compute
+            // and store. Rebuilding overwrites
             // the existing row rather than replacing it, so ViewedAt survives.
             var toSnapshot = await _builder.BuildAsync(year, month);
             toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false, ViewedAt = existing?.ViewedAt };
