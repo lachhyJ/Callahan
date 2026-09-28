@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
-# Shared logic: mints a fresh 30-day Callahan auth token and prints it to
-# stdout, nothing else. Sourced by get-token.sh (clipboard) and
-# bake-and-build.sh (bakes it into the watch app's build) — not meant to be
-# run directly.
+# Mints a fresh 30-day Callahan auth token and prints it to stdout,
+# nothing else. Run by bake-and-build.sh, which sets CALLAHAN_BASE_URL.
 #
 # Reads the Callahan username/password from a macOS Keychain item so
 # nothing is typed into a terminal, script, or chat — see README.md for
@@ -10,7 +8,7 @@
 set -euo pipefail
 
 SERVICE="callahan-app"
-CALLAHAN_BASE_URL="https://callahan.ljlab.online"
+CALLAHAN_BASE_URL="${CALLAHAN_BASE_URL:?set by bake-and-build.sh}"
 
 if ! command -v security >/dev/null; then
   echo "This script needs macOS Keychain (the 'security' CLI)." >&2
@@ -74,6 +72,6 @@ print(json.loads(response_body)["token"])
 PYEOF
 )
 
-unset CALLAHAN_ACCOUNT CALLAHAN_PASSWORD CALLAHAN_BASE_URL
+unset CALLAHAN_ACCOUNT CALLAHAN_PASSWORD
 
 echo "$token"

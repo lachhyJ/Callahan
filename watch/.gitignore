@@ -1,7 +1,5 @@
 bin/
 
-# Bakes in a real 30-day JWT via scripts/garmin-watch-token/bake-and-build.sh
-# — never commit the real one. The .example files are the tracked
-# placeholder/templates; bake-and-build.sh copies them on first setup.
-resources/settings/properties.xml
+# Holds a real 30-day JWT, written by scripts/garmin-watch-token/bake-and-build.sh
+# — never commit it. GeneratedAuthToken.mc.example is the tracked template.
 source/GeneratedAuthToken.mc

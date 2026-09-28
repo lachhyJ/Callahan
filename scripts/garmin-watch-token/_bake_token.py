@@ -1,6 +1,6 @@
 """Writes CALLAHAN_TOKEN (an env var, never argv or stdin — see
-bake-and-build.sh) into GeneratedAuthToken.mc as a compiled Monkey C
-constant, replacing the whole file each run."""
+bake-and-build.sh) and CALLAHAN_BASE_URL into GeneratedAuthToken.mc as
+compiled Monkey C constants, replacing the whole file each run."""
 import os
 import sys
 
@@ -8,7 +8,12 @@ path = sys.argv[1]
 # JWTs only ever contain base64url characters and dots — no quotes or
 # backslashes — but escape defensively anyway rather than assume that
 # never changes upstream.
-token = os.environ["CALLAHAN_TOKEN"].strip().replace("\\", "\\\\").replace('"', '\\"')
+def literal(value):
+    return value.strip().replace("\\", "\\\\").replace('"', '\\"')
+
+
+token = literal(os.environ["CALLAHAN_TOKEN"])
+base_url = literal(os.environ["CALLAHAN_BASE_URL"])
 
 content = f'''import Toybox.Lang;
 
@@ -17,6 +22,7 @@ content = f'''import Toybox.Lang;
 // why this is a compiled constant rather than an Application.Property.
 module GeneratedAuthToken {{
     const VALUE = "{token}";
+    const BASE_URL = "{base_url}";
 }}
 '''
 

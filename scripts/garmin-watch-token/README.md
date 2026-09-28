@@ -1,8 +1,7 @@
 # Garmin watch app token refresh
 
 The Garmin watch app (the Connect IQ rest-timer data field in `watch/`)
-authenticates with a 30-day JWT, per the v0 auth design in
-`.claude/plans/garmin-rest-timer-data-field.plan.md` (2.2).
+authenticates with a 30-day JWT minted by Callahan's own login endpoint.
 
 **As sideloaded (unsigned), the token can't be pasted in at runtime** —
 that was the original v0 design, but it turned out not to be reachable in
@@ -36,34 +35,34 @@ The first run will prompt macOS's own Keychain access dialog — choose
 **"Always Allow"** for Terminal so it doesn't ask every time. This:
 
 1. Mints a fresh token from Callahan's own login endpoint.
-2. Writes it into `watch/resources/settings/properties.xml` (gitignored
+2. Writes it, and the server's base URL, into
+   `watch/source/GeneratedAuthToken.mc` as compiled constants (gitignored
    — see below — never committed).
 3. Rebuilds `watch/bin/CallahanDataField.prg`.
+
+The base URL defaults to the production host; set `CALLAHAN_BASE_URL` to
+build against another backend.
 
 Then: open **OpenMTP**, connect the watch (USB mode set to **MTP**, not
 "Garmin"), and copy the rebuilt `.PRG` into `GARMIN/Apps` on the watch,
 replacing the existing one. No Garmin Connect Mobile step needed.
 
-## `properties.xml` is gitignored, not `properties.xml.example`
+## `GeneratedAuthToken.mc` is gitignored
 
-`properties.xml` holds the real token once baked — it must never be
-committed. `properties.xml.example` is the tracked placeholder template;
-`bake-and-build.sh` copies it to `properties.xml` automatically on a
-fresh clone/worktree if the real file doesn't exist yet.
+It holds the real token once baked, so it must never be committed.
+`bake-and-build.sh` writes it from scratch on every run. A build that skips
+the script (the simulator straight from `monkey.jungle`) needs the file to
+exist: copy `GeneratedAuthToken.mc.example` beside it by hand.
 
-## `get-token.sh` (clipboard-only) — currently not useful
-
-`get-token.sh` mints a token and copies it to the clipboard, for a
-paste-based settings flow. Kept around for if a real on-device or
-Garmin-Connect-Mobile settings path is ever found for sideloaded data
-fields — right now there's nowhere to paste it, so prefer
-`bake-and-build.sh`.
+Neither the token nor the URL is a Connect IQ Property. Properties persist
+across app updates for the same app id, so a changed default never reaches
+an already-installed watch, and a sideloaded data field has no settings
+screen to edit one.
 
 ## Why not OAuth
 
 `makeOAuthRequest` (a real Garmin Connect Mobile login flow, no manual
-token handling at all) is the long-term upgrade path — see the plan's
-2.2 — but it needs actual OAuth server infrastructure on the Callahan
+token handling at all) is the long-term upgrade path, but it needs actual OAuth server infrastructure on the Callahan
 backend that doesn't exist yet (an authorization endpoint, a redirect
 handler, a code-for-token exchange), which is a real chunk of work for a
 single-user app. Worth it only once the rest-timer data field itself is

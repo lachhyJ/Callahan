@@ -31,13 +31,10 @@ if [ ! -f "$SDK_ROOT/current-sdk.cfg" ]; then
 fi
 SDK_DIR=$(cat "$SDK_ROOT/current-sdk.cfg")
 
-# properties.xml and GeneratedAuthToken.mc are gitignored (properties.xml
-# no longer holds the token, but still bootstraps the same way for
-# BaseUrl) — bootstrap both from their tracked placeholder templates on a
-# fresh clone/worktree.
-if [ ! -f "$WATCH_DIR/resources/settings/properties.xml" ]; then
-  cp "$WATCH_DIR/resources/settings/properties.xml.example" "$WATCH_DIR/resources/settings/properties.xml"
-fi
+# The one place the server URL is set: _fetch-token.sh logs in against it
+# and _bake_token.py compiles it into the watch build. Override to point a
+# build at a local backend.
+export CALLAHAN_BASE_URL="${CALLAHAN_BASE_URL:-https://callahan.ljlab.online}"
 
 export CALLAHAN_TOKEN
 CALLAHAN_TOKEN=$(bash _fetch-token.sh)
@@ -46,10 +43,10 @@ python3 _bake_token.py "$TOKEN_MC"
 
 unset CALLAHAN_TOKEN
 
-echo "Token baked into GeneratedAuthToken.mc. Rebuilding..."
+echo "Token and base URL baked into GeneratedAuthToken.mc. Rebuilding..."
 (
   cd "$WATCH_DIR"
-  "$SDK_DIR/bin/monkeyc" -d fr965 -f monkey.jungle -o bin/CallahanDataField.prg -y "$DEV_KEY"
+  "$SDK_DIR/bin/monkeyc" -d fr965 -f monkey.jungle -o bin/CallahanDataField.prg -y "$DEV_KEY" -l 2
 )
 
 echo ""

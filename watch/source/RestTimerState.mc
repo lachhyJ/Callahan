@@ -2,7 +2,7 @@ import Toybox.Lang;
 import Toybox.Time;
 import Toybox.Attention;
 
-// The poll/countdown state machine described in plan 2.3. No UI, no direct
+// The poll/countdown state machine. No UI, no direct
 // networking (that's RestTimerClient) — CallahanDataField just asks this
 // "what should I draw right now" every ~1Hz tick.
 //
@@ -21,14 +21,14 @@ class RestTimerState {
     // Data-field onUpdate runs ~1Hz while visible — piggyback on that as the
     // tick source rather than a separate Timer. Poll every 5th tick,
     // Idle or Counting alike: one request per ~5s, not one per onUpdate
-    // call. Decided 2026-09-27 over the plan's original "stop polling
+    // call. Decided 2026-09-27 over the original design's "stop polling
     // entirely while Counting" — that missed a mid-rest ±15s/skip
     // adjustment on the phone until the countdown it was already watching
     // ran out. The activity's HR/BLE radio use dwarfs one extra request
     // every 5s, so the battery case for stopping wasn't worth the miss.
     private const POLL_INTERVAL_TICKS = 5;
 
-    // A 204 arriving while Counting is ambiguous (plan 1.3): the server
+    // A 204 arriving while Counting is ambiguous: the server
     // also drops a timer's entry ~PushLeadSeconds (3s) before it actually
     // fires, which is not a real cancellation. Only treat a 204 as a
     // genuine skip/cancel when there's still meaningfully more than that
@@ -50,7 +50,7 @@ class RestTimerState {
     private var _enteredReps as String = "";
     private var _doneLabel as String = "";
 
-    // serverNow - deviceNow at the last successful fetch (plan 2.4). Applied
+    // serverNow - deviceNow at the last successful fetch. Applied
     // to remainingSeconds() so the countdown tracks the server's clock
     // rather than the watch's. Recomputed on every 200, including while
     // idle, so it self-corrects — no need to persist it across a restart.
@@ -99,12 +99,12 @@ class RestTimerState {
             // runs) is the clock offset — this fetch is a real round trip,
             // not the hardcoded test path, so the small latency between
             // "server stamped serverNowUtc" and "this callback observes it"
-            // is within the tolerance the plan accepts.
+            // is well under the 1s display granularity.
             _clockOffset = result.serverNowUtc.subtract(Time.now()) as Duration;
 
             // A changed timerId (or arriving from Idle) starts a fresh
-            // countdown. An unchanged timerId is just a redundant confirm —
-            // nothing to do, since Counting already stopped polling.
+            // countdown. An unchanged timerId is just a redundant confirm:
+            // a ±15s adjust or skip on the phone reschedules under a new id.
             if (_state != STATE_COUNTING || !(result.timerId.equals(_timerId))) {
                 _state = STATE_COUNTING;
                 _timerId = result.timerId;

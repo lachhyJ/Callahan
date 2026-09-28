@@ -14,9 +14,9 @@ class RestTimerCurrentResult {
     var exerciseName as String;
     var targetReps as String;
     // The server's clock at the moment it answered — lets RestTimerState
-    // correct for skew between the watch's clock and the server's (plan
-    // 2.4). Garmin devices sync time via GPS/phone so skew is normally
-    // small, but it isn't zero.
+    // correct for skew between the watch's clock and the server's. Garmin
+    // devices sync time via GPS/phone so skew is normally small, but it
+    // isn't zero.
     var serverNowUtc as Moment;
     // The set coming up after this rest: pre-formatted weight ("80 kg", or
     // empty for bodyweight), the reps typed into its row (may be empty), and
@@ -55,13 +55,23 @@ class RestTimerCurrentResult {
     // digits or trailing offset, which this drops (irrelevant at a 1Hz
     // countdown granularity, and the offset is always +00:00 since the
     // backend only ever emits UtcNow-derived instants).
-    static function parseIso8601(iso as String) as Moment {
-        var year = iso.substring(0, 4).toNumber();
-        var month = iso.substring(5, 7).toNumber();
-        var day = iso.substring(8, 10).toNumber();
-        var hour = iso.substring(11, 13).toNumber();
-        var minute = iso.substring(14, 16).toNumber();
-        var second = iso.substring(17, 19).toNumber();
+    // Returns null for anything shorter than the fixed-width prefix or with
+    // a non-numeric field, so a malformed response is dropped rather than
+    // crashing the data field.
+    static function parseIso8601(iso as String) as Moment? {
+        if (iso.length() < 19) {
+            return null;
+        }
+        var year = field(iso, 0, 4);
+        var month = field(iso, 5, 7);
+        var day = field(iso, 8, 10);
+        var hour = field(iso, 11, 13);
+        var minute = field(iso, 14, 16);
+        var second = field(iso, 17, 19);
+        if (year == null || month == null || day == null
+                || hour == null || minute == null || second == null) {
+            return null;
+        }
 
         return Time.Gregorian.moment({
             :year => year,
@@ -73,13 +83,25 @@ class RestTimerCurrentResult {
         });
     }
 
-    static function fromDictionary(data as Dictionary) as RestTimerCurrentResult {
+    private static function field(iso as String, from as Number, to as Number) as Number? {
+        var part = iso.substring(from, to);
+        return part != null ? part.toNumber() : null;
+    }
+
+    // Null when either timestamp doesn't parse; the caller treats that like
+    // any other response with no usable result.
+    static function fromDictionary(data as Dictionary<String, Object?>) as RestTimerCurrentResult? {
+        var endsAtUtc = parseIso8601(stringOrEmpty(data["endsAtUtc"]));
+        var serverNowUtc = parseIso8601(stringOrEmpty(data["serverNowUtc"]));
+        if (endsAtUtc == null || serverNowUtc == null) {
+            return null;
+        }
         return new RestTimerCurrentResult(
             data["timerId"] as String,
-            parseIso8601(data["endsAtUtc"] as String),
+            endsAtUtc,
             data["exerciseName"] as String,
             data["targetReps"] as String,
-            parseIso8601(data["serverNowUtc"] as String),
+            serverNowUtc,
             stringOrEmpty(data["targetWeight"]),
             stringOrEmpty(data["enteredReps"]),
             stringOrEmpty(data["doneLabel"])
@@ -87,7 +109,7 @@ class RestTimerCurrentResult {
     }
 
     // Tolerates a backend deployed before these fields existed.
-    private static function stringOrEmpty(value) as String {
+    private static function stringOrEmpty(value as Object?) as String {
         return value instanceof String ? value : "";
     }
 }
