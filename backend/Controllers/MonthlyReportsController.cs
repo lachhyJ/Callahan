@@ -15,6 +15,7 @@ namespace Callahan.Api.Controllers;
 public class MonthlyReportsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
     private readonly MonthlyReportBuilder _builder;
 
     // Reports lock (snapshot) once we're at least this many days into the
@@ -39,16 +40,17 @@ public class MonthlyReportsController : ControllerBase
     // logged without GPS distance. v2 snapshots have no such field and rebuild.
     private const int CurrentReportSchemaVersion = 3;
 
-    public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder)
+    public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
         _builder = builder;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<MonthlyReportListEntryDto>>> List()
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var earliestSessionDate = await EarliestActivityDateAsync();
         if (earliestSessionDate is null) return Ok(new List<MonthlyReportListEntryDto>());
 
@@ -72,7 +74,7 @@ public class MonthlyReportsController : ControllerBase
     {
         if (month is < 1 or > 12) return BadRequest(new { error = "Month must be between 1 and 12." });
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var requestedMonthStart = new DateOnly(year, month, 1);
         if (requestedMonthStart > new DateOnly(today.Year, today.Month, 1))
         {
@@ -105,7 +107,7 @@ public class MonthlyReportsController : ControllerBase
             Year = year,
             Month = month,
             ReportJson = Serialize(dto),
-            ComputedAt = DateTime.UtcNow,
+            ComputedAt = _time.GetUtcNow().UtcDateTime,
             SchemaVersion = CurrentReportSchemaVersion,
             ViewedAt = DateTime.UtcNow,
         };
@@ -182,7 +184,7 @@ public class MonthlyReportsController : ControllerBase
                 _db.MonthlyReports.Add(existing);
             }
             existing.ReportJson = Serialize(toSnapshot);
-            existing.ComputedAt = DateTime.UtcNow;
+            existing.ComputedAt = _time.GetUtcNow().UtcDateTime;
             existing.SchemaVersion = CurrentReportSchemaVersion;
 
             try

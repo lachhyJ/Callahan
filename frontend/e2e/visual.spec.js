@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { pinClock } from './anchor.js'
 
 // The TopBar's build stamp (App.jsx's .build-tag) is built from the worktree name,
 // branch and commit, so its *width* changes with all three — "main@bd62bcd" against
@@ -17,19 +18,11 @@ async function hideBuildTag(page) {
   await page.addStyleTag({ content: '.build-tag { display: none !important }' })
 }
 
-// KNOWN REMAINING INSTABILITY, not fixed here: DevSeed anchors its fixture window on
-// DateTime.Today, so every screen that renders an absolute date (History's "31 Aug –
-// 6 Sept" week headers, the dashboard calendar, Trends' axes) shifts by a day, every
-// day. Baselines regenerated today will fail tomorrow on those screens — though not
-// on ones with no dates in them, like Streaks.
-//
-// Deliberately left alone because every fix has a real cost: anchoring the seed to a
-// fixed date makes local dev data permanently stale-looking (the app's recent-window
-// views would render empty, which is the reason it tracks today in the first place),
-// and hiding the dates instead would drop them out of coverage. Freezing the browser
-// clock does not help — the dates come from server-side seeded data, not the client.
-// So for now: if a date-bearing baseline fails and the diff is only shifted dates,
-// that is this, not a regression.
+// Dates: the backend clock, DevSeed's fixture and the browser clock are all pinned
+// to one anchor date (e2e/anchor.js), so date-bearing screens render the same on
+// every run. Pinning only one side can't work — the dashboard and history derive
+// "this week" from the browser clock, while the data and the streak/trends windows
+// come from the server's. Local dev is unaffected: Dev__FixedNow is only set here.
 
 // One screenshot per screen, at whatever theme the project ("mobile-light" /
 // "mobile-dark") is running. Routes are the ones with real content on a normal
@@ -51,6 +44,7 @@ const SCREENS = [
 
 for (const { name, path } of SCREENS) {
   test(`${name} screen`, async ({ page }) => {
+    await pinClock(page)
     await page.goto(path)
     // Let route-level data fetches settle before the shot; these are read screens,
     // not the mid-input states the "no live-preview" learned constraint is about.
@@ -59,13 +53,12 @@ for (const { name, path } of SCREENS) {
     // Viewport shot, not fullPage: the app shell is now fixed-height with an
     // inner scroll container (#app-scroll), so the document doesn't scroll and
     // fullPage would just be the viewport anyway. The top of each screen is the
-    // stable part worth guarding — content further down carried the seed's
-    // daily date drift regardless.
+    // stable part worth guarding.
     //
     // Consequence: anything below the first viewport (e.g. Trends' lower sections,
     // thousands of px down) or on a detail route (/reports/{y}/{m}) is NOT covered.
-    // Re-running this suite after such a change yields only date-drift noise. Either
-    // add a targeted entry that scrolls/navigates to the change and screenshots that
+    // Re-running this suite after such a change won't catch it. Either add a
+    // targeted entry that scrolls/navigates to the change and screenshots that
     // element, or treat DOM + geometry checks as the verification of record.
     await expect(page).toHaveScreenshot(`${name}.png`)
   })
@@ -78,6 +71,7 @@ test.describe('logged out', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('login screen', async ({ page }) => {
+    await pinClock(page)
     await page.goto('/login')
     await expect(page).toHaveScreenshot('login.png')
   })

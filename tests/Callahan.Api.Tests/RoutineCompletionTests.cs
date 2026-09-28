@@ -1,6 +1,7 @@
 using Callahan.Api.Controllers;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -126,9 +127,9 @@ public class RoutineCompletionTests
     }
 }
 
-// The 3am training-day rule, mirrored from the frontend's dateUtils.
-// Deliberately tested through the public surface rather than the private
-// helper: what matters is that a tick at 00:30 lands on the previous day.
+// The 3am training-day rule, mirrored from the frontend's dateUtils: an
+// undated tap at 00:30 lands on the previous day. Driven through MarkDone on a
+// pinned clock, so it tests the public behaviour rather than a private helper.
 public class RoutineTrainingDayTests
 {
     [Theory]
@@ -137,14 +138,18 @@ public class RoutineTrainingDayTests
     [InlineData(2026, 9, 6, 3, 0, 2026, 9, 6)]    // the cutoff itself is the new day
     [InlineData(2026, 9, 6, 18, 0, 2026, 9, 6)]   // ordinary evening
     [InlineData(2026, 9, 1, 1, 0, 2026, 8, 31)]   // rolls across a month boundary
-    public void TrainingDayAppliesTheThreeAmCutoff(
+    public async Task AnUndatedTapUsesTheThreeAmCutoff(
         int y, int m, int d, int hour, int minute, int ey, int em, int ed)
     {
-        var method = typeof(Callahan.Api.Controllers.RoutinesController)
-            .GetMethod("TrainingDay", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)!;
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
+        db.Database.EnsureCreated();
+        var clock = FixedTimeProvider.Melbourne(new DateTime(y, m, d, hour, minute, 0));
 
-        var actual = (DateOnly)method.Invoke(null, [new DateTime(y, m, d, hour, minute, 0)])!;
+        var result = await new RoutinesController(db, clock).MarkDone(1, new MarkRoutineDoneRequest(null, null));
+        var dto = Assert.IsType<RoutineCompletionDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
 
-        Assert.Equal(new DateOnly(ey, em, ed), actual);
+        Assert.Equal(new DateOnly(ey, em, ed), dto.Date);
     }
 }

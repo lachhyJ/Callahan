@@ -14,16 +14,18 @@ namespace Callahan.Api.Controllers;
 public class TrendsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public TrendsController(AppDbContext db)
+    public TrendsController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     [HttpGet]
     public async Task<ActionResult<List<TrendPointDto>>> GetTrends([FromQuery] int months = 6)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
@@ -87,7 +89,7 @@ public class TrendsController : ControllerBase
     [HttpGet("exercises")]
     public async Task<ActionResult<List<LiftTrendDto>>> GetLiftTrends([FromQuery] int months = 6)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
@@ -167,7 +169,7 @@ public class TrendsController : ControllerBase
     [HttpGet("runs")]
     public async Task<ActionResult<List<RunTypeTrendDto>>> GetRunTypeTrends([FromQuery] int months = 6)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
@@ -231,7 +233,7 @@ public class TrendsController : ControllerBase
     public async Task<ActionResult<SeasonStrengthDto>> GetSeasonStrength([FromQuery] int months = 9)
     {
         months = Math.Clamp(months, 1, 24);
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 
@@ -292,7 +294,7 @@ public class TrendsController : ControllerBase
     public async Task<ActionResult<List<UltimateDistanceMonthDto>>> GetUltimateDistanceTrend([FromQuery] int months = 6)
     {
         months = Math.Clamp(months, 1, 24);
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var currentMonthStart = new DateOnly(today.Year, today.Month, 1);
         var earliestMonthStart = currentMonthStart.AddMonths(-(months - 1));
 

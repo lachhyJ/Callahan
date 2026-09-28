@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 namespace Callahan.Api.Tests;
 
@@ -50,7 +51,7 @@ public class RestTimerCurrentTests
         ((IDictionary)field.GetValue(null)!).Clear();
     }
 
-    private static (RestTimerController Controller, ServiceProvider Services) NewController(ILogger<PushNotificationService>? pushLogger = null)
+    private static (RestTimerController Controller, ServiceProvider Services) NewController(ILogger<PushNotificationService>? pushLogger = null, TimeProvider? time = null)
     {
         ClearPendingTimers();
 
@@ -77,7 +78,7 @@ public class RestTimerCurrentTests
         }
 
         var config = new ConfigurationBuilder().Build();
-        var controller = new RestTimerController(NullLogger<RestTimerController>.Instance, provider.GetRequiredService<IServiceScopeFactory>(), config);
+        var controller = new RestTimerController(NullLogger<RestTimerController>.Instance, provider.GetRequiredService<IServiceScopeFactory>(), config, time);
         return (controller, provider);
     }
 
@@ -219,17 +220,24 @@ public class RestTimerCurrentTests
         Assert.IsType<OkObjectResult>(result.Result);
     }
 
+    // Both fire tests run on a fake clock and await the fire task itself, so
+    // "no push" means the timer fired and skipped it - not that it hadn't
+    // fired yet when the assertion ran.
     [Fact]
     public async Task SuppressPushSkipsTheActualPushSendAtFireTime()
     {
         var pushLogger = new SpyLogger<PushNotificationService>();
-        var (controller, _) = NewController(pushLogger);
+        var time = new FakeTimeProvider();
+        var (controller, _) = NewController(pushLogger, time);
 
         // MinDurationSeconds (5) minus the default 3s PushLeadSeconds fires
-        // FireAfterDelay's post-delay code after ~2s.
+        // FireAfterDelay's post-delay code at 2s.
         controller.Schedule(Request(5, suppressPush: true));
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        time.Advance(TimeSpan.FromSeconds(2));
+        await controller.LastFire!;
 
+        Assert.True(controller.LastFire!.IsCompletedSuccessfully);
+        Assert.IsType<NoContentResult>(controller.Current().Result);
         Assert.False(pushLogger.WasCalled);
     }
 
@@ -237,10 +245,12 @@ public class RestTimerCurrentTests
     public async Task NonSuppressedTimerStillAttemptsThePushSend()
     {
         var pushLogger = new SpyLogger<PushNotificationService>();
-        var (controller, _) = NewController(pushLogger);
+        var time = new FakeTimeProvider();
+        var (controller, _) = NewController(pushLogger, time);
 
         controller.Schedule(Request(5, suppressPush: false));
-        await Task.Delay(TimeSpan.FromSeconds(3));
+        time.Advance(TimeSpan.FromSeconds(2));
+        await controller.LastFire!;
 
         // No Vapid config in tests, so this is SendToAllAsync's "config
         // missing" early-return warning — proof the send was attempted at

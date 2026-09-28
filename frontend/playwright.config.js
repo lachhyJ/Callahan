@@ -1,4 +1,6 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig, devices } from '@playwright/test'
+import { ANCHOR } from './e2e/anchor.js'
 
 // Visual-regression baselines. Viewport is the iPhone 17 Pro Max logical size
 // (~/.claude/rules/ui-preview-verification.md) — 440x956, not Playwright's generic
@@ -24,6 +26,9 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_APP_BASE ?? 'http://localhost:5183',
     storageState: 'e2e/.auth/user.json',
     trace: 'retain-on-failure',
+    // Pinned so the calendar and every date the client formats don't depend on
+    // whichever zone the machine running the suite is in. See e2e/anchor.js.
+    timezoneId: 'Australia/Melbourne',
   },
 
   expect: {
@@ -68,6 +73,12 @@ export default defineConfig({
         // The frontend below runs on a non-default origin too, so it needs an
         // explicit CORS allow — appsettings.json only allows :5173.
         Cors__AllowedOrigins__0: 'http://localhost:5183',
+        // Pins the backend's clock (Program.cs) so DevSeed and every "today"
+        // read match the browser clock the specs pin. See e2e/anchor.js.
+        Dev__FixedNow: ANCHOR,
+        // A synthetic program doc, so the Program screen renders markdown
+        // instead of its "isn't configured" message.
+        ProgramDoc__MarkdownPath: fileURLToPath(new URL('./e2e/fixtures/program.md', import.meta.url)),
       },
       // /api/auth/dev-login is POST-only, and Playwright's readiness probe is a GET
       // that only accepts 200-403 as "ready" — an unauthenticated GET to any

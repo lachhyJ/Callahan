@@ -1,5 +1,6 @@
 using Callahan.Api.Data;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace Callahan.Api;
@@ -16,7 +17,7 @@ namespace Callahan.Api;
 // rather than inventing their own.
 public static class DevSeed
 {
-    public static async Task RunAsync(AppDbContext db)
+    public static async Task<DateOnly> RunAsync(AppDbContext db, TimeProvider time)
     {
         db.ExerciseSets.RemoveRange(db.ExerciseSets);
         db.WorkoutSessions.RemoveRange(db.WorkoutSessions);
@@ -30,11 +31,13 @@ public static class DevSeed
         db.ExerciseNotes.RemoveRange(db.ExerciseNotes);
         await db.SaveChangesAsync();
 
-        // Fixed seed: re-running this produces byte-for-byte the same fixture, so
-        // regenerating it before a Playwright baseline refresh never itself shows up
-        // as a diff.
+        // Fixed seed, anchored on the injected clock: for the same "today" this
+        // produces the same fixture every run. The e2e suite pins that clock
+        // (Dev:FixedNow), so Playwright baselines don't drift day to day; on the
+        // real clock the dates move, and so does which weekday the template
+        // rotation starts on.
         var rng = new Random(20260904);
-        var today = DateOnly.FromDateTime(DateTime.Today);
+        var today = time.Today();
         var windowStart = today.AddDays(-70);
 
         // Fake Garmin training metrics (see GarminActivityMetrics) on an
@@ -252,6 +255,7 @@ public static class DevSeed
         }
 
         await db.SaveChangesAsync();
+        return today;
     }
 
     private static decimal BaseWeightFor(ExerciseCategory category, bool isAssisted)

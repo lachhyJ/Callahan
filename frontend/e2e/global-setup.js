@@ -2,9 +2,11 @@
 // workout/run/wellness history, never real data) and logs in via the dev-login
 // endpoint (see README's "Verifying UI changes without a password"), saving the
 // resulting token as Playwright storage state. Every spec then starts already
-// authenticated against identical, deterministic data — no password, no UI login
-// flow, and no baseline drift from run to run.
+// authenticated against identical data — no password, no UI login flow. The data
+// is only identical across days because the backend clock is pinned to the
+// anchor date (e2e/anchor.js), which this checks.
 import { chromium, request } from '@playwright/test'
+import { ANCHOR_DATE } from './anchor.js'
 
 const API_BASE = process.env.PLAYWRIGHT_API_BASE ?? 'http://localhost:8099'
 const APP_BASE = process.env.PLAYWRIGHT_APP_BASE ?? 'http://localhost:5183'
@@ -37,6 +39,15 @@ export default async function globalSetup() {
   const seedRes = await api.post(`${API_BASE}/api/dev/seed`)
   if (!seedRes.ok()) {
     throw new Error(`/api/dev/seed failed (${seedRes.status()})`)
+  }
+  // reuseExistingServer will happily use a dev backend someone already has on
+  // this port, which runs on the real clock. Refuse rather than screenshot it.
+  const { today } = await seedRes.json()
+  if (today !== ANCHOR_DATE) {
+    throw new Error(
+      `Backend on ${API_BASE} seeded for ${today}, not the e2e anchor ${ANCHOR_DATE}. ` +
+        `Stop whatever is serving that port so Playwright starts its own (Dev__FixedNow).`,
+    )
   }
   await api.dispose()
 

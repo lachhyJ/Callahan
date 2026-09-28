@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,10 +19,12 @@ public class RoutinesController : ControllerBase
     private const int RecentCompletions = 30;
 
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public RoutinesController(AppDbContext db)
+    public RoutinesController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     // The training day, not the calendar day - the same 3am cutoff the frontend
@@ -37,7 +40,7 @@ public class RoutinesController : ControllerBase
         return now.Hour < TrainingDayCutoffHour ? day.AddDays(-1) : day;
     }
 
-    private static DateOnly Today() => TrainingDay(DateTime.Now);
+    private DateOnly Today() => TrainingDay(_time.LocalNow());
 
     private static RoutineDto ToDto(Routine r, DateOnly today)
     {

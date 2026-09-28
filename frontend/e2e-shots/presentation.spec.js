@@ -1,18 +1,15 @@
 import { test } from '@playwright/test'
+import { pinClock } from '../e2e/anchor.js'
 
 // Presentation screenshots for the README — NOT a regression suite. These write PNGs
 // into docs/screenshots/ rather than comparing against baselines, and they run from
 // their own config (playwright.shots.config.js) so `npm run test:visual` is untouched.
 //
-// Two deliberate differences from e2e/visual.spec.js:
-//
-// 1. Viewport shots, not fullPage. The app's tab bar is `position: fixed; bottom: 0`,
-//    so a fullPage capture of a scrolling screen paints it partway down the image
-//    (visible in every committed baseline). That is correct for regression — the
-//    whole page is the thing under test — and wrong for a screenshot a stranger
-//    judges the app by.
-// 2. The build stamp is hidden for the same reason it is in the regression suite: it
-//    encodes a branch and commit nobody reading the README cares about.
+// Shares the regression suite's setup (seeded data, pinned clock — see
+// e2e/anchor.js) but writes files instead of comparing. The build stamp is hidden
+// for the same reason it is there: it encodes a branch and commit nobody reading
+// the README cares about. Shots are viewport-only, never fullPage, because the
+// fixed tab bar would paint partway down a full-page capture.
 async function prepare(page) {
   await page.addStyleTag({ content: '.build-tag { display: none !important }' })
 }
@@ -27,6 +24,7 @@ const SHOTS = [
 for (const { name, path } of SHOTS) {
   test(`shot: ${name}`, async ({ page }, testInfo) => {
     const theme = testInfo.project.name
+    await pinClock(page)
     await page.goto(path)
     await page.waitForLoadState('networkidle')
     await prepare(page)

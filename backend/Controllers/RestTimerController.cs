@@ -27,13 +27,19 @@ public class RestTimerController : ControllerBase
     private readonly ILogger<RestTimerController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly double _pushLeadSeconds;
+    private readonly TimeProvider _time;
 
-    public RestTimerController(ILogger<RestTimerController> logger, IServiceScopeFactory scopeFactory, IConfiguration config)
+    public RestTimerController(ILogger<RestTimerController> logger, IServiceScopeFactory scopeFactory, IConfiguration config, TimeProvider? time = null)
     {
         _logger = logger;
         _scopeFactory = scopeFactory;
         _pushLeadSeconds = config.GetValue("RestTimer:PushLeadSeconds", 3.0);
+        _time = time ?? TimeProvider.System;
     }
+
+    // The fire-and-forget task for the most recent Schedule call, so tests can
+    // await it after advancing a fake clock instead of sleeping for real.
+    internal Task? LastFire { get; private set; }
 
     // A rest timer is minutes, not hours. Unbounded, a negative duration made
     // Math.Clamp below throw (max < min) inside a fire-and-forget task where
@@ -52,11 +58,11 @@ public class RestTimerController : ControllerBase
 
         var timerId = Guid.NewGuid().ToString("N");
         var cts = new CancellationTokenSource();
-        var scheduledAtUtc = DateTimeOffset.UtcNow;
+        var scheduledAtUtc = _time.GetUtcNow();
         var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
         PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request);
 
-        _ = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.SuppressPush, cts.Token);
+        LastFire = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.SuppressPush, cts.Token);
 
         return Ok(new RestTimerScheduleResponse(timerId));
     }
@@ -104,7 +110,7 @@ public class RestTimerController : ControllerBase
             request.TargetReps,
             request.NextSetNumber,
             request.TotalSets,
-            DateTimeOffset.UtcNow,
+            _time.GetUtcNow(),
             request.TargetWeight ?? "",
             request.EnteredReps ?? "",
             request.DoneLabel ?? ""));
@@ -118,7 +124,7 @@ public class RestTimerController : ControllerBase
             // device hop lands close to when the clock actually hits zero, rather
             // than starting that hop only after the rest period has already ended.
             var leadIn = Math.Clamp(_pushLeadSeconds, 0, durationSeconds);
-            await Task.Delay(TimeSpan.FromSeconds(durationSeconds - leadIn), token);
+            await Task.Delay(TimeSpan.FromSeconds(durationSeconds - leadIn), _time, token);
         }
         catch (TaskCanceledException)
         {

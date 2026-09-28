@@ -14,11 +14,13 @@ namespace Callahan.Api.Controllers;
 public class TaperController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
     private readonly TaperConsultService _consultService;
 
-    public TaperController(AppDbContext db, TaperConsultService consultService)
+    public TaperController(AppDbContext db, TaperConsultService consultService, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
         _consultService = consultService;
     }
 
@@ -48,7 +50,7 @@ public class TaperController : ControllerBase
     [HttpGet("events")]
     public async Task<ActionResult<List<TaperEventDto>>> GetEvents([FromQuery] DateOnly? from = null, [FromQuery] DateOnly? to = null)
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var query = _db.Tournaments.Where(t => t.TaperDays != null);
         if (from is not null) query = query.Where(t => t.StartDate >= from);
         if (to is not null) query = query.Where(t => t.StartDate <= to);
@@ -81,7 +83,7 @@ public class TaperController : ControllerBase
         _db.Tournaments.Add(taperEvent);
         await _db.SaveChangesAsync();
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         return Ok(ToDto(taperEvent, today));
     }
 
@@ -103,7 +105,7 @@ public class TaperController : ControllerBase
     [HttpGet("recommendation")]
     public async Task<ActionResult<TaperRecommendationDto>> GetRecommendation()
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
 
         var upcoming = await _db.Tournaments
             .Where(t => t.TaperDays != null && t.StartDate >= today)

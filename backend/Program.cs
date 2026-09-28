@@ -16,6 +16,22 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
+// The clock every "today" read goes through (Services/Clock.cs). In
+// Development, Dev:FixedNow (an ISO instant with offset) pins it so the e2e
+// visual suite renders the same dates every run; production always runs on
+// the real clock in the container's zone.
+var fixedNow = builder.Configuration["Dev:FixedNow"];
+if (builder.Environment.IsDevelopment() && !string.IsNullOrEmpty(fixedNow))
+{
+    builder.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(
+        DateTimeOffset.Parse(fixedNow, System.Globalization.CultureInfo.InvariantCulture),
+        TimeZoneInfo.FindSystemTimeZoneById("Australia/Melbourne")));
+}
+else
+{
+    builder.Services.AddSingleton(TimeProvider.System);
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
 
@@ -150,10 +166,12 @@ if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Aut
     // UI checks) renders real-looking screens without a copy of real personal data.
     // See DevSeed.cs — catalog tables (Exercises, WorkoutTemplates, ...) are left
     // untouched.
-    app.MapPost("/api/dev/seed", async (AppDbContext db) =>
+    app.MapPost("/api/dev/seed", async (AppDbContext db, TimeProvider time) =>
     {
-        await DevSeed.RunAsync(db);
-        return Results.Ok();
+        var today = await DevSeed.RunAsync(db, time);
+        // Echoed so the e2e global setup can confirm it's talking to a backend
+        // pinned to its anchor date, not a stray dev server on the same port.
+        return Results.Ok(new { today });
     }).AllowAnonymous();
 }
 

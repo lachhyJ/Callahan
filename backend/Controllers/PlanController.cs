@@ -21,16 +21,18 @@ public class PlanController : ControllerBase
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public PlanController(AppDbContext db)
+    public PlanController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     // Monday-first, matching dateUtils.startOfWeek and the Calendar grid.
     private static DateOnly MondayOf(DateOnly d) => d.AddDays(-(((int)d.DayOfWeek + 6) % 7));
 
-    private static DateOnly Today() => DateOnly.FromDateTime(DateTime.Now);
+    private DateOnly Today() => _time.Today();
 
     [HttpGet]
     public async Task<ActionResult<WeekPlanDto>> Get([FromQuery] DateOnly? weekStart)

@@ -14,10 +14,12 @@ namespace Callahan.Api.Controllers;
 public class StreaksController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public StreaksController(AppDbContext db)
+    public StreaksController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     // Weekly rules, not daily — a missed single day shouldn't reset a streak
@@ -37,7 +39,7 @@ public class StreaksController : ControllerBase
             return Ok(Definitions.Select(d => new StreakDto(d.Type, d.Label, 0, 0)).ToList());
         }
 
-        var currentWeekStart = MondayOf(DateOnly.FromDateTime(DateTime.Now));
+        var currentWeekStart = MondayOf(_time.Today());
         var earliestWeekStart = MondayOf(workoutDates.Concat(runDates).Min());
         var weekCount = (currentWeekStart.DayNumber - earliestWeekStart.DayNumber) / 7 + 1;
 
@@ -118,7 +120,7 @@ public class StreaksController : ControllerBase
             return Ok(new StreakDetailDto(definition.Type, definition.Label, []));
         }
 
-        var currentWeekStart = MondayOf(DateOnly.FromDateTime(DateTime.Now));
+        var currentWeekStart = MondayOf(_time.Today());
         var earliestWeekStart = MondayOf(workouts.Select(w => w.Date).Concat(runs.Select(r => r.Date)).Min());
         var weekCount = (currentWeekStart.DayNumber - earliestWeekStart.DayNumber) / 7 + 1;
 

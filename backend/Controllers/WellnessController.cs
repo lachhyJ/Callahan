@@ -15,10 +15,12 @@ namespace Callahan.Api.Controllers;
 public class WellnessController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public WellnessController(AppDbContext db)
+    public WellnessController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     // "Latest within a window" rather than "today" - a missed cron run
@@ -40,7 +42,7 @@ public class WellnessController : ControllerBase
     [HttpGet("latest")]
     public async Task<ActionResult<DailyWellnessDto>> GetLatest()
     {
-        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-LatestWindowDays));
+        var cutoff = _time.Today().AddDays(-LatestWindowDays);
         var wellness = await _db.DailyWellness
             .Where(w => w.Date >= cutoff)
             .Where(HasReadableMetric)
@@ -68,7 +70,7 @@ public class WellnessController : ControllerBase
     [HttpGet("insight")]
     public async Task<ActionResult<ReadinessInsightDto>> GetInsight()
     {
-        var cutoff = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-LatestWindowDays));
+        var cutoff = _time.Today().AddDays(-LatestWindowDays);
         var latest = await _db.DailyWellness
             .Where(w => w.Date >= cutoff)
             .Where(HasReadableMetric)
@@ -95,7 +97,7 @@ public class WellnessController : ControllerBase
     public async Task<ActionResult<List<LoadTrendWeekDto>>> GetLoadTrend([FromQuery] int weeks = 12)
     {
         weeks = Math.Clamp(weeks, 1, 52);
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var earliest = LoadTrendBuilder.MondayOf(today).AddDays(-7 * (weeks - 1));
 
         var gymSets = await _db.ExerciseSets
@@ -136,7 +138,7 @@ public class WellnessController : ControllerBase
     [HttpPut]
     public async Task<ActionResult<DailyWellnessDto>> Upsert(UpsertDailyWellnessRequest request)
     {
-        if (request.Date > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (request.Date > _time.Today())
         {
             return BadRequest(new { error = "Date cannot be in the future." });
         }

@@ -2,6 +2,7 @@ using Callahan.Api.Controllers;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -202,12 +203,11 @@ public class TimeBasedExerciseTests : IDisposable
     {
         var bench = AddExercise("Bench Press", ExerciseCategory.Push);
         var plank = AddExercise("Copenhagen Plank", ExerciseCategory.Core, timeBased: true);
-        // GetTrends windows back from DateTime.Now, so this session has to be
-        // dated inside the current month - a fixed date falls out of the window.
-        var today = DateOnly.FromDateTime(DateTime.Now);
-        AddSession(new DateOnly(today.Year, today.Month, 1), Normal(bench.Id, 0, 50m, 10), Timed(plank.Id, 0, 30));
+        AddSession(Aug, Normal(bench.Id, 0, 50m, 10), Timed(plank.Id, 0, 30));
 
-        var controller = new TrendsController(_db);
+        // GetTrends windows back from "today", so pin the clock to a date that
+        // keeps Aug inside a 3-month window.
+        var controller = new TrendsController(_db, FixedTimeProvider.Melbourne(new DateTime(2026, 9, 15, 12, 0, 0)));
         var result = await controller.GetTrends(months: 3);
         var points = Assert.IsType<OkObjectResult>(result.Result).Value as List<TrendPointDto>;
         Assert.NotNull(points);
