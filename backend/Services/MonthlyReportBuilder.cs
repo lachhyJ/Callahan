@@ -434,23 +434,13 @@ public class MonthlyReportBuilder
                 ? (exclTaperSets.Select(s => s.WorkoutSessionId).Distinct().Count() + exclTaperRuns.Count) / exclWeeks
                 : 0m;
 
-            // Actual reduction: baseline weekly gym volume (4 weeks before
-            // the taper window) vs actual weekly volume during the taper
-            // window that overlaps this month — mirrors TaperController's
-            // baseline pattern.
-            var baselineStart = taperStart.AddDays(-28);
-            var baselineSets = await _db.ExerciseSets
-                .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart && s.DurationSeconds == null)
-                .Include(s => s.WorkoutSession)
-                .ToListAsync();
-            var baselineWeeklyVolume = baselineSets.Sum(s => s.WeightKg * s.Reps) / 4m;
+            // Actual reduction: the same baseline weekly gym volume the live
+            // recommendation used (TaperBaseline) vs actual weekly volume
+            // during the part of the taper window that overlaps this month.
+            var baselineWeeklyVolume = await TaperBaseline.WeeklyGymBaselineAsync(_db, taperStart);
 
-            var taperWindowSets = await _db.ExerciseSets
-                .Where(s => s.WorkoutSession.Date >= overlapStart && s.WorkoutSession.Date <= overlapEnd && s.DurationSeconds == null)
-                .Include(s => s.WorkoutSession)
-                .ToListAsync();
             var taperWindowWeeks = Math.Max(overlapDays / 7m, 0.1m);
-            var taperWeeklyVolume = taperWindowSets.Sum(s => s.WeightKg * s.Reps) / taperWindowWeeks;
+            var taperWeeklyVolume = await TaperBaseline.GymVolumeAsync(_db, overlapStart, overlapEnd.AddDays(1)) / taperWindowWeeks;
 
             decimal? actualReduction = baselineWeeklyVolume > 0
                 ? (1m - taperWeeklyVolume / baselineWeeklyVolume) * 100m

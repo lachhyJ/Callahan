@@ -160,7 +160,7 @@ public class MonthlyReportsController : ControllerBase
             && existing.SchemaVersion >= CurrentReportSchemaVersion
             && DateOnly.FromDateTime(existing.ComputedAt.ToLocalTime()) >= lockDate;
 
-        if (shouldBeLocked && snapshotIsFinal)
+        if (shouldBeLocked && snapshotIsFinal && existing is not null)
         {
             // Already snapshotted at the current shape and past the lock
             // point — immutable, return as-is.

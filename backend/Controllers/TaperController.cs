@@ -128,28 +128,20 @@ public class TaperController : ControllerBase
         // Baseline: average weekly gym volume / run distance over the 4 weeks
         // immediately before the taper window opens.
         var taperStart = upcoming.StartDate.AddDays(-taperDays);
-        var baselineStart = taperStart.AddDays(-28);
+        var baselineStart = TaperBaseline.BaselineStart(taperStart);
 
-        var baselineSets = await _db.ExerciseSets
-            .Include(s => s.WorkoutSession)
-            .Where(s => s.WorkoutSession.Date >= baselineStart && s.WorkoutSession.Date < taperStart && s.DurationSeconds == null)
-            .ToListAsync();
-        var gymBaselineVolume = baselineSets.Sum(s => s.WeightKg * s.Reps) / 4m;
+        var gymBaselineVolume = await TaperBaseline.WeeklyGymBaselineAsync(_db, taperStart);
 
         var baselineRuns = await _db.Activities
             .Where(a => a.Type == ActivityType.Running && a.Date >= baselineStart && a.Date < taperStart)
             .ToListAsync();
-        var runBaselineDistance = baselineRuns.Sum(a => a.DistanceKm ?? 0) / 4m;
+        var runBaselineDistance = baselineRuns.Sum(a => a.DistanceKm ?? 0) / (TaperBaseline.BaselineDays / 7m);
 
         // This week's actuals (Monday-start).
         var weekStart = MondayOf(today);
         var weekEndExclusive = weekStart.AddDays(7);
 
-        var thisWeekSets = await _db.ExerciseSets
-            .Include(s => s.WorkoutSession)
-            .Where(s => s.WorkoutSession.Date >= weekStart && s.WorkoutSession.Date < weekEndExclusive && s.DurationSeconds == null)
-            .ToListAsync();
-        var gymThisWeekVolume = thisWeekSets.Sum(s => s.WeightKg * s.Reps);
+        var gymThisWeekVolume = await TaperBaseline.GymVolumeAsync(_db, weekStart, weekEndExclusive);
 
         var thisWeekRuns = await _db.Activities
             .Where(a => a.Type == ActivityType.Running && a.Date >= weekStart && a.Date < weekEndExclusive)
