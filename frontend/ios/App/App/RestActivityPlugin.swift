@@ -27,6 +27,12 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
 
     private var currentActivity: Any?
     private var currentEndAt: Date?
+    /// The previous sync's work. Each sync runs after the one before it, so two
+    /// calls in quick succession (a keystroke's sync, then the rest ending)
+    /// can't land in the wrong order and leave the store or the card showing
+    /// the earlier state. Plugin methods arrive on Capacitor's serial bridge
+    /// queue, so reading and replacing this is itself ordered.
+    private var lastSync: Task<Void, Never>?
 
     override public func load() {
         // The activity's lifetime is the workout's, and JS owns both ends of that.
@@ -204,15 +210,15 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             following: (call.getObject("following")).flatMap(Self.parseFollowing)
         )
         self.currentEndAt = endAt
-        Task {
+        let previous = lastSync
+        lastSync = Task {
+            await previous?.value
             if let endAt {
                 await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds)
             } else {
                 await RestTimerStore.shared.clear()
             }
-        }
 
-        Task {
             // Exactly one activity, always.
             //
             // currentActivity is in-memory, so it is empty after every app

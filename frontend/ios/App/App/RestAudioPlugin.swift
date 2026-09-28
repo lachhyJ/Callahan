@@ -581,11 +581,21 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
                       k.isPlaying ? "y" : "n", wallElapsed, devElapsed, devElapsed - wallElapsed))
     }
 
+    /// The timer is invalidated on main for the same reason as cancelTimers: it
+    /// lives on the main run loop, and this is reachable from JS `cancel` on the
+    /// bridge queue. The baselines are cleared right here, synchronously, as
+    /// before — they're set synchronously by the next keep-alive, and a
+    /// deferred clear could land after that and wipe the new ones.
     private func stopHeartbeat() {
-        heartbeatTimer?.invalidate()
-        heartbeatTimer = nil
         heartbeatWallStart = nil
         heartbeatDeviceStart = nil
+        // Only the timer running now: if a new keep-alive's heartbeat is
+        // scheduled on main before this block runs, it must survive.
+        let stale = heartbeatTimer
+        onMain { [weak self] in
+            stale?.invalidate()
+            if self?.heartbeatTimer === stale { self?.heartbeatTimer = nil }
+        }
     }
 
     private func loadPlayer() -> AVAudioPlayer? {
