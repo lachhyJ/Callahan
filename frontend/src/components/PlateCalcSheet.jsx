@@ -10,6 +10,7 @@ import {
   roundDisplay,
   roundToStep,
   clearEquipmentTypeOverride,
+  describePlateDelta,
   getAvailableDumbbells,
   getAvailablePlates,
   getCustomEquipment,
@@ -104,6 +105,39 @@ function PlatesYouHave({ available, onToggle }) {
   )
 }
 
+// Name + weight form for a per-exercise custom bar (barbell mode) or machine
+// frame (added mode) — same fields, only the wording differs.
+function CustomEquipmentForm({ nameExample, weightLabel, exerciseName, name, onNameChange, weight, onWeightChange, onSave, onRemove }) {
+  return (
+    <div className="plate-calc-custom-form">
+      <input
+        type="text"
+        placeholder={`Name (optional), e.g. ${nameExample}`}
+        value={name}
+        onChange={(e) => onNameChange(e.target.value)}
+      />
+      <input
+        type="text"
+        inputMode="decimal"
+        placeholder={weightLabel}
+        value={weight}
+        onChange={onWeightChange}
+        autoFocus
+      />
+      <div className="plate-calc-custom-actions">
+        <button type="button" onClick={onSave}>
+          Save for {exerciseName || 'this exercise'}
+        </button>
+        {onRemove && (
+          <button type="button" className="plate-calc-custom-remove" onClick={onRemove}>
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // "From here" plate-swap note against the last completed set on this
 // exercise — add/remove per side (barbell) or on the stack (added), rather
 // than making the athlete re-derive the change from two full breakdowns.
@@ -113,37 +147,20 @@ function PlateDeltaNote({ delta, perSide }) {
   if (toAdd.length === 0 && toRemove.length === 0) {
     return <p className="plate-calc-delta plate-calc-popover-hint">Same as last set — no change.</p>
   }
-  const suffix = perSide ? ' per side' : ''
-  // Remove listed before add — you strip unwanted plates off before loading
-  // new ones, so the note reads in the order you'd actually do it.
-  return (
-    <p className="plate-calc-delta">
-      {toRemove.length > 0 && (
-        <>Remove {toRemove.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
-      )}
-      {toAdd.length > 0 && toRemove.length > 0 && ' · '}
-      {toAdd.length > 0 && (
-        <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>
-      )}
-    </p>
-  )
+  return <p className="plate-calc-delta">{describePlateDelta(delta, perSide)}</p>
 }
 
 // Rest of the exercise's plate plan, chained off already-known set weights —
 // see exercisePlan in the main component for what "chained" means here.
 function ExercisePlanNote({ plan, perSide }) {
   if (!plan || plan.upcomingSteps.length === 0) return null
-  const suffix = perSide ? ' per side' : ''
   return (
     <div className="plate-calc-exercise-plan">
       <span className="plate-calc-sheet-label">Rest of this exercise</span>
       <ol>
         {plan.upcomingSteps.map(({ toAdd, toRemove }, i) => (
           <li key={i}>
-            {toRemove.length === 0 && toAdd.length === 0 && 'No change'}
-            {toRemove.length > 0 && <>Remove {toRemove.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>}
-            {toAdd.length > 0 && toRemove.length > 0 && ' · '}
-            {toAdd.length > 0 && <>Add {toAdd.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')}{suffix}</>}
+            {toRemove.length === 0 && toAdd.length === 0 ? 'No change' : describePlateDelta({ toAdd, toRemove }, perSide)}
           </li>
         ))}
       </ol>
@@ -611,32 +628,17 @@ export default function PlateCalcSheet({
                     </button>
                   </div>
                   {selection === CUSTOM_BAR && (
-                    <div className="plate-calc-custom-form">
-                      <input
-                        type="text"
-                        placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} bar` : 'Trap bar'}`}
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="Weight (kg)"
-                        value={customWeight}
-                        onChange={handleCustomWeightChange}
-                        autoFocus
-                      />
-                      <div className="plate-calc-custom-actions">
-                        <button type="button" onClick={handleSaveCustom}>
-                          Save for {exerciseName || 'this exercise'}
-                        </button>
-                        {savedEquipment && (
-                          <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <CustomEquipmentForm
+                      nameExample={exerciseName ? `${exerciseName} bar` : 'Trap bar'}
+                      weightLabel="Weight (kg)"
+                      exerciseName={exerciseName}
+                      name={customName}
+                      onNameChange={setCustomName}
+                      weight={customWeight}
+                      onWeightChange={handleCustomWeightChange}
+                      onSave={handleSaveCustom}
+                      onRemove={savedEquipment ? handleRemoveSaved : null}
+                    />
                   )}
                 </div>
 
@@ -741,32 +743,17 @@ export default function PlateCalcSheet({
                     </button>
                   </div>
                   {selection === CUSTOM_BAR && (
-                    <div className="plate-calc-custom-form">
-                      <input
-                        type="text"
-                        placeholder={`Name (optional), e.g. ${exerciseName ? `${exerciseName} frame` : 'Machine frame'}`}
-                        value={customName}
-                        onChange={(e) => setCustomName(e.target.value)}
-                      />
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="Frame weight (kg)"
-                        value={customWeight}
-                        onChange={handleCustomWeightChange}
-                        autoFocus
-                      />
-                      <div className="plate-calc-custom-actions">
-                        <button type="button" onClick={handleSaveCustom}>
-                          Save for {exerciseName || 'this exercise'}
-                        </button>
-                        {savedEquipment && (
-                          <button type="button" className="plate-calc-custom-remove" onClick={handleRemoveSaved}>
-                            Remove
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                    <CustomEquipmentForm
+                      nameExample={exerciseName ? `${exerciseName} frame` : 'Machine frame'}
+                      weightLabel="Frame weight (kg)"
+                      exerciseName={exerciseName}
+                      name={customName}
+                      onNameChange={setCustomName}
+                      weight={customWeight}
+                      onWeightChange={handleCustomWeightChange}
+                      onSave={handleSaveCustom}
+                      onRemove={savedEquipment ? handleRemoveSaved : null}
+                    />
                   )}
                 </div>
 

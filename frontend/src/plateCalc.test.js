@@ -11,8 +11,7 @@ import {
   DUMBBELL_STEPS_KG, PLATE_SETS, calculatePlates, getAvailablePlates,
   getCustomEquipment, getEquipmentType, guessEquipmentType, hydratePlateCalcSettings,
   nearestDumbbells, clearCustomEquipment,
-  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride,
-} from './plateCalc'
+  setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta } from './plateCalc'
 
 // The storage-backed helpers are the ones with real branching (fallbacks,
 // validation, order preservation), so they need a localStorage. A map stub
@@ -252,5 +251,17 @@ describe('calculatePlates in added-weight mode', () => {
 
   it('reports a shortfall against the plates on hand', () => {
     expect(calculatePlates(21, kg).remainder).toBe(1)
+  })
+})
+
+describe('describePlateDelta', () => {
+  it('lists removals before additions, per side for a barbell', () => {
+    expect(describePlateDelta({ toRemove: [{ plate: 15, count: 1 }], toAdd: [{ plate: 25, count: 1 }] }, true))
+      .toBe('Remove 1×15kg per side · Add 1×25kg per side')
+  })
+
+  it('omits the side suffix and empty halves', () => {
+    expect(describePlateDelta({ toRemove: [], toAdd: [{ plate: 2.5, count: 2 }, { plate: 1.25, count: 1 }] }, false))
+      .toBe('Add 2×2.5kg, 1×1.25kg')
   })
 })

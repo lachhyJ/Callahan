@@ -165,15 +165,6 @@ export function setAvailableDumbbells(dumbbells) {
   pushSetting(AVAILABLE_DUMBBELLS_PREFIX + 'kg', dumbbells)
 }
 
-// Given a target per-dumbbell weight, finds the closest available size(s).
-// Returns an exact match alone when the rack has one, otherwise the
-// nearest step below and above (either can be absent at the ends of the
-// rack) so the athlete sees both directions to round rather than just
-// whichever happens to be closer.
-// Rounds a raw number to the nearest multiple of `step` (e.g. the smallest
-// plate you've got), for turning a percentage-jump suggestion into a weight
-// you can actually load rather than one that only exists on paper. Never
-// negative — a jump off a very light weight can't round below zero.
 // Cleans up binary floating-point noise (e.g. 66.6 / 2 = 23.299999999999997)
 // for display only — never used in the plate-breakdown math itself, which
 // stays on the raw value.
@@ -181,11 +172,20 @@ export function roundDisplay(value) {
   return Math.round(value * 100) / 100
 }
 
+// Rounds a raw number to the nearest multiple of `step` (e.g. the smallest
+// plate you've got), for turning a percentage-jump suggestion into a weight
+// you can actually load rather than one that only exists on paper. Never
+// negative — a jump off a very light weight can't round below zero.
 export function roundToStep(value, step) {
   if (!step || step <= 0) return Math.max(0, value)
   return Math.max(0, Math.round(value / step) * step)
 }
 
+// Given a target per-dumbbell weight, finds the closest available size(s).
+// Returns an exact match alone when the rack has one, otherwise the
+// nearest step below and above (either can be absent at the ends of the
+// rack) so the athlete sees both directions to round rather than just
+// whichever happens to be closer.
 export function nearestDumbbells(perDumbbellKg, available) {
   const sorted = [...available].sort((a, b) => a - b)
   const exact = sorted.find((d) => Math.abs(d - perDumbbellKg) < 1e-9)
@@ -305,4 +305,15 @@ export function clearEquipmentTypeOverride(exerciseId) {
     // Best-effort.
   }
   dropSetting(EQUIPMENT_TYPE_PREFIX + exerciseId)
+}
+
+// "Remove 1×15kg per side · Add 1×25kg per side" — a plate change in the order
+// you'd do it: strip unwanted plates before loading new ones.
+export function describePlateDelta({ toAdd, toRemove }, perSide) {
+  const suffix = perSide ? ' per side' : ''
+  const list = (items) => items.map(({ plate, count }) => `${count}×${plate}kg`).join(', ')
+  const parts = []
+  if (toRemove.length > 0) parts.push(`Remove ${list(toRemove)}${suffix}`)
+  if (toAdd.length > 0) parts.push(`Add ${list(toAdd)}${suffix}`)
+  return parts.join(' · ')
 }
