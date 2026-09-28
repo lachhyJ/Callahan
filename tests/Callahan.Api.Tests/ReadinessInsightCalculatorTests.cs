@@ -9,7 +9,7 @@ public class ReadinessInsightCalculatorTests
     private static DailyWellnessDto Row(
         DateOnly date, int? readiness = null, int? sleepScore = null, int? sleepSeconds = null,
         int? hrv = null, int? rhr = null) =>
-        new(0, date, sleepSeconds, null, null, null, null, sleepScore, null, hrv, null, null, readiness, null, null, rhr, null, null, null);
+        TestData.Wellness(date, readiness, sleepScore, sleepSeconds, hrv, rhr);
 
     private static List<DailyWellnessDto> Baseline(
         int days, int? readiness = null, int? sleepScore = null, int? sleepSeconds = null,

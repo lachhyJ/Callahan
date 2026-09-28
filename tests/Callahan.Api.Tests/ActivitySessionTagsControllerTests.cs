@@ -24,13 +24,7 @@ public class ActivitySessionTagsControllerTests
     private const int Field1 = 9;
     private const int Field2 = 10;
 
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     private static async Task<int> AddUltimateActivity(AppDbContext db)
     {

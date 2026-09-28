@@ -15,13 +15,7 @@ namespace Callahan.Api.Tests;
 // junk.
 public class PlateCalcSettingsControllerTests
 {
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     private static JsonElement Json(string raw) => JsonSerializer.Deserialize<JsonElement>(raw);
 

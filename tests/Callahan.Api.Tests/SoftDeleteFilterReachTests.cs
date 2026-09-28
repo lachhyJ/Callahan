@@ -23,13 +23,7 @@ namespace Callahan.Api.Tests;
 // let deleted activities inflate rep counts in trends and monthly reports.
 public class SoftDeleteFilterReachTests
 {
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     [Fact]
     public async Task SoftDeletedSessionsAreExcludedFromSetsQueriedViaTheNavigation()

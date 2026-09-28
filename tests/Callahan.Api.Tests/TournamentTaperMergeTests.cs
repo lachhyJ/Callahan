@@ -15,13 +15,7 @@ namespace Callahan.Api.Tests;
 // introduced or changed.
 public class TournamentTaperMergeTests
 {
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     // The controllers return Ok(...), so the payload is on .Result, not .Value.
     private static T Unwrap<T>(ActionResult<T> result) =>

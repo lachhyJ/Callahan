@@ -17,13 +17,7 @@ public class ActivitiesGarminMetricsTests
          "anaerobicTrainingEffect":2.4,"trainingEffectLabel":"SPEED"}
         """;
 
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     private static CreateActivityRequest Req(string? rawJson, string? garminId = "900") => new(
         Date: new DateOnly(2026, 9, 6),

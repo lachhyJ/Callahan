@@ -184,7 +184,7 @@ export function isSupersetGroupRestActive(exercises, exIdx) {
 // from: whichever member still has work left with the fewest sets completed
 // so far, ties broken by group order. See nextIncompleteInGroup for the
 // anchored version, used right after a tick.
-export function groupMemberDueNext(exercises, groupStart, groupEnd) {
+function groupMemberDueNext(exercises, groupStart, groupEnd) {
   let best = null
   for (let i = groupStart; i <= groupEnd; i++) {
     const j = exercises[i].sets.findIndex((s) => !s.completed)
@@ -213,7 +213,7 @@ export function nextIncompleteInGroup(exercises, groupStart, groupEnd, fromIdx) 
 // exercise with work left, resolved through its superset's rotation. This is
 // nextSetDescriptor's scan, shared so a card press completes exactly the set
 // the card was showing.
-export function ambientTarget(exercises, fromIdx) {
+function ambientTarget(exercises, fromIdx) {
   for (let i = fromIdx; i < exercises.length; i++) {
     if (exercises[i].sets.every((s) => s.completed)) continue
     const [groupStart, groupEnd] = supersetGroupBounds(exercises, i)

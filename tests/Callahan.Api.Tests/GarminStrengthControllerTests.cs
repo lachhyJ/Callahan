@@ -13,13 +13,7 @@ namespace Callahan.Api.Tests;
 // back to a pending-review row when it can't be matched to exactly one session.
 public class GarminStrengthControllerTests
 {
-    private static AppDbContext NewDb(SqliteConnection conn)
-    {
-        conn.Open();
-        var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
-        db.Database.EnsureCreated();
-        return db;
-    }
+    private static AppDbContext NewDb(SqliteConnection conn) => TestData.OpenDb(conn);
 
     private static WorkoutSession Session(DateOnly date, DateTime? startedAt) => new()
     {

@@ -13,7 +13,7 @@ public class LoadTrendBuilderTests
     private static readonly DateOnly Wk3 = new(2026, 8, 24);
 
     private static DailyWellnessDto Wellness(DateOnly date, int? readiness = null, int? hrv = null, int? sleepScore = null) =>
-        new(0, date, null, null, null, null, null, sleepScore, null, hrv, null, null, readiness, null, null, null, null, null, null);
+        TestData.Wellness(date, readiness: readiness, hrv: hrv, sleepScore: sleepScore);
 
     private static List<LoadTrendWeekDto> Build(
         IEnumerable<GymSetLoad>? gym = null,

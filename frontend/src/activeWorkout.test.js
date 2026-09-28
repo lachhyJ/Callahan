@@ -14,18 +14,13 @@ import {
   advanceHold,
   applyNativeCompletions,
 } from './activeWorkout'
+import { installStorageStub } from './test/storageStub'
 
 // The suite runs on plain node by deliberate choice (see vite.config.js), and
 // the only browser global this module touches is localStorage — so stub that
 // rather than pulling in jsdom for one key/value store. `window` is needed too:
 // persistedSlot dispatches a change event on every save.
-const store = new Map()
-globalThis.localStorage = {
-  getItem: (k) => (store.has(k) ? store.get(k) : null),
-  setItem: (k, v) => store.set(k, String(v)),
-  removeItem: (k) => store.delete(k),
-  clear: () => store.clear(),
-}
+installStorageStub()
 globalThis.window = { dispatchEvent: () => {}, addEventListener: () => {}, removeEventListener: () => {} }
 globalThis.Event = class { constructor(type) { this.type = type } }
 

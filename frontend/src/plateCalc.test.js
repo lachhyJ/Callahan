@@ -14,18 +14,8 @@ import {
   setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta, calculatePlateDelta, plateLoadFor } from './plateCalc'
 
 // The storage-backed helpers are the ones with real branching (fallbacks,
-// validation, order preservation), so they need a localStorage. A map stub
-// keeps the test environment as plain node rather than pulling in jsdom.
-function installStorageStub() {
-  const store = new Map()
-  globalThis.localStorage = {
-    getItem: (k) => (store.has(k) ? store.get(k) : null),
-    setItem: (k, v) => store.set(k, String(v)),
-    removeItem: (k) => store.delete(k),
-    clear: () => store.clear(),
-  }
-  return store
-}
+// validation, order preservation), so they need a localStorage.
+import { installStorageStub } from './test/storageStub'
 
 describe('calculatePlates', () => {
   const kg = PLATE_SETS.kg
