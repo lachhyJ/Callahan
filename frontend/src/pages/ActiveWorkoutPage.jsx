@@ -299,6 +299,7 @@ export default function ActiveWorkoutPage() {
     const saved = loadRestTimer()
     return saved && saved.templateId === sessionKey ? saved : null
   })
+  restTimerRef.current = restTimer
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
@@ -338,6 +339,8 @@ export default function ActiveWorkoutPage() {
   // Last rest period's exercise/set, so the card still says what you just did
   // once the countdown has finished.
   const lastRestRef = useRef(null)
+  // The current restTimer for effects that outlive a render (reconcile).
+  const restTimerRef = useRef(null)
   // Read by the native-reconcile effect, which is registered once and so cannot
   // close over the live `exercises` value.
   const exercisesRef = useRef(null)
@@ -1011,23 +1014,33 @@ export default function ActiveWorkoutPage() {
         }
       }
 
-      setRestTimer((prev) => {
-        if (!native.active) {
-          if (prev) logDiary('reconcile: native inactive, clearing local restTimer')
-          return prev ? null : prev
+      // Each branch below also brings the server's timer (what the Garmin field
+      // polls) into line: the card's buttons only ever touched native state, so
+      // the server still holds the pre-press timer. Side effects live out here
+      // rather than in a setRestTimer updater, which StrictMode runs twice.
+      const prev = restTimerRef.current
+      if (!native.active) {
+        if (prev) {
+          logDiary('reconcile: native inactive, clearing local restTimer')
+          if (prev.timerId) cancelRestTimer(prev.timerId).catch(() => {})
+          setRestTimer(null)
         }
-        // A rest that started from the card while there was no local timer —
-        // "Set done" on a locked phone is exactly this case.
-        if (!prev) {
-          logDiary(`reconcile: no local restTimer, adopting native endAt=${native.endAt}`)
-          return restTimerFromNative(current, native)
-        }
-        if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
-          logDiary(`reconcile: native endAt=${native.endAt} diverges from local endAt=${prev.endAt}, adopting native`)
-          return { ...prev, endAt: native.endAt, timerId: null }
-        }
-        return prev
-      })
+        return
+      }
+      // A rest that started from the card while there was no local timer —
+      // "Set done" on a locked phone is exactly this case.
+      if (!prev) {
+        logDiary(`reconcile: no local restTimer, adopting native endAt=${native.endAt}`)
+        const adopted = restTimerFromNative(current, native)
+        setRestTimer(adopted)
+        if (adopted) resyncServerTimer(adopted, native.endAt)
+        return
+      }
+      if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
+        logDiary(`reconcile: native endAt=${native.endAt} diverges from local endAt=${prev.endAt}, adopting native`)
+        setRestTimer({ ...prev, endAt: native.endAt, timerId: null })
+        resyncServerTimer(prev, native.endAt)
+      }
     }
     reconcile()
     document.addEventListener('visibilitychange', reconcile)
@@ -1037,20 +1050,24 @@ export default function ActiveWorkoutPage() {
     }
   }, [])
 
+  // Points the server's pending timer (what the Garmin field polls) at a new
+  // end: cancel the old one, schedule a replacement for whatever is left. At
+  // least 1s, the server's floor, so a rest adjusted to "now" still schedules.
+  // Called from event handlers and reconcile, never from a state updater - an
+  // updater runs twice under StrictMode and would schedule twice.
+  function resyncServerTimer(rest, endAt) {
+    if (rest.timerId) cancelRestTimer(rest.timerId).catch(() => {})
+    const remaining = Math.max(1, Math.round((endAt - Date.now()) / 1000))
+    scheduleRestTimer(remaining, rest, isNativeAudio)
+      .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
+      .catch(() => {})
+  }
+
   function adjustRest(deltaSeconds) {
     if (!restTimer) return
     const newEndAt = Math.max(Date.now(), restTimer.endAt + deltaSeconds * 1000)
-    const newRemaining = Math.max(0, Math.round((newEndAt - Date.now()) / 1000))
-    setRestTimer((prev) => {
-      if (!prev) return prev
-      if (prev.timerId) {
-        cancelRestTimer(prev.timerId).catch(() => {})
-        scheduleRestTimer(newRemaining, prev, isNativeAudio)
-          .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
-          .catch(() => {})
-      }
-      return { ...prev, endAt: newEndAt, timerId: null }
-    })
+    resyncServerTimer(restTimer, newEndAt)
+    setRestTimer({ ...restTimer, endAt: newEndAt, timerId: null })
   }
 
   function skipRest() {
