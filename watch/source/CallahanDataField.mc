@@ -76,7 +76,7 @@ class CallahanDataField extends WatchUi.DataField {
         if (!_config.isConfigured()) {
             drawCentered(dc, "Set base URL + token", MESSAGE_FONT_CANDIDATES);
         } else if (_state.hasError()) {
-            drawCentered(dc, "auth", MESSAGE_FONT_CANDIDATES);
+            drawCentered(dc, _state.errorText(), MESSAGE_FONT_CANDIDATES);
         } else if (_state.isCounting()) {
             drawCounting(dc);
         } else if (_state.isNextSet()) {

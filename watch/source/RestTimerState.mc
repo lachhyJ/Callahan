@@ -166,6 +166,19 @@ class RestTimerState {
         return _state == STATE_IDLE && _lastResponseCode != 0 && _lastResponseCode != 200 && _lastResponseCode != 204;
     }
 
+    // What to tell the user when hasError(). Negative codes are Communications'
+    // BLE_* transport failures (phone out of range, Garmin Connect closed);
+    // only 401/403 mean the baked-in token is the problem.
+    function errorText() as String {
+        if (_lastResponseCode == 401 || _lastResponseCode == 403) {
+            return "auth";
+        }
+        if (_lastResponseCode < 0) {
+            return "no phone";
+        }
+        return "err " + _lastResponseCode.toString();
+    }
+
     function remainingSeconds() as Number {
         if (_endsAtUtc == null) {
             return 0;
