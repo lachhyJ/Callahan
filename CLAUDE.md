@@ -3,10 +3,9 @@
 ## Deployment
 Deploy is automatic: `.github/workflows/deploy.yml` runs on every push to `main`,
 joins the NAS's Tailscale network (`tailscale/github-action@v4`, authenticated via
-an OAuth client — `TS_OAUTH_CLIENT_ID`/`TS_OAUTH_SECRET` secrets, tagged `tag:ci` —
-which mints a short-lived key per run instead of relying on one long-lived reusable
-key that can silently expire, as happened 2026-08-16), then SSHes into the NAS as the
-deploy user using a dedicated key (`NAS_DEPLOY_SSH_KEY` secret) that's restricted
+an OAuth client that mints a short-lived key per run, rather than a long-lived
+reusable key that can silently expire), then SSHes into the NAS as the
+deploy user using a dedicated key (stored as a repo secret) that's restricted
 via a forced `command=` in `authorized_keys` — it can only ever run
 `deploy-wrapper.sh`, nothing else, even if the key leaked. That wrapper runs
 `deploy.sh`, which does `git fetch && git checkout main && git reset --hard <ref>`
@@ -36,8 +35,7 @@ Pushes that touch only `docs/**` or `*.md` don't deploy (`paths-ignore`), so the
 app's build footer shows the last *code* commit. After any push, say which commit
 the footer should now read — the latest commit, or the last non-docs one.
 
-The workflow reads the NAS address and SSH user from the `NAS_HOST` / `NAS_USER`
-repo secrets; third-party actions are pinned to commit SHAs (bump deliberately).
+The workflow reads the NAS address and SSH user from repo secrets; third-party actions are pinned to commit SHAs (bump deliberately).
 
 ## Concurrent work — Callahan-specific
 `~/.claude/rules/concurrent-work.md` carries the worktree-per-thread workflow and the
