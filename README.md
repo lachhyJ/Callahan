@@ -18,7 +18,7 @@ history paywall and grew into the thing that measures my season. Live at
   speed, why a metric that fires every month is measuring the wrong thing, why the test
   suite was mutation-checked before it was trusted, and what the native iOS wrap exists
   for. This is the most interesting file in the repo.
-- **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the four
+- **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the
   containers, the request path, the backend layers, and the data model.
 - **[docs/program-sync.md](docs/program-sync.md)** — how program and template changes get
   applied, and why there's no in-app editor by design.
