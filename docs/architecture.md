@@ -1,8 +1,8 @@
 # Architecture
 
 Callahan is a single-user training tracker: gym workouts, running, and Ultimate Frisbee
-games, with wellness and activity data pulled from Garmin Connect. It runs as four
-containers on a home NAS behind a Cloudflare tunnel, and the same web build also ships as
+games, with wellness and activity data pulled from Garmin Connect. It runs as three
+long-running containers plus a nightly sync job on a home NAS behind a Cloudflare tunnel, and the same web build also ships as
 a native iOS app.
 
 This page describes how the pieces fit together. For *why* they're arranged this way, see
@@ -42,7 +42,7 @@ This page describes how the pieces fit together. For *why* they're arranged this
               └───────────────────┘
 ```
 
-Four running pieces, plus a nightly job:
+Three long-running containers, a nightly job and the iOS shell:
 
 | Piece | What it is | Notes |
 |---|---|---|
@@ -68,7 +68,7 @@ routes opt out explicitly.
 ## Backend layers
 
 ```
-Controllers/     21 controllers, one per resource group
+Controllers/     25 controllers, one per resource group
    │
    ▼
 Services/        the parts worth testing in isolation
