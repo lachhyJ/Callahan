@@ -27,6 +27,9 @@ public class AuthPipelineTests : IDisposable
             .UseEnvironment(environment)
             .UseSetting("ConnectionStrings:Default", $"Data Source={_dbPath}")
             .UseSetting("Auth:JwtSecret", "pipeline-test-secret-that-is-long-enough-for-hs256")
+            // Set here, not inherited: a dev machine supplies it from local
+            // config, CI has none, and dev-login 500s without it.
+            .UseSetting("Auth:Username", "pipeline-test-user")
             .UseSetting("Auth:AllowDevLogin", allowDevLogin ? "true" : "false"));
         _factories.Add(factory);
         return factory;
