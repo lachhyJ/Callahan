@@ -45,7 +45,12 @@ public class RestTimerController : ControllerBase
     // Math.Clamp below throw (max < min) inside a fire-and-forget task where
     // nothing observes it, and a huge one parked a CancellationTokenSource in
     // the static dictionary indefinitely.
-    private const int MinDurationSeconds = 5;
+    //
+    // The floor is 1s, not more: a -15s from the phone or the Live Activity with
+    // under 15s left legitimately reschedules a rest that ends almost at once,
+    // and a higher floor answered that with a 400 after the old timer was
+    // already cancelled, leaving the watch with nothing to poll.
+    private const int MinDurationSeconds = 1;
     private const int MaxDurationSeconds = 3600;
 
     [HttpPost("schedule")]

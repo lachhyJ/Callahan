@@ -114,6 +114,17 @@ public class RestTimerCurrentTests
     }
 
     [Fact]
+    public void AcceptsAOneSecondRescheduleButNotZero()
+    {
+        // A -15s with under 15s left reschedules a rest ending almost at once;
+        // refusing it left the watch with nothing to poll.
+        var (controller, _) = NewController();
+
+        Assert.IsNotType<BadRequestObjectResult>(controller.Schedule(Request(1)).Result);
+        Assert.IsType<BadRequestObjectResult>(controller.Schedule(Request(0)).Result);
+    }
+
+    [Fact]
     public void EchoesNextSetLoadAndDoneLabel()
     {
         var (controller, _) = NewController();
