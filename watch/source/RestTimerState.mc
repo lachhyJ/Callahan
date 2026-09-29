@@ -43,6 +43,11 @@ class RestTimerState {
     private var _lastResponseCode as Number;
 
     private var _timerId as String?;
+    // The id of the rest that last ran to zero. A poll already in flight when
+    // it finished can still come back 200 for that same timer (the server
+    // only drops it ~3s early); without this it would restart a countdown
+    // that is already over and vibrate a second time.
+    private var _finishedTimerId as String?;
     private var _endsAtUtc as Moment?;
     private var _exerciseName as String?;
     private var _targetReps as String?;
@@ -75,6 +80,7 @@ class RestTimerState {
 
         if (_state == STATE_COUNTING && remainingSeconds() <= 0) {
             _state = _doneLabel.length() > 0 ? STATE_DONE : STATE_NEXT_SET;
+            _finishedTimerId = _timerId;
             _timerId = null;
             _endsAtUtc = null;
             justFinished = true;
@@ -101,6 +107,13 @@ class RestTimerState {
             // "server stamped serverNowUtc" and "this callback observes it"
             // is well under the 1s display granularity.
             _clockOffset = result.serverNowUtc.subtract(Time.now()) as Duration;
+
+            // The timer that just finished, seen again by a stale response:
+            // not a new rest.
+            if (_state != STATE_COUNTING && _finishedTimerId != null
+                    && result.timerId.equals(_finishedTimerId)) {
+                return;
+            }
 
             // A changed timerId (or arriving from Idle) starts a fresh
             // countdown. An unchanged timerId is just a redundant confirm:
