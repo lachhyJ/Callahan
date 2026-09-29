@@ -8,9 +8,8 @@ namespace Callahan.Api.Services;
 // "your usual week" means the same thing in both. The step percentages
 // themselves live in TaperPhaseCalculator.
 //
-// Volume here counts every set with a load, warmups included - unlike the
-// Trends volume chart, which excludes them. Whether it should is an open
-// question (the audit's BUG-4); this only keeps the two taper copies agreeing.
+// Volume here counts working sets only (warmups excluded), the same
+// definition as the Trends volume chart and the load-vs-recovery chart.
 public static class TaperBaseline
 {
     // The baseline is the four weeks immediately before the taper window opens.
@@ -23,6 +22,7 @@ public static class TaperBaseline
     public static async Task<decimal> GymVolumeAsync(AppDbContext db, DateOnly from, DateOnly toExclusive)
     {
         var sets = await db.ExerciseSets
+            .WorkingSets()
             .Where(s => s.WorkoutSession.Date >= from && s.WorkoutSession.Date < toExclusive && s.DurationSeconds == null)
             .Select(s => new { s.WeightKg, s.Reps })
             .ToListAsync();

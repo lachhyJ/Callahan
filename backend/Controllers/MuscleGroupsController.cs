@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -23,6 +24,7 @@ public class MuscleGroupsController : ControllerBase
     public async Task<ActionResult<List<MuscleBalanceEntryDto>>> GetBalance([FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate)
     {
         var sets = await _db.ExerciseSets
+            .WorkingSets()
             .Where(s => s.WorkoutSession.Date >= startDate && s.WorkoutSession.Date <= endDate)
             .Include(s => s.Exercise).ThenInclude(e => e.MuscleTargets)
             .ToListAsync();

@@ -31,9 +31,7 @@ public class TrendsController : ControllerBase
         var earliestMonthStart = CalendarDates.WindowStart(today, months);
 
         // Warmups excluded, matching every other volume figure in the app —
-        // the taper section, the push/pull comparison, and the load-vs-recovery
-        // input all count working sets only. This query didn't, so the Volume
-        // chart read 3-7% high and disagreed with all of them.
+        // see ExerciseSetQueries.WorkingSets. (Counting them read 3-7% high.)
         // Time sets (DurationSeconds != null) hold Reps = 0, so they add no
         // volume - dropped alongside warmups to keep this consistent with every
         // other volume read.

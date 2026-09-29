@@ -101,6 +101,7 @@ public class WellnessController : ControllerBase
         var earliest = CalendarDates.MondayOf(today).AddDays(-7 * (weeks - 1));
 
         var gymSets = await _db.ExerciseSets
+            .WorkingSets()
             .Where(s => s.WorkoutSession.Date >= earliest && s.DurationSeconds == null)
             .Select(s => new GymSetLoad(s.WorkoutSession.Date, s.WeightKg * s.Reps))
             .ToListAsync();

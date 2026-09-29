@@ -38,7 +38,11 @@ public class MonthlyReportsController : ControllerBase
     // 3: added the Ultimate section - monthly whole-recording GPS km across
     // Ultimate activities, its per-session-type split, and a count of sessions
     // logged without GPS distance. v2 snapshots have no such field and rebuild.
-    internal const int CurrentReportSchemaVersion = 3;
+    //
+    // 4: gym volume now excludes warmup sets everywhere. The taper section's
+    // actual-reduction was computed from all sets, so v3 snapshots carry the
+    // old figure and rebuild.
+    internal const int CurrentReportSchemaVersion = 4;
 
     public MonthlyReportsController(AppDbContext db, MonthlyReportBuilder builder, TimeProvider? time = null)
     {

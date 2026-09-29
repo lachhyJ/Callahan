@@ -208,6 +208,7 @@ public class ExercisesController : ControllerBase
         // Max or a basis toward zero - excluded here, same as every other
         // strength read site.
         var sets = await _db.ExerciseSets
+            .WorkingSets()
             .Where(s => s.ExerciseId == id && s.DurationSeconds == null)
             .Include(s => s.WorkoutSession)
             .ToListAsync();

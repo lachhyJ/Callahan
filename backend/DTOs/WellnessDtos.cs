@@ -44,7 +44,7 @@ public record MetricInsightDto(
 // week with no readings.
 public record LoadTrendWeekDto(
     DateOnly WeekStart,
-    decimal GymVolume,          // Σ weight × reps, all sets
+    decimal GymVolume,          // Σ weight × reps, working sets
     decimal RunKm,
     int UltimateLivePlayMin,
     double? MeanReadiness,
