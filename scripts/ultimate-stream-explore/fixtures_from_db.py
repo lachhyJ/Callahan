@@ -12,9 +12,9 @@ classifier has to hold across WFDF-standard fields (Regionals, Nationals)
 AND the smaller non-standard fields of club-run events (Big C, played on a
 constrained oval). See the 2026-08-30 investigation.
 
-Privacy: per-game longitude shift (-mean_lon) so no field location is in the
-repo. Output-neutral - project() computes (lon - mean_lon), invariant under
-a constant shift. Latitude (~-37.8, a temperate-southern band) is untouched.
+Privacy: see anonymise.py - per-game lat/lon shift (cos(lat)-compensated) and a
+per-run startEpochMs shift, applied before the baselines are computed so they
+describe exactly what is committed.
 
     python3 fixtures_from_db.py /path/to/callahan.db
 """
@@ -25,6 +25,7 @@ import sqlite3
 import statistics
 import sys
 
+import anonymise as anon
 import make_fixtures as mf  # analyse(), built on diagnose.py's guarded primitives
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -50,6 +51,7 @@ def main():
         sys.exit("no Ultimate 'Game' activities with tracks in that DB")
 
     os.makedirs(OUT, exist_ok=True)
+    epoch_shift = anon.epoch_shift_ms()
     baselines = []
     agg = {}
     for gi, (aid, notes, tid, start_ms, spacing, raw) in enumerate(rows, 1):
@@ -59,6 +61,7 @@ def main():
         lon = [float(x) for x in s["lon"]]
         spd = [float(x) for x in s["spd"]]
 
+        lat, lon = anon.blur_track(lat, lon)
         base = mf.analyse([float(x) for x in t], lat, lon, spd)
         tag = TOUR.get(tid, "Other")
         base["game"] = gi
@@ -71,15 +74,14 @@ def main():
         for k in a:
             a[k] += base[k]
 
-        clon = statistics.mean(lon)
         payload = {
-            "startEpochMs": int(start_ms),
+            "startEpochMs": int(start_ms) + epoch_shift,
             "sampleCount": len(t),
             "medianSpacingSec": round(float(spacing), 2) if spacing is not None else None,
             "samples": {
                 "t": t,
-                "lat": [round(v, 6) for v in lat],
-                "lon": [round(v - clon, 6) for v in lon],
+                "lat": lat,
+                "lon": lon,
                 "spd": [round(v, 2) for v in spd],
             },
         }

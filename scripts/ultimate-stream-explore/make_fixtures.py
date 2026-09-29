@@ -13,11 +13,9 @@ Output: tests/Callahan.Api.Tests/Fixtures/game-0N.json.gz  (the exact wire /
         storage shape a PUT /api/activities/{id}/track will carry)
         tests/Callahan.Api.Tests/Fixtures/baselines.json    (segment.py numbers)
 
-Privacy: each game's longitudes are shifted by a per-game constant (-mean_lon)
-so the values centre on 0. This is EXACTLY output-neutral - project() computes
-`(lon - mean_lon)`, invariant under a constant shift - and the latitude (and
-therefore the cos(lat) metres scale) is left untouched. Latitude ~ -37.8 stays
-real; on its own it's a temperate-southern band, not a location.
+Privacy: see anonymise.py - per-game lat/lon shift (cos(lat)-compensated) and a
+per-run startEpochMs shift. The baselines are computed on the shifted values, so
+they describe exactly what is committed.
 
     python3 make_fixtures.py /path/to/tourney-stream.json
 """
@@ -28,6 +26,7 @@ import os
 import statistics
 import sys
 
+import anonymise as anon
 import diagnose as d  # the classifier primitives + constants, guarded against FieldGeometry.cs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -94,6 +93,7 @@ def main():
         sys.exit(__doc__)
     games = json.load(open(sys.argv[1]))
     os.makedirs(OUT, exist_ok=True)
+    epoch_shift = anon.epoch_shift_ms()
     baselines = []
     tot_on = tot_dur = tot_pts = tot_live = tot_live_dist = 0
     for gi, g in enumerate(games, 1):
@@ -108,6 +108,7 @@ def main():
         lon = [r[D["directLongitude"]] for r in keep]
         spd = [r[D["directSpeed"]] or 0.0 for r in keep]
 
+        lat, lon = anon.blur_track(lat, lon)
         base = analyse([float(x) for x in t], lat, lon, spd)
         base["game"] = gi
         base["name"] = g.get("activityName")
@@ -118,17 +119,15 @@ def main():
         tot_live += base["livePlaySeconds"]
         tot_live_dist += base["livePlayDistanceM"]
 
-        # privacy shift: centre longitudes on 0 (per-game constant, output-neutral)
-        clon = statistics.mean(lon)
         payload = {
-            "startEpochMs": t0,
+            "startEpochMs": t0 + epoch_shift,
             "sampleCount": len(keep),
             "medianSpacingSec": round(statistics.median(
                 [t[i + 1] - t[i] for i in range(len(t) - 1)]), 2),
             "samples": {
                 "t": t,
-                "lat": [round(v, 6) for v in lat],
-                "lon": [round(v - clon, 6) for v in lon],
+                "lat": lat,
+                "lon": lon,
                 "spd": [round(v, 2) for v in spd],
             },
         }
