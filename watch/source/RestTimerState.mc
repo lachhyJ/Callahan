@@ -57,9 +57,12 @@ class RestTimerState {
 
     // serverNow - deviceNow at the last successful fetch. Applied
     // to remainingSeconds() so the countdown tracks the server's clock
-    // rather than the watch's. Recomputed on every 200, including while
-    // idle, so it self-corrects — no need to persist it across a restart.
+    // rather than the watch's. Re-measured on every 200, including while
+    // idle, but only replaced on a real change (see onFetchResult) — no need
+    // to persist it across a restart.
     private var _clockOffset as Duration;
+    private var _offsetKnown as Boolean = false;
+    private const OFFSET_REPLACE_SECONDS = 2;
 
     function initialize(client as RestTimerClient) {
         _client = client;
@@ -106,7 +109,17 @@ class RestTimerState {
             // not the hardcoded test path, so the small latency between
             // "server stamped serverNowUtc" and "this callback observes it"
             // is well under the 1s display granularity.
-            _clockOffset = result.serverNowUtc.subtract(Time.now()) as Duration;
+            // Both timestamps are whole seconds (the ISO parser drops the
+            // fraction), so each measurement is off by up to a second either
+            // way. Taking every one made the countdown jump by 1s between
+            // polls; keep the first estimate and only replace it when a new
+            // one differs by a real amount of skew.
+            var measured = result.serverNowUtc.subtract(Time.now()) as Duration;
+            var drift = measured.value() - _clockOffset.value();
+            if (!_offsetKnown || drift >= OFFSET_REPLACE_SECONDS || drift <= -OFFSET_REPLACE_SECONDS) {
+                _clockOffset = measured;
+                _offsetKnown = true;
+            }
 
             // The timer that just finished, seen again by a stale response:
             // not a new rest.
