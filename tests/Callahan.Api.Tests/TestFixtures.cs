@@ -6,9 +6,14 @@ using Callahan.Api.Services;
 namespace Callahan.Api.Tests;
 
 // The real tournament games (17 across three tournaments; see baselines.json) as the exact wire/storage payload
-// of PUT /api/activities/{id}/track, longitudes shifted by a per-game constant
-// so no field location is in the repo (output-neutral: project() subtracts the
-// per-game longitude mean).
+// of PUT /api/activities/{id}/track, with the location and date blurred (scripts/ultimate-stream-explore/anonymise.py):
+//  - per game, latitude moved to a random band far from the real one and longitude re-centred on 0, with the
+//    longitude offsets rescaled by cos(old lat)/cos(new lat) so project()'s metres-per-degree is unchanged;
+//    local geometry, and so every baseline, is preserved exactly (output-neutral);
+//  - startEpochMs moved back a whole number of weeks, the same for every game (order, gaps, time-of-day and
+//    day-of-week kept, calendar date not).
+// NOT blurred: the game and tournament names in baselines.json, which still name real events, and the movement
+// itself (field size, orientation, timings). The pre-blur fixtures remain in git history.
 internal static class TestFixtures
 {
     public sealed record Baseline(
