@@ -15,7 +15,9 @@ if ! command -v security >/dev/null; then
   exit 1
 fi
 
-account=$(security find-generic-password -s "$SERVICE" 2>/dev/null | grep '"acct"' | sed -E 's/.*="(.*)"/\1/')
+# `|| true`: with pipefail, grep finding no "acct" line (no such Keychain item)
+# would otherwise abort the script right here, silently, before the check below.
+account=$(security find-generic-password -s "$SERVICE" 2>/dev/null | grep '"acct"' | sed -E 's/.*="(.*)"/\1/' || true)
 if [ -z "$account" ]; then
   echo "No Keychain item found for service '$SERVICE'. See README.md to set one up." >&2
   exit 1
