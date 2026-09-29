@@ -51,8 +51,9 @@ repo secrets; third-party actions are pinned to commit SHAs (bump deliberately).
 - Name worktrees `../Callahan-<short-name>`; `git worktree remove` after the branch ships.
 
 ## Commit conventions
-Do **not** add a `Co-Authored-By: Claude` trailer to commits in this repo — a
-deliberate deviation from the default elsewhere, confirmed 2026-08-12.
+Commit messages don't need a `Co-Authored-By: Claude` trailer. Claude Code use is
+disclosed in the README ("How this was built") rather than per commit. Early commits
+(Aug 2026) and a handful of later ones carry the trailer; history isn't rewritten.
 
 ## Project docs
 Follows the standard 4-file split (`~/.claude/rules/project-workflow.md`). For Callahan
