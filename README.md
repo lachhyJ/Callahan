@@ -24,6 +24,10 @@ history paywall and grew into the thing that measures my season. Live at
   applied, and why there's no in-app editor by design.
 - **`.ui-craft/brief.md`** — the design brief and the UI constraints learned along the way.
 
+## How this was built
+
+I used Claude Code extensively to build this project: the implementation, refactors, tests and most of the design work were done in Claude Code sessions. My part was deciding what the app should do, using it daily (gym, running, Ultimate games), and directing and reviewing the work. The checked-in `CLAUDE.md`, `.claude/skills/` and the decision log in `docs/decisions.md` are the working notes that carried context between those sessions.
+
 ## Stack
 - Backend: C# ASP.NET Core Web API (.NET 10), EF Core + SQLite
 - Frontend: React (Vite), plain CSS with a token spine (`frontend/src/index.css`)
