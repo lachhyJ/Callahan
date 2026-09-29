@@ -258,3 +258,15 @@ public class RestTimerCurrentTests
         Assert.True(pushLogger.WasCalled);
     }
 }
+
+public class RestTimerPushBodyTests
+{
+    [Theory]
+    [InlineData("5", "5 reps · Set 2/3 · Plank")]
+    [InlineData("8-10", "8-10 reps · Set 2/3 · Plank")]
+    [InlineData("8/side", "8/side reps · Set 2/3 · Plank")]
+    [InlineData("30 secs/side", "30 secs/side · Set 2/3 · Plank")]
+    [InlineData("", "Set 2/3 · Plank")]
+    public void Body_omits_or_adapts_the_rep_target(string target, string expected) =>
+        Assert.Equal(expected, Callahan.Api.Controllers.RestTimerController.PushBody(target, 2, 3, "Plank"));
+}

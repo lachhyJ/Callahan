@@ -153,7 +153,7 @@ public class RestTimerController : ControllerBase
             var pushService = scope.ServiceProvider.GetRequiredService<PushNotificationService>();
             var subscriptions = await db.PushSubscriptions.ToListAsync();
 
-            await pushService.SendToAllAsync(subscriptions, "Rest over", $"{targetReps} reps · Set {nextSetNumber}/{totalSets} · {exerciseName}");
+            await pushService.SendToAllAsync(subscriptions, "Rest over", PushBody(targetReps, nextSetNumber, totalSets, exerciseName));
         }
         catch (Exception ex)
         {
@@ -161,5 +161,15 @@ public class RestTimerController : ControllerBase
             // an uncaught exception here would just vanish with zero trace otherwise.
             _logger.LogError(ex, "Rest timer {TimerId} failed to send push notifications", timerId);
         }
+    }
+
+    // A timed hold has no rep target (the field arrives empty), and a template
+    // target can already be prose ("30 secs/side"), so "reps" is only appended to
+    // a plain count or range.
+    internal static string PushBody(string targetReps, int nextSetNumber, int totalSets, string exerciseName)
+    {
+        var target = targetReps.Trim();
+        var lead = target.Length == 0 ? "" : System.Text.RegularExpressions.Regex.IsMatch(target, @"^\d+(-\d+)?(/side)?$") ? $"{target} reps · " : $"{target} · ";
+        return $"{lead}Set {nextSetNumber}/{totalSets} · {exerciseName}";
     }
 }
