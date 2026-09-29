@@ -16,6 +16,7 @@ date is when the decision was made, not when it was written down.
 - [Security and auth](#security-and-auth)
 - [Testing and verification](#testing-and-verification)
 - [Deployment and operations](#deployment-and-operations)
+- [The Garmin watch](#the-garmin-watch)
 - [The native iOS wrap](#the-native-ios-wrap)
 
 ---
@@ -244,6 +245,24 @@ read whole, rarely queried, and whose schema is still settling. Tabular, aggrega
 filtered data gets a real child table. Don't reach for JSON just because a payload looks
 nested at first read.
 
+### Garmin's strength workouts enrich the logged session; they don't become a second record
+**2026-09-21.** Runs and Ultimate games arrive from Garmin as their own `Activity` rows,
+because the watch recording *is* the primary record. Gym sessions are the opposite: I log
+every set in the app first, and the watch only adds calories, heart rate and training load
+afterwards. So a Garmin strength activity is matched to the logged session on the same
+day that started within 45 minutes, and its figures land as nullable columns on that
+session.
+
+The alternative was a separate `Activity` row pointing at the session. That would have
+turned every "does this session have Garmin data" check into a join, for two records
+that can never meaningfully diverge — they're the same gym visit. Zero or several
+candidates in the window don't get guessed at: they go into a small review queue where I
+pick the match by hand.
+
+**How to apply:** when an external source *adds to* something the app already owns, prefer
+new nullable columns, a matcher and a queue for the ambiguous cases. Keep a separate
+table for things the external source genuinely originates.
+
 ### Discovery dump before schema, for any undocumented upstream
 **2026-08-25.** Before writing the `DailyWellness` migration I added a `--dump-wellness`
 mode to the sync script and ran it against real data for two dates. The schema — typed
@@ -414,9 +433,15 @@ discipline: the relaxation was tuned on six fixture games, then scored against e
 games that had never been used — where it moved 191→199 points and 9/11→11/11 games into
 the expected band — *before* any constant was committed.
 
-**How to apply:** `scripts/ultimate-stream-explore/holdout_check.py` exists for exactly
-this and runs against a read-only copy. Keep the held-out discipline for any future
-retune. Note that a retune needs *both* version constants bumped — the reclassify endpoint
+**How to apply:** keep the held-out discipline for any future retune. It had quietly
+lapsed once: when the fixtures grew to every game played, the tuning sweep started
+running over the same games the held-out check scored, and the check went on reporting
+its fit as independent evidence. **2026-09-29:** the split is now explicit and frozen in
+`scripts/ultimate-stream-explore/holdout.py` — two games from each tournament, drawn once
+from a fixed seed. The sweep in `diagnose.py` excludes them and `holdout_check.py` scores
+them. It's a mix rather than one whole tournament because the tournaments were played on
+different-sized fields, and a single held-out tournament would test only one kind of
+field; `--rotate` holds out a whole tournament as a separate check. Note that a retune needs *both* version constants bumped — the reclassify endpoint
 gates only on the stored classifier version, so bumping the geometry version alone will
 not trigger a non-forced reclassify.
 
@@ -753,6 +778,24 @@ volume chart needs 2dp or a degenerate 1 kg month renders a 0.25 step as 0.3 / 0
 meanings. A duplication finding is a hypothesis about meaning, and it has to be checked
 against the code before it becomes a refactor.
 
+### Screenshot tests pin the clock, then compare at zero tolerance
+**2026-09-29.** The visual regression suite compares every screen pixel for pixel
+(`maxDiffPixels: 0`). That's only possible because "today" is pinned end to end: the
+backend reads the date through an injected `TimeProvider`, which in development can be
+fixed to an instant from config; the seeded data is laid out relative to that date; and
+the browser clock and timezone are frozen to the same instant.
+
+Before this, the suite allowed 100 differing pixels per screen, because dates on the page
+moved every day. An audit tightened the tolerance to zero and found what it had been
+absorbing: a Back button missing from one screen, and a baseline that had gone stale
+without anyone noticing. A tolerance sized for date noise is also sized for a small
+button.
+
+**How to apply:** remove the source of the noise rather than tolerating it. Tolerance
+can't tell the difference you expected from the one you didn't. The pinned date also gets
+echoed back by the seed endpoint, so the suite refuses to run against a server that isn't
+pinned to its anchor.
+
 ### Frontend tests cover pure logic only, with the timezone pinned
 **2026-09-02.** vitest in the `node` environment, no jsdom and no component tests. The
 timezone is set in the npm script, not in the vite config.
@@ -828,6 +871,25 @@ second press a no-op 409, and every sync write is idempotent, so a double-press 
 overlap with the nightly run — is harmless. A 6-second client-side disable was added
 anyway, purely to stop a rage-tap. UX nicety, not a correctness guard.
 
+### A copy, edit and overwrite of the live database is a race, and it lost a workout
+**2026-09-25.** Some program changes are applied directly to the database: pull a copy of
+the live SQLite file, edit it, check it, write it back. One of these fixed a single text
+field, and a real workout logged in the gap between the pull and the write-back was
+silently overwritten by the older copy. The write succeeded and the integrity checks
+passed, because they ran on the edited copy, which could never contain data that only
+existed in the live file.
+
+It showed up the next day as a missing session. It was a whole-file replacement rather
+than a row delete, which the table's autoincrement counter proved: it had gone
+*backwards*. The session was rebuilt from a daily filesystem snapshot. I diffed the
+snapshot against the live file, generated inserts for the missing rows, and tested them
+against a scratch copy before touching production. The documented procedure now re-pulls
+immediately before overwriting, compares row counts on the tables it didn't edit, and
+refuses to overwrite if they've moved.
+
+**How to apply:** checking the thing you edited can't catch what changed in the thing you
+overwrote. And snapshots are recovery for ordinary mistakes, not just for disasters.
+
 ### Don't trust an audit tool's suggested version blindly
 **2026-08-04.** `npm audit`'s suggested fix for a routing dependency was a downgrade that
 walked into a much worse set of 14 advisories — XSS, open redirect, an RCE — several
@@ -836,6 +898,58 @@ and that one is specific to a rendering mode this app doesn't use.
 
 **How to apply:** read what's actually in the suggested target version before applying the
 fix.
+
+---
+
+## The Garmin watch
+
+A Connect IQ data field on my Forerunner shows the rest timer on the wrist during a gym
+session. It's a small surface, but its constraints are unforgiving, and every decision
+here came from one of them.
+
+### A data field inside the native activity, not a watch app
+**2026-09-20.** The field lives on a screen of the watch's built-in Strength activity,
+which I already start at the gym. The cheap option was to let the existing "rest over"
+phone notification relay to the wrist, but during a recorded activity the watch
+suppresses phone notifications entirely. A data field runs *inside* the activity, so that
+doesn't apply to it, and data fields can still make web requests and vibrate.
+
+The cost is that data fields get no input, so there's no skip or ±15s from the wrist; those
+stay on the phone. A full watch app would get buttons, but it must record its own session
+in place of the built-in activity.
+
+**How to apply:** the app type is fixed in the manifest, and a data field's shell isn't
+something a watch app builds on. So the HTTP client, the token handling and the
+poll-then-count-down state machine are separate modules, not methods on the field class.
+Those move across to a watch app intact; the shell doesn't.
+
+### The watch asks the server, and the server answers with an end time, not a duration
+**2026-09-20.** My first instinct was a direct phone-to-watch channel, to keep the timers
+in sync. Two facts made it unnecessary. The rest timer is the one piece of workout state
+that already lives on the server, since the server schedules the rest-over notification,
+while the workout itself stays on the phone until it's saved. And if the endpoint returns
+an absolute `endsAtUtc` instead of "seconds remaining", the watch counts down locally to
+that instant. A slow poll then delays only when the countdown *appears*, never when the
+alert fires. The companion route would have cost a native plugin and bought display
+speed, not accuracy. The response also carries the server's own clock reading, so the
+watch corrects for its own clock being slightly off.
+
+**How to apply:** before designing a transport for cross-device state, check whether that
+state is already server-side. And send instants, not durations: that turns a latency
+requirement into a display-quality preference, which is nearly always cheaper to meet.
+
+### Configuration that must change is compiled in, not stored as a setting
+**2026-09-26.** Connect IQ keeps an app's stored settings across reinstalls of the same
+app, by design. A token baked in as a setting's default therefore never reached a watch
+that had the app installed once already: the rebuild succeeded, the new default shipped,
+and the watch went on using the old value. A sideloaded data field also has no settings
+screen to fix it from. So the 30-day auth token is written into a generated source file as
+a compiled constant, and every rebuild replaces it completely. The server address followed
+the same route in the 2026-09 audit, from the same single variable the build script uses
+to log in.
+
+**How to apply:** on a platform where settings outlive the install, anything that has to
+change on rebuild belongs in the code, not in a setting's default.
 
 ---
 
