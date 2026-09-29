@@ -1,3 +1,5 @@
+using Callahan.Api.Services;
+
 namespace Callahan.Api.DTOs;
 
 public record ExerciseDto(int Id, string Name, string Category, string? PrimaryMuscle, bool IsAssisted, bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds, bool IsBodyweight);
@@ -38,8 +40,9 @@ public record ExerciseStatsDto(
     int PerSideDelaySeconds,
     bool IsBodyweight,
     decimal HeaviestWeightKg,
-    decimal BestEstimated1Rm,
+    decimal BestEstimated1Rm,    // 0 unless Basis is E1Rm - see LiftProgress.BasisFor
     decimal BestSetVolume,
     decimal BestSessionVolume,
     List<ChartPointDto> Chart,
-    ProgressionReadinessDto? ProgressionReadiness = null);
+    ProgressionReadinessDto? ProgressionReadiness = null,
+    string Basis = nameof(LiftBasis.E1Rm));

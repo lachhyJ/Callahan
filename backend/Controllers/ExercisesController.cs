@@ -221,7 +221,10 @@ public class ExercisesController : ControllerBase
         var progressionReadiness = await GetProgressionReadiness(id);
 
         var heaviestWeight = sets.Max(s => s.WeightKg);
-        var bestEstimated1Rm = sets.Max(s => LiftMath.Epley1Rm(s.Reps, s.WeightKg));
+        // e1RM is only meaningful on the e1RM basis: on an assisted lift (negative
+        // load) the Epley max is the wrong way round, and at bodyweight it is 0.
+        var basis = LiftProgress.BasisFor(sets.Select(s => new LiftSetInput(s.WeightKg, s.Reps)).ToList());
+        var bestEstimated1Rm = basis == LiftBasis.E1Rm ? sets.Max(s => LiftMath.Epley1Rm(s.Reps, s.WeightKg)) : 0m;
         var bestSetVolume = sets.Max(s => s.WeightKg * s.Reps);
 
         var sessionVolumes = sets
@@ -236,7 +239,7 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness, basis.ToString()));
     }
 
     // Known edge case, not solved here: assumes the exercise sits in exactly

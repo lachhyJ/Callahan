@@ -282,10 +282,12 @@ export default function ExerciseDetailPage() {
             <span className="stat-label">Heaviest weight</span>
             <span className="stat-value">{formatWeight(stats.heaviestWeightKg)} kg</span>
           </div>
-          <div className="stat-card">
-            <span className="stat-label">Best est. 1RM</span>
-            <span className="stat-value">{formatWeight(stats.bestEstimated1Rm)} kg</span>
-          </div>
+          {(stats.basis ?? 'E1Rm') === 'E1Rm' && (
+            <div className="stat-card">
+              <span className="stat-label">Best est. 1RM</span>
+              <span className="stat-value">{formatWeight(stats.bestEstimated1Rm)} kg</span>
+            </div>
+          )}
           <div className="stat-card">
             <span className="stat-label">Best set volume</span>
             <span className="stat-value">{formatWeight(stats.bestSetVolume)} kg</span>

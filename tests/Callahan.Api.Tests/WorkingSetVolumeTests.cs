@@ -66,4 +66,30 @@ public class WorkingSetVolumeTests : IDisposable
         Assert.Equal(500m, dto!.BestSessionVolume);
         Assert.Equal(100m, dto.HeaviestWeightKg);
     }
+
+    [Fact]
+    public async Task Exercise_stats_hide_e1rm_on_an_assisted_lift()
+    {
+        var ex = new Exercise { Name = "Assisted Pull-up", Category = ExerciseCategory.Pull, IsAssisted = true };
+        var session = new WorkoutSession { Date = Day };
+        session.Sets.Add(new ExerciseSet { Exercise = ex, SetOrder = 0, WeightKg = -14m, Reps = 5, SetType = SetType.Normal });
+        session.Sets.Add(new ExerciseSet { Exercise = ex, SetOrder = 1, WeightKg = -14m, Reps = 10, SetType = SetType.Normal });
+        _db.WorkoutSessions.Add(session);
+        _db.SaveChanges();
+
+        var result = await new ExercisesController(_db).GetStats(ex.Id);
+        var dto = Assert.IsType<OkObjectResult>(result.Result).Value as ExerciseStatsDto;
+        Assert.Equal("Assisted", dto!.Basis);
+        Assert.Equal(0m, dto.BestEstimated1Rm); // was -16.3: the fewer-reps set "won"
+    }
+
+    [Fact]
+    public async Task Exercise_stats_keep_e1rm_on_a_normal_lift()
+    {
+        var id = SeedSquatDay();
+        var result = await new ExercisesController(_db).GetStats(id);
+        var dto = Assert.IsType<OkObjectResult>(result.Result).Value as ExerciseStatsDto;
+        Assert.Equal("E1Rm", dto!.Basis);
+        Assert.True(dto.BestEstimated1Rm > 100m);
+    }
 }
