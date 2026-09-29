@@ -27,7 +27,6 @@ public static class DevSeed
         db.Tournaments.RemoveRange(db.Tournaments);
         db.DailyWellness.RemoveRange(db.DailyWellness);
         db.MonthlyReports.RemoveRange(db.MonthlyReports);
-        db.Finishers.RemoveRange(db.Finishers);
         db.ExerciseNotes.RemoveRange(db.ExerciseNotes);
         await db.SaveChangesAsync();
 
