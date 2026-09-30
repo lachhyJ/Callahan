@@ -21,9 +21,9 @@ A note goes straight to `reviewed/actioned/` at the end of a pass if it's
 `reviewed/pending/` until the fix ships or the backlog line is added, at
 which point move it to `actioned/` (no need to wait for the next pass).
 
-Cleanup: once a note is in `actioned/`, it can be deleted (screenshots and
-all) — the reasoning has either shipped or is now captured as its own
-backlog line, so the triage note is redundant. Keep `pending/` notes
+Cleanup: once a note is in `actioned/`, it can be deleted along with the
+screenshots it embeds (see Images below) — the reasoning has either shipped or
+is now captured as its own backlog line, so the triage note is redundant. Keep `pending/` notes
 indefinitely; they're the only remaining record of the context/screenshots
 behind an unshipped idea.
 
@@ -52,9 +52,27 @@ NAS's Syncthing trash-can versioning happened to be on).
   note2 ... dest/` — move one at a time, or use `mv -n` (no-clobber) as a
   hard backstop even after the check above, so a missed collision fails
   loudly instead of silently overwriting.
-- Images keep their original `IMG_NNNN.png` names and move alongside their
-  note — collisions there are far less likely (device-assigned sequential
-  numbers rarely repeat) but the same no-clobber discipline still applies.
+- Images keep their original `IMG_NNNN.png` names; collisions there are far less
+  likely (device-assigned sequential numbers rarely repeat) but the same
+  no-clobber discipline still applies. Where they live: see Images below.
+
+## Images
+Since 2026-09-30 Obsidian is set to "In subfolder under current folder" with a
+subfolder named `attachments`, so a screenshot pasted into a note in `triage/`
+lands in `triage/attachments/`. That subfolder is shared by every note in the
+folder, not per-note, and it does **not** follow a note when it moves.
+- **Leave images where they are when moving a note** into `reviewed/`. Wikilinks
+  resolve by filename across the vault, so `![[IMG_1487.png]]` still renders from
+  `triage/attachments/`. Don't move them just to keep a note and its images
+  together.
+- **Older notes** (pasted before that date) have their images loose in `triage/`
+  or in `reviewed/pending/` / `reviewed/actioned/`. Look in all of those, plus
+  `attachments/`, when an embed doesn't open.
+- **When deleting an `actioned/` note**, delete the images it embeds wherever they
+  are, after checking no other note still embeds the same filename
+  (`grep -r "IMG_NNNN" triage/`).
+- `triage/attachments/` itself never holds notes, and a pass never treats a file
+  in it as a new item to triage.
 
 ## Steps, per note directly in `triage/` (not already in `reviewed/`)
 
@@ -66,7 +84,7 @@ NAS's Syncthing trash-can versioning happened to be on).
    contradicting an existing decision or re-proposing something already
    settled. Do this once per pass, not once per item.
 1. Read the note in full, including any attached images (Obsidian drops
-   pasted screenshots into an assets folder next to it — check for
+   pasted screenshots into `triage/attachments/` — see Images above — check for
    `![[...]]` embeds and open them).
 2. Flesh out the idea in your own words: what's actually being asked for,
    restated clearly. **If anything is ambiguous or underspecified, ask
