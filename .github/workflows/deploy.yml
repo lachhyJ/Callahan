@@ -56,7 +56,7 @@ jobs:
     # A skipped `tests` (manual dispatch) must not skip the deploy, which is what
     # `needs` does by default; a failed one must.
     if: ${{ !cancelled() && !failure() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # Third-party actions that receive deploy credentials are pinned to a
       # commit, not a moving tag: a republished tag would otherwise run with
@@ -79,7 +79,7 @@ jobs:
   notify:
     needs: [tests, deploy]
     if: failure()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Notify monitor bot on failure
         run: |

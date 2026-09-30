@@ -21,7 +21,7 @@ on:
 
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-dotnet@v6
@@ -31,7 +31,7 @@ jobs:
         run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     defaults:
       run:
         working-directory: frontend
