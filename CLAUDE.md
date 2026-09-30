@@ -31,7 +31,7 @@ currently live.
 
 Live at `callahan.ljlab.online`.
 
-Pushes that touch only `docs/**` or `*.md` don't deploy (`paths-ignore`), so the
+Pushes that touch only `docs/**`, `.claude/**` or `*.md` don't deploy (`paths-ignore`), so the
 app's build footer shows the last *code* commit. After any push, say which commit
 the footer should now read — the latest commit, or the last non-docs one.
 

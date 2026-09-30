@@ -10,6 +10,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
+      - '.claude/**'
   workflow_dispatch:
     inputs:
       sha:
