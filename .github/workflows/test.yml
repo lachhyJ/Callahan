@@ -1,0 +1,51 @@
+name: Tests
+
+# Runs on every code push and pull request, including branches that never reach
+# main. deploy.yml also runs the backend and frontend tests as a gate on pushes
+# to main; this workflow adds lint and a production build, and gives the README
+# badge a run to point at. Playwright visual tests are not run here: their
+# snapshots are macOS renders and would not match on a Linux runner.
+on:
+  push:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Backend tests
+        run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build
