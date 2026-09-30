@@ -535,6 +535,9 @@ export default function ActiveWorkoutPage() {
     lastSyncedRestRef.current = restTimer
     if (restChanged) send()
     else activitySyncTimerRef.current = setTimeout(send, ACTIVITY_SYNC_DEBOUNCE_MS)
+  // workoutDoneLabel is a per-render function that reads only finishers and exercises,
+  // both listed here, so it is safe to leave out.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
   useEffect(() => () => clearTimeout(activitySyncTimerRef.current), [])
 

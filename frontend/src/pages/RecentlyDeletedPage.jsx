@@ -6,7 +6,7 @@ import {
   restoreWorkoutSession,
 } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
-import { workoutLabel } from '../components/SessionList'
+import { workoutLabel } from '../utils/workoutLabel'
 import { formatDateLong } from '../dateUtils'
 
 const RECOVERY_WINDOW_DAYS = 7

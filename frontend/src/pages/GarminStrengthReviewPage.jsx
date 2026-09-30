@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { dismissPendingGarminStrength, getPendingGarminStrength, getWorkoutSessions, linkPendingGarminStrength } from '../api/client'
-import { workoutLabel } from '../components/SessionList'
+import { workoutLabel } from '../utils/workoutLabel'
 import { formatDateLong, formatTimeOfDay } from '../dateUtils'
 import { formatSessionDuration } from '../utils/format'
 

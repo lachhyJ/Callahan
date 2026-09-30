@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { deleteWorkoutSession, getWorkoutSession, restoreWorkoutSession, updateWorkoutSessionName } from '../api/client'
-import { workoutLabel } from '../components/SessionList'
+import { workoutLabel } from '../utils/workoutLabel'
 import { formatDateLong, formatTimeOfDay } from '../dateUtils'
 import { SET_TYPE_LABELS, formatLoggedSet, formatSessionDuration } from '../utils/format'
 

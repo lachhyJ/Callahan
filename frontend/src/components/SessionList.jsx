@@ -2,12 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useActivityClassification } from '../hooks/useActivityClassification'
 import ActivitySessionRow from './ActivitySessionRow'
-
-export function workoutLabel(w) {
-  if (w.name) return w.name
-  if (w.templateName) return w.templateSubtitle ? `${w.templateName} — ${w.templateSubtitle}` : w.templateName
-  return w.categorySummary ?? 'Workout'
-}
+import { workoutLabel } from '../utils/workoutLabel'
 
 // Compact preview, deliberately lighter than History's full log entries —
 // used anywhere someone's just checking "what did I do that day/week"

@@ -32,6 +32,8 @@ export function AuthProvider({ children }) {
   )
 }
 
+// The hook lives beside its provider on purpose: they share one context object.
+// oxlint-disable-next-line react/only-export-components
 export function useAuth() {
   const ctx = useContext(AuthContext)
   if (!ctx) throw new Error('useAuth must be used inside AuthProvider')

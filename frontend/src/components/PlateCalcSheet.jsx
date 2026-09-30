@@ -254,6 +254,8 @@ export default function PlateCalcSheet({
   useEffect(() => {
     if (!open) return
     setSuggestionsExpanded(!anyWorkingSetConfirmed)
+  // anyWorkingSetConfirmed is deliberately not a dependency (see above).
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
   }, [open, exerciseId])
 
   useEffect(() => {

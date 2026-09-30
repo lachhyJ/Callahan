@@ -8,7 +8,7 @@ import {
   restoreActivity,
   restoreWorkoutSession,
 } from '../api/client'
-import { workoutLabel } from '../components/SessionList'
+import { workoutLabel } from '../utils/workoutLabel'
 import ActivitySessionRow from '../components/ActivitySessionRow'
 import { useActivityClassification } from '../hooks/useActivityClassification'
 import { TrashIcon } from '../icons'
