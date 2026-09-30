@@ -1,0 +1,51 @@
+name: Tests
+
+# The single definition of the test suite. It runs directly on pushes to any
+# branch except main, and on pull requests. Pushes to main reach it through
+# deploy.yml, which calls it as a reusable workflow and waits for it before
+# deploying, so the suite runs once per push rather than once here and once there.
+# Playwright visual tests are not run: their snapshots are macOS renders and
+# would not match on a Linux runner.
+on:
+  push:
+    branches-ignore:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+  workflow_call:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+      - name: Backend tests
+        run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
+      - name: Build
+        run: npm run build

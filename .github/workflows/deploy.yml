@@ -41,38 +41,22 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Tests gate a push, but deliberately NOT a workflow_dispatch. Manual
+  # dispatch is the rollback path, and it exists for exactly the case where
+  # main is broken — gating it on main's tests would block the fix. A
+  # rollback also deploys a specific old SHA, which these tests (run against
+  # the checked-out main) would not be testing anyway.
+  tests:
+    if: github.event_name == 'push'
+    uses: ./.github/workflows/test.yml
+
   deploy:
+    needs: tests
+    # A skipped `tests` (manual dispatch) must not skip the deploy, which is what
+    # `needs` does by default; a failed one must.
+    if: ${{ !cancelled() && !failure() }}
     runs-on: ubuntu-latest
     steps:
-      # Tests gate a push, but deliberately NOT a workflow_dispatch. Manual
-      # dispatch is the rollback path, and it exists for exactly the case where
-      # main is broken — gating it on main's tests would block the fix. A
-      # rollback also deploys a specific old SHA, which these tests (run against
-      # the checked-out main) would not be testing anyway.
-      - uses: actions/checkout@v7
-        if: github.event_name == 'push'
-
-      - uses: actions/setup-dotnet@v6
-        if: github.event_name == 'push'
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Backend tests
-        if: github.event_name == 'push'
-        run: dotnet test tests/Callahan.Api.Tests/Callahan.Api.Tests.csproj --nologo
-
-      - uses: actions/setup-node@v7
-        if: github.event_name == 'push'
-        with:
-          node-version: '22'
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Frontend tests
-        if: github.event_name == 'push'
-        run: npm ci && npm test
-        working-directory: frontend
-
       # Third-party actions that receive deploy credentials are pinned to a
       # commit, not a moving tag: a republished tag would otherwise run with
       # the Tailscale OAuth secret and the deploy key. Bump deliberately.
@@ -89,9 +73,15 @@ jobs:
           key: ${{ secrets.NAS_DEPLOY_SSH_KEY }}
           script: ${{ github.event.inputs.sha }}
 
+  # Separate from `deploy` so a failed test run, which skips the deploy job
+  # entirely, still notifies.
+  notify:
+    needs: [tests, deploy]
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
       - name: Notify monitor bot on failure
-        if: failure()
         run: |
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.MONITOR_BOT_TOKEN }}/sendMessage" \
             -d chat_id="${{ secrets.MONITOR_CHAT_ID }}" \
-            -d text="Callahan deploy failed: ${{ github.sha }} — https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            -d text="Callahan tests or deploy failed: ${{ github.sha }} — https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -1,5 +1,7 @@
 # Callahan
 
+[![CI](https://img.shields.io/github/actions/workflow/status/lachhyJ/Callahan/deploy.yml?branch=main&label=CI)](https://github.com/lachhyJ/Callahan/actions/workflows/deploy.yml)
+
 Self-hosted training tracker — gym workouts, running, and GPS-analysed Ultimate Frisbee
 games, with wellness data pulled from Garmin Connect. It started as a way around Hevy's
 history paywall and grew into the thing that measures my season. Live at
@@ -18,11 +20,15 @@ history paywall and grew into the thing that measures my season. Live at
   speed, why a metric that fires every month is measuring the wrong thing, why the test
   suite was mutation-checked before it was trusted, and what the native iOS wrap exists
   for. This is the most interesting file in the repo.
-- **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the four
+- **[docs/architecture.md](docs/architecture.md)** — how the pieces fit together: the
   containers, the request path, the backend layers, and the data model.
 - **[docs/program-sync.md](docs/program-sync.md)** — how program and template changes get
   applied, and why there's no in-app editor by design.
 - **`.ui-craft/brief.md`** — the design brief and the UI constraints learned along the way.
+
+## How this was built
+
+I used Claude Code extensively to build this project: the implementation, refactors, tests and most of the design work were done in Claude Code sessions. My part was deciding what the app should do, using it daily (gym, running, Ultimate games), and directing and reviewing the work. The checked-in `CLAUDE.md`, `.claude/skills/` and the decision log in `docs/decisions.md` are the working notes that carried context between those sessions.
 
 ## Stack
 - Backend: C# ASP.NET Core Web API (.NET 10), EF Core + SQLite
@@ -76,6 +82,14 @@ history predates any template.
 **iOS.** On the native build: a Live Activity for the open workout on the lock screen and
 Dynamic Island with working -15s / +15s / Skip, and a rest beep that plays through the
 silent switch, ducks your music rather than stopping it, and fires while backgrounded.
+
+## Tests
+
+- Backend: `dotnet test tests/Callahan.Api.Tests` (xUnit). Includes the 17 real GPS games as fixtures, with baselines for the on-field classifier.
+- Frontend: `cd frontend && npm test` (vitest, run under the `Australia/Melbourne` timezone the app assumes), plus `npm run lint`.
+- Visual regression: `npm run test:visual` (Playwright). The snapshots are macOS renders, so this suite runs locally only, not in CI.
+
+CI runs the backend and frontend suites, lint and a production build on every code push and pull request. Pushes to `main` run the same workflow (`.github/workflows/test.yml`, reused) as a gate: the deploy workflow refuses to deploy `main` if it fails. The badge above reflects that gated pipeline.
 
 ## Running locally (without Docker)
 
