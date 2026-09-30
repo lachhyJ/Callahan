@@ -299,7 +299,6 @@ export default function ActiveWorkoutPage() {
     const saved = loadRestTimer()
     return saved && saved.templateId === sessionKey ? saved : null
   })
-  restTimerRef.current = restTimer
   const [lbInputs, setLbInputs] = useState({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
@@ -341,6 +340,7 @@ export default function ActiveWorkoutPage() {
   const lastRestRef = useRef(null)
   // The current restTimer for effects that outlive a render (reconcile).
   const restTimerRef = useRef(null)
+  restTimerRef.current = restTimer
   // Read by the native-reconcile effect, which is registered once and so cannot
   // close over the live `exercises` value.
   const exercisesRef = useRef(null)
