@@ -1,12 +1,15 @@
 name: Tests
 
-# Runs on every code push and pull request, including branches that never reach
-# main. deploy.yml also runs the backend and frontend tests as a gate on pushes
-# to main; this workflow adds lint and a production build, and gives the README
-# badge a run to point at. Playwright visual tests are not run here: their
-# snapshots are macOS renders and would not match on a Linux runner.
+# The single definition of the test suite. It runs directly on pushes to any
+# branch except main, and on pull requests. Pushes to main reach it through
+# deploy.yml, which calls it as a reusable workflow and waits for it before
+# deploying, so the suite runs once per push rather than once here and once there.
+# Playwright visual tests are not run: their snapshots are macOS renders and
+# would not match on a Linux runner.
 on:
   push:
+    branches-ignore:
+      - main
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
@@ -14,10 +17,7 @@ on:
     paths-ignore:
       - 'docs/**'
       - '**/*.md'
-
-concurrency:
-  group: tests-${{ github.ref }}
-  cancel-in-progress: true
+  workflow_call:
 
 jobs:
   backend:
