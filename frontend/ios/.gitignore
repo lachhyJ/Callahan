@@ -12,3 +12,5 @@ capacitor-cordova-ios-plugins
 # Generated Config files
 App/App/capacitor.config.json
 App/App/config.xml
+# Local-only: hourly launchd re-sign script for the free-provisioning profile; names machine paths and the NAS bot
+App/resign.sh
