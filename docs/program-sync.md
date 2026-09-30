@@ -12,6 +12,15 @@ conversation: tell Claude what changed, Claude updates the database
 directly. This doc exists so that conversation doesn't have to start from
 scratch each time.
 
+## Two separate things share this document
+The **Program page** renders the markdown file live on every request
+(`ProgramController.GetContent()` reads and converts it each time, no cache), so
+replacing the file is all it takes for that page to update. Nothing on this page
+involves the database. This doc covers the *other* path: getting workout template
+changes (sets, reps, rest, tempo) into the DB, which is a manual conversation.
+Live rendering is deliberate: it is one small file read and one markdown pass for a
+single user, so caching would add invalidation without saving anything measurable.
+
 ## Where the source file lives
 
 The program document (markdown since 2026-09-08) is authored and stored in Nextcloud, not the
