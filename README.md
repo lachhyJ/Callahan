@@ -1,5 +1,7 @@
 # Callahan
 
+[![Tests](https://github.com/lachhyJ/Callahan/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/lachhyJ/Callahan/actions/workflows/test.yml)
+
 Self-hosted training tracker — gym workouts, running, and GPS-analysed Ultimate Frisbee
 games, with wellness data pulled from Garmin Connect. It started as a way around Hevy's
 history paywall and grew into the thing that measures my season. Live at
@@ -80,6 +82,14 @@ history predates any template.
 **iOS.** On the native build: a Live Activity for the open workout on the lock screen and
 Dynamic Island with working -15s / +15s / Skip, and a rest beep that plays through the
 silent switch, ducks your music rather than stopping it, and fires while backgrounded.
+
+## Tests
+
+- Backend: `dotnet test tests/Callahan.Api.Tests` (xUnit). Includes the 17 real GPS games as fixtures, with baselines for the on-field classifier.
+- Frontend: `cd frontend && npm test` (vitest, run under the `Australia/Melbourne` timezone the app assumes), plus `npm run lint`.
+- Visual regression: `npm run test:visual` (Playwright). The snapshots are macOS renders, so this suite runs locally only, not in CI.
+
+CI runs the backend and frontend suites, lint and a production build on every code push and pull request, and the deploy workflow refuses to deploy `main` if the tests fail.
 
 ## Running locally (without Docker)
 
