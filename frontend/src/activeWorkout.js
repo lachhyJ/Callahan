@@ -1,4 +1,5 @@
 import { createPersistedSlot } from './persistedSlot'
+import { setSlotFields } from './utils/setSlot'
 
 // The in-progress workout, so closing the tab or wandering off to the
 // dashboard mid-session doesn't lose it. Keyed by templateId ('custom' for a
@@ -414,4 +415,16 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   return upcoming
     ? { ...upcoming, restSeconds, cardRestSeconds: upcoming.restSeconds }
     : { ...sameExercise, workoutDone: true }
+}
+
+// True when the weight or reps typed into the set a rest is waiting on no
+// longer match what the rest was scheduled with (the Live Activity card and the
+// watch both read the scheduled copy). Only the same set counts: a different
+// exercise or set number is a different rest, not an edit to this one.
+export function restSlotDrifted(rest, upcoming) {
+  if (!rest || !upcoming) return false
+  if (upcoming.exerciseName !== rest.exerciseName || upcoming.nextSetNumber !== rest.nextSetNumber) return false
+  const scheduled = setSlotFields(rest)
+  const current = setSlotFields(upcoming)
+  return scheduled.targetWeight !== current.targetWeight || scheduled.enteredReps !== current.enteredReps
 }

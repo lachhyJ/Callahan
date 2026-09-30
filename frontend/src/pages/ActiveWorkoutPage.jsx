@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -537,6 +537,24 @@ export default function ActiveWorkoutPage() {
     else activitySyncTimerRef.current = setTimeout(send, ACTIVITY_SYNC_DEBOUNCE_MS)
   }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
   useEffect(() => () => clearTimeout(activitySyncTimerRef.current), [])
+
+  // Editing the weight or reps of the set you are resting for. The Live Activity
+  // follows through the sync above, but the server timer (what the Garmin field
+  // polls) was scheduled with the values at the start of the rest, and the watch
+  // ignores a poll whose timerId it already has. So reschedule the same end time
+  // under a new id once typing pauses; the watch picks the new values up as a
+  // fresh countdown that lands on the same second.
+  useEffect(() => {
+    if (!restTimer?.timerId || restTimer.endAt - Date.now() < 3000) return
+    const upcoming = nextSetDescriptor(exercises)
+    if (!restSlotDrifted(restTimer, upcoming)) return
+    const timeout = setTimeout(() => {
+      const updated = { ...restTimer, targetWeightKg: upcoming.targetWeightKg, enteredReps: upcoming.enteredReps }
+      setRestTimer({ ...updated, timerId: null })
+      resyncServerTimer(updated, restTimer.endAt)
+    }, 1000)
+    return () => clearTimeout(timeout)
+  }, [exercises, restTimer])
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }

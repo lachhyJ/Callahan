@@ -13,6 +13,7 @@ import {
   isSupersetGroupConfigOwner,
   advanceHold,
   applyNativeCompletions,
+  restSlotDrifted,
 } from './activeWorkout'
 import { installStorageStub } from './test/storageStub'
 
@@ -586,5 +587,28 @@ describe('applyNativeCompletions', () => {
   it('stops rather than saving a set with no reps at all', () => {
     const ex = [exercise('A', 60, null, [set(20, ''), set(20, '')])]
     expect(applyNativeCompletions(ex, 1)).toBeNull()
+  })
+})
+
+describe('restSlotDrifted', () => {
+  const rest = { exerciseName: 'Bench', nextSetNumber: 2, targetReps: '8', targetWeightKg: 80, enteredReps: '8' }
+
+  it('is false when the set still matches what the rest was scheduled with', () => {
+    expect(restSlotDrifted(rest, { ...rest })).toBe(false)
+  })
+
+  it('is true when the weight or the typed reps change', () => {
+    expect(restSlotDrifted(rest, { ...rest, targetWeightKg: 82.5 })).toBe(true)
+    expect(restSlotDrifted(rest, { ...rest, enteredReps: '6' })).toBe(true)
+  })
+
+  it('ignores a different exercise or set number: that is another rest, not an edit', () => {
+    expect(restSlotDrifted(rest, { ...rest, exerciseName: 'Row', targetWeightKg: 50 })).toBe(false)
+    expect(restSlotDrifted(rest, { ...rest, nextSetNumber: 3, targetWeightKg: 50 })).toBe(false)
+  })
+
+  it('is false with nothing to compare', () => {
+    expect(restSlotDrifted(null, rest)).toBe(false)
+    expect(restSlotDrifted(rest, null)).toBe(false)
   })
 })
