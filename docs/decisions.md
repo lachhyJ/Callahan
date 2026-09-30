@@ -366,7 +366,7 @@ not from how fast they're moving. An earlier speed-threshold classifier (adaptiv
 over lap average speed) was built, shipped to a branch, and thrown out.
 
 Real ultimate is mostly standing *even while on the field*: stoppages, disc check-ins,
-setting up the stack. Across six real games, median in-game speed is 0.5–1.0 m/s and only
+setting up the stack. Across the first six real games, median in-game speed is 0.5–1.0 m/s and only
 16–26% of time is above 2 m/s. On-field laps average 1.22–1.44 m/s, below the speed
 classifier's 1.5 m/s "this is play" floor, so it returned "no separation" on every single
 game. Speed magnitude cannot separate the classes and no retune fixes that.

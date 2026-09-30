@@ -42,7 +42,7 @@ The flow below is the original exploration, kept for the reasoning.
    ```
 
    Per game: on-field vs sideline minutes, points-played estimate, and a
-   one-char-per-minute ASCII timeline. First validated against 6 real games
+   one-char-per-minute ASCII timeline. First validated against the first 6 real games
    (April 2026 tournament) and the athlete's own recollection; the fixtures
    now cover every tournament game.
 
