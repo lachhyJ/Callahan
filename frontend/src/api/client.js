@@ -2,6 +2,13 @@ import { setSlotFields } from '../utils/setSlot'
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
+// What the native Live Activity buttons need to call the server themselves while
+// this webview is suspended. Null when logged out.
+export function nativeServerConfig() {
+  const token = localStorage.getItem('callahan_token')
+  return token ? { serverBase: API_BASE, authToken: token } : {}
+}
+
 async function apiFetch(path, options = {}) {
   const token = localStorage.getItem('callahan_token')
   const headers = {

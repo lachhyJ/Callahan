@@ -6,7 +6,7 @@ import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHisto
 import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { ackNativeCompletions, endWorkoutActivity, readNativeRestState, syncWorkoutActivity } from '../restActivity'
+import { ackNativeCompletions, endWorkoutActivity, noteServerTimer, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
 import { tapSetComplete } from '../haptics'
 import PushPrompt from '../components/PushPrompt'
@@ -837,6 +837,7 @@ export default function ActiveWorkoutPage() {
     // that's the one thing native itself has no server-side record of.
     try {
       const { timerId } = await scheduleRestTimer(duration, { ...descriptor, doneLabel }, isNativeAudio)
+      noteServerTimer(timerId)
       setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
     } catch {
       // Local countdown still works even if the backend push couldn't be scheduled.
@@ -1085,14 +1086,25 @@ export default function ActiveWorkoutPage() {
       if (!prev) {
         logDiary(`reconcile: no local restTimer, adopting native endAt=${native.endAt}`)
         const adopted = restTimerFromNative(current, native)
-        setRestTimer(adopted)
-        if (adopted) resyncServerTimer(adopted, native.endAt)
+        // The card's button already put this rest on the server when it could;
+        // only schedule one if it could not (no network, logged out).
+        if (adopted && native.serverTimerId) {
+          setRestTimer({ ...adopted, timerId: native.serverTimerId })
+        } else {
+          setRestTimer(adopted)
+          if (adopted) resyncServerTimer(adopted, native.endAt)
+        }
         return
       }
       if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
         logDiary(`reconcile: native endAt=${native.endAt} diverges from local endAt=${prev.endAt}, adopting native`)
-        setRestTimer({ ...prev, endAt: native.endAt, timerId: null })
-        resyncServerTimer(prev, native.endAt)
+        if (native.serverTimerId && native.serverTimerId !== prev.timerId) {
+          // A card button already moved the server's timer (and cancelled the old).
+          setRestTimer({ ...prev, endAt: native.endAt, timerId: native.serverTimerId })
+        } else {
+          setRestTimer({ ...prev, endAt: native.endAt, timerId: null })
+          resyncServerTimer(prev, native.endAt)
+        }
       }
     }
     reconcile()
@@ -1112,7 +1124,10 @@ export default function ActiveWorkoutPage() {
     if (rest.timerId) cancelRestTimer(rest.timerId).catch(() => {})
     const remaining = Math.max(1, Math.round((endAt - Date.now()) / 1000))
     scheduleRestTimer(remaining, rest, isNativeAudio)
-      .then(({ timerId }) => setRestTimer((cur) => (cur ? { ...cur, timerId } : cur)))
+      .then(({ timerId }) => {
+        noteServerTimer(timerId)
+        setRestTimer((cur) => (cur ? { ...cur, timerId } : cur))
+      })
       .catch(() => {})
   }
 

@@ -114,6 +114,14 @@ actor RestTimerStore {
     private let totalKey = "callahan.rest.totalSeconds"
     /// Sets ticked from the card that JS has not applied yet.
     private let pendingCompletionsKey = "callahan.rest.pendingCompletions"
+    /// What the card's buttons need to reach the server on their own (the Garmin
+    /// field polls it, and the webview that normally keeps it current is
+    /// suspended while the phone is locked). Handed down by JS on every sync.
+    private let serverBaseKey = "callahan.rest.serverBase"
+    private let authTokenKey = "callahan.rest.authToken"
+    /// The server-side timer that currently mirrors this rest. Absent means the
+    /// server is not known to match, so JS must re-sync it on its next run.
+    private let serverTimerIdKey = "callahan.rest.serverTimerId"
 
     var endAt: Date? {
         let t = UserDefaults.standard.double(forKey: endAtKey)
@@ -121,6 +129,72 @@ actor RestTimerStore {
     }
     var totalSeconds: Int { UserDefaults.standard.integer(forKey: totalKey) }
     var pendingCompletions: Int { UserDefaults.standard.integer(forKey: pendingCompletionsKey) }
+    var serverTimerId: String? { UserDefaults.standard.string(forKey: serverTimerIdKey) }
+
+    func setServer(base: String, token: String) {
+        UserDefaults.standard.set(base, forKey: serverBaseKey)
+        UserDefaults.standard.set(token, forKey: authTokenKey)
+    }
+
+    func setServerTimerId(_ id: String?) {
+        if let id { UserDefaults.standard.set(id, forKey: serverTimerIdKey) }
+        else { UserDefaults.standard.removeObject(forKey: serverTimerIdKey) }
+    }
+
+    /// Bring the server's pending timer into line with a rest the card just
+    /// moved, so the watch does not wait for the webview to wake. Best effort:
+    /// any failure leaves `serverTimerId` unset, and JS re-syncs on resume as it
+    /// always did. Cancels the previous timer only once the replacement exists,
+    /// so the watch is never left with nothing to poll.
+    ///
+    /// `endAt == nil` means the rest is over: just cancel.
+    func syncServerTimer(state: RestActivityAttributes.ContentState, endAt: Date?) async {
+        let old = serverTimerId
+        setServerTimerId(nil)
+        let defaults = UserDefaults.standard
+        guard let base = defaults.string(forKey: serverBaseKey), !base.isEmpty,
+              let token = defaults.string(forKey: authTokenKey), !token.isEmpty else { return }
+
+        if let endAt {
+            let remaining = max(1, Int(endAt.timeIntervalSinceNow.rounded()))
+            let body: [String: Any] = [
+                "durationSeconds": remaining,
+                "exerciseName": state.exerciseName,
+                "targetReps": state.targetReps,
+                "targetWeight": state.targetWeight,
+                "enteredReps": state.enteredReps,
+                "nextSetNumber": state.nextSetNumber,
+                "totalSets": state.totalSets,
+                // Native audio sounds the alert on the device clock; a server
+                // push as well would double it (see scheduleRestTimer's caller).
+                "suppressPush": true,
+                "doneLabel": state.doneLabel
+            ]
+            if let data = await Self.post(base: base, token: token, path: "/api/resttimer/schedule", body: body),
+               let id = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["timerId"] as? String {
+                setServerTimerId(id)
+            }
+        }
+        if let old {
+            _ = await Self.post(base: base, token: token, path: "/api/resttimer/cancel/\(old)", body: nil)
+        }
+    }
+
+    /// Short timeout: the intent is only given a few seconds of background time,
+    /// and the card has already been updated by the time this runs.
+    private static func post(base: String, token: String, path: String, body: [String: Any]?) async -> Data? {
+        guard let url = URL(string: base + path) else { return nil }
+        var req = URLRequest(url: url, timeoutInterval: 6)
+        req.httpMethod = "POST"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if let body {
+            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        }
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              let http = resp as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return nil }
+        return data
+    }
 
     func set(endAt: Date, totalSeconds: Int) {
         UserDefaults.standard.set(endAt.timeIntervalSince1970, forKey: endAtKey)
@@ -140,6 +214,7 @@ actor RestTimerStore {
     /// had been saved. Anything that ends a rest for good should use this.
     func standDown(reason: String = "RestTimerStore.standDown") {
         clear()
+        setServerTimerId(nil)
         announce(endAt: nil, reason: reason)
     }
 
@@ -171,6 +246,9 @@ actor RestTimerStore {
         set(endAt: moved, totalSeconds: total)
         announce(endAt: moved, reason: "AdjustRestIntent")
         await updateActivities(endAt: moved, totalSeconds: total)
+        if let state = Activity<RestActivityAttributes>.activities.first?.content.state {
+            await syncServerTimer(state: state, endAt: moved)
+        }
     }
 
     /// Skip ends the *rest*, not the activity: the card belongs to the workout
@@ -184,6 +262,9 @@ actor RestTimerStore {
             state.totalSeconds = 0
             await activity.update(ActivityContent(state: state, staleDate: nil))
         }
+        if let state = Activity<RestActivityAttributes>.activities.first?.content.state {
+            await syncServerTimer(state: state, endAt: nil)
+        }
     }
 
     /// Bank the completion and advance the card to the next set, starting its
@@ -193,6 +274,7 @@ actor RestTimerStore {
     func completeSet(reason: String = "CompleteSetIntent") async {
         UserDefaults.standard.set(pendingCompletions + 1, forKey: pendingCompletionsKey)
 
+        var synced: (state: RestActivityAttributes.ContentState, endAt: Date?)?
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state
             // A tick on a real set always rests, including an exercise's last one
@@ -235,14 +317,18 @@ actor RestTimerStore {
                 set(endAt: end, totalSeconds: restForTick)
                 announce(endAt: end, reason: reason)
                 await activity.update(ActivityContent(state: state, staleDate: end))
+                synced = (state, end)
             } else {
                 state.endAt = nil
                 state.totalSeconds = 0
                 clear()
                 announce(endAt: nil, reason: "\(reason) (no rest left)")
                 await activity.update(ActivityContent(state: state, staleDate: nil))
+                synced = (state, nil)
             }
         }
+        // After the card has moved, so the button still feels instant.
+        if let synced { await syncServerTimer(state: synced.state, endAt: synced.endAt) }
     }
 
     /// Moves the countdown without disturbing which set the card describes —

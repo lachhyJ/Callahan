@@ -22,7 +22,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "sync", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "end", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getState", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "ackCompletions", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "ackCompletions", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setServerTimer", returnType: CAPPluginReturnPromise)
     ]
 
     private var currentActivity: Any?
@@ -130,17 +131,22 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             let endAt = await RestTimerStore.shared.endAt
             let total = await RestTimerStore.shared.totalSeconds
             let pending = await RestTimerStore.shared.pendingCompletions
+            // Set only when a card button's own server call succeeded, so JS can
+            // adopt it instead of scheduling a duplicate.
+            let serverTimerId = await RestTimerStore.shared.serverTimerId ?? ""
             if let endAt {
                 call.resolve([
                     "active": true,
                     "endAt": endAt.timeIntervalSince1970 * 1000,
                     "totalSeconds": total,
-                    "pendingCompletions": pending
+                    "pendingCompletions": pending,
+                    "serverTimerId": serverTimerId
                 ])
             } else {
                 call.resolve([
                     "active": false,
-                    "pendingCompletions": pending
+                    "pendingCompletions": pending,
+                    "serverTimerId": serverTimerId
                 ])
             }
         }
@@ -149,6 +155,16 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
     /// JS has folded `count` card-ticked sets into its own state. Subtracting
     /// rather than zeroing means a press that lands while the app is waking is
     /// not swallowed by the acknowledgement of the ones before it.
+    /// JS reports the server-side timer it just scheduled, so a card button can
+    /// cancel it when it replaces the rest.
+    @objc func setServerTimer(_ call: CAPPluginCall) {
+        let id = call.getString("timerId")
+        Task {
+            await RestTimerStore.shared.setServerTimerId(id)
+            call.resolve()
+        }
+    }
+
     @objc func ackCompletions(_ call: CAPPluginCall) {
         let count = call.getInt("count") ?? 0
         Task {
@@ -210,13 +226,19 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             following: (call.getObject("following")).flatMap(Self.parseFollowing)
         )
         self.currentEndAt = endAt
+        let serverBase = call.getString("serverBase") ?? ""
+        let authToken = call.getString("authToken") ?? ""
         let previous = lastSync
         lastSync = Task {
             await previous?.value
+            if !serverBase.isEmpty, !authToken.isEmpty {
+                await RestTimerStore.shared.setServer(base: serverBase, token: authToken)
+            }
             if let endAt {
                 await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds)
             } else {
                 await RestTimerStore.shared.clear()
+                await RestTimerStore.shared.setServerTimerId(nil)
             }
 
             // Exactly one activity, always.

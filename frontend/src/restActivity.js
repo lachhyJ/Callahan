@@ -1,5 +1,6 @@
 import { Capacitor, registerPlugin } from '@capacitor/core'
 import { setSlotFields } from './utils/setSlot'
+import { nativeServerConfig } from './api/client'
 
 // Lock-screen / Dynamic Island rest timer. Native only: the web build has no
 // equivalent and the PWA keeps relying on the push notification alone.
@@ -39,6 +40,7 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
   if (!available) return
   const detail = rest ?? lastSet ?? {}
   RestActivity.sync({
+    ...nativeServerConfig(),
     // Fixed for the whole session — the card's header reads these instead of a
     // generic "Workout". Blank for an ad-hoc session, which falls back natively.
     templateName: templateName ?? '',
@@ -88,4 +90,11 @@ export async function readNativeRestState() {
 export function ackNativeCompletions(count) {
   if (!available || !count) return
   RestActivity.ackCompletions({ count }).catch(() => {})
+}
+
+// The server-side timer the Garmin field polls for this rest. Native keeps it so
+// a card button can replace it without waking this webview.
+export function noteServerTimer(timerId) {
+  if (!available) return
+  RestActivity.setServerTimer({ timerId: timerId ?? null }).catch(() => {})
 }
