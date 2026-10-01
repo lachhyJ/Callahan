@@ -166,7 +166,7 @@ function ExercisePlanNote({ plan, perSide }) {
         ))}
       </ol>
       <p className="plate-calc-popover-hint">
-        {plan.totalMoves} plate {plan.totalMoves === 1 ? 'change' : 'changes'}{suffix} total from here to the end.
+        {plan.totalMoves} plate {plan.totalMoves === 1 ? 'change' : 'changes'}{perSide ? ' per side' : ''} total from here to the end.
       </p>
     </div>
   )
