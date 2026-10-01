@@ -21,6 +21,8 @@ import { KEYBOARD_ACCESSORY_HEIGHT, useKeyboardInset } from '../useKeyboardInset
 
 const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
+// Manual "quick breather" (e.g. between legs on split squats): cycles on tap.
+const BREATHER_OPTIONS = [10, 20, 30]
 // How long typing in a set row must pause before the Live Activity is updated.
 const ACTIVITY_SYNC_DEBOUNCE_MS = 300
 
@@ -295,6 +297,23 @@ export default function ActiveWorkoutPage() {
   // Restored from the shared store on mount so a rest timer started here
   // keeps counting (and stays visible via the global mini bar) if the
   // athlete navigates away to check the dashboard/program and comes back.
+  const [breatherSeconds, setBreatherSeconds] = useState(() => {
+    try {
+      const saved = Number(localStorage.getItem('breatherSeconds'))
+      return BREATHER_OPTIONS.includes(saved) ? saved : 20
+    } catch {
+      return 20
+    }
+  })
+  function cycleBreather() {
+    const next = BREATHER_OPTIONS[(BREATHER_OPTIONS.indexOf(breatherSeconds) + 1) % BREATHER_OPTIONS.length]
+    setBreatherSeconds(next)
+    try {
+      localStorage.setItem('breatherSeconds', String(next))
+    } catch {
+      // Preference only; losing it just resets to 20s.
+    }
+  }
   const [restTimer, setRestTimer] = useState(() => {
     const saved = loadRestTimer()
     return saved && saved.templateId === sessionKey ? saved : null
@@ -766,6 +785,19 @@ export default function ActiveWorkoutPage() {
   // exercise + set number, so the caller can describe the next set of a
   // *different* exercise once one exercise is finished (see
   // restDescriptorAfterSet).
+  // Not tied to any set: a short, labelled countdown that reuses the normal
+  // rest path (in-app bar, beep, Live Activity) via a synthetic descriptor.
+  function startBreather(ex) {
+    startRestTimer({
+      exerciseName: `Breather · ${ex.exerciseName}`,
+      targetReps: '',
+      targetWeightKg: '',
+      enteredReps: '',
+      restSeconds: breatherSeconds,
+      isLastInSuperset: true,
+    })
+  }
+
   async function startRestTimer(descriptor) {
     if (restTimer?.timerId) {
       cancelRestTimer(restTimer.timerId).catch(() => {})
@@ -1847,6 +1879,19 @@ export default function ActiveWorkoutPage() {
                 aria-label={`Rest time for ${ex.exerciseName}`}
               />
               s
+            </span>
+            <span className="breather-control">
+              <button type="button" className="breather-btn" onClick={() => startBreather(ex)}>
+                Breather
+              </button>
+              <button
+                type="button"
+                className="breather-btn"
+                onClick={cycleBreather}
+                aria-label={`Breather length ${breatherSeconds} seconds, tap to change`}
+              >
+                {breatherSeconds}s
+              </button>
             </span>
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>

@@ -172,6 +172,7 @@ function ExercisePlanNote({ plan, perSide }) {
   )
 }
 
+const KG_PER_LB = 0.45359237
 const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
 const PROGRESSION_PERCENTAGES = [2.5, 5, 7.5, 10]
@@ -474,11 +475,14 @@ export default function PlateCalcSheet({
   const hasPrevious = typeof previousTargetKg === 'number' && !Number.isNaN(previousTargetKg) && previousTargetKg > 0
   const smallestPlate = availablePlates.length > 0 ? Math.min(...availablePlates) : 1.25
   const progressionSuggestions =
-    hasPrevious && equipmentType !== 'hidden'
+    hasPrevious
       ? PROGRESSION_PERCENTAGES.map((pct) => {
           const raw = previousTargetKg * (1 + pct / 100)
           let achievable
-          if (equipmentType === 'barbell') {
+          if (equipmentType === 'hidden') {
+            // Pin stack: no plates to round to, so the plain percentage figure.
+            achievable = Math.round(raw * 10) / 10
+          } else if (equipmentType === 'barbell') {
             achievable = barWeightKg + 2 * roundToStep((raw - barWeightKg) / 2, smallestPlate)
           } else if (equipmentType === 'added') {
             achievable = addedBaseKg + roundToStep(raw - addedBaseKg, smallestPlate)
@@ -575,6 +579,7 @@ export default function PlateCalcSheet({
                       onClick={() => onApplyWeight?.(achievable)}
                     >
                       +{pct}% → {roundDisplay(achievable)}kg
+                      {equipmentType === 'hidden' && ` / ${Math.round((achievable / KG_PER_LB) * 10) / 10}lb`}
                     </button>
                   ))}
                 </div>
