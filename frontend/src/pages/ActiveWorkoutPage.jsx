@@ -2109,21 +2109,19 @@ export default function ActiveWorkoutPage() {
           exercises. */}
       {isNativeAudio && (
         <div className="audio-diary">
-          <button
-            type="button"
-            className="rest-alert-test-link"
-            onClick={() => restAudioDiagnostics().then(setAudioDiary)}
-          >
-            Audio log
-          </button>
-          {audioDiary && (
-            <>
-              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
-              <p className="audio-diary-state">
-                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
-                {audioDiary.sessionActive ? 'active' : 'inactive'}
-              </p>
-              <div className="audio-diary-actions">
+          {/* Copy and Clear sit on the same row as the button that opens the log,
+              so they stay in reach at the foot of the page instead of below a
+              log that can run to hundreds of lines. */}
+          <div className="audio-diary-actions">
+            <button
+              type="button"
+              className="rest-alert-test-link"
+              onClick={() => restAudioDiagnostics().then(setAudioDiary)}
+            >
+              Audio log
+            </button>
+            {audioDiary && (
+              <>
                 <button
                   type="button"
                   className="rest-alert-test-link"
@@ -2142,13 +2140,13 @@ export default function ActiveWorkoutPage() {
                       setLogCopied(true)
                       setTimeout(() => setLogCopied(false), 1500)
                     } catch {
-                      /* clipboard blocked — the <pre> above is still selectable */
+                      /* clipboard blocked — the <pre> below is still selectable */
                     }
                   }}
                 >
                   {logCopied ? 'Copied' : 'Copy log'}
                 </button>
-                {/* Destructive and irreversible (wipes the diary the button above
+                {/* Destructive and irreversible (wipes the diary the Copy log button
                     reads from), so it gets its own class rather than sharing
                     rest-alert-test-link's plain-text-link look — a mis-tap here
                     costs the very log you were about to copy off the phone. */}
@@ -2159,7 +2157,16 @@ export default function ActiveWorkoutPage() {
                 >
                   Clear log
                 </button>
-              </div>
+              </>
+            )}
+          </div>
+          {audioDiary && (
+            <>
+              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
+              <p className="audio-diary-state">
+                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
+                {audioDiary.sessionActive ? 'active' : 'inactive'}
+              </p>
             </>
           )}
         </div>
