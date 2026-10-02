@@ -612,3 +612,21 @@ describe('restSlotDrifted', () => {
     expect(restSlotDrifted(rest, null)).toBe(false)
   })
 })
+
+describe('warmupSets on descriptors', () => {
+  // 2 warmups + 2 working sets: overall numbers run 1-4, warmups first.
+  function squat() {
+    const warm = (kg, done) => ({ ...set(kg, 5, done), type: 'Warmup' })
+    return [exercise('Back Squat', 150, '5', [warm(40, true), warm(60, false), set(100, 5, false), set(100, 5, false)])]
+  }
+
+  it('reports the warmup count so surfaces can show W1/2 then 1/2', () => {
+    expect(nextSetDescriptor(squat())).toMatchObject({ nextSetNumber: 2, totalSets: 4, warmupSets: 2 })
+  })
+
+  it('carries it across a warmup-to-working rollover', () => {
+    const ex = squat()
+    ex[0].sets[1].completed = true // tick the last warmup; first working set is next
+    expect(restDescriptorAfterSet(ex, 0, 1)).toMatchObject({ nextSetNumber: 3, totalSets: 4, warmupSets: 2 })
+  })
+})

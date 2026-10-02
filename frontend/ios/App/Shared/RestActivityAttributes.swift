@@ -39,6 +39,13 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
         /// still rests as normal.
         var isLastInSuperset: Bool = true
 
+        /// How many of the exercise's `totalSets` rows are warmups. They come
+        /// first, so `nextSetNumber <= warmupSets` means the next set is a
+        /// warmup, and a working set's position is its number minus this. Counts
+        /// stay overall so the card's own advance logic never needs to know.
+        /// Optional so a card synced by an older build still decodes (nil = 0).
+        var warmupSets: Int? = nil
+
         /// Non-empty once the session has nothing left to do — "Finisher?"
         /// until a finisher has been added, then "Finished". The app still
         /// counts nextSetNumber past totalSets here, so without this the card
@@ -66,6 +73,7 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
             /// Set instead of the fields above when nothing follows: the card
             /// becomes this ("Finisher?" / "Finished") rather than "Last set done".
             var doneLabel: String = ""
+            var warmupSets: Int? = nil
         }
 
         var isResting: Bool { endAt != nil }
@@ -94,13 +102,17 @@ struct RestActivityAttributes: ActivityAttributes, Equatable {
             return parts.joined(separator: " × ")
         }
 
-        /// "Next: set 3 of 5 · 115 kg × 6", or a completion note once the last
-        /// set is done — the app counts nextSetNumber past totalSets at that
+        /// "Next: set 3 of 5 · 115 kg × 6" ("Next: warmup 1 of 2 · …" for a
+        /// warmup, with working sets counted apart from warmups), or a
+        /// completion note once the last set is done — the app counts nextSetNumber past totalSets at that
         /// point, and "Next: set 6 of 5" is nonsense to read on a lock screen.
         var nextSetLine: String {
             if isWorkoutDone { return "All sets done" }
             guard nextSetNumber <= totalSets else { return "Last set done" }
-            var line = "Next: set \(nextSetNumber) of \(totalSets)"
+            let warmups = warmupSets ?? 0
+            var line = nextSetNumber <= warmups
+                ? "Next: warmup \(nextSetNumber) of \(warmups)"
+                : "Next: set \(nextSetNumber - warmups) of \(totalSets - warmups)"
             let detail = [targetWeight, targetReps.isEmpty ? "" : "\(targetReps) reps"]
                 .filter { !$0.isEmpty }
                 .joined(separator: " × ")

@@ -7,6 +7,9 @@ public record CreatePushSubscriptionRequest(string Endpoint, PushSubscriptionKey
 // TargetWeight arrives pre-formatted ("80 kg", empty for bodyweight) so the
 // watch and the Live Activity render the same string. DoneLabel is non-empty
 // only when the set just finished was the last one left in the session.
+// NextSetNumber/TotalSets count every row of the exercise, warmups first;
+// WarmupSets says how many of those are warmups, so a surface can show
+// "Warmup 1/2" then "Set 1/4" (see setPosition in the frontend's setSlot.js).
 public record RestTimerScheduleRequest(
     int DurationSeconds,
     string ExerciseName,
@@ -16,7 +19,8 @@ public record RestTimerScheduleRequest(
     bool SuppressPush = false,
     string TargetWeight = "",
     string EnteredReps = "",
-    string DoneLabel = "");
+    string DoneLabel = "",
+    int WarmupSets = 0);
 
 public record RestTimerScheduleResponse(string TimerId);
 
@@ -30,4 +34,5 @@ public record RestTimerCurrentResponse(
     DateTimeOffset ServerNowUtc,
     string TargetWeight,
     string EnteredReps,
-    string DoneLabel);
+    string DoneLabel,
+    int WarmupSets);

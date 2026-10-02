@@ -5,6 +5,7 @@ import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
 import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, noteServerTimer, readNativeRestState, syncWorkoutActivity } from '../restActivity'
@@ -215,9 +216,8 @@ function upcomingWeightsKg(sets, setIdx) {
 // Body text for the native rest-over notification: "Trap Bar Deadlift · set 4 of 5".
 function nextSetLabel(rest) {
   const parts = [rest.exerciseName]
-  if (rest.nextSetNumber && rest.totalSets && rest.nextSetNumber <= rest.totalSets) {
-    parts.push(`set ${rest.nextSetNumber} of ${rest.totalSets}`)
-  }
+  const position = setPosition(rest, true)
+  if (position) parts.push(position)
   return parts.filter(Boolean).join(' · ') || 'Next set.'
 }
 
@@ -858,6 +858,7 @@ export default function ActiveWorkoutPage() {
       following: descriptor.following ?? null,
       nextSetNumber: descriptor.nextSetNumber,
       totalSets: descriptor.totalSets,
+      warmupSets: descriptor.warmupSets ?? 0,
       restSeconds: duration,
       cardRestSeconds: descriptor.cardRestSeconds ?? duration,
       isLastInSuperset: descriptor.isLastInSuperset ?? true,

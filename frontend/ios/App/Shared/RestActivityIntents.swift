@@ -165,6 +165,7 @@ actor RestTimerStore {
                 "enteredReps": state.enteredReps,
                 "nextSetNumber": state.nextSetNumber,
                 "totalSets": state.totalSets,
+                "warmupSets": state.warmupSets ?? 0,
                 // Native audio sounds the alert on the device clock; a server
                 // push as well would double it (see scheduleRestTimer's caller).
                 "suppressPush": true,
@@ -300,6 +301,7 @@ actor RestTimerStore {
                 state.enteredReps = next.enteredReps
                 state.nextSetNumber = next.nextSetNumber
                 state.totalSets = next.totalSets
+                state.warmupSets = next.warmupSets
                 state.restSeconds = next.restSeconds
                 state.isLastInSuperset = next.isLastInSuperset
                 state.following = nil

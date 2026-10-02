@@ -15,5 +15,21 @@ export function setSlotFields(detail) {
     enteredReps: detail.holdLabel || detail.enteredReps == null ? '' : String(detail.enteredReps),
     nextSetNumber: detail.nextSetNumber ?? 1,
     totalSets: detail.totalSets ?? 1,
+    warmupSets: detail.warmupSets ?? 0,
   }
+}
+
+// Where a set sits in its exercise, warmups counted apart from working sets:
+// "W1/2" for a warmup, "2/4" for the second working set (the watch's wording;
+// `verbose` gives the sentence form the notification uses). nextSetNumber and
+// totalSets count every row, warmups first, so a working set's position is its
+// number minus the warmups. Null past the end of the exercise ("Last set done").
+export function setPosition({ nextSetNumber, totalSets, warmupSets = 0 }, verbose = false) {
+  if (!nextSetNumber || !totalSets || nextSetNumber > totalSets) return null
+  if (nextSetNumber <= warmupSets) {
+    return verbose ? `warmup ${nextSetNumber} of ${warmupSets}` : `W${nextSetNumber}/${warmupSets}`
+  }
+  const n = nextSetNumber - warmupSets
+  const total = totalSets - warmupSets
+  return verbose ? `set ${n} of ${total}` : `${n}/${total}`
 }

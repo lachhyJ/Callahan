@@ -67,7 +67,7 @@ public class RestTimerController : ControllerBase
         var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
         PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request);
 
-        LastFire = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.SuppressPush, cts.Token);
+        LastFire = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.WarmupSets, request.SuppressPush, cts.Token);
 
         return Ok(new RestTimerScheduleResponse(timerId));
     }
@@ -118,10 +118,11 @@ public class RestTimerController : ControllerBase
             _time.GetUtcNow(),
             request.TargetWeight ?? "",
             request.EnteredReps ?? "",
-            request.DoneLabel ?? ""));
+            request.DoneLabel ?? "",
+            request.WarmupSets));
     }
 
-    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, bool suppressPush, CancellationToken token)
+    private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, int warmupSets, bool suppressPush, CancellationToken token)
     {
         try
         {
@@ -158,7 +159,7 @@ public class RestTimerController : ControllerBase
             var pushService = scope.ServiceProvider.GetRequiredService<PushNotificationService>();
             var subscriptions = await db.PushSubscriptions.ToListAsync();
 
-            await pushService.SendToAllAsync(subscriptions, "Rest over", PushBody(targetReps, nextSetNumber, totalSets, exerciseName));
+            await pushService.SendToAllAsync(subscriptions, "Rest over", PushBody(targetReps, nextSetNumber, totalSets, exerciseName, warmupSets));
         }
         catch (Exception ex)
         {
@@ -171,10 +172,16 @@ public class RestTimerController : ControllerBase
     // A timed hold has no rep target (the field arrives empty), and a template
     // target can already be prose ("30 secs/side"), so "reps" is only appended to
     // a plain count or range.
-    internal static string PushBody(string targetReps, int nextSetNumber, int totalSets, string exerciseName)
+    //
+    // Warmups are counted apart from working sets: with 2 warmups before 4
+    // working sets, overall set 1 reads "Warmup 1/2" and overall set 3 "Set 1/4".
+    internal static string PushBody(string targetReps, int nextSetNumber, int totalSets, string exerciseName, int warmupSets = 0)
     {
         var target = targetReps.Trim();
         var lead = target.Length == 0 ? "" : System.Text.RegularExpressions.Regex.IsMatch(target, @"^\d+(-\d+)?(/side)?$") ? $"{target} reps · " : $"{target} · ";
-        return $"{lead}Set {nextSetNumber}/{totalSets} · {exerciseName}";
+        var position = nextSetNumber <= warmupSets
+            ? $"Warmup {nextSetNumber}/{warmupSets}"
+            : $"Set {nextSetNumber - warmupSets}/{totalSets - warmupSets}";
+        return $"{lead}{position} · {exerciseName}";
     }
 }

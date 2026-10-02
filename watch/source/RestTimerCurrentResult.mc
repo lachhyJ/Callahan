@@ -6,7 +6,8 @@ import Toybox.Time;
 // existing frontend's request bodies (see frontend/src/api/client.js) — so
 // the wire keys are camelCase, not the C# PascalCase property names. The
 // response also carries nextSetNumber/totalSets: the set coming up after the
-// rest (1-based) and its exercise's set count.
+// rest (1-based) and its exercise's set count, both counting warmups (which
+// come first); warmupSets says how many of those rows are warmups.
 //
 // PORTS to a full watch app unchanged.
 class RestTimerCurrentResult {
@@ -28,6 +29,7 @@ class RestTimerCurrentResult {
     var doneLabel as String;
     var nextSetNumber as Number;
     var totalSets as Number;
+    var warmupSets as Number;
 
     function initialize(
         timerIdIn as String,
@@ -39,7 +41,8 @@ class RestTimerCurrentResult {
         enteredRepsIn as String,
         doneLabelIn as String,
         nextSetNumberIn as Number,
-        totalSetsIn as Number
+        totalSetsIn as Number,
+        warmupSetsIn as Number
     ) {
         timerId = timerIdIn;
         endsAtUtc = endsAtUtcIn;
@@ -51,6 +54,7 @@ class RestTimerCurrentResult {
         doneLabel = doneLabelIn;
         nextSetNumber = nextSetNumberIn;
         totalSets = totalSetsIn;
+        warmupSets = warmupSetsIn;
     }
 
     // The response's endsAtUtc is ISO-8601, e.g. "2026-09-24T13:05:32.420582+00:00".
@@ -113,7 +117,8 @@ class RestTimerCurrentResult {
             stringOrEmpty(data["enteredReps"]),
             stringOrEmpty(data["doneLabel"]),
             numberOrZero(data["nextSetNumber"]),
-            numberOrZero(data["totalSets"])
+            numberOrZero(data["totalSets"]),
+            numberOrZero(data["warmupSets"])
         );
     }
 

@@ -280,4 +280,13 @@ public class RestTimerPushBodyTests
     [InlineData("", "Set 2/3 · Plank")]
     public void Body_omits_or_adapts_the_rep_target(string target, string expected) =>
         Assert.Equal(expected, Callahan.Api.Controllers.RestTimerController.PushBody(target, 2, 3, "Plank"));
+
+    // 2 warmups before 4 working sets: the exercise has 6 rows, warmups first.
+    [Theory]
+    [InlineData(1, "Warmup 1/2 · Squat")]
+    [InlineData(2, "Warmup 2/2 · Squat")]
+    [InlineData(3, "Set 1/4 · Squat")]
+    [InlineData(6, "Set 4/4 · Squat")]
+    public void Body_counts_warmups_apart_from_working_sets(int next, string expected) =>
+        Assert.Equal(expected, Callahan.Api.Controllers.RestTimerController.PushBody("", next, 6, "Squat", 2));
 }

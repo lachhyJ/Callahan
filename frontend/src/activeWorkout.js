@@ -56,6 +56,15 @@ export function earliestStartedAt(sessionKey, candidate) {
   return banked.getTime() < candidate.getTime() ? banked : candidate
 }
 
+// How many of an exercise's rows are warmups. They sit contiguously at the top
+// of the table (see setType in ActiveWorkoutPage), so the overall set number
+// alone says whether a set is a warmup: n <= warmupSets. Sent alongside
+// nextSetNumber/totalSets so every surface can show "W1/2" then "Set 1/4"
+// without the native card's number-advancing logic needing to know.
+export function warmupCount(ex) {
+  return ex.sets.filter((s) => s.type === 'Warmup').length
+}
+
 // What the Live Activity should describe when no rest is running: the first
 // exercise that still has an unticked set. Keeps the card meaningful for the
 // whole session rather than only in the gap after a set. `fromIdx` starts the
@@ -82,6 +91,7 @@ export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) 
       holdLabel: holdLabelFor(ex, ex.sets[j]),
       nextSetNumber: j + 1,
       totalSets: ex.sets.length,
+      warmupSets: warmupCount(ex),
       restSeconds: groupRestSeconds(exercises, groupStart, groupEnd, ti),
       // Whether ticking *this* set should fire a rest at all — the lock-screen
       // card needs this to make the same call the checkbox does in
@@ -367,6 +377,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
     holdLabel: holdLabelFor(ex, ex.sets[setIdx + 1]),
     nextSetNumber: setIdx + 2,
     totalSets: ex.sets.length,
+    warmupSets: warmupCount(ex),
     restSeconds,
     // Reached only when nothing else in this exercise's group (if any) has
     // work left, so this exercise's own next set is never mid-rotation.
@@ -387,6 +398,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
         holdLabel: holdLabelFor(nx, nx.sets[next.j]),
         nextSetNumber: next.j + 1,
         totalSets: nx.sets.length,
+        warmupSets: warmupCount(nx),
         restSeconds,
         isLastInSuperset: !suppressesRest(exercises, next.i),
       }

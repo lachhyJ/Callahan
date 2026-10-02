@@ -17,7 +17,7 @@ public class RestTimerWireFormatTests
             "abc123", new DateTimeOffset(2026, 9, 24, 13, 5, 32, 420, TimeSpan.Zero),
             "Back Squat", "5", 2, 4,
             new DateTimeOffset(2026, 9, 24, 13, 4, 2, TimeSpan.Zero),
-            "100 kg", "5", "");
+            "100 kg", "5", "", 1);
         return JsonSerializer.SerializeToElement(dto, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 
@@ -27,7 +27,7 @@ public class RestTimerWireFormatTests
         var keys = Serialise().EnumerateObject().Select(p => p.Name).Order().ToList();
         Assert.Equal(
             new[] { "doneLabel", "endsAtUtc", "enteredReps", "exerciseName", "nextSetNumber", "serverNowUtc",
-                    "targetReps", "targetWeight", "timerId", "totalSets" }.Order(),
+                    "targetReps", "targetWeight", "timerId", "totalSets", "warmupSets" }.Order(),
             keys);
     }
 

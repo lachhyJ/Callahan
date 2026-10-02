@@ -188,7 +188,8 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             nextSetNumber: o["nextSetNumber"] as? Int ?? 1,
             totalSets: o["totalSets"] as? Int ?? 1,
             restSeconds: o["restSeconds"] as? Int ?? 0,
-            isLastInSuperset: o["isLastInSuperset"] as? Bool ?? true
+            isLastInSuperset: o["isLastInSuperset"] as? Bool ?? true,
+            warmupSets: o["warmupSets"] as? Int
         )
     }
 
@@ -222,6 +223,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             restSeconds: call.getInt("restSeconds") ?? 0,
             enteredReps: call.getString("enteredReps") ?? "",
             isLastInSuperset: call.getBool("isLastInSuperset") ?? true,
+            warmupSets: call.getInt("warmupSets"),
             doneLabel: call.getString("doneLabel") ?? "",
             following: (call.getObject("following")).flatMap(Self.parseFollowing)
         )

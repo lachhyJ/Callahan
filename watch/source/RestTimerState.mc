@@ -56,6 +56,7 @@ class RestTimerState {
     private var _doneLabel as String = "";
     private var _nextSetNumber as Number = 0;
     private var _totalSets as Number = 0;
+    private var _warmupSets as Number = 0;
 
     // serverNow - deviceNow at the last successful fetch. Applied
     // to remainingSeconds() so the countdown tracks the server's clock
@@ -141,6 +142,7 @@ class RestTimerState {
                 _doneLabel = result.doneLabel;
                 _nextSetNumber = result.nextSetNumber;
                 _totalSets = result.totalSets;
+                _warmupSets = result.warmupSets;
             }
             return;
         }
@@ -227,16 +229,20 @@ class RestTimerState {
         return seconds > 0 ? seconds : 0;
     }
 
-    // "Bench Press 2/4": the exercise plus which of its sets is coming up
-    // (nextSetNumber is the upcoming set, not the one just finished). Plain
-    // name when the server predates the fields or the descriptor is the
-    // over-the-end one.
+    // "Bench Press 2/4" for a working set, "Bench Press W1/2" for a warmup.
+    // nextSetNumber is the upcoming set, not the one just finished, and counts
+    // every row with warmups first — so a working set's position is its number
+    // minus the warmups. Plain name when the server predates the fields or the
+    // descriptor is the over-the-end one.
     function exerciseLine() as String {
         var name = exerciseName();
         if (_totalSets <= 0 || _nextSetNumber <= 0 || _nextSetNumber > _totalSets) {
             return name;
         }
-        return name + " " + _nextSetNumber.toString() + "/" + _totalSets.toString();
+        if (_nextSetNumber <= _warmupSets) {
+            return name + " W" + _nextSetNumber.toString() + "/" + _warmupSets.toString();
+        }
+        return name + " " + (_nextSetNumber - _warmupSets).toString() + "/" + (_totalSets - _warmupSets).toString();
     }
 
     function exerciseName() as String {
