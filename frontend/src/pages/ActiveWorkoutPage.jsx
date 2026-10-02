@@ -14,7 +14,8 @@ import PushPrompt from '../components/PushPrompt'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
-import { getEquipmentType } from '../plateCalc'
+import { getAvailableDumbbells, getEquipmentType } from '../plateCalc'
+import { warmupRamp } from '../utils/warmupRamp'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock, formatLoggedSet } from '../utils/format'
 import PlateCalcSheet from '../components/PlateCalcSheet'
@@ -48,7 +49,11 @@ function kgToLbDisplay(weightKg) {
 // across both so it lines up with how sets are actually logged and matched
 // against next time's previousSets. 0-based, matching what the API returns
 // and what both history views assume (`Set {setOrder + 1}`).
-function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = false, targetDurationSeconds = null) {
+//
+// Warmup weight/reps come from a ramp off the first working row's weight
+// (`ramp` is a (workingKg, count) => [{weightKg, reps}] function) rather than
+// last session's warm-up, which goes stale as the working weight climbs.
+function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = false, targetDurationSeconds = null, ramp = null) {
   const previousByOrder = new Map(previousSets.map((p) => [p.setOrder, p]))
   const rowAt = (setOrder, defaultType) => {
     const previous = previousByOrder.get(setOrder) ?? null
@@ -80,8 +85,13 @@ function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = 
       type,
     }
   }
-  const warmupRows = Array.from({ length: warmupSets }, (_, i) => rowAt(i, 'Warmup'))
   const workingRows = Array.from({ length: targetSets }, (_, i) => rowAt(warmupSets + i, 'Normal'))
+  const suggested = !timeBased && ramp ? ramp(workingRows.find((r) => r.type !== 'Warmup')?.weightKg, warmupSets) : []
+  const warmupRows = Array.from({ length: warmupSets }, (_, i) => {
+    const row = rowAt(i, 'Warmup')
+    const s = suggested[i]
+    return s ? { ...row, weightKg: String(s.weightKg), reps: String(s.reps) } : row
+  })
   return [...warmupRows, ...workingRows]
 }
 
@@ -116,8 +126,15 @@ function exerciseFromStart(ex) {
       ex.warmupSets ?? 0,
       ex.isTimeBased ?? false,
       ex.targetDurationSeconds ?? null,
+      rampFnFor(ex),
     ),
   }
+}
+
+// The warm-up ramp for an exercise, snapped to the equipment it's loaded on.
+function rampFnFor(ex) {
+  const type = getEquipmentType(ex.exerciseId, ex.exerciseName)
+  return (workingKg, count) => warmupRamp(workingKg, count, type, getAvailableDumbbells())
 }
 
 // How many working-set rows to start with: last session's count if the
@@ -677,13 +694,24 @@ export default function ActiveWorkoutPage() {
         const firstWorkingIdx = ex.sets.findIndex((s) => s.type !== 'Warmup')
         const value = ex.sets[setIdx]?.weightKg
         if (setIdx !== firstWorkingIdx || !value) return ex
+        // Warm-ups re-ramp off the new working weight under the same rules
+        // as working sets: untouched grey rows follow, typed ones stay unless
+        // forced (a jump chip), ticked ones never move. They stay grey
+        // (not user-entered) — they're still a suggestion.
+        const ramp = rampFnFor(ex)(value, firstWorkingIdx)
         return {
           ...ex,
-          sets: ex.sets.map((s, j) =>
-            j === setIdx || s.type === 'Warmup' || s.completed || (!force && s.weightIsUserEntered)
+          sets: ex.sets.map((s, j) => {
+            if (s.type === 'Warmup') {
+              const r = ramp[j]
+              return !r || s.completed || (!force && s.weightIsUserEntered)
+                ? s
+                : { ...s, weightKg: String(r.weightKg), reps: String(r.reps), weightIsUserEntered: false }
+            }
+            return j === setIdx || s.completed || (!force && s.weightIsUserEntered)
               ? s
               : { ...s, weightKg: value, weightIsUserEntered: true }
-          ),
+          }),
         }
       })
     )
@@ -1152,9 +1180,42 @@ export default function ActiveWorkoutPage() {
     setRestTimer(null)
   }
 
+  // Changing a set's type. A row turned into a Warmup moves to the bottom of
+  // the exercise's existing warm-ups (ahead of the working sets, where the
+  // ramp and setOrder numbering assume they live), then the warm-ups re-ramp
+  // so the count change shows up straight away — by the same rules as the
+  // weight cascade: grey untouched rows follow, typed or ticked ones stay.
   function setType(exIdx, setIdx, type) {
-    updateSet(exIdx, setIdx, 'type', type)
     setOpenTypeMenu(null)
+    setExercises((prev) =>
+      prev.map((ex, i) => {
+        if (i !== exIdx) return ex
+        let sets = ex.sets.map((s, j) => (j === setIdx ? { ...s, type } : s))
+        if (type === 'Warmup' && ex.sets[setIdx].type !== 'Warmup') {
+          const moved = sets[setIdx]
+          // A blank row has nothing of the athlete's in it, so it takes the ramp.
+          const row = moved.weightKg === '' ? { ...moved, weightIsUserEntered: false } : moved
+          const rest = sets.filter((_, j) => j !== setIdx)
+          const at = rest.findLastIndex((s) => s.type === 'Warmup') + 1
+          sets = [...rest.slice(0, at), row, ...rest.slice(at)].map((s, j) => ({ ...s, setOrder: j }))
+        }
+        const warmupCount = sets.filter((s) => s.type === 'Warmup').length
+        const working = sets.find((s) => s.type !== 'Warmup')
+        const ramp = rampFnFor(ex)(working?.weightKg, warmupCount)
+        if (ramp.length === 0) return { ...ex, sets }
+        let w = -1
+        return {
+          ...ex,
+          sets: sets.map((s) => {
+            if (s.type !== 'Warmup') return s
+            const r = ramp[++w]
+            return !r || s.completed || s.weightIsUserEntered
+              ? s
+              : { ...s, weightKg: String(r.weightKg), reps: String(r.reps) }
+          }),
+        }
+      })
+    )
   }
 
   function removeSet(exIdx, setIdx) {
