@@ -14,7 +14,6 @@ import TrainingStatusBand from '../components/TrainingStatusBand'
 import { peekCache, staleWhileRevalidate } from '../swrCache'
 import {
   DEFAULT_STATUS_RANGE,
-  latestStatusRow,
   STATUS_BAND_DAYS,
   STATUS_RANGES,
   statusRange,
@@ -85,22 +84,27 @@ export default function WellnessPage() {
     <main className="page">
       <h1>Wellness</h1>
 
-      {latestStatusRow(rows) && (
-        <div className="training-status-range" role="group" aria-label="Training status range">
-          {STATUS_RANGES.map((r) => (
-            <button
-              key={r.key}
-              type="button"
-              className={`training-status-range-btn${r.key === rangeKey ? ' active' : ''}`}
-              aria-pressed={r.key === rangeKey}
-              onClick={() => chooseRange(r.key)}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
+      {rows && (
+        <TrainingStatusBand
+          rows={rows}
+          days={statusRange(rangeKey).days}
+          headExtra={
+            <div className="training-status-range" role="group" aria-label="Training status range">
+              {STATUS_RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  className={`training-status-range-btn${r.key === rangeKey ? ' active' : ''}`}
+                  aria-pressed={r.key === rangeKey}
+                  onClick={() => chooseRange(r.key)}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          }
+        />
       )}
-      {rows && <TrainingStatusBand rows={rows} days={statusRange(rangeKey).days} />}
 
       {error && <p className="error">{error}</p>}
       {!error && !loaded && <p>Loading…</p>}

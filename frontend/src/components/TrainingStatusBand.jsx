@@ -21,7 +21,10 @@ const LIST_RUNS = 6
 //
 // `compact` is the dashboard card's version: status name and band only, no
 // load line, axis or run list - the card links through to the full view.
-export default function TrainingStatusBand({ rows, days, compact = false }) {
+//
+// `headExtra` is a node rendered at the right end of the status row, for the
+// range switch on /wellness.
+export default function TrainingStatusBand({ rows, days, compact = false, headExtra = null }) {
   const [showAll, setShowAll] = useState(false)
 
   const latest = latestStatusRow(rows)
@@ -56,6 +59,7 @@ export default function TrainingStatusBand({ rows, days, compact = false }) {
         {currentRun && (
           <span className="training-status-since">since {formatDateRange(currentRun.start, currentRun.start)}</span>
         )}
+        {headExtra}
       </div>
       {acwr && !compact && <p className="training-status-acwr">{acwr}</p>}
 

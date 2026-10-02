@@ -5134,8 +5134,9 @@ td {
    beside it, and centring put the small text visibly off the name's line. */
 .training-status-head {
   display: flex;
+  flex-wrap: wrap; /* a long status + date pushes the range switch to its own line */
   align-items: baseline;
-  gap: var(--space-xs);
+  gap: 0 var(--space-xs);
 }
 
 .training-status-dot {
@@ -5214,29 +5215,33 @@ td {
   color: var(--text);
 }
 
-/* Range switch (4w / 12w / 6m) above the band, like Garmin Connect's. */
+/* Range switch (4w / 12w / 6m): small inline text at the right of the status
+   row. The buttons are 44px tall for touch, but the negative block margin takes
+   that back out of layout so the row stays as tall as the status name. The
+   active range is marked by weight as well as colour. The 44px-wide buttons
+   centre their text, so the group is pulled out by the inset to line the last
+   label up with the band's right edge. */
 .training-status-range {
   display: flex;
-  margin: 0 0 var(--space-md);
-  padding: 2px;
-  background: var(--code-bg);
-  border-radius: var(--radius-md);
+  align-self: center;
+  margin-left: auto;
+  margin-right: -10px;
 }
 
 .training-status-range-btn {
-  flex: 1;
-  min-height: 44px;
+  min-width: 44px;
+  height: 44px;
+  margin-block: -8px;
+  padding: 0 var(--space-xs);
   border: 0;
-  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text);
-  font-size: var(--text-base);
+  color: var(--text-tertiary);
+  font-size: var(--text-sm);
   touch-action: manipulation;
   user-select: none;
 }
 
 .training-status-range-btn.active {
-  background: var(--border-subtle);
   color: var(--text-h);
   font-weight: var(--font-semibold);
 }
