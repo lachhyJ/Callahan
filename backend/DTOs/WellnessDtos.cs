@@ -90,3 +90,15 @@ public record UpsertDailyWellnessRequest(
     int? ChronicLoad = null,
     double? AcwrRatio = null,
     double? Vo2Max = null);
+
+// Merge-only counterpart for backfilling the Training Status columns without
+// re-sending (and so possibly nulling) the rest of a day's row. Unlike the PUT
+// above, null here means "leave as it is", never "clear it".
+public record PatchTrainingStatusRequest(
+    DateOnly Date,
+    int? TrainingStatusCode = null,
+    string? TrainingStatusPhrase = null,
+    int? AcuteLoad = null,
+    int? ChronicLoad = null,
+    double? AcwrRatio = null,
+    double? Vo2Max = null);

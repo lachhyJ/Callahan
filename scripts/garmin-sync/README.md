@@ -271,6 +271,18 @@ against older data before going wider. If Garmin rate-limits mid-run, the
 script stops and logs the exact `--wellness-start` date to resume from,
 rather than restarting the whole backfill from scratch.
 
+**Backfilling just Training Status:** add `--wellness-status-only` to backfill
+the Training Status columns (code, phrase, acute/chronic load, ACWR, VO2max)
+without a full wellness re-pull. It makes one Garmin call per day instead of
+five and writes through `PATCH /api/wellness/training-status`, which only sets
+the fields it's sent — a day's sleep / HRV / readiness are never touched, which
+a full `--wellness` run would rewrite (and null, if a call came back empty).
+Use it whenever a new column needs filling for past days.
+
+```bash
+sudo docker run --rm --network callahan_default --env-file /mnt/tank/callahan-data/garmin-sync.env -e HOME=/data -v /mnt/tank/callahan-data/garmin-sync-state:/data callahan-garmin-sync --wellness --wellness-status-only --wellness-start 2026-01-01
+```
+
 ## First run / sanity check
 
 ```bash

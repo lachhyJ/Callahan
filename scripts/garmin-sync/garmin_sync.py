@@ -194,6 +194,10 @@ def put_wellness(api_base, token, payload):
     return callahan_request("PUT", api_base, "/api/wellness", token, payload)
 
 
+def patch_training_status(api_base, token, payload):
+    return callahan_request("PATCH", api_base, "/api/wellness/training-status", token, payload)
+
+
 def put_laps(api_base, token, callahan_activity_id, laps):
     return callahan_request("PUT", api_base, f"/api/activities/{callahan_activity_id}/laps", token, {"laps": laps})
 
@@ -677,6 +681,53 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
         + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
 
 
+def cmd_sync_training_status(client, days, start, dry_run, api_base):
+    """Backfill only the Training Status columns: one Garmin call per day (vs five
+    for --wellness) and a merge-only PATCH, so existing sleep / HRV / readiness on
+    a day's row can't be touched. Same --wellness-days / --wellness-start window
+    and resume behaviour as cmd_sync_wellness."""
+    token = None if dry_run else callahan_token(api_base)
+    synced, empty, skipped, last_ok_date = 0, 0, 0, None
+
+    for d in wellness_date_range(days, start):
+        cdate = d.isoformat()
+        try:
+            status = parse_training_status(client.get_training_status(cdate) or {}, cdate)
+        except GarminConnectTooManyRequestsError as e:
+            log(f"Garmin rate-limited training status fetch at {cdate}: {e}. Stopping "
+                f"({'last synced date: ' + last_ok_date if last_ok_date else 'nothing synced yet'}).")
+            break
+        except Exception as e:
+            log(f"  get_training_status failed for {cdate}: {type(e).__name__}: {e}")
+            skipped += 1
+            time.sleep(1.0)
+            continue
+
+        # A day Garmin has no status for is a no-op, not an error: nothing to
+        # patch (the server would 204 and create no row, so don't send it).
+        if all(v is None for v in status.values()):
+            empty += 1
+            last_ok_date = cdate
+        elif dry_run:
+            print(json.dumps({"date": cdate, **status}, indent=2))
+            synced += 1
+        else:
+            try:
+                _, token = patch_training_status(api_base, token, {"date": cdate, **status})
+                log(f"Patched training status for {cdate}")
+                synced += 1
+                last_ok_date = cdate
+            except requests.HTTPError as e:
+                log(f"Failed to patch training status for {cdate}: {e}")
+                skipped += 1
+
+        time.sleep(1.0)
+
+    resume_from = (date.fromisoformat(last_ok_date) + timedelta(days=1)).isoformat() if last_ok_date else None
+    log(f"Training status done: {synced} patched, {empty} with no status, {skipped} skipped."
+        + (f" Resume with --wellness-start {resume_from}." if start and resume_from else ""))
+
+
 def cmd_sync(client, days, dry_run, api_base, sync_laps=True, force_laps=False,
              sync_tracks=True, force_tracks=False, start=None, end=None):
     if start and end:
@@ -816,6 +867,10 @@ def main():
                               "of --wellness-days. For a one-off manual backfill — never put this on cron. "
                               "Resumable: if a run stops early (e.g. rate-limited), it logs the date to resume "
                               "from.")
+    parser.add_argument("--wellness-status-only", action="store_true",
+                         help="With --wellness: backfill only Training Status (code, phrase, load, ACWR, VO2max). "
+                              "One Garmin call per day instead of five, written with a merge-only PATCH that "
+                              "leaves sleep/HRV/readiness untouched. Use with --wellness-start for a backfill.")
     parser.add_argument("--dump-laps", action="store_true",
                          help="Print raw lap/split data for one running activity and exit, no syncing.")
     parser.add_argument("--dump-stream", action="store_true",
@@ -850,6 +905,9 @@ def main():
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
+    if args.wellness_status_only and not args.wellness:
+        # Otherwise it would silently fall through to the default activity sync.
+        parser.error("--wellness-status-only requires --wellness")
 
     api_base = os.environ.get("CALLAHAN_API_BASE", "http://localhost:8080")
 
@@ -863,6 +921,8 @@ def main():
     elif args.dump_wellness:
         cdate = args.wellness_date or (date.today() - timedelta(days=1)).isoformat()
         cmd_dump_wellness(client, cdate)
+    elif args.wellness and args.wellness_status_only:
+        cmd_sync_training_status(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.wellness:
         cmd_sync_wellness(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.dump_laps:

@@ -189,5 +189,46 @@ public class WellnessController : ControllerBase
         return Ok(ToDto(existing));
     }
 
+    // Backfill path for the Training Status columns only. Writes just the fields
+    // the request carries (null = leave alone), so a status-only backfill can
+    // never null out a day's sleep / HRV / readiness the way a full PUT would.
+    // A request with nothing to write is a no-op and creates no row.
+    [HttpPatch("training-status")]
+    public async Task<ActionResult<DailyWellnessDto>> PatchTrainingStatus(PatchTrainingStatusRequest request)
+    {
+        if (request.Date > _time.Today())
+        {
+            return BadRequest(new { error = "Date cannot be in the future." });
+        }
+
+        if (request.TrainingStatusCode is null && request.TrainingStatusPhrase is null
+            && request.AcuteLoad is null && request.ChronicLoad is null
+            && request.AcwrRatio is null && request.Vo2Max is null)
+        {
+            return NoContent();
+        }
+
+        var existing = await _db.DailyWellness.FirstOrDefaultAsync(w => w.Date == request.Date);
+        if (existing is null)
+        {
+            existing = new DailyWellness { Date = request.Date, CreatedAt = DateTime.UtcNow };
+            _db.DailyWellness.Add(existing);
+        }
+        else
+        {
+            existing.UpdatedAt = DateTime.UtcNow;
+        }
+
+        if (request.TrainingStatusCode is not null) existing.TrainingStatusCode = request.TrainingStatusCode;
+        if (request.TrainingStatusPhrase is not null) existing.TrainingStatusPhrase = request.TrainingStatusPhrase;
+        if (request.AcuteLoad is not null) existing.AcuteLoad = request.AcuteLoad;
+        if (request.ChronicLoad is not null) existing.ChronicLoad = request.ChronicLoad;
+        if (request.AcwrRatio is not null) existing.AcwrRatio = request.AcwrRatio;
+        if (request.Vo2Max is not null) existing.Vo2Max = request.Vo2Max;
+
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(existing));
+    }
+
     private static DailyWellnessDto ToDto(DailyWellness w) => WellnessMapping.ToDto(w);
 }
