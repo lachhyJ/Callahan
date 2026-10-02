@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
+import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
 import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
@@ -478,8 +479,9 @@ export default function ActiveWorkoutPage() {
     // Derived from an absolute end timestamp, not decremented per tick — so
     // whenever `now` catches up (even after a long throttled gap), the
     // remaining time is always correct rather than having drifted.
-    const remaining = Math.round((restTimer.endAt - now.getTime()) / 1000)
-    if (remaining <= 0) {
+    // Exact, not rounded: rounding cleared the rest up to 0.5s early, which
+    // cancelled a native beep that hadn't started sounding yet (restExpiry.js).
+    if (isRestOver(restTimer.endAt, now.getTime())) {
       // Web only: this effect advances just while the tab is visible, so a
       // backgrounded phone relies on the push. Natively the beep was armed on
       // the audio clock when the rest started and has already sounded — playing
@@ -518,7 +520,12 @@ export default function ActiveWorkoutPage() {
       // this runs.
       logDiary(`schedule effect: restTimer cleared, cancelling (was armed for endAt=${lastRestRef.current?.endAt ?? 'none'})`)
       clearRestTimerStore()
-      cancelScheduledBeep()
+      // Say which rest this cancel is for. A webview resuming from suspension
+      // still holds the previous, long-expired rest, and clears it on its first
+      // tick; without the endAt that cancel also killed a rest the Live Activity
+      // had just started natively. With none armed locally (first mount) pass 0,
+      // so native ignores it if it holds a rest and reconcile adopts that one.
+      cancelScheduledBeep({ endAt: lastRestRef.current?.endAt ?? 0, caller: 'schedule effect' })
     }
   }, [restTimer, sessionKey])
 
@@ -1346,7 +1353,7 @@ export default function ActiveWorkoutPage() {
     // sets restTimer to null before navigating away, so that effect's else
     // branch never runs and the natively-armed beep stayed live. It then went
     // off minutes later, after the session had already been saved.
-    cancelScheduledBeep()
+    cancelScheduledBeep({ caller: 'saveSession/discardSession' })
     setError(null)
     setSaving(true)
     try {
@@ -1400,7 +1407,7 @@ export default function ActiveWorkoutPage() {
     // sets restTimer to null before navigating away, so that effect's else
     // branch never runs and the natively-armed beep stayed live. It then went
     // off minutes later, after the session had already been saved.
-    cancelScheduledBeep()
+    cancelScheduledBeep({ caller: 'saveSession/discardSession' })
     clearActiveWorkout()
     endWorkoutActivity()
     navigate('/')

@@ -72,9 +72,11 @@ export async function restAudioDiagnostics({ clear = false } = {}) {
   }
 }
 
-export function cancelScheduledBeep() {
+// `endAt` names the rest being cancelled, so native can ignore a cancel for a
+// rest that is no longer the one it holds. Omit it to cancel unconditionally.
+export function cancelScheduledBeep({ endAt, caller } = {}) {
   if (!isNative) return
-  RestAudio.cancel().catch(() => {})
+  RestAudio.cancel({ endAt, caller }).catch(() => {})
 }
 
 // Writes a line into the native diary (see restAudioDiagnostics above),

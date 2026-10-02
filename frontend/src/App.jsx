@@ -4,7 +4,8 @@ import { AuthProvider, useAuth } from './auth/AuthContext'
 import { daysUntil, getNativeStatus } from './nativeInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
-import { playBeepNow } from './audio'
+import { isNativeAudio, playBeepNow } from './audio'
+import { isRestOver } from './restExpiry'
 import { getHealth } from './api/client'
 import { formatClock } from './utils/format'
 import { startUsageTracking, trackAction, trackRoute } from './usage'
@@ -167,11 +168,12 @@ function useGlobalRestTimer() {
 
   useEffect(() => {
     if (!isTicking) return
-    const remaining = Math.round((restTimer.endAt - now) / 1000)
-    if (remaining <= 0) {
+    if (isRestOver(restTimer.endAt, now)) {
       // In-app beep when the rest ends on another in-app screen. Foreground
       // only (this ticks only while visible); backgrounded relies on the push.
-      playBeepNow()
+      // Web only: natively the beep was armed on the audio clock and has already
+      // sounded, so playing it here doubled it when the app came to the front.
+      if (!isNativeAudio) playBeepNow()
       clearRestTimer()
       setRestTimer(null)
     }

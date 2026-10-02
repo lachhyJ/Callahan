@@ -212,6 +212,7 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
     /// sounding. Beyond this it is JS reconciling a rest that already beeped
     /// while backgrounded, not a rest coming due.
     private static let staleScheduleSeconds: TimeInterval = 2.0
+    private static let staleCancelToleranceMs: Double = 1000
     private static let notificationID = "callahan.rest.over"
 
     override public func load() {
@@ -812,8 +813,23 @@ public class RestAudioPlugin: CAPPlugin, CAPBridgedPlugin {
         deactivate()
     }
 
+    /// `endAt` (ms) is the rest the caller means to cancel. A webview waking from
+    /// suspension cancels the *previous* rest it still remembers, which would
+    /// otherwise stand down a newer one native armed meanwhile (Live Activity
+    /// "Set done"): seen 2026-10-02 as a fresh 120s rest killed 1.2s after it
+    /// started. Native holding a rest that ends later than the cancel's means a
+    /// newer rest exists, so the cancel is stale. Earlier is not stale: that is a
+    /// card -15s that JS has not caught up with yet. No `endAt` cancels outright.
     @objc func cancel(_ call: CAPPluginCall) {
-        standDown(reason: "cancel (JS)")
+        let caller = call.getString("caller") ?? "?"
+        if let cancelMs = call.getDouble("endAt"), let armed = armedEndAt,
+           armed.timeIntervalSince1970 * 1000 > cancelMs + Self.staleCancelToleranceMs {
+            record(String(format: "ignored stale cancel (JS: %@, for endAt=%.0f, armed=%.0f)",
+                          caller, cancelMs, armed.timeIntervalSince1970 * 1000))
+            call.resolve()
+            return
+        }
+        standDown(reason: "cancel (JS: \(caller))")
         call.resolve()
     }
 
