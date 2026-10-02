@@ -95,7 +95,7 @@ class CallahanDataField extends WatchUi.DataField {
         var secondsStr = seconds < 10 ? "0" + seconds : seconds.toString();
         var clock = minutes.toString() + ":" + secondsStr;
 
-        drawLabeledValue(dc, LABEL, clock, CLOCK_FONT_CANDIDATES, _state.exerciseName());
+        drawLabeledValue(dc, LABEL, clock, CLOCK_FONT_CANDIDATES, _state.exerciseLine());
     }
 
     // Nothing loaded (fresh exercise, bodyweight with no reps typed) falls
@@ -103,9 +103,9 @@ class CallahanDataField extends WatchUi.DataField {
     private function drawNextSet(dc as Dc) as Void {
         var load = _state.nextSetLoad();
         if (load.length() > 0) {
-            drawLabeledValue(dc, NEXT_LABEL, load, TEXT_VALUE_FONT_CANDIDATES, _state.exerciseName());
+            drawLabeledValue(dc, NEXT_LABEL, load, TEXT_VALUE_FONT_CANDIDATES, _state.exerciseLine());
         } else {
-            drawLabeledValue(dc, NEXT_LABEL, _state.exerciseName(), TEXT_VALUE_FONT_CANDIDATES, null);
+            drawLabeledValue(dc, NEXT_LABEL, _state.exerciseLine(), TEXT_VALUE_FONT_CANDIDATES, null);
         }
     }
 

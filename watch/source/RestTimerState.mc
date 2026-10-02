@@ -54,6 +54,8 @@ class RestTimerState {
     private var _targetWeight as String = "";
     private var _enteredReps as String = "";
     private var _doneLabel as String = "";
+    private var _nextSetNumber as Number = 0;
+    private var _totalSets as Number = 0;
 
     // serverNow - deviceNow at the last successful fetch. Applied
     // to remainingSeconds() so the countdown tracks the server's clock
@@ -140,6 +142,8 @@ class RestTimerState {
                 _targetWeight = result.targetWeight;
                 _enteredReps = result.enteredReps;
                 _doneLabel = result.doneLabel;
+                _nextSetNumber = result.nextSetNumber;
+                _totalSets = result.totalSets;
             }
             return;
         }
@@ -213,6 +217,18 @@ class RestTimerState {
         var diff = (_endsAtUtc as Moment).subtract(correctedNow) as Duration;
         var seconds = diff.value();
         return seconds > 0 ? seconds : 0;
+    }
+
+    // "Bench Press 2/4": the exercise plus which of its sets is coming up
+    // (nextSetNumber is the upcoming set, not the one just finished). Plain
+    // name when the server predates the fields or the descriptor is the
+    // over-the-end one.
+    function exerciseLine() as String {
+        var name = exerciseName();
+        if (_totalSets <= 0 || _nextSetNumber <= 0 || _nextSetNumber > _totalSets) {
+            return name;
+        }
+        return name + " " + _nextSetNumber.toString() + "/" + _totalSets.toString();
     }
 
     function exerciseName() as String {

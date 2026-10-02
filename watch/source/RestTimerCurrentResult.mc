@@ -5,7 +5,8 @@ import Toybox.Time;
 // ASP.NET Core's default System.Text.Json policy is camelCase, matching the
 // existing frontend's request bodies (see frontend/src/api/client.js) — so
 // the wire keys are camelCase, not the C# PascalCase property names. The
-// response also carries nextSetNumber/totalSets, which nothing here reads yet.
+// response also carries nextSetNumber/totalSets: the set coming up after the
+// rest (1-based) and its exercise's set count.
 //
 // PORTS to a full watch app unchanged.
 class RestTimerCurrentResult {
@@ -25,6 +26,8 @@ class RestTimerCurrentResult {
     var targetWeight as String;
     var enteredReps as String;
     var doneLabel as String;
+    var nextSetNumber as Number;
+    var totalSets as Number;
 
     function initialize(
         timerIdIn as String,
@@ -34,7 +37,9 @@ class RestTimerCurrentResult {
         serverNowUtcIn as Moment,
         targetWeightIn as String,
         enteredRepsIn as String,
-        doneLabelIn as String
+        doneLabelIn as String,
+        nextSetNumberIn as Number,
+        totalSetsIn as Number
     ) {
         timerId = timerIdIn;
         endsAtUtc = endsAtUtcIn;
@@ -44,6 +49,8 @@ class RestTimerCurrentResult {
         targetWeight = targetWeightIn;
         enteredReps = enteredRepsIn;
         doneLabel = doneLabelIn;
+        nextSetNumber = nextSetNumberIn;
+        totalSets = totalSetsIn;
     }
 
     // The response's endsAtUtc is ISO-8601, e.g. "2026-09-24T13:05:32.420582+00:00".
@@ -104,8 +111,14 @@ class RestTimerCurrentResult {
             serverNowUtc,
             stringOrEmpty(data["targetWeight"]),
             stringOrEmpty(data["enteredReps"]),
-            stringOrEmpty(data["doneLabel"])
+            stringOrEmpty(data["doneLabel"]),
+            numberOrZero(data["nextSetNumber"]),
+            numberOrZero(data["totalSets"])
         );
+    }
+
+    private static function numberOrZero(value as Object?) as Number {
+        return value instanceof Number ? value : 0;
     }
 
     // Tolerates a backend deployed before these fields existed.
