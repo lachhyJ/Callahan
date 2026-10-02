@@ -112,6 +112,7 @@ WELLNESS_PROBES = [
     "get_rhr_day",
     "get_stats",
     "get_body_battery",
+    "get_training_status",
 ]
 
 CALLAHAN_TOKEN_CACHE = Path(os.environ.get("CALLAHAN_TOKEN_CACHE", "~/.callahan_sync_token")).expanduser()
