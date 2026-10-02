@@ -2116,9 +2116,9 @@ export default function ActiveWorkoutPage() {
             <button
               type="button"
               className="rest-alert-test-link"
-              onClick={() => restAudioDiagnostics().then(setAudioDiary)}
+              onClick={() => (audioDiary ? setAudioDiary(null) : restAudioDiagnostics().then(setAudioDiary))}
             >
-              Audio log
+              {audioDiary ? 'Hide log' : 'Audio log'}
             </button>
             {audioDiary && (
               <>
