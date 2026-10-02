@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getActivities, getLatestWellness, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { staleWhileRevalidate } from '../swrCache'
-import { buildDailySeries, wellnessRange } from '../wellnessMetrics'
+import { wellnessRange } from '../wellnessMetrics'
+import { STATUS_BAND_DAYS } from '../trainingStatus'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
@@ -107,7 +108,7 @@ export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(null)
   const [wellness, setWellness] = useState(null)
   const [wellnessInsight, setWellnessInsight] = useState(null)
-  const [readinessSeries, setReadinessSeries] = useState(null)
+  const [wellnessRows, setWellnessRows] = useState(null)
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
@@ -128,11 +129,11 @@ export default function DashboardPage() {
     const handle = runIdle(() => {
       staleWhileRevalidate('wellness-latest', getLatestWellness, setWellness).catch(() => {})
       staleWhileRevalidate('wellness-insight', getWellnessInsight, setWellnessInsight).catch(() => {})
-      const { start, end } = wellnessRange(30)
+      const { start, end } = wellnessRange(STATUS_BAND_DAYS)
       staleWhileRevalidate(
-        `wellness-readiness-${start}-${end}`,
+        `wellness-status-${start}-${end}`,
         () => getWellness(start, end),
-        (rows) => setReadinessSeries(buildDailySeries(rows, 30).byKey.readiness),
+        setWellnessRows,
       ).catch(() => {})
       getPendingGarminStrength().then((items) => setPendingGarminCount(items.length)).catch(() => {})
     })
@@ -382,6 +383,12 @@ export default function DashboardPage() {
         })}
       </div>
 
+      {wellness && (
+        <div className="section-gap">
+          <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} rows={wellnessRows} />
+        </div>
+      )}
+
       <div className="quick-links-grid section-gap">
         {QUICK_LINKS.map(({ to, label, Icon }) => (
           <Link key={to} to={to} className="quick-link-tile" onClick={() => trackAction('quick-link', to)}>
@@ -397,12 +404,6 @@ export default function DashboardPage() {
             {MONTH_NAMES[unviewedReport.month - 1]} {unviewedReport.year} report is ready — {unviewedReport.headlineVerdict}
           </Link>
           <button type="button" className="secondary-btn" onClick={dismissUnviewedReport}>Dismiss</button>
-        </div>
-      )}
-
-      {wellness && (
-        <div className="section-gap">
-          <WellnessCard wellness={wellness} todayIso={todayIso} insight={wellnessInsight} readinessSeries={readinessSeries} />
         </div>
       )}
 

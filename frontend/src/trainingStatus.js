@@ -1,5 +1,9 @@
 import { isoDate } from './dateUtils'
 
+// How far back the status band reaches, on /wellness and the dashboard card
+// alike - the 12 weeks Garmin Connect shows, so the band reads the same everywhere.
+export const STATUS_BAND_DAYS = 84
+
 // Garmin's Training Status, keyed by the numeric code the sync stores in
 // DailyWellness.TrainingStatusCode. The codes and colours were matched against
 // the Garmin Connect 12-week band on a real account (2026-10-02); the phrase

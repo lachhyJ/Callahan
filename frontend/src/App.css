@@ -3414,6 +3414,20 @@ td {
   white-space: nowrap;
 }
 
+/* Value plus a muted secondary number (sleep time, then its score) on one line. */
+.wellness-card-stat-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  min-width: 0;
+}
+
+.wellness-card-stat-sub {
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+}
+
 .wellness-card-insight {
   margin: var(--space-sm) 0 0;
   font-size: var(--text-sm);
@@ -3529,13 +3543,6 @@ td {
 
 .wellness-sparkline-dot {
   fill: var(--accent);
-}
-
-.wellness-card-sparkline {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2xs);
-  margin-top: var(--space-sm);
 }
 
 .muscle-bar-list {
@@ -5121,6 +5128,19 @@ td {
   border-bottom: 1px solid var(--border-subtle);
 }
 
+/* Inside the dashboard card: no section rule or bottom margin of its own, and a
+   shorter band so the card stays a glance. */
+.training-status-compact {
+  margin: 0 0 var(--space-md);
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.training-status-compact .training-status-band {
+  height: 28px;
+  margin-top: var(--space-xs);
+}
+
 .training-status-head {
   display: flex;
   align-items: center;
@@ -5150,8 +5170,11 @@ td {
   margin: var(--space-2xs) 0 0;
 }
 
+/* The 1px gap lets the page background through between runs, so neighbouring
+   hues (yellow/green, blue/violet) stay distinct even for one-day runs. */
 .training-status-band {
   display: flex;
+  gap: 1px;
   height: 44px;
   margin-top: var(--space-md);
   border-radius: var(--radius-md);

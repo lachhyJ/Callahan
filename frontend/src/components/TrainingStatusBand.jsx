@@ -15,7 +15,10 @@ const LIST_RUNS = 6
 // load ratio, a colour band (one segment per run, width = days), and the dated
 // run list Connect shows. Colour is never the only channel - every run in the
 // list carries its name, and the band has a text summary for screen readers.
-export default function TrainingStatusBand({ rows, days }) {
+//
+// `compact` is the dashboard card's version: status name and band only, no
+// load line, axis or run list - the card links through to the full view.
+export default function TrainingStatusBand({ rows, days, compact = false }) {
   const latest = latestStatusRow(rows)
   if (!latest) return null
 
@@ -36,7 +39,7 @@ export default function TrainingStatusBand({ rows, days }) {
     .join('; ')
 
   return (
-    <section className="training-status" aria-label="Training status">
+    <section className={`training-status${compact ? ' training-status-compact' : ''}`} aria-label="Training status">
       <div className="training-status-head">
         <span className="training-status-dot" style={{ background: current.color }} aria-hidden="true" />
         <span className="training-status-name">{current.label}</span>
@@ -44,7 +47,7 @@ export default function TrainingStatusBand({ rows, days }) {
           <span className="training-status-since">since {formatDateRange(currentRun.start, currentRun.start)}</span>
         )}
       </div>
-      {acwr && <p className="training-status-acwr">{acwr}</p>}
+      {acwr && !compact && <p className="training-status-acwr">{acwr}</p>}
 
       <div className="training-status-band" role="img" aria-label={`Training status, last ${days} days. ${summary}`}>
         {runs.map((r) => (
@@ -58,26 +61,30 @@ export default function TrainingStatusBand({ rows, days }) {
           />
         ))}
       </div>
-      <div className="training-status-axis" aria-hidden="true">
-        <span>{formatDateRange(statusDays[0].date, statusDays[0].date)}</span>
-        <span>{formatDateRange(statusDays[statusDays.length - 1].date, statusDays[statusDays.length - 1].date)}</span>
-      </div>
+      {!compact && (
+        <>
+          <div className="training-status-axis" aria-hidden="true">
+            <span>{formatDateRange(statusDays[0].date, statusDays[0].date)}</span>
+            <span>{formatDateRange(statusDays[statusDays.length - 1].date, statusDays[statusDays.length - 1].date)}</span>
+          </div>
 
-      <ul className="training-status-list">
-        {statusRuns
-          .slice(-LIST_RUNS)
-          .reverse()
-          .map((r) => {
-            const meta = statusMeta(r.code)
-            return (
-              <li key={r.start} className="training-status-row">
-                <span className="training-status-dot" style={{ background: meta.color }} aria-hidden="true" />
-                <span className="training-status-row-name">{meta.label}</span>
-                <span className="training-status-row-dates">{formatDateRange(r.start, r.end)}</span>
-              </li>
-            )
-          })}
-      </ul>
+          <ul className="training-status-list">
+            {statusRuns
+              .slice(-LIST_RUNS)
+              .reverse()
+              .map((r) => {
+                const meta = statusMeta(r.code)
+                return (
+                  <li key={r.start} className="training-status-row">
+                    <span className="training-status-dot" style={{ background: meta.color }} aria-hidden="true" />
+                    <span className="training-status-row-name">{meta.label}</span>
+                    <span className="training-status-row-dates">{formatDateRange(r.start, r.end)}</span>
+                  </li>
+                )
+              })}
+          </ul>
+        </>
+      )}
     </section>
   )
 }
