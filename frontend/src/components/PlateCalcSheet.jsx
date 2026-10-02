@@ -205,7 +205,7 @@ export default function PlateCalcSheet({
   const [barWeightKg, setBarWeightKg] = useState(DEFAULT_BAR_KG)
   const [customName, setCustomName] = useState('')
   const [customWeight, setCustomWeight] = useState('')
-  const [availablePlates, setAvailablePlatesState] = useState(() => getAvailablePlates('kg'))
+  const [availablePlates, setAvailablePlatesState] = useState(() => getAvailablePlates('kg', exerciseId))
 
   // Dumbbell-mode state
   const [availableDumbbells, setAvailableDumbbellsState] = useState(() => getAvailableDumbbells())
@@ -229,9 +229,9 @@ export default function PlateCalcSheet({
 
   // Re-sync to this exercise's settings whenever the sheet is opened for a
   // (possibly different) exercise, rather than carrying over whatever was
-  // selected for the previous one. Device-wide lists (plates/dumbbells) are
-  // reloaded too, in case another tab/session changed them — cheap enough
-  // to just always refresh on open.
+  // selected for the previous one. Plates (this exercise's, else the global
+  // list) and the device-wide dumbbell list are reloaded too, in case another
+  // tab/session changed them — cheap enough to just always refresh on open.
   useEffect(() => {
     if (!open) return
     const typeOverride = getEquipmentTypeOverride(exerciseId)
@@ -244,7 +244,7 @@ export default function PlateCalcSheet({
     setBarWeightKg(saved ? saved.kg : DEFAULT_BAR_KG)
     setCustomName('')
     setCustomWeight('')
-    setAvailablePlatesState(getAvailablePlates('kg'))
+    setAvailablePlatesState(getAvailablePlates('kg', exerciseId))
     setAvailableDumbbellsState(getAvailableDumbbells())
   }, [open, exerciseId, exerciseName])
 
@@ -353,7 +353,7 @@ export default function PlateCalcSheet({
       ? availablePlates.filter((p) => p !== plate)
       : PLATE_SETS.kg.filter((p) => availablePlates.includes(p) || p === plate)
     setAvailablePlatesState(next)
-    setAvailablePlates('kg', next)
+    setAvailablePlates('kg', next, exerciseId)
   }
 
   function toggleDumbbellAvailable(dumbbell) {

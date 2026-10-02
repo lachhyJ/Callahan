@@ -109,33 +109,52 @@ export function calculatePlateDelta(fromPerSide, toPerSide, availablePlates) {
   return { toAdd, toRemove }
 }
 
-// Which plate sizes the athlete's gym actually has, per unit — device-wide
-// rather than per-exercise, since it's a property of the gym, not the
-// movement. Defaults to the full standard set until pared down.
+// Which plate sizes the athlete's gym actually has, per unit. A device-wide
+// default, with an optional per-exercise override: one gym has two plate
+// areas, one stocked with 25s and one without, so which exercise you're doing
+// decides which plates exist. An exercise with no override of its own reads the
+// global list, so nothing saved before overrides existed changes. Defaults to
+// the full standard set until pared down.
 const AVAILABLE_PLATES_PREFIX = 'callahan.plateCalc.availablePlates.'
 
-export function getAvailablePlates(unit) {
-  try {
-    const raw = localStorage.getItem(AVAILABLE_PLATES_PREFIX + unit)
-    if (raw === null) return PLATE_SETS[unit]
-    const kept = JSON.parse(raw)
-    // Preserves PLATE_SETS' descending order (required by calculatePlates'
-    // greedy fill) regardless of the order toggles were saved in, and drops
-    // any stale sizes a future PLATE_SETS edit might remove.
-    const filtered = PLATE_SETS[unit].filter((p) => kept.includes(p))
-    return filtered.length > 0 ? filtered : PLATE_SETS[unit]
-  } catch {
-    return PLATE_SETS[unit]
-  }
+function availablePlatesKey(unit, exerciseId) {
+  const hasExercise = exerciseId !== null && exerciseId !== undefined
+  return AVAILABLE_PLATES_PREFIX + unit + (hasExercise ? `.${exerciseId}` : '')
 }
 
-export function setAvailablePlates(unit, plates) {
+function readAvailablePlates(unit, exerciseId) {
+  const raw = localStorage.getItem(availablePlatesKey(unit, exerciseId))
+  if (raw === null) return null
+  const kept = JSON.parse(raw)
+  // Preserves PLATE_SETS' descending order (required by calculatePlates'
+  // greedy fill) regardless of the order toggles were saved in, and drops
+  // any stale sizes a future PLATE_SETS edit might remove.
+  const filtered = PLATE_SETS[unit].filter((p) => kept.includes(p))
+  return filtered.length > 0 ? filtered : null
+}
+
+export function getAvailablePlates(unit, exerciseId) {
+  // Each level falls through independently, so a malformed or emptied
+  // per-exercise value lands on the global list rather than the full set.
+  for (const id of [exerciseId, undefined]) {
+    try {
+      const plates = readAvailablePlates(unit, id)
+      if (plates) return plates
+    } catch {
+      // Malformed JSON — treat as unset.
+    }
+  }
+  return PLATE_SETS[unit]
+}
+
+export function setAvailablePlates(unit, plates, exerciseId) {
+  const key = availablePlatesKey(unit, exerciseId)
   try {
-    localStorage.setItem(AVAILABLE_PLATES_PREFIX + unit, JSON.stringify(plates))
+    localStorage.setItem(key, JSON.stringify(plates))
   } catch {
     // Best-effort.
   }
-  pushSetting(AVAILABLE_PLATES_PREFIX + unit, plates)
+  pushSetting(key, plates)
 }
 
 // Fixed dumbbell increments the athlete's gym actually racks — device-wide,

@@ -142,6 +142,31 @@ describe('storage-backed settings', () => {
     expect(getAvailablePlates('kg')).toEqual(PLATE_SETS.kg)
   })
 
+  it('keeps a per-exercise plate set separate from the global list and other exercises', () => {
+    setAvailablePlates('kg', [20, 10], 11)
+    expect(getAvailablePlates('kg', 11)).toEqual([20, 10])
+    expect(getAvailablePlates('kg', 12)).toEqual(PLATE_SETS.kg)
+    expect(getAvailablePlates('kg')).toEqual(PLATE_SETS.kg)
+  })
+
+  it('falls back to the global list for an exercise with no override', () => {
+    setAvailablePlates('kg', [25, 20, 10])
+    expect(getAvailablePlates('kg', 11)).toEqual([25, 20, 10])
+  })
+
+  it('falls back to the global list when the per-exercise value is malformed or emptied', () => {
+    setAvailablePlates('kg', [25, 20, 10])
+    localStorage.setItem('callahan.plateCalc.availablePlates.kg.11', 'not json')
+    expect(getAvailablePlates('kg', 11)).toEqual([25, 20, 10])
+    setAvailablePlates('kg', [], 11)
+    expect(getAvailablePlates('kg', 11)).toEqual([25, 20, 10])
+  })
+
+  it('pushes a per-exercise plate set under its own server key', () => {
+    setAvailablePlates('kg', [20], 11)
+    expect(api.putPlateCalcSetting).toHaveBeenCalledWith('availablePlates.kg.11', [20])
+  })
+
   it('rejects custom equipment with a non-positive or unparseable weight', () => {
     setCustomEquipment(1, { name: 'Trap bar', kg: 25 })
     expect(getCustomEquipment(1)).toEqual({ name: 'Trap bar', kg: 25 })
@@ -219,6 +244,7 @@ describe('server sync', () => {
       'availablePlates.kg': [25, 20, 10],
       'customEquipment.11': { name: 'Trap bar', kg: 25 },
       'equipmentType.11': 'added',
+      'availablePlates.kg.11': [20, 10],
     })
 
     await hydratePlateCalcSettings()
@@ -227,6 +253,7 @@ describe('server sync', () => {
     expect(getCustomEquipment(11)).toEqual({ name: 'Trap bar', kg: 25 })
     expect(localStorage.getItem('callahan.plateCalc.equipmentType.11')).toBe('added')
     expect(getEquipmentType(11, 'Trap Bar Deadlift')).toBe('added')
+    expect(getAvailablePlates('kg', 11)).toEqual([20, 10])
   })
 
   it('hydrate leaves localStorage untouched when the fetch fails', async () => {

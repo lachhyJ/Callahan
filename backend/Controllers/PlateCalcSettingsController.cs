@@ -27,7 +27,7 @@ public partial class PlateCalcSettingsController : ControllerBase
     // The only keys the frontend actually writes. Anything else is a bug or a
     // probe, not something to persist — an unbounded string-keyed store that
     // takes any key is an obvious junk magnet.
-    [GeneratedRegex(@"^(availablePlates\.(kg|lb)|availableDumbbells\.kg|customEquipment\.\d+|equipmentType\.\d+)$")]
+    [GeneratedRegex(@"^(availablePlates\.(kg|lb)(\.\d+)?|availableDumbbells\.kg|customEquipment\.\d+|equipmentType\.\d+)$")]
     private static partial Regex AllowedKey();
 
     [HttpGet]

@@ -107,4 +107,16 @@ public class PlateCalcSettingsControllerTests
         Assert.IsType<BadRequestObjectResult>(await controller.Put("customEquipment.abc", Json("{}")));
         Assert.IsType<NoContentResult>(await controller.Put("customEquipment.11", Json("""{"name":"","kg":25}""")));
     }
+
+    [Fact]
+    public async Task AvailablePlatesKeyMayCarryANumericExerciseId()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = NewDb(conn);
+        var controller = new PlateCalcSettingsController(db);
+
+        Assert.IsType<NoContentResult>(await controller.Put("availablePlates.kg.11", Json("[20,10]")));
+        Assert.IsType<BadRequestObjectResult>(await controller.Put("availablePlates.kg.", Json("[20]")));
+        Assert.IsType<BadRequestObjectResult>(await controller.Put("availablePlates.kg.abc", Json("[20]")));
+    }
 }
