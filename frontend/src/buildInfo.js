@@ -2,11 +2,11 @@
 // what it captures and why. `null` when git wasn't available to read from.
 const buildInfo = typeof __BUILD_INFO__ === 'undefined' ? null : __BUILD_INFO__
 
-// "restaudio@6d6dcc9+", or "Callahan · main@a87f7c0" when the worktree name
-// doesn't already say which branch it's for.
+// "a87f7c0" for main in the main checkout; otherwise "restaudio · rest@6d6dcc9+"
+// style, so a worktree or branch build says what it is.
 export function buildInfoLabel() {
   if (!buildInfo) return null
   const { worktree, branch, commit, dirty } = buildInfo
-  const ref = `${branch}@${commit}${dirty ? '+' : ''}`
+  const ref = `${branch === 'main' ? '' : `${branch}@`}${commit}${dirty ? '+' : ''}`
   return worktree === 'Callahan' ? ref : `${worktree} · ${ref}`
 }

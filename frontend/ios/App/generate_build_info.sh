@@ -21,6 +21,7 @@ if [ -z "$REPO_ROOT" ]; then
   BRANCH="unknown"
   COMMIT="unknown"
   DIRTY="false"
+  BEHIND="0"
 else
   BRANCH=$(git -C "$REPO_ROOT" rev-parse --abbrev-ref HEAD)
   COMMIT=$(git -C "$REPO_ROOT" rev-parse --short HEAD)
@@ -29,6 +30,11 @@ else
   else
     DIRTY="false"
   fi
+  # Commits on origin/main this checkout lacks, by the last-fetched ref (no
+  # network in a build phase). A push from another worktree updates that ref,
+  # so a stale primary checkout shows up here even without a fetch. 0 when
+  # there is no origin/main to compare against.
+  BEHIND=$(git -C "$REPO_ROOT" rev-list --count HEAD..origin/main 2>/dev/null || echo 0)
 fi
 
 cat > "$OUT" <<EOF
@@ -37,5 +43,6 @@ enum NativeBuildInfo {
     static let branch = "$BRANCH"
     static let commit = "$COMMIT"
     static let dirty = $DIRTY
+    static let behind = $BEHIND
 }
 EOF

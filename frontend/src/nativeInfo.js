@@ -28,11 +28,14 @@ export function daysUntil(isoDate, now = Date.now()) {
   return Math.ceil((new Date(isoDate).getTime() - now) / (24 * 60 * 60 * 1000))
 }
 
-export function nativeBuildTag({ branch, commit, dirty, provisioningExpiresAt }) {
-  const base = `native · ${branch}@${commit}${dirty ? '+' : ''}`
+// "xyz+↓2 · 6d": the commit, `+` for uncommitted changes, `↓N` when the checkout
+// it was built from is N commits behind origin/main, then days of signing left.
+// `main` is implied; any other branch is spelled out.
+export function nativeBuildTag({ branch, commit, dirty, behind, provisioningExpiresAt }) {
+  const ref = branch === 'main' ? commit : `${branch}@${commit}`
+  const base = `${ref}${dirty ? '+' : ''}${behind > 0 ? `↓${behind}` : ''}`
   if (!provisioningExpiresAt) return base
 
   const days = daysUntil(provisioningExpiresAt)
-  const signingText = days <= 0 ? 'signing expired' : days === 1 ? 'signing expires in 1 day' : `signing expires in ${days}d`
-  return `${base} · ${signingText}`
+  return `${base} · ${days <= 0 ? 'signing expired' : `${days}d`}`
 }

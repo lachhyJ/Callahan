@@ -16,8 +16,8 @@ export default function BuildFooter() {
 
   return (
     <div className="build-footer section-gap">
-      {web && <span className="build-tag" title={web}>{web}</span>}
-      {nativeStatus && <span className="build-tag" title={nativeBuildTag(nativeStatus)}>{nativeBuildTag(nativeStatus)}</span>}
+      {web && <span className="build-tag">web: {web}</span>}
+      {nativeStatus && <span className="build-tag">ios: {nativeBuildTag(nativeStatus)}</span>}
     </div>
   )
 }
