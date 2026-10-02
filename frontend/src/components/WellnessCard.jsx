@@ -15,11 +15,10 @@ import TrainingStatusBand from './TrainingStatusBand'
 export default function WellnessCard({ wellness, todayIso, insight, rows }) {
   const stats = []
   if (wellness.sleepSeconds != null) {
-    stats.push({
-      label: 'Sleep',
-      value: formatMetricValue('sleepDuration', wellness.sleepSeconds),
-      sub: wellness.sleepScore,
-    })
+    stats.push({ label: 'Sleep', value: formatMetricValue('sleepDuration', wellness.sleepSeconds) })
+  }
+  if (wellness.sleepScore != null) {
+    stats.push({ label: 'Sleep score', value: formatMetricValue('sleepScore', wellness.sleepScore) })
   }
   if (wellness.hrvLastNightAvg != null) {
     stats.push({ label: 'HRV', value: formatMetricValue('hrv', wellness.hrvLastNightAvg) })
@@ -49,14 +48,7 @@ export default function WellnessCard({ wellness, todayIso, insight, rows }) {
           {stats.map((s) => (
             <div key={s.label} className="wellness-card-stat">
               <span className="stat-label">{s.label}</span>
-              <span className="wellness-card-stat-line">
-                <span className="stat-value wellness-card-stat-value">{s.value}</span>
-                {s.sub != null && (
-                  <span className="wellness-card-stat-sub" title="Sleep score" aria-label={`sleep score ${s.sub}`}>
-                    {s.sub}
-                  </span>
-                )}
-              </span>
+              <span className="stat-value wellness-card-stat-value">{s.value}</span>
             </div>
           ))}
         </div>

@@ -3393,8 +3393,11 @@ td {
 }
 
 .wellness-card-stats {
+  /* One equal column per stat that Garmin returned (2-4), rather than a fixed 3,
+     so a missing metric doesn't leave a hole and a fourth doesn't wrap. */
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   gap: var(--space-md) var(--space-sm);
 }
 
@@ -3411,20 +3414,6 @@ td {
 
 .wellness-card-stat-value {
   font-size: var(--text-lg);
-  white-space: nowrap;
-}
-
-/* Value plus a muted secondary number (sleep time, then its score) on one line. */
-.wellness-card-stat-line {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-xs);
-  min-width: 0;
-}
-
-.wellness-card-stat-sub {
-  font-size: var(--text-sm);
-  color: var(--text-tertiary);
   white-space: nowrap;
 }
 
@@ -5141,13 +5130,16 @@ td {
   margin-top: var(--space-xs);
 }
 
+/* Baseline, not centre: the status name is much larger than the "since" text
+   beside it, and centring put the small text visibly off the name's line. */
 .training-status-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: var(--space-xs);
 }
 
 .training-status-dot {
+  align-self: center;
   flex: none;
   width: 10px;
   height: 10px;
