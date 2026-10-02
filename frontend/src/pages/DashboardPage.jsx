@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getActivities, getLatestWellness, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
-import { staleWhileRevalidate } from '../swrCache'
+import { peekCache, staleWhileRevalidate } from '../swrCache'
 import { wellnessRange } from '../wellnessMetrics'
 import { STATUS_BAND_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
 import { isoDate, startOfWeek } from '../dateUtils'
@@ -106,9 +106,12 @@ export default function DashboardPage() {
   })
   const [calendarView, setCalendarView] = useState(readStoredCalendarView)
   const [selectedDate, setSelectedDate] = useState(null)
-  const [wellness, setWellness] = useState(null)
-  const [wellnessInsight, setWellnessInsight] = useState(null)
-  const [wellnessRows, setWellnessRows] = useState(null)
+  // Seeded from the last session's cache so the wellness card is in the first
+  // render; the idle-deferred revalidate below only swaps in fresh data. Without
+  // this the card waited on the idle callback and then popped in above the grid.
+  const [wellness, setWellness] = useState(() => peekCache('wellness-latest'))
+  const [wellnessInsight, setWellnessInsight] = useState(() => peekCache('wellness-insight'))
+  const [wellnessRows, setWellnessRows] = useState(() => peekCache(WELLNESS_ROWS_CACHE_KEY))
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)

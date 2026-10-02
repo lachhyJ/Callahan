@@ -27,6 +27,15 @@ function writeCache(key, data) {
   }
 }
 
+// The last cached value for `key`, or null, read synchronously. For seeding
+// initial React state so a cached view renders on the very first frame instead
+// of waiting for an effect: staleWhileRevalidate called from an effect (or an
+// idle callback) paints one render late, which for a card that sits above other
+// content shows as a pop-in and a layout shift.
+export function peekCache(key) {
+  return readCache(key)?.data ?? null
+}
+
 // Called on logout, so a later login on the same device never briefly
 // paints the previous session's data before its own fetch lands.
 export function clearAllCache() {
