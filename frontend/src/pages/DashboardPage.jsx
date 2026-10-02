@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { getActivities, getLatestWellness, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { staleWhileRevalidate } from '../swrCache'
 import { wellnessRange } from '../wellnessMetrics'
-import { STATUS_BAND_DAYS } from '../trainingStatus'
+import { STATUS_BAND_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
 import { isoDate, startOfWeek } from '../dateUtils'
 import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
@@ -131,7 +131,7 @@ export default function DashboardPage() {
       staleWhileRevalidate('wellness-insight', getWellnessInsight, setWellnessInsight).catch(() => {})
       const { start, end } = wellnessRange(STATUS_BAND_DAYS)
       staleWhileRevalidate(
-        `wellness-status-${start}-${end}`,
+        WELLNESS_ROWS_CACHE_KEY,
         () => getWellness(start, end),
         setWellnessRows,
       ).catch(() => {})

@@ -11,10 +11,13 @@ import {
 import WellnessSparkline from '../components/WellnessSparkline'
 import MetricTrendChart from '../components/MetricTrendChart'
 import TrainingStatusBand from '../components/TrainingStatusBand'
+import { staleWhileRevalidate } from '../swrCache'
+import { STATUS_BAND_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
 
 // One fetch covers the whole page: the per-metric trend chart plots the full
-// window, the sparkline fallback shows the tail of it.
-const HISTORY_DAYS = 84
+// window, the sparkline fallback shows the tail of it. Tied to the status
+// band's window so this page and the dashboard card share one cached fetch.
+const HISTORY_DAYS = STATUS_BAND_DAYS
 const SPARK_DAYS = 28
 // Below this many real readings a metric isn't worth a full trend chart — fall
 // back to the compact sparkline (and below the sparkline's own floor, nothing).
@@ -31,23 +34,20 @@ export default function WellnessPage() {
   const [seriesState, setSeriesState] = useState('loading') // loading | ready | error
 
   useEffect(() => {
-    getWellnessInsight()
-      .then((data) => {
-        setInsight(data)
-        setLoaded(true)
-      })
-      .catch((err) => setError(err.message))
+    // Same key as the dashboard card, so arriving from it paints instantly.
+    staleWhileRevalidate('wellness-insight', getWellnessInsight, (data) => {
+      setInsight(data)
+      setLoaded(true)
+    }).catch((err) => setError(err.message))
   }, [])
 
   useEffect(() => {
     const { start, end } = wellnessRange(HISTORY_DAYS)
-    getWellness(start, end)
-      .then((data) => {
-        setRows(data)
-        setSeries(buildDailySeries(data, HISTORY_DAYS))
-        setSeriesState('ready')
-      })
-      .catch(() => setSeriesState('error'))
+    staleWhileRevalidate(WELLNESS_ROWS_CACHE_KEY, () => getWellness(start, end), (data) => {
+      setRows(data)
+      setSeries(buildDailySeries(data, HISTORY_DAYS))
+      setSeriesState('ready')
+    }).catch(() => setSeriesState('error'))
   }, [])
 
   return (

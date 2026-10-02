@@ -4,6 +4,14 @@ import { isoDate } from './dateUtils'
 // alike - the 12 weeks Garmin Connect shows, so the band reads the same everywhere.
 export const STATUS_BAND_DAYS = 84
 
+// swrCache key for the wellness rows behind the band, shared by the dashboard
+// card and /wellness so opening either paints from the other's last fetch. The
+// key is fixed (not built from the date range): a range key changes every day,
+// so the first open of each day had nothing cached and the band drew in from
+// empty. The window length is in the key so changing it can't serve a
+// wrong-sized cached range.
+export const WELLNESS_ROWS_CACHE_KEY = `wellness-rows-${STATUS_BAND_DAYS}d`
+
 // Garmin's Training Status, keyed by the numeric code the sync stores in
 // DailyWellness.TrainingStatusCode. The codes and colours were matched against
 // the Garmin Connect 12-week band on a real account (2026-10-02); the phrase
