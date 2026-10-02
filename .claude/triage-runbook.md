@@ -74,6 +74,15 @@ folder, not per-note, and it does **not** follow a note when it moves.
 - `triage/attachments/` itself never holds notes, and a pass never treats a file
   in it as a new item to triage.
 
+## Notes still syncing
+
+A dotfile like `.syncthing.<name>.tmp` in `triage/` is a note Syncthing is still
+transferring from the phone. **Don't read it, quote it, or answer questions about
+it** — a partial file can be truncated and there's no way to tell from the size.
+Tell Lachlan a file is still transferring, triage everything else, and check
+`triage/` again at the end of the pass; if the real note has landed by then,
+triage it as normal, otherwise leave it for the next run.
+
 ## Steps, per note directly in `triage/` (not already in `reviewed/`)
 
 0. **Before triaging anything, read all four vault docs**:
