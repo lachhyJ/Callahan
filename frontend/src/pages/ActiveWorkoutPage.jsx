@@ -2161,13 +2161,12 @@ export default function ActiveWorkoutPage() {
             )}
           </div>
           {audioDiary && (
-            <>
-              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
-              <p className="audio-diary-state">
-                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
-                {audioDiary.sessionActive ? 'active' : 'inactive'}
-              </p>
-            </>
+            <pre>
+              {[
+                (audioDiary.diary ?? []).join('\n') || '(empty)',
+                `--- keepAlive ${audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session ${audioDiary.sessionActive ? 'active' : 'inactive'}`,
+              ].join('\n')}
+            </pre>
           )}
         </div>
       )}

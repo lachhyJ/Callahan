@@ -4467,12 +4467,6 @@ td {
   }
 }
 
-.audio-diary-state {
-  margin: 0;
-  font-size: var(--text-xs);
-  color: var(--text);
-}
-
 /* Side by side with real horizontal separation, not stacked with a 4px
    vertical gap — that stacking is what was landing thumb taps on the wrong
    one (usually Clear, right under Copy, wiping the log you meant to save). */
