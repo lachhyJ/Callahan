@@ -12,6 +12,34 @@ export const STATUS_BAND_DAYS = 84
 // wrong-sized cached range.
 export const WELLNESS_ROWS_CACHE_KEY = `wellness-rows-${STATUS_BAND_DAYS}d`
 
+export function wellnessRowsCacheKey(days) {
+  return `wellness-rows-${days}d`
+}
+
+// The ranges /wellness offers for the status band, after Garmin Connect's
+// 4w / 12w / 6m (its "Current" is the headline above the band). 6m is 26 weeks.
+// The dashboard card stays at STATUS_BAND_DAYS.
+export const STATUS_RANGES = [
+  { key: '4w', label: '4w', days: 28 },
+  { key: '12w', label: '12w', days: STATUS_BAND_DAYS },
+  { key: '6m', label: '6m', days: 182 },
+]
+export const DEFAULT_STATUS_RANGE = '12w'
+
+export function statusRange(key) {
+  return STATUS_RANGES.find((r) => r.key === key) ?? STATUS_RANGES.find((r) => r.key === DEFAULT_STATUS_RANGE)
+}
+
+// `count` evenly spaced dates across the window, first and last included, for
+// the band's axis. Returns fewer when the window has fewer days than ticks.
+export function axisTicks(statusDays, count = 4) {
+  if (!statusDays?.length) return []
+  const n = Math.min(count, statusDays.length)
+  if (n === 1) return [statusDays[0].date]
+  const last = statusDays.length - 1
+  return Array.from({ length: n }, (_, i) => statusDays[Math.round((i * last) / (n - 1))].date)
+}
+
 // Garmin's Training Status, keyed by the numeric code the sync stores in
 // DailyWellness.TrainingStatusCode. The codes and colours were matched against
 // the Garmin Connect 12-week band on a real account (2026-10-02); the phrase

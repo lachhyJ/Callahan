@@ -11,14 +11,35 @@ import {
 import WellnessSparkline from '../components/WellnessSparkline'
 import MetricTrendChart from '../components/MetricTrendChart'
 import TrainingStatusBand from '../components/TrainingStatusBand'
-import { staleWhileRevalidate } from '../swrCache'
-import { STATUS_BAND_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
+import { peekCache, staleWhileRevalidate } from '../swrCache'
+import {
+  DEFAULT_STATUS_RANGE,
+  latestStatusRow,
+  STATUS_BAND_DAYS,
+  STATUS_RANGES,
+  statusRange,
+  WELLNESS_ROWS_CACHE_KEY,
+  wellnessRowsCacheKey,
+} from '../trainingStatus'
 
-// One fetch covers the whole page: the per-metric trend chart plots the full
-// window, the sparkline fallback shows the tail of it. Tied to the status
-// band's window so this page and the dashboard card share one cached fetch.
+// The metric charts and sparklines plot the last 12 weeks; the status band can
+// reach further back (its longest range), so one fetch covers the longer of the two.
 const HISTORY_DAYS = STATUS_BAND_DAYS
+const FETCH_DAYS = Math.max(HISTORY_DAYS, ...STATUS_RANGES.map((r) => r.days))
+// Own cache key: this page fetches a longer window than the dashboard card, so
+// it can't share the card's 84-day key. It still seeds from that key on a cold
+// start so arriving from the card paints at once, then upgrades when this lands.
+const ROWS_CACHE_KEY = wellnessRowsCacheKey(FETCH_DAYS)
+const RANGE_STORAGE_KEY = 'callahan.wellness.statusRange'
 const SPARK_DAYS = 28
+
+function storedRangeKey() {
+  try {
+    return statusRange(localStorage.getItem(RANGE_STORAGE_KEY)).key
+  } catch {
+    return DEFAULT_STATUS_RANGE
+  }
+}
 // Below this many real readings a metric isn't worth a full trend chart — fall
 // back to the compact sparkline (and below the sparkline's own floor, nothing).
 const MIN_SPARK_READINGS = 5
@@ -30,8 +51,18 @@ export default function WellnessPage() {
   const [error, setError] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [series, setSeries] = useState(null)
-  const [rows, setRows] = useState(null)
+  const [rows, setRows] = useState(() => peekCache(ROWS_CACHE_KEY) ?? peekCache(WELLNESS_ROWS_CACHE_KEY))
   const [seriesState, setSeriesState] = useState('loading') // loading | ready | error
+  const [rangeKey, setRangeKey] = useState(storedRangeKey)
+
+  const chooseRange = (key) => {
+    setRangeKey(key)
+    try {
+      localStorage.setItem(RANGE_STORAGE_KEY, key)
+    } catch {
+      // storage unavailable - the choice just won't survive a reload
+    }
+  }
 
   useEffect(() => {
     // Same key as the dashboard card, so arriving from it paints instantly.
@@ -42,8 +73,8 @@ export default function WellnessPage() {
   }, [])
 
   useEffect(() => {
-    const { start, end } = wellnessRange(HISTORY_DAYS)
-    staleWhileRevalidate(WELLNESS_ROWS_CACHE_KEY, () => getWellness(start, end), (data) => {
+    const { start, end } = wellnessRange(FETCH_DAYS)
+    staleWhileRevalidate(ROWS_CACHE_KEY, () => getWellness(start, end), (data) => {
       setRows(data)
       setSeries(buildDailySeries(data, HISTORY_DAYS))
       setSeriesState('ready')
@@ -54,7 +85,22 @@ export default function WellnessPage() {
     <main className="page">
       <h1>Wellness</h1>
 
-      {rows && <TrainingStatusBand rows={rows} days={HISTORY_DAYS} />}
+      {latestStatusRow(rows) && (
+        <div className="training-status-range" role="group" aria-label="Training status range">
+          {STATUS_RANGES.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              className={`training-status-range-btn${r.key === rangeKey ? ' active' : ''}`}
+              aria-pressed={r.key === rangeKey}
+              onClick={() => chooseRange(r.key)}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+      {rows && <TrainingStatusBand rows={rows} days={statusRange(rangeKey).days} />}
 
       {error && <p className="error">{error}</p>}
       {!error && !loaded && <p>Loading…</p>}

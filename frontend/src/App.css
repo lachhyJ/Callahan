@@ -5213,3 +5213,42 @@ td {
   font-size: var(--text-sm);
   color: var(--text);
 }
+
+/* Range switch (4w / 12w / 6m) above the band, like Garmin Connect's. */
+.training-status-range {
+  display: flex;
+  margin: 0 0 var(--space-md);
+  padding: 2px;
+  background: var(--code-bg);
+  border-radius: var(--radius-md);
+}
+
+.training-status-range-btn {
+  flex: 1;
+  min-height: 44px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--text-base);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.training-status-range-btn.active {
+  background: var(--border-subtle);
+  color: var(--text-h);
+  font-weight: var(--font-semibold);
+}
+
+.training-status-more {
+  min-height: 44px;
+  margin-top: var(--space-2xs);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+  user-select: none;
+}
