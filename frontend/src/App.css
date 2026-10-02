@@ -2086,7 +2086,7 @@ td {
   color: var(--error-text);
 }
 
-/* "Test beep" — unobtrusive text button to confirm the in-app alert is audible. */
+/* Unobtrusive underlined text button (Warm-up toggle, audio log actions). */
 .rest-alert-test-link {
   /* Overlay rather than padding: this sits between two flex siblings 12px
      apart, and real padding would push them around. */
@@ -2105,7 +2105,7 @@ td {
 /* Pushed to the far right of .live-stats, on the same row as the duration /
    volume / set-count readout rather than its own row underneath. Overrides
    rest-alert-test-link's negative top margin (tuned for that link sitting
-   alone above Test beep) which otherwise pulls this one above the baseline
+   alone between two rows) which otherwise pulls this one above the baseline
    of its .live-stats siblings. */
 .rest-alert-test-link.warmup-toggle-link {
   margin: 0 0 0 auto;
@@ -4448,6 +4448,7 @@ td {
 /* Temporary rest-audio diagnostics (see ActiveWorkoutPage / RestAudioPlugin's
    Diary section). Deliberately plain — it exists to be read once and removed. */
 .audio-diary {
+  margin-top: var(--space-md);
   display: flex;
   flex-direction: column;
   align-items: flex-start;

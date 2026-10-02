@@ -338,7 +338,7 @@ export default function ActiveWorkoutPage() {
   // not re-fetched on every toggle).
   const [showWarmup, setShowWarmup] = useState(false)
   const [warmup, setWarmup] = useState(null)
-  // Temporary: native rest-audio event diary, shown under "Test beep" so a
+  // Temporary: native rest-audio event diary, shown at the foot of the page so a
   // backgrounded rest can be read back without Xcode. Remove with the plugin's
   // Diary section once the ducking behaviour is settled.
   const [audioDiary, setAudioDiary] = useState(null)
@@ -1711,74 +1711,6 @@ export default function ActiveWorkoutPage() {
       )}
       {error && <p className="error">{error}</p>}
 
-      {/* Confirm the in-app beep is unlocked and audible before relying on it
-          mid-set. Foreground only — a locked/backgrounded phone gets the push. */}
-      <button
-        type="button"
-        className="rest-alert-test-link"
-        onClick={() => { unlockAudio(); playBeepNow() }}
-      >
-        Test beep
-      </button>
-
-      {isNativeAudio && (
-        <div className="audio-diary">
-          <button
-            type="button"
-            className="rest-alert-test-link"
-            onClick={() => restAudioDiagnostics().then(setAudioDiary)}
-          >
-            Audio log
-          </button>
-          {audioDiary && (
-            <>
-              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
-              <p className="audio-diary-state">
-                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
-                {audioDiary.sessionActive ? 'active' : 'inactive'}
-              </p>
-              <div className="audio-diary-actions">
-                <button
-                  type="button"
-                  className="rest-alert-test-link"
-                  onClick={async () => {
-                    // The failing rests need to be read back later, off-device —
-                    // selecting a scrolling <pre> on a phone mid-workout isn't
-                    // practical. Copy the whole diary plus the live state footer.
-                    const text = [
-                      ...(audioDiary.diary ?? []),
-                      `--- keepAlive ${audioDiary.keepAlivePlaying ? 'playing' : 'stopped'}`
-                        + ` · session ${audioDiary.sessionActive ? 'active' : 'inactive'}`
-                        + ` · armedEndAt ${audioDiary.armedEndAt ?? 'none'}`,
-                    ].join('\n')
-                    try {
-                      await navigator.clipboard.writeText(text)
-                      setLogCopied(true)
-                      setTimeout(() => setLogCopied(false), 1500)
-                    } catch {
-                      /* clipboard blocked — the <pre> above is still selectable */
-                    }
-                  }}
-                >
-                  {logCopied ? 'Copied' : 'Copy log'}
-                </button>
-                {/* Destructive and irreversible (wipes the diary the button above
-                    reads from), so it gets its own class rather than sharing
-                    rest-alert-test-link's plain-text-link look — a mis-tap here
-                    costs the very log you were about to copy off the phone. */}
-                <button
-                  type="button"
-                  className="rest-alert-test-link audio-diary-clear"
-                  onClick={() => restAudioDiagnostics({ clear: true }).then(() => setAudioDiary(null))}
-                >
-                  Clear log
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
       <PushPrompt buttonLabel="Enable rest alerts">
         <BellIcon /> Get a rest-timer alert even if your phone locks
       </PushPrompt>
@@ -2171,6 +2103,67 @@ export default function ActiveWorkoutPage() {
       )}
 
       <button type="button" className="add-exercise-btn" onClick={openExercisePicker}>+ Add an exercise</button>
+
+      {/* Last on the page: a diagnostic you open after a missed rest, not a
+          mid-set control, and its panel grows downward without pushing the
+          exercises. */}
+      {isNativeAudio && (
+        <div className="audio-diary">
+          <button
+            type="button"
+            className="rest-alert-test-link"
+            onClick={() => restAudioDiagnostics().then(setAudioDiary)}
+          >
+            Audio log
+          </button>
+          {audioDiary && (
+            <>
+              <pre>{(audioDiary.diary ?? []).join('\n') || '(empty)'}</pre>
+              <p className="audio-diary-state">
+                keepAlive {audioDiary.keepAlivePlaying ? 'playing' : 'stopped'} · session{' '}
+                {audioDiary.sessionActive ? 'active' : 'inactive'}
+              </p>
+              <div className="audio-diary-actions">
+                <button
+                  type="button"
+                  className="rest-alert-test-link"
+                  onClick={async () => {
+                    // The failing rests need to be read back later, off-device —
+                    // selecting a scrolling <pre> on a phone mid-workout isn't
+                    // practical. Copy the whole diary plus the live state footer.
+                    const text = [
+                      ...(audioDiary.diary ?? []),
+                      `--- keepAlive ${audioDiary.keepAlivePlaying ? 'playing' : 'stopped'}`
+                        + ` · session ${audioDiary.sessionActive ? 'active' : 'inactive'}`
+                        + ` · armedEndAt ${audioDiary.armedEndAt ?? 'none'}`,
+                    ].join('\n')
+                    try {
+                      await navigator.clipboard.writeText(text)
+                      setLogCopied(true)
+                      setTimeout(() => setLogCopied(false), 1500)
+                    } catch {
+                      /* clipboard blocked — the <pre> above is still selectable */
+                    }
+                  }}
+                >
+                  {logCopied ? 'Copied' : 'Copy log'}
+                </button>
+                {/* Destructive and irreversible (wipes the diary the button above
+                    reads from), so it gets its own class rather than sharing
+                    rest-alert-test-link's plain-text-link look — a mis-tap here
+                    costs the very log you were about to copy off the phone. */}
+                <button
+                  type="button"
+                  className="rest-alert-test-link audio-diary-clear"
+                  onClick={() => restAudioDiagnostics({ clear: true }).then(() => setAudioDiary(null))}
+                >
+                  Clear log
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {showExercisePicker && (
         <ExercisePickerSheet
