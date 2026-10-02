@@ -84,10 +84,7 @@ class RestTimerState {
         var justFinished = false;
 
         if (_state == STATE_COUNTING && remainingSeconds() <= 0) {
-            _state = _doneLabel.length() > 0 ? STATE_DONE : STATE_NEXT_SET;
-            _finishedTimerId = _timerId;
-            _timerId = null;
-            _endsAtUtc = null;
+            finishRest();
             justFinished = true;
         }
 
@@ -155,11 +152,22 @@ class RestTimerState {
         // early-removal window left. Close, and it's indistinguishable
         // from the natural end; tick() finishes the countdown to zero
         // either way, which is harmless within that window.
+        // The phone cancels the timer on a skip, and a -15s past the end
+        // leaves a rest the server drops at once — either way the rest is
+        // over, so show what's next rather than falling back to idle. No
+        // vibration: that was the user's own action.
         if (_state == STATE_COUNTING && responseCode == 204 && remainingSeconds() > AMBIGUOUS_204_WINDOW_SECONDS) {
-            _state = STATE_IDLE;
-            _timerId = null;
-            _endsAtUtc = null;
+            finishRest();
         }
+    }
+
+    // The rest is over, naturally or by skip: hold the next-set (or done)
+    // screen until the phone schedules another rest.
+    private function finishRest() as Void {
+        _state = _doneLabel.length() > 0 ? STATE_DONE : STATE_NEXT_SET;
+        _finishedTimerId = _timerId;
+        _timerId = null;
+        _endsAtUtc = null;
     }
 
     function isCounting() as Boolean {
