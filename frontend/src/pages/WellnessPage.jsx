@@ -10,6 +10,7 @@ import {
 } from '../wellnessMetrics'
 import WellnessSparkline from '../components/WellnessSparkline'
 import MetricTrendChart from '../components/MetricTrendChart'
+import TrainingStatusBand from '../components/TrainingStatusBand'
 
 // One fetch covers the whole page: the per-metric trend chart plots the full
 // window, the sparkline fallback shows the tail of it.
@@ -26,6 +27,7 @@ export default function WellnessPage() {
   const [error, setError] = useState(null)
   const [loaded, setLoaded] = useState(false)
   const [series, setSeries] = useState(null)
+  const [rows, setRows] = useState(null)
   const [seriesState, setSeriesState] = useState('loading') // loading | ready | error
 
   useEffect(() => {
@@ -40,8 +42,9 @@ export default function WellnessPage() {
   useEffect(() => {
     const { start, end } = wellnessRange(HISTORY_DAYS)
     getWellness(start, end)
-      .then((rows) => {
-        setSeries(buildDailySeries(rows, HISTORY_DAYS))
+      .then((data) => {
+        setRows(data)
+        setSeries(buildDailySeries(data, HISTORY_DAYS))
         setSeriesState('ready')
       })
       .catch(() => setSeriesState('error'))
@@ -50,6 +53,8 @@ export default function WellnessPage() {
   return (
     <main className="page">
       <h1>Wellness</h1>
+
+      {rows && <TrainingStatusBand rows={rows} days={HISTORY_DAYS} />}
 
       {error && <p className="error">{error}</p>}
       {!error && !loaded && <p>Loading…</p>}

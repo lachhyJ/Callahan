@@ -31,5 +31,6 @@ internal static class TestData
             SleepScore: sleepScore, SleepScoreQualifier: null,
             HrvLastNightAvg: hrv, HrvWeeklyAvg: null, HrvStatus: null,
             TrainingReadinessScore: readiness, TrainingReadinessLevel: null, TrainingReadinessFeedback: null,
-            RestingHeartRate: rhr, BodyBatteryHigh: null, BodyBatteryLow: null, AvgStressLevel: null);
+            RestingHeartRate: rhr, BodyBatteryHigh: null, BodyBatteryLow: null, AvgStressLevel: null,
+            TrainingStatusCode: null, TrainingStatusPhrase: null, AcuteLoad: null, ChronicLoad: null, AcwrRatio: null, Vo2Max: null);
 }

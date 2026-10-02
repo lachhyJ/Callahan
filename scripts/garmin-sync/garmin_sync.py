@@ -569,6 +569,8 @@ def fetch_wellness(client, cdate):
 
     stats = probe("get_stats") or {}
 
+    training = parse_training_status(probe("get_training_status") or {}, cdate)
+
     return {
         "date": cdate,
         "sleepSeconds": daily_sleep.get("sleepTimeSeconds"),
@@ -588,8 +590,47 @@ def fetch_wellness(client, cdate):
         "bodyBatteryHigh": to_int(stats.get("bodyBatteryHighestValue")),
         "bodyBatteryLow": to_int(stats.get("bodyBatteryLowestValue")),
         "avgStressLevel": to_int(stats.get("averageStressLevel")),
+        **training,
         "rawJson": json.dumps(raw, default=str),
     }
+
+
+def parse_training_status(payload, cdate):
+    """Pick the Training Status fields for `cdate` out of get_training_status.
+
+    The payload is "most recent" shaped, keyed by device id, and VO2max in
+    particular carries its own calendarDate (it only changes every few days).
+    Anything whose calendarDate isn't `cdate` is dropped rather than copied onto
+    this day, so a backfill can't smear one day's status across its neighbours.
+    Shape confirmed against a real account 2026-10-02 (see --dump-wellness).
+    """
+    out = {
+        "trainingStatusCode": None,
+        "trainingStatusPhrase": None,
+        "acuteLoad": None,
+        "chronicLoad": None,
+        "acwrRatio": None,
+        "vo2Max": None,
+    }
+
+    by_device = ((payload.get("mostRecentTrainingStatus") or {}).get("latestTrainingStatusData")) or {}
+    entries = [e for e in by_device.values() if isinstance(e, dict)]
+    # primaryTrainingDevice picks the watch the app itself shows when there are several.
+    entry = next((e for e in entries if e.get("primaryTrainingDevice")), entries[0] if entries else {})
+    if entry.get("calendarDate") == cdate:
+        acute = entry.get("acuteTrainingLoadDTO") or {}
+        out["trainingStatusCode"] = to_int(entry.get("trainingStatus"))
+        out["trainingStatusPhrase"] = entry.get("trainingStatusFeedbackPhrase")
+        out["acuteLoad"] = to_int(acute.get("dailyTrainingLoadAcute"))
+        out["chronicLoad"] = to_int(acute.get("dailyTrainingLoadChronic"))
+        ratio = acute.get("dailyAcuteChronicWorkloadRatio")
+        out["acwrRatio"] = float(ratio) if ratio is not None else None
+
+    vo2 = (payload.get("mostRecentVO2Max") or {}).get("generic") or {}
+    if vo2.get("calendarDate") == cdate and vo2.get("vo2MaxPreciseValue") is not None:
+        out["vo2Max"] = float(vo2["vo2MaxPreciseValue"])
+
+    return out
 
 
 def wellness_date_range(days, start):

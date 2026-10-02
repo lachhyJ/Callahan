@@ -19,7 +19,13 @@ public record DailyWellnessDto(
     int? RestingHeartRate,
     int? BodyBatteryHigh,
     int? BodyBatteryLow,
-    int? AvgStressLevel);
+    int? AvgStressLevel,
+    int? TrainingStatusCode,
+    string? TrainingStatusPhrase,
+    int? AcuteLoad,
+    int? ChronicLoad,
+    double? AcwrRatio,
+    double? Vo2Max);
 
 // Phase 5 readiness insight: today's wellness read against a trailing personal
 // baseline, delivered as finished plain-language strings (see
@@ -77,4 +83,10 @@ public record UpsertDailyWellnessRequest(
     int? BodyBatteryHigh = null,
     int? BodyBatteryLow = null,
     int? AvgStressLevel = null,
-    string? RawJson = null);
+    string? RawJson = null,
+    int? TrainingStatusCode = null,
+    string? TrainingStatusPhrase = null,
+    int? AcuteLoad = null,
+    int? ChronicLoad = null,
+    double? AcwrRatio = null,
+    double? Vo2Max = null);

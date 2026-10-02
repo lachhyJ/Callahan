@@ -177,6 +177,12 @@ public class WellnessController : ControllerBase
         existing.BodyBatteryHigh = request.BodyBatteryHigh;
         existing.BodyBatteryLow = request.BodyBatteryLow;
         existing.AvgStressLevel = request.AvgStressLevel;
+        existing.TrainingStatusCode = request.TrainingStatusCode;
+        existing.TrainingStatusPhrase = request.TrainingStatusPhrase;
+        existing.AcuteLoad = request.AcuteLoad;
+        existing.ChronicLoad = request.ChronicLoad;
+        existing.AcwrRatio = request.AcwrRatio;
+        existing.Vo2Max = request.Vo2Max;
         existing.RawJson = request.RawJson;
 
         await _db.SaveChangesAsync();
