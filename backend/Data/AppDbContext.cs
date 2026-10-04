@@ -37,12 +37,15 @@ public class AppDbContext : DbContext
     public DbSet<PlanSlot> PlanSlots => Set<PlanSlot>();
     public DbSet<PlanSlotWeek> PlanSlotWeeks => Set<PlanSlotWeek>();
     public DbSet<PlateCalcSetting> PlateCalcSettings => Set<PlateCalcSetting>();
+    public DbSet<AppSetting> AppSettings => Set<AppSetting>();
     public DbSet<PendingGarminStrengthActivity> PendingGarminStrengthActivities => Set<PendingGarminStrengthActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<PlateCalcSetting>().HasKey(s => s.Key);
         modelBuilder.Entity<PlateCalcSetting>().Property(s => s.Key).HasMaxLength(100);
+        modelBuilder.Entity<AppSetting>().HasKey(s => s.Key);
+        modelBuilder.Entity<AppSetting>().Property(s => s.Key).HasMaxLength(100);
 
         // Every decimal is stored as REAL, not TEXT.
         //

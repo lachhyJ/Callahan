@@ -162,7 +162,7 @@ public class MonthlyReportsController : ControllerBase
         // part of the month and is rebuilt here like an old-schema row.
         var snapshotIsFinal = existing is not null
             && existing.SchemaVersion >= CurrentReportSchemaVersion
-            && DateOnly.FromDateTime(existing.ComputedAt.ToLocalTime()) >= lockDate;
+            && DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(existing.ComputedAt, DateTimeKind.Utc), _time.LocalTimeZone)) >= lockDate;
 
         if (shouldBeLocked && snapshotIsFinal && existing is not null)
         {

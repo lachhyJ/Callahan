@@ -8,6 +8,7 @@ import { isNativeAudio, playBeepNow } from './audio'
 import { isRestOver } from './restExpiry'
 import { getHealth } from './api/client'
 import { formatClock } from './utils/format'
+import TimeZonePrompt from './components/TimeZonePrompt'
 import { startUsageTracking, trackAction, trackRoute } from './usage'
 import { hydratePlateCalcSettings } from './plateCalc'
 import { useLockDocumentScroll } from './useKeyboardInset'
@@ -276,6 +277,7 @@ function AppRoutes() {
     <>
       {isAuthenticated && <TopBar />}
       {isAuthenticated && <ProvisioningBanner />}
+      {isAuthenticated && <TimeZonePrompt />}
       {/* id: the sole scroll container (see .app-content) — pages that need to
           watch scroll position listen on this, not window. */}
       <div id="app-scroll" className={contentClassName}>

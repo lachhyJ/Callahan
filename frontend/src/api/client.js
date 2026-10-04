@@ -568,3 +568,13 @@ export function recordUsage(events) {
     // Never let measurement break the thing being measured.
   }
 }
+
+// The zone the server computes "today" in (see TimeZoneController). Follows the
+// user while travelling.
+export function getTimeZone() {
+  return apiFetch('/api/timezone')
+}
+
+export function setTimeZone(zone) {
+  return apiFetch('/api/timezone', { method: 'PUT', body: JSON.stringify({ zone }) })
+}

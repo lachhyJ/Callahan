@@ -13,13 +13,15 @@ namespace Callahan.Api.Services;
 public class TaperReminderService : BackgroundService
 {
     private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(30);
-    private const int ReminderHour = 20; // 20:00 local — see docker-compose TZ note
+    private const int ReminderHour = 20; // 20:00 in the user's current zone (UserTimeProvider)
 
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<TaperReminderService> _logger;
+    private readonly TimeProvider _time;
 
-    public TaperReminderService(IServiceScopeFactory scopeFactory, ILogger<TaperReminderService> logger)
+    public TaperReminderService(IServiceScopeFactory scopeFactory, ILogger<TaperReminderService> logger, TimeProvider time)
     {
+        _time = time;
         _scopeFactory = scopeFactory;
         _logger = logger;
     }
@@ -52,7 +54,7 @@ public class TaperReminderService : BackgroundService
 
     private async Task CheckAndSendAsync()
     {
-        var now = DateTime.Now;
+        var now = _time.LocalNow();
         if (now.Hour < ReminderHour) return;
 
         var today = DateOnly.FromDateTime(now);

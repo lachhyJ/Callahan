@@ -16,9 +16,11 @@ public class TaperConsultService
     private readonly HttpClient _http;
     private readonly IConfiguration _config;
     private readonly ILogger<TaperConsultService> _logger;
+    private readonly TimeProvider _time;
 
-    public TaperConsultService(AppDbContext db, HttpClient http, IConfiguration config, ILogger<TaperConsultService> logger)
+    public TaperConsultService(AppDbContext db, HttpClient http, IConfiguration config, ILogger<TaperConsultService> logger, TimeProvider time)
     {
+        _time = time;
         _db = db;
         _http = http;
         _config = config;
@@ -33,7 +35,7 @@ public class TaperConsultService
             throw new TaperConsultUnavailableException("AI consult isn't configured yet.");
         }
 
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = _time.Today();
         var (systemPrompt, comparedToPriorTaper) = await BuildSystemPromptAsync(taperEvent, today);
 
         var requestBody = new

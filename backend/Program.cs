@@ -21,16 +21,13 @@ builder.Services.AddControllers();
 // visual suite renders the same dates every run; production always runs on
 // the real clock in the container's zone.
 var fixedNow = builder.Configuration["Dev:FixedNow"];
-if (builder.Environment.IsDevelopment() && !string.IsNullOrEmpty(fixedNow))
-{
-    builder.Services.AddSingleton<TimeProvider>(new FixedTimeProvider(
-        DateTimeOffset.Parse(fixedNow, System.Globalization.CultureInfo.InvariantCulture),
-        TimeZoneInfo.FindSystemTimeZoneById("Australia/Melbourne")));
-}
-else
-{
-    builder.Services.AddSingleton(TimeProvider.System);
-}
+var userTime = new UserTimeProvider(
+    TimeZoneInfo.Local,
+    builder.Environment.IsDevelopment() && !string.IsNullOrEmpty(fixedNow)
+        ? DateTimeOffset.Parse(fixedNow, System.Globalization.CultureInfo.InvariantCulture)
+        : null);
+builder.Services.AddSingleton(userTime);
+builder.Services.AddSingleton<TimeProvider>(userTime);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("Default")));
@@ -127,7 +124,20 @@ Directory.CreateDirectory(Path.Combine(app.Environment.ContentRootPath, "App_Dat
 
 using (var scope = app.Services.CreateScope())
 {
-    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+    var startupDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    startupDb.Database.Migrate();
+
+    // A zone the user switched to while travelling survives restarts; fall back
+    // to the container zone if the row is missing or no longer resolves.
+    var savedZone = startupDb.AppSettings.AsNoTracking()
+        .Where(s => s.Key == UserTimeProvider.SettingKey)
+        .Select(s => s.Value)
+        .FirstOrDefault();
+    if (savedZone is not null && TimeZoneInfo.TryFindSystemTimeZoneById(savedZone, out var zone))
+    {
+        userTime.SetZone(zone);
+    }
+    app.Logger.LogInformation("Active time zone: {Zone}", userTime.LocalTimeZone.Id);
 }
 
 app.UseHttpsRedirection();
