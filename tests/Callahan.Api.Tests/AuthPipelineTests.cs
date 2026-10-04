@@ -21,7 +21,7 @@ public class AuthPipelineTests : IDisposable
 
     private HttpClient Client(string environment, bool allowDevLogin = false) => Factory(environment, allowDevLogin).CreateClient();
 
-    private WebApplicationFactory<Program> Factory(string environment, bool allowDevLogin = false)
+    private WebApplicationFactory<Program> Factory(string environment, bool allowDevLogin = false, string? widgetKey = null)
     {
         var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b
             .UseEnvironment(environment)
@@ -30,7 +30,10 @@ public class AuthPipelineTests : IDisposable
             // Set here, not inherited: a dev machine supplies it from local
             // config, CI has none, and dev-login 500s without it.
             .UseSetting("Auth:Username", "pipeline-test-user")
-            .UseSetting("Auth:AllowDevLogin", allowDevLogin ? "true" : "false"));
+            .UseSetting("Auth:AllowDevLogin", allowDevLogin ? "true" : "false")
+            // Set unconditionally (empty = unconfigured) so a dev machine's
+            // backend.env can't make the "no key" tests pass or fail by accident.
+            .UseSetting("Widget:Key", widgetKey ?? ""));
         _factories.Add(factory);
         return factory;
     }
@@ -68,6 +71,34 @@ public class AuthPipelineTests : IDisposable
         var policy = factory.Services.GetRequiredService<IOptions<AuthorizationOptions>>().Value.FallbackPolicy;
         Assert.NotNull(policy);
         Assert.Contains(policy.Requirements, r => r is DenyAnonymousAuthorizationRequirement);
+    }
+
+    // The widget route is the one deliberate hole in the fallback policy, so pin
+    // both sides of it through the real pipeline: its key unlocks it, and that
+    // key is worth nothing anywhere else.
+    [Fact]
+    public async Task TheWidgetKeyUnlocksTheWidgetRouteOnly()
+    {
+        var client = Factory("Production", widgetKey: "pipeline-widget-key").CreateClient();
+        client.DefaultRequestHeaders.Add("X-Widget-Key", "pipeline-widget-key");
+
+        var widget = await client.GetAsync("/api/widget/training-status");
+        Assert.True(widget.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent,
+            $"widget route returned {widget.StatusCode}");
+
+        var other = await client.GetAsync("/api/streaks");
+        Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
+    }
+
+    [Fact]
+    public async Task TheWidgetRouteIs404WithoutAKeyOrWhenNoneIsConfigured()
+    {
+        var configured = Factory("Production", widgetKey: "pipeline-widget-key").CreateClient();
+        Assert.Equal(HttpStatusCode.NotFound, (await configured.GetAsync("/api/widget/training-status")).StatusCode);
+
+        var unconfigured = Client("Production");
+        unconfigured.DefaultRequestHeaders.Add("X-Widget-Key", "anything");
+        Assert.Equal(HttpStatusCode.NotFound, (await unconfigured.GetAsync("/api/widget/training-status")).StatusCode);
     }
 
     [Fact]
