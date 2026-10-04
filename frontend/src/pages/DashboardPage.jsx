@@ -9,6 +9,7 @@ import WellnessCard from '../components/WellnessCard'
 import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
+import TimeZoneSetting from '../components/TimeZoneSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
 import { trackAction } from '../usage'
@@ -412,6 +413,7 @@ export default function DashboardPage() {
 
       <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
 
+      <TimeZoneSetting />
       <BuildFooter />
     </main>
   )

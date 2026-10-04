@@ -1,15 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { getTimeZone, setTimeZone } from '../api/client'
+import { TZ_CHANGED_EVENT, deviceZone as readDeviceZone, readManualZone, zoneLabel } from '../timeZone'
 
 const DISMISS_KEY = 'callahan.tzPromptDismissed'
-
-function deviceZone() {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone
-  } catch {
-    return null
-  }
-}
 
 function readDismissed() {
   try {
@@ -17,10 +10,6 @@ function readDismissed() {
   } catch {
     return null
   }
-}
-
-function zoneLabel(zone) {
-  return zone.split('/').pop().replace(/_/g, ' ')
 }
 
 // Offers to move the server's "today" to the phone's zone when they differ
@@ -32,7 +21,7 @@ export default function TimeZonePrompt() {
   const [dismissed, setDismissed] = useState(readDismissed)
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
-  const device = deviceZone()
+  const device = readDeviceZone()
 
   const refresh = useCallback(() => {
     getTimeZone().then((tz) => setServerZone(tz.zone)).catch(() => {})
@@ -42,7 +31,11 @@ export default function TimeZonePrompt() {
     refresh()
     const onVisible = () => document.visibilityState === 'visible' && refresh()
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    window.addEventListener(TZ_CHANGED_EVENT, refresh)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener(TZ_CHANGED_EVENT, refresh)
+    }
   }, [refresh])
 
   async function switchZone() {
@@ -67,7 +60,8 @@ export default function TimeZonePrompt() {
     setDismissed(device)
   }
 
-  if (!device || !serverZone || serverZone === device || dismissed === device) return null
+  if (!device || !serverZone || serverZone === device || dismissed === device
+    || serverZone === readManualZone()) return null
 
   return (
     <div className="push-prompt tz-prompt" role="status">

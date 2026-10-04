@@ -79,6 +79,26 @@
    only) the Xcode checkout — a diagnostic, not a feature, tucked at the
    bottom of the Dashboard rather than the TopBar so it doesn't compete for
    attention on every screen. */
+.tz-setting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+  color: var(--text);
+
+  select,
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
+.tz-setting-offset {
+  color: var(--text-muted, inherit);
+  font-family: var(--mono);
+  font-size: var(--text-2xs);
+}
+
 .build-footer {
   display: flex;
   flex-wrap: wrap;
