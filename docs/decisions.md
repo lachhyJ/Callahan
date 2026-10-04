@@ -611,6 +611,27 @@ whoever happened to be guessing that day.
 
 ## Security and auth
 
+### The home screen widget carries its own narrow key instead of the login token
+**2026-10-04.** The Training Status widget fetches its data from one route, behind a
+static key sent in a request header, rather than using the app's login token. The route is
+the single deliberate `[AllowAnonymous]` hole in the deny-by-default policy below: it
+compares the key in constant time, is rate-limited, returns only the latest status code and
+load figures, and answers 404 for a wrong, missing or unconfigured key, so it is
+indistinguishable from a route that doesn't exist.
+
+A widget runs in its own process, and free provisioning can't add an App Group, so there is
+no shared storage to hand it the app's token (the same constraint that keeps the rest
+timer's state in plain `UserDefaults`; see *The native iOS wrap*). The options were a paid
+developer account, baking the login token into the build, or a credential of the widget's
+own. A 30-day login token in a binary is broad and expires; a key that unlocks one
+read-only route has a bounded leak. The key can be read out of the installed app by anyone
+with the device, and I accepted that: what it exposes is one training status.
+
+**How to apply:** give any further widget data its own narrow route behind the same
+header, never a wider token, and scope a credential to what holding it can reach on the
+assumption that it will leak. If a paid developer account ever happens, the key goes away:
+an App Group lets the app hand the widget a snapshot instead.
+
 ### Authorization is deny-by-default, and unmatched API routes are explicitly 404
 **2026-09-02.** A `FallbackPolicy` requires an authenticated user; the auth, health and
 dev-login routes carry explicit `[AllowAnonymous]`. A
