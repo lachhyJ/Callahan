@@ -32,6 +32,11 @@
 		A447722A8EB89C6D98FEE8EB /* AppInfoPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */; };
 		51A7CE0DDE537DBD7D788C16 /* BuildInfo.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */; };
 		A1B2C3D4E5F60718293A4B5D /* TrainingStatusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */; };
+		A1B2C3D4E5F60718293A4B61 /* WidgetBridgePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B60 /* WidgetBridgePlugin.swift */; };
+		A1B2C3D4E5F60718293A4B63 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */; };
+		A1B2C3D4E5F60718293A4B64 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */; };
+		A1B2C3D4E5F60718293A4B66 /* WidgetAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */; };
+		A1B2C3D4E5F60718293A4B68 /* TodayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B67 /* TodayWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +90,10 @@
 		ED0042C8CE174983D3AFC33F /* silence.m4a */ = {isa = PBXFileReference; includeInIndex = 1; path = silence.m4a; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrainingStatusWidget.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widget.xcconfig; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B60 /* WidgetBridgePlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetBridgePlugin.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetAPI.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B67 /* TodayWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TodayWidget.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -113,6 +122,8 @@
 				49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */,
 				0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */,
 				A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */,
+				A1B2C3D4E5F60718293A4B67 /* TodayWidget.swift */,
+				A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */,
 				A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */,
 			);
 			path = CallahanWidgets;
@@ -155,6 +166,7 @@
 				7AA2A946F01B075B3EAB00C8 /* MainViewController.swift */,
 				AB3296825CF8D9A8741006B0 /* RestAudioPlugin.swift */,
 				0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */,
+				A1B2C3D4E5F60718293A4B60 /* WidgetBridgePlugin.swift */,
 				CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */,
 				ED0042C8CE174983D3AFC33E /* beep.m4a */,
 				ED0042C8CE174983D3AFC33F /* silence.m4a */,
@@ -175,6 +187,7 @@
 			children = (
 				0971452FBD9268B0929A6F61 /* RestActivityAttributes.swift */,
 				D64EE7F6A6B5E55DCBDA2DF1 /* RestActivityIntents.swift */,
+				A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -329,6 +342,8 @@
 				C982D0FB66D4541452164C2D /* RestActivityIntents.swift in Sources */,
 				C135D385858A2372F326A722 /* RestAudioPlugin.swift in Sources */,
 				A447722A8EB89C6D98FEE8EB /* AppInfoPlugin.swift in Sources */,
+				A1B2C3D4E5F60718293A4B61 /* WidgetBridgePlugin.swift in Sources */,
+				A1B2C3D4E5F60718293A4B63 /* DeepLink.swift in Sources */,
 				51A7CE0DDE537DBD7D788C16 /* BuildInfo.generated.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -340,6 +355,9 @@
 				C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */,
 				8E6C82338FBAFC8DE26F29A5 /* RestActivityWidget.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5D /* TrainingStatusWidget.swift in Sources */,
+				A1B2C3D4E5F60718293A4B68 /* TodayWidget.swift in Sources */,
+				A1B2C3D4E5F60718293A4B66 /* WidgetAPI.swift in Sources */,
+				A1B2C3D4E5F60718293A4B64 /* DeepLink.swift in Sources */,
 				98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */,
 				4AB055F0611B7A68D6539113 /* RestActivityIntents.swift in Sources */,
 			);

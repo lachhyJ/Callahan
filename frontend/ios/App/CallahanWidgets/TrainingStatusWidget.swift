@@ -155,50 +155,28 @@ struct TrainingStatusProvider: TimelineProvider {
     private static let sample = TrainingStatusPayload(
         date: "2026-10-03", code: 7, acwrRatio: 1.1, acuteLoad: 310, chronicLoad: 282)
 
-    private static func configValue(_ key: String) -> String? {
-        guard let value = Bundle.main.object(forInfoDictionaryKey: key) as? String else { return nil }
-        // An unresolved build setting survives into the plist as "$(NAME)".
-        return value.isEmpty || value.hasPrefix("$(") ? nil : value
-    }
-
     /// The state to show and how long until the next fetch.
     private static func load() async -> (TrainingStatusState, TimeInterval) {
-        guard let key = configValue("WidgetKey"),
-              let base = configValue("WidgetBaseURL"),
-              let url = URL(string: base + "/api/widget/training-status")
-        else { return (.notConfigured, refreshInterval) }
-
-        var request = URLRequest(url: url, timeoutInterval: 15)
-        request.setValue(key, forHTTPHeaderField: "X-Widget-Key")
-
-        do {
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let http = response as? HTTPURLResponse else { return failure("No response") }
-            switch http.statusCode {
-            case 200:
-                let payload = try JSONDecoder().decode(TrainingStatusPayload.self, from: data)
-                if let encoded = try? JSONEncoder().encode(payload) {
-                    UserDefaults.standard.set(encoded, forKey: cacheKey)
-                }
-                return (.ok(payload, fetchFailed: false), refreshInterval)
-            case 204:
-                return (.noData, refreshInterval)
-            case 404:
-                // The server answers 404 for a wrong key and for an unset one alike.
-                return (.error("Key rejected"), refreshInterval)
-            default:
-                return failure("Server error \(http.statusCode)")
-            }
-        } catch {
-            return failure("Can't reach Callahan")
+        switch await WidgetAPI.fetch("/api/widget/training-status", as: TrainingStatusPayload.self) {
+        case let .ok(payload):
+            WidgetAPI.store(payload, key: cacheKey)
+            return (.ok(payload, fetchFailed: false), refreshInterval)
+        case .noContent:
+            return (.noData, refreshInterval)
+        case .rejected:
+            // The server answers 404 for a wrong key and for an unset one alike.
+            return (.error("Key rejected"), refreshInterval)
+        case .notConfigured:
+            return (.notConfigured, refreshInterval)
+        case let .failure(message):
+            return failure(message)
         }
     }
 
     /// Keep showing the last good status (marked as not refreshed) rather than
     /// blanking the widget over a dropped connection.
     private static func failure(_ message: String) -> (TrainingStatusState, TimeInterval) {
-        if let data = UserDefaults.standard.data(forKey: cacheKey),
-           let cached = try? JSONDecoder().decode(TrainingStatusPayload.self, from: data) {
+        if let cached = WidgetAPI.stored(key: cacheKey, as: TrainingStatusPayload.self) {
             return (.ok(cached, fetchFailed: true), retryInterval)
         }
         return (.error(message), retryInterval)
@@ -216,6 +194,7 @@ struct TrainingStatusWidgetView: View {
         switch entry.state {
         case let .ok(payload, fetchFailed):
             StatusContent(payload: payload, fetchFailed: fetchFailed, now: entry.date, family: family)
+                .widgetURL(DeepLink.wellness)
                 .containerBackground(for: .widget) {
                     // Full colour paints the whole card in the status colour. Under
                     // Clear / Tinted the system supplies the glass or tint itself, so
