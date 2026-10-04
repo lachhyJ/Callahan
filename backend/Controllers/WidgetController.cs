@@ -61,6 +61,32 @@ public class WidgetController : ControllerBase
         return Ok(row);
     }
 
+    // Built from the same loader as the Plan page, so the widget cannot disagree
+    // with it about what is done. "Today" is the training day (3 am cutoff, in the
+    // user-switchable zone), sent back as TrainingDay so the widget never works it
+    // out from the device clock.
+    [HttpGet("today")]
+    public async Task<ActionResult<WidgetTodayDto>> GetToday()
+    {
+        if (!KeyMatches()) return NotFound();
+
+        var today = CalendarDates.TrainingDay(_time.LocalNow());
+        var weekStart = CalendarDates.MondayOf(today);
+
+        var week = (await PlanWeekLoader.LoadAsync(_db, weekStart, today)).Week;
+        var dto = WidgetTodayBuilder.Build(week, null, today);
+
+        // Nothing left this week (Sunday evening): look at next week so "next" is
+        // not empty, but only then - it is a second round of queries.
+        if (dto.Next is null)
+        {
+            var nextWeek = (await PlanWeekLoader.LoadAsync(_db, weekStart.AddDays(WeekPlanBuilder.DaysInWeek), today)).Week;
+            dto = WidgetTodayBuilder.Build(week, nextWeek, today);
+        }
+
+        return Ok(dto);
+    }
+
     private bool KeyMatches()
     {
         var configured = _config["Widget:Key"];

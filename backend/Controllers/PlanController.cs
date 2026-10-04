@@ -13,10 +13,6 @@ namespace Callahan.Api.Controllers;
 [Route("api/[controller]")]
 public class PlanController : ControllerBase
 {
-    // The Daily Ankle Circuit, seeded in AppDbContext. Referenced by Id because
-    // it is deliberately not a plan slot - see AnkleCircuitDto.
-    private const int AnkleCircuitRoutineId = 1;
-
     private static readonly string[] DayNames =
         ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -39,48 +35,11 @@ public class PlanController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<WeekPlanDto>> Get([FromQuery] DateOnly? weekStart)
     {
-        var start = MondayOf(weekStart ?? Today());
-        var end = start.AddDays(WeekPlanBuilder.DaysInWeek - 1);
+        var today = Today();
+        var loaded = await PlanWeekLoader.LoadAsync(_db, MondayOf(weekStart ?? today), today);
+        var week = loaded.Week;
 
-        var slots = await _db.PlanSlots
-            .Include(s => s.WorkoutTemplate)
-            .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
-            .Select(s => new WeekPlanBuilder.SlotInput(
-                s.Id, s.DefaultDayOfWeek, s.SlotOrder, s.Kind, s.Label, s.IsOptional,
-                s.WorkoutTemplateId, s.ActivitySessionTypeId, s.RoutineId,
-                s.WorkoutTemplate != null ? s.WorkoutTemplate.LowerBodyLoad : null))
-            .ToListAsync();
-
-        var overrides = await _db.PlanSlotWeeks
-            .Where(w => w.WeekStart == start)
-            .Select(w => new WeekPlanBuilder.OverrideInput(w.PlanSlotId, w.DayOfWeek, w.Status))
-            .ToListAsync();
-
-        var gym = await _db.WorkoutSessions
-            .Where(s => s.Date >= start && s.Date <= end && s.WorkoutTemplateId != null)
-            .Select(s => new { s.Date, TemplateId = s.WorkoutTemplateId!.Value })
-            .ToListAsync();
-
-        var activities = await _db.Activities
-            .Where(a => a.Date >= start && a.Date <= end && a.ActivitySessionTypeId != null)
-            .Select(a => new { a.Date, SessionTypeId = a.ActivitySessionTypeId!.Value })
-            .ToListAsync();
-
-        var routines = await _db.RoutineCompletions
-            .Where(c => c.Date >= start && c.Date <= end)
-            .Select(c => new { c.Date, c.RoutineId })
-            .ToListAsync();
-
-        var week = WeekPlanBuilder.Build(
-            start, Today(), slots, overrides,
-            new WeekPlanBuilder.LoggedInput(
-                gym.Select(g => (g.Date, g.TemplateId)).ToList(),
-                activities.Select(a => (a.Date, a.SessionTypeId)).ToList(),
-                routines.Select(r => (r.Date, r.RoutineId)).ToList()));
-
-        var ankle = new AnkleCircuitDto(
-            AnkleCircuitRoutineId,
-            routines.Where(r => r.RoutineId == AnkleCircuitRoutineId).Select(r => r.Date).ToList());
+        var ankle = new AnkleCircuitDto(PlanWeekLoader.AnkleCircuitRoutineId, loaded.AnkleCompletedDates);
 
         return Ok(new WeekPlanDto(
             week.WeekStart,
