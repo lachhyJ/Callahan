@@ -70,7 +70,7 @@ export default function TimeZonePrompt() {
   if (!device || !serverZone || serverZone === device || dismissed === device) return null
 
   return (
-    <div className="push-prompt" role="status">
+    <div className="push-prompt tz-prompt" role="status">
       <span>Switch to {zoneLabel(device)} time? Your days are currently set to {zoneLabel(serverZone)}.</span>
       <button type="button" className="secondary-btn" onClick={switchZone} disabled={saving}>
         {saving ? 'Switching…' : 'Switch'}

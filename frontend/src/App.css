@@ -2111,6 +2111,14 @@ td {
   margin: 0 0 0 auto;
 }
 
+/* Phone-width tap targets for the time zone switch prompt (44px minimum). */
+.tz-prompt button {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+  user-select: none;
+}
+
 .push-prompt {
   display: flex;
   align-items: center;
