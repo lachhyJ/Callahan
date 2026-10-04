@@ -34,12 +34,52 @@ export function zoneLabel(zone) {
   return zone.split('/').pop().replace(/_/g, ' ')
 }
 
-export function allZones() {
-  try {
-    return Intl.supportedValuesOf('timeZone')
-  } catch {
-    return ['Australia/Melbourne', 'America/Los_Angeles', 'America/Vancouver', 'America/New_York', 'UTC']
-  }
+// The zones worth offering by hand: Australia, the US, and a short list of
+// places likely to come up. Any IANA id still works through the API/automatic
+// prompt - this only keeps the picker short.
+export const ZONE_GROUPS = [
+  {
+    label: 'Australia',
+    zones: [
+      ['Australia/Melbourne', 'Melbourne / Sydney / Canberra / Hobart'],
+      ['Australia/Brisbane', 'Brisbane (no daylight saving)'],
+      ['Australia/Adelaide', 'Adelaide'],
+      ['Australia/Darwin', 'Darwin'],
+      ['Australia/Perth', 'Perth'],
+    ],
+  },
+  {
+    label: 'United States',
+    zones: [
+      ['America/Los_Angeles', 'Pacific - Seattle / Los Angeles'],
+      ['America/Denver', 'Mountain - Denver'],
+      ['America/Phoenix', 'Arizona - Phoenix'],
+      ['America/Chicago', 'Central - Chicago'],
+      ['America/New_York', 'Eastern - New York'],
+      ['America/Anchorage', 'Alaska - Anchorage'],
+      ['Pacific/Honolulu', 'Hawaii - Honolulu'],
+    ],
+  },
+  {
+    label: 'Elsewhere',
+    zones: [
+      ['America/Vancouver', 'Vancouver'],
+      ['Pacific/Auckland', 'Auckland'],
+      ['Asia/Singapore', 'Singapore'],
+      ['Asia/Tokyo', 'Tokyo'],
+      ['Asia/Hong_Kong', 'Hong Kong'],
+      ['Asia/Dubai', 'Dubai'],
+      ['Europe/London', 'London'],
+      ['Europe/Paris', 'Paris / Berlin / Rome'],
+      ['UTC', 'UTC'],
+    ],
+  },
+]
+
+const KNOWN_ZONES = new Set(ZONE_GROUPS.flatMap((g) => g.zones.map(([id]) => id)))
+
+export function isListedZone(zone) {
+  return KNOWN_ZONES.has(zone)
 }
 
 export function offsetLabel(zone, at = new Date()) {

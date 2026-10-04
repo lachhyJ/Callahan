@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { getTimeZone, setTimeZone } from '../api/client'
 import {
-  TZ_CHANGED_EVENT, allZones, deviceZone, offsetLabel, writeManualZone, zoneLabel,
+  TZ_CHANGED_EVENT, ZONE_GROUPS, deviceZone, isListedZone, offsetLabel, writeManualZone, zoneLabel,
 } from '../timeZone'
 
 // Manual control over the zone the app computes "today" in, for when the
@@ -13,7 +13,6 @@ export default function TimeZoneSetting() {
   const [error, setError] = useState(null)
   const [saving, setSaving] = useState(false)
   const device = deviceZone()
-  const zones = useMemo(() => allZones(), [])
 
   useEffect(() => {
     const load = () => getTimeZone().then((tz) => setCurrent(tz.zone)).catch(() => {})
@@ -39,7 +38,9 @@ export default function TimeZoneSetting() {
 
   if (!current) return null
 
-  const options = zones.includes(current) ? zones : [current, ...zones]
+  // A zone outside the curated list (e.g. one the automatic prompt set while
+  // abroad) still has to appear, or the select would show the wrong value.
+  const unlisted = [current, device].filter((z, i, a) => z && !isListedZone(z) && a.indexOf(z) === i)
   const followingPhone = device && current === device
 
   return (
@@ -53,8 +54,15 @@ export default function TimeZoneSetting() {
         disabled={saving}
         onChange={(e) => apply(e.target.value, true)}
       >
-        {options.map((z) => (
-          <option key={z} value={z}>{zoneLabel(z)} ({z})</option>
+        {unlisted.length > 0 && (
+          <optgroup label="Current">
+            {unlisted.map((z) => <option key={z} value={z}>{zoneLabel(z)} ({z})</option>)}
+          </optgroup>
+        )}
+        {ZONE_GROUPS.map((g) => (
+          <optgroup key={g.label} label={g.label}>
+            {g.zones.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </optgroup>
         ))}
       </select>
       {device && !followingPhone && (
