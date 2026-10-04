@@ -5,6 +5,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>e084771e-428c-4a3a-a56d-d79607ace3ed</UserSecretsId>
+    <!-- SDK 10.0.401 fails the build with MSB3552 ("**/*.resx" cannot be found) on the
+         default resource glob. The project has no .resx files, so turn the glob off. -->
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
   </PropertyGroup>
 
   <ItemGroup>
