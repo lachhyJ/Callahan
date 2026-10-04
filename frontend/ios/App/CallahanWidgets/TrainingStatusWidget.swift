@@ -34,6 +34,32 @@ private struct StatusStyle {
         default: return .init(label: "Other", color: Color(hex: 0x9ca3af), darkText: true)
         }
     }
+
+    /// The status colour as a capsule *image*. The Tinted and Clear home screen
+    /// styles recolour every Color and shape in a widget to one accent, but leave
+    /// an Image alone when it opts into full colour (that is how the system
+    /// Photos widget keeps its pictures), so this is the one way to keep the
+    /// status colour on screen under those styles.
+    var swatch: Image {
+        let size = CGSize(width: 120, height: 12)
+        let rendered = UIGraphicsImageRenderer(size: size).image { _ in
+            UIColor(color).setFill()
+            UIBezierPath(roundedRect: CGRect(origin: .zero, size: size), cornerRadius: size.height / 2).fill()
+        }
+        return Image(uiImage: rendered.withRenderingMode(.alwaysOriginal))
+    }
+}
+
+private extension Image {
+    /// Opts the image out of the Tinted / Clear recolouring. The modifier is
+    /// iOS 18+ while the target is 17, so older systems just get the tinted image.
+    @ViewBuilder func keepsFullColor() -> some View {
+        if #available(iOS 18.0, *) {
+            widgetAccentedRenderingMode(.fullColor)
+        } else {
+            self
+        }
+    }
 }
 
 private extension Color {
@@ -183,6 +209,7 @@ struct TrainingStatusProvider: TimelineProvider {
 
 struct TrainingStatusWidgetView: View {
     @Environment(\.widgetFamily) private var family
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let entry: TrainingStatusEntry
 
     var body: some View {
@@ -190,8 +217,16 @@ struct TrainingStatusWidgetView: View {
         case let .ok(payload, fetchFailed):
             StatusContent(payload: payload, fetchFailed: fetchFailed, now: entry.date, family: family)
                 .containerBackground(for: .widget) {
-                    StatusStyle.forCode(payload.code).color
-                        .opacity(isStale(payload) ? 0.5 : 1)
+                    // Full colour paints the whole card in the status colour. Under
+                    // Clear / Tinted the system supplies the glass or tint itself, so
+                    // the card stays transparent and the colour comes back as a
+                    // small full-colour image inside (see StatusContent.swatchBar).
+                    if renderingMode == .fullColor {
+                        StatusStyle.forCode(payload.code).color
+                            .opacity(isStale(payload) ? 0.5 : 1)
+                    } else {
+                        Color.clear
+                    }
                 }
         case .noData:
             Message(title: "No status yet", detail: "Nothing synced in the last 14 days")
@@ -211,13 +246,29 @@ struct TrainingStatusWidgetView: View {
 }
 
 private struct StatusContent: View {
+    @Environment(\.widgetRenderingMode) private var renderingMode
     let payload: TrainingStatusPayload
     let fetchFailed: Bool
     let now: Date
     let family: WidgetFamily
 
     private var style: StatusStyle { StatusStyle.forCode(payload.code) }
-    private var ink: Color { style.darkText ? .black : .white }
+    private var colorful: Bool { renderingMode == .fullColor }
+    /// Text colour: matched to the status fill in full colour, otherwise left to
+    /// the system so it reads on whatever glass or tint sits behind it.
+    private var ink: Color { colorful ? (style.darkText ? .black : .white) : .primary }
+
+    /// The status colour as a bar, shown only when the card itself is not
+    /// painted in it. Dimmed when stale, like the full-colour fill.
+    @ViewBuilder private var swatchBar: some View {
+        if !colorful {
+            style.swatch
+                .resizable(capInsets: EdgeInsets(top: 0, leading: 6, bottom: 0, trailing: 6))
+                .keepsFullColor()
+                .frame(height: 6)
+                .opacity(stale ? 0.5 : 1)
+        }
+    }
     private var stale: Bool { (ageInDays(of: payload.date, now: now) ?? 0) >= staleAfterDays }
 
     var body: some View {
@@ -231,6 +282,8 @@ private struct StatusContent: View {
                     .font(.title2.weight(.bold))
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
+                    .widgetAccentable()
+                swatchBar
                 Spacer(minLength: 0)
                 footer
             }
@@ -245,6 +298,8 @@ private struct StatusContent: View {
                         .font(.largeTitle.weight(.bold))
                         .minimumScaleFactor(0.5)
                         .lineLimit(1)
+                        .widgetAccentable()
+                    swatchBar
                     Spacer(minLength: 0)
                     footer
                 }
