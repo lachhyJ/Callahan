@@ -1,4 +1,14 @@
 import { setSlotFields } from '../utils/setSlot'
+import { refreshWidgets } from '../widgetRefresh'
+
+// Chained onto the writes that change what the home screen widgets show (a session
+// or activity logged, deleted or restored, a plan slot or routine ticked, a Garmin
+// sync) so they reload now rather than at their next hourly refresh. Deliberately
+// not on every write: the rest timer posts on every rest and would spam reloads.
+const afterWrite = (result) => {
+  refreshWidgets()
+  return result
+}
 
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080'
 
@@ -262,7 +272,7 @@ export function createWorkoutSession(session) {
   return apiFetch('/api/workoutsessions', {
     method: 'POST',
     body: JSON.stringify(session),
-  })
+  }).then(afterWrite)
 }
 
 export function updateWorkoutSessionName(id, name) {
@@ -273,11 +283,11 @@ export function updateWorkoutSessionName(id, name) {
 }
 
 export function deleteWorkoutSession(id) {
-  return apiFetch(`/api/workoutsessions/${id}`, { method: 'DELETE' })
+  return apiFetch(`/api/workoutsessions/${id}`, { method: 'DELETE' }).then(afterWrite)
 }
 
 export function restoreWorkoutSession(id) {
-  return apiFetch(`/api/workoutsessions/${id}/restore`, { method: 'POST' })
+  return apiFetch(`/api/workoutsessions/${id}/restore`, { method: 'POST' }).then(afterWrite)
 }
 
 export function getDeletedWorkoutSessions() {
@@ -313,7 +323,7 @@ export function updatePlanSlot(slotId, { weekStart, dayOfWeek = null, status = '
   return apiFetch(`/api/plan/slots/${slotId}`, {
     method: 'PUT',
     body: JSON.stringify({ weekStart, dayOfWeek, status }),
-  })
+  }).then(afterWrite)
 }
 
 export function getRoutines() {
@@ -324,11 +334,11 @@ export function markRoutineDone(id, { date = null, notes = null } = {}) {
   return apiFetch(`/api/routines/${id}/completions`, {
     method: 'POST',
     body: JSON.stringify({ date, notes }),
-  })
+  }).then(afterWrite)
 }
 
 export function undoRoutineDone(id, date) {
-  return apiFetch(`/api/routines/${id}/completions/${date}`, { method: 'DELETE' })
+  return apiFetch(`/api/routines/${id}/completions/${date}`, { method: 'DELETE' }).then(afterWrite)
 }
 
 export function getFinishers() {
@@ -393,7 +403,7 @@ export function createActivity(activity) {
   return apiFetch('/api/activities', {
     method: 'POST',
     body: JSON.stringify(activity),
-  })
+  }).then(afterWrite)
 }
 
 export function getActivitySessionTypes() {
@@ -401,11 +411,11 @@ export function getActivitySessionTypes() {
 }
 
 export function deleteActivity(id) {
-  return apiFetch(`/api/activities/${id}`, { method: 'DELETE' })
+  return apiFetch(`/api/activities/${id}`, { method: 'DELETE' }).then(afterWrite)
 }
 
 export function restoreActivity(id) {
-  return apiFetch(`/api/activities/${id}/restore`, { method: 'POST' })
+  return apiFetch(`/api/activities/${id}/restore`, { method: 'POST' }).then(afterWrite)
 }
 
 export function getDeletedActivities() {
@@ -547,7 +557,7 @@ export function markMonthlyReportViewed(year, month) {
 // Activities and the last few days of sleep/HRV/readiness, so a morning press
 // also picks up last night's wellness rather than waiting for the noon cron.
 export function syncGarmin() {
-  return apiFetch('/api/sync/garmin?wellness=true', { method: 'POST' })
+  return apiFetch('/api/sync/garmin?wellness=true', { method: 'POST' }).then(afterWrite)
 }
 
 // Usage tracking. Deliberately does not go through apiFetch: a fire-and-forget
