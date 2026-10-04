@@ -1,0 +1,15 @@
+// Build settings for the CallahanWidgets extension. The home screen widget can't
+// borrow the app's login (no App Group on free provisioning), so it carries its
+// own narrow key. The real values live in Widget.local.xcconfig, which is
+// gitignored; copy Widget.local.xcconfig.example to create it.
+//
+// `#include?` (with the question mark) makes a missing file non-fatal: the
+// build still succeeds and the widget shows "not configured" instead.
+
+WIDGET_KEY =
+
+// `//` starts a comment in an xcconfig, so the scheme's slashes are split with
+// an empty $() to keep it from truncating the URL after "https:".
+WIDGET_BASE_URL = https:/$()/callahan.ljlab.online
+
+#include? "Widget.local.xcconfig"

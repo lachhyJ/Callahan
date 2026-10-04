@@ -5,5 +5,6 @@ import WidgetKit
 struct CallahanWidgetsBundle: WidgetBundle {
     var body: some Widget {
         RestActivityWidget()
+        TrainingStatusWidget()
     }
 }

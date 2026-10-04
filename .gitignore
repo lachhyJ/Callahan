@@ -45,3 +45,6 @@ backend.prod.env
 .claude/settings.local.json
 .claude/worktrees/
 .claude/plans/
+
+# iOS widget key (copy Widget.local.xcconfig.example)
+frontend/ios/App/CallahanWidgets/Widget.local.xcconfig

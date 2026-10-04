@@ -1,0 +1,3 @@
+// Copy to Widget.local.xcconfig (gitignored) and fill in. Must match Widget__Key
+// in the backend's env file. Generate with: openssl rand -hex 32
+WIDGET_KEY =

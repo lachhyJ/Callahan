@@ -31,6 +31,7 @@
 		C982D0FB66D4541452164C2D /* RestActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = D64EE7F6A6B5E55DCBDA2DF1 /* RestActivityIntents.swift */; };
 		A447722A8EB89C6D98FEE8EB /* AppInfoPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C617D6E0BA0FCC5DC0468DC /* AppInfoPlugin.swift */; };
 		51A7CE0DDE537DBD7D788C16 /* BuildInfo.generated.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFFDB956D66E7FC438CA809B /* BuildInfo.generated.swift */; };
+		A1B2C3D4E5F60718293A4B5D /* TrainingStatusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -82,6 +83,8 @@
 		D9141D7569520F4B2AD91C9F /* RestActivityPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = RestActivityPlugin.swift; sourceTree = "<group>"; };
 		ED0042C8CE174983D3AFC33E /* beep.m4a */ = {isa = PBXFileReference; includeInIndex = 1; path = beep.m4a; sourceTree = "<group>"; };
 		ED0042C8CE174983D3AFC33F /* silence.m4a */ = {isa = PBXFileReference; includeInIndex = 1; path = silence.m4a; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = TrainingStatusWidget.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Widget.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -109,6 +112,8 @@
 			children = (
 				49A81FD802B8CDCC78942B20 /* CallahanWidgetsBundle.swift */,
 				0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */,
+				A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */,
+				A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */,
 			);
 			path = CallahanWidgets;
 			sourceTree = "<group>";
@@ -334,6 +339,7 @@
 			files = (
 				C05FD820E78A5A9EB021919F /* CallahanWidgetsBundle.swift in Sources */,
 				8E6C82338FBAFC8DE26F29A5 /* RestActivityWidget.swift in Sources */,
+				A1B2C3D4E5F60718293A4B5D /* TrainingStatusWidget.swift in Sources */,
 				98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */,
 				4AB055F0611B7A68D6539113 /* RestActivityIntents.swift in Sources */,
 			);
@@ -527,6 +533,7 @@
 		};
 		720726CA7F5FD1AF069BF4E1 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;
@@ -548,6 +555,7 @@
 		};
 		DB3E85BFC898C90D2E7B79C3 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */;
 			buildSettings = {
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_STYLE = Automatic;

@@ -7,5 +7,9 @@
 		<key>NSExtensionPointIdentifier</key>
 		<string>com.apple.widgetkit-extension</string>
 	</dict>
+	<key>WidgetKey</key>
+	<string>$(WIDGET_KEY)</string>
+	<key>WidgetBaseURL</key>
+	<string>$(WIDGET_BASE_URL)</string>
 </dict>
 </plist>
