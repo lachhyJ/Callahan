@@ -154,6 +154,15 @@ effective value observable at startup. Configuration that is silently absent pro
 wrongness with no signal, which is strictly worse than a crash. And check the image
 actually ships `tzdata` — without it `TZ` is accepted and ignored.
 
+**Update, 2026-10-04.** The container's `TZ` is now only the default zone. A trip abroad made
+a fixed zone wrong for every "today" read, and editing `TZ` means a redeploy each way, so the
+server's zone is a setting you can switch at runtime (`UserTimeProvider`, stored in the
+database and reloaded at startup). That was cheap precisely because every "today" read had
+already been routed through an injected `TimeProvider`; the three `DateTime.Now` stragglers,
+the 20:00 reminder among them, moved onto it. Past data is unaffected: session instants are
+UTC and each session's `Date` is a stored calendar date. The startup log still names the
+active zone, so the rule above about making the effective value observable stands.
+
 ### Decimals are stored as REAL across the whole model
 **2026-09-02.** `OnModelCreating` sets `SetProviderClrType(typeof(double))` for every
 decimal property in the model, rather than configuring columns one at a time.

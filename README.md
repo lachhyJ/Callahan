@@ -86,7 +86,7 @@ silent switch, ducks your music rather than stopping it, and fires while backgro
 ## Tests
 
 - Backend: `dotnet test tests/Callahan.Api.Tests` (xUnit). Includes the 17 real GPS games as fixtures, with baselines for the on-field classifier.
-- Frontend: `cd frontend && npm test` (vitest, run under the `Australia/Melbourne` timezone the app assumes), plus `npm run lint`.
+- Frontend: `cd frontend && npm test` (vitest, pinned to `Australia/Melbourne` by the npm script; the server's own zone is switchable at runtime), plus `npm run lint`.
 - Visual regression: `npm run test:visual` (Playwright). The snapshots are macOS renders, so this suite runs locally only, not in CI.
 
 CI runs the backend and frontend suites, lint and a production build on every code push and pull request. Pushes to `main` run the same workflow (`.github/workflows/test.yml`, reused) as a gate: the deploy workflow refuses to deploy `main` if it fails. The badge above reflects that gated pipeline.
