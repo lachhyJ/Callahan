@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getTimeZone, setTimeZone } from '../api/client'
 import {
-  TZ_CHANGED_EVENT, allZones, deviceZone, offsetLabel, readManualZone, writeManualZone, zoneLabel,
+  TZ_CHANGED_EVENT, allZones, deviceZone, offsetLabel, writeManualZone, zoneLabel,
 } from '../timeZone'
 
 // Manual control over the zone the app computes "today" in, for when the
