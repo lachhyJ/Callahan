@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNaviga
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { daysUntil, getNativeStatus } from './nativeInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
+import { startStaleBundleCheck } from './staleBundle'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { isNativeAudio, playBeepNow } from './audio'
 import { isRestOver } from './restExpiry'
@@ -317,26 +318,13 @@ function AppRoutes() {
   )
 }
 
-// Self-heal for stale bundles (see the app-scoped back-button fix above,
-// which this complements): the backend's build version is a fresh GUID
-// per process start, so it changes on every deploy. If it doesn't match
-// what this tab last saw, the bundle it's running was built before the
-// current backend and may call routes that no longer exist — reload once
-// to pick up the current one instead of surfacing a 404 screen.
-function useStaleBundleSelfHeal() {
-  useEffect(() => {
-    getHealth()
-      .then(({ version }) => {
-        const stored = localStorage.getItem('callahan_build_version')
-        localStorage.setItem('callahan_build_version', version)
-        if (stored && stored !== version) window.location.reload()
-      })
-      .catch(() => {})
-  }, [])
-}
-
 function App() {
-  useStaleBundleSelfHeal()
+  useEffect(() => startStaleBundleCheck({
+    getHealth,
+    storage: localStorage,
+    loadActiveWorkout,
+    reload: () => window.location.reload(),
+  }), [])
   return (
     <BrowserRouter>
       <AuthProvider>
