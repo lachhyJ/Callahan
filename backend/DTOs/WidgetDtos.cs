@@ -9,20 +9,23 @@ public record WidgetTrainingStatusDto(
     int? AcuteLoad,
     int? ChronicLoad);
 
-// The Today widget: what is planned today, what is next, and how the week is going.
-// `TrainingDay` comes from the server (3 am cutoff, the user-switchable zone) so the
-// widget never works out "today" from the device clock.
-public record WidgetSlotDto(string Label, string Kind, string State);
+// The "this week" widget: how much of the program's week has been done, by what was
+// logged, not by the planner's day-by-day matching. `TrainingDay` comes from the
+// server (3 am cutoff, the user-switchable zone) so the widget never works out
+// "today" from the device clock.
+public record WidgetTallyDto(int Done, int Total);
 
-public record WidgetNextDto(string DayName, DateOnly Date, string Label, string Kind);
+// One thing logged on a day. `Short` is the chip text (G1, F2, Pod, Run); `Counted`
+// is whether it filled one of the program's sessions for the week.
+public record WidgetChipDto(string Short, bool Counted);
 
-// State is one of Done, Missed, Upcoming, Rest.
-public record WidgetDayDto(int DayOfWeek, string State);
+public record WidgetWeekDayDto(int DayOfWeek, List<WidgetChipDto> Chips);
 
-public record WidgetTodayDto(
+// `Left` names the program sessions still to do, in program order ("Field 2").
+public record WidgetWeekDto(
+    DateOnly WeekStart,
     DateOnly TrainingDay,
-    List<WidgetSlotDto> Today,
-    WidgetNextDto? Next,
-    int WeekDone,
-    int WeekPlanned,
-    List<WidgetDayDto> Days);
+    WidgetTallyDto Gym,
+    WidgetTallyDto Field,
+    List<string> Left,
+    List<WidgetWeekDayDto> Days);

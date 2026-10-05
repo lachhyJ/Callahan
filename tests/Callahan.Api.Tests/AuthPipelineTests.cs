@@ -90,17 +90,17 @@ public class AuthPipelineTests : IDisposable
         Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
     }
 
-    // The same key opens the Today route and nothing wider: still no data endpoint
+    // The same key opens the week route and nothing wider: still no data endpoint
     // behind the JWT, and no key means the route does not exist.
     [Fact]
-    public async Task TheWidgetKeyAlsoUnlocksTheTodayRouteOnly()
+    public async Task TheWidgetKeyAlsoUnlocksTheWeekRouteOnly()
     {
         var client = Factory("Production", widgetKey: "pipeline-widget-key").CreateClient();
 
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/widget/today")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/widget/week")).StatusCode);
 
         client.DefaultRequestHeaders.Add("X-Widget-Key", "pipeline-widget-key");
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/widget/today")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/widget/week")).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/plan")).StatusCode);
     }
 
