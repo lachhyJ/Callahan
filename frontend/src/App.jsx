@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, NavLink, Route, Routes, useLocation, useNaviga
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { daysUntil, getNativeStatus } from './nativeInfo'
 import { loadActiveWorkout, onActiveWorkoutChange } from './activeWorkout'
-import { startStaleBundleCheck } from './staleBundle'
+import { runningEntryScript, startStaleBundleCheck } from './staleBundle'
 import { clearRestTimer, loadRestTimer, onRestTimerChange } from './restTimer'
 import { isNativeAudio, playBeepNow } from './audio'
 import { isRestOver } from './restExpiry'
@@ -320,8 +320,8 @@ function AppRoutes() {
 
 function App() {
   useEffect(() => startStaleBundleCheck({
-    getHealth,
-    storage: localStorage,
+    runningEntry: runningEntryScript(),
+    fetchIndex: () => fetch('/', { cache: 'no-store' }).then((res) => res.text()),
     loadActiveWorkout,
     reload: () => window.location.reload(),
   }), [])

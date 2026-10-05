@@ -1,45 +1,40 @@
-// Self-heal for stale bundles. The backend's build version is a fresh GUID per
-// process start, so it changes on every deploy; a bundle built before the current
-// backend may call routes that no longer exist, or just lack recent features.
+// Self-heal for stale bundles: reload when the server is serving a newer build
+// than the one this page is running.
 //
-// Two checks, one function:
-// - first run on a page load compares against the version this browser last saw
-//   (localStorage), which catches a stale index.html served from cache;
-// - every later run compares against the version this page load first saw, which
-//   catches a webview that was suspended and resumed. A resumed webview keeps its
-//   in-memory JS and never remounts, so a check that only ran at mount left the
-//   phone on a days-old bundle after several deploys (seen 2026-10-05: footer
-//   read an old commit while the server was current).
+// "Newer" is read from the bundle itself. index.html is served no-cache and
+// references the hashed entry script (`assets/index-<hash>.js`), so a changed
+// filename means a deploy landed. The backend's per-process version GUID is not
+// usable for this: a frontend-only deploy leaves the backend container running,
+// so the GUID doesn't change (seen 2026-10-06).
 //
-// A resume-time reload is skipped while a workout is in progress: the reload
-// would land mid-session on a backgrounded-and-returned app. The next resume
-// after the workout ends picks the update up.
+// It runs at launch and on every return to the foreground. The foreground check
+// is the point: a webview that was suspended and resumed keeps its in-memory JS
+// and never remounts, so a launch-only check left the phone on a days-old bundle
+// across several deploys (seen 2026-10-05: footer read an old commit while the
+// server was current).
+//
+// A reload is skipped while a workout is in progress, since it would land
+// mid-session on a backgrounded-and-returned app. The next resume after the
+// workout ends picks the update up.
 
-export const BUILD_VERSION_KEY = 'callahan_build_version'
+const ENTRY_RE = /assets\/index-[\w-]+\.js/
 
-export function createStaleBundleCheck({ getHealth, storage, loadActiveWorkout, reload }) {
-  let loadedVersion = null
+export function entryScript(html) {
+  const match = ENTRY_RE.exec(html)
+  return match ? match[0] : null
+}
 
+export function createStaleBundleCheck({ runningEntry, fetchIndex, loadActiveWorkout, reload }) {
   return async function check() {
-    let version
+    if (!runningEntry) return
+    let served
     try {
-      ;({ version } = await getHealth())
+      served = entryScript(await fetchIndex())
     } catch {
       return
     }
-    if (!version) return
-
-    if (loadedVersion === null) {
-      loadedVersion = version
-      const stored = storage.getItem(BUILD_VERSION_KEY)
-      storage.setItem(BUILD_VERSION_KEY, version)
-      if (stored && stored !== version) reload()
-      return
-    }
-
-    if (version === loadedVersion) return
+    if (!served || served === runningEntry) return
     if (loadActiveWorkout()) return
-    storage.setItem(BUILD_VERSION_KEY, version)
     reload()
   }
 }
@@ -54,4 +49,14 @@ export function startStaleBundleCheck(deps) {
   document.addEventListener('visibilitychange', onVisibility)
   check()
   return () => document.removeEventListener('visibilitychange', onVisibility)
+}
+
+// The entry script this page was loaded with. Null in dev (Vite serves
+// /src/main.jsx, not a hashed asset), which turns the check off there.
+export function runningEntryScript(doc = document) {
+  for (const script of doc.querySelectorAll('script[src]')) {
+    const match = ENTRY_RE.exec(script.getAttribute('src'))
+    if (match) return match[0]
+  }
+  return null
 }

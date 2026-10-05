@@ -1,83 +1,64 @@
 import { describe, expect, it, vi } from 'vitest'
-import { BUILD_VERSION_KEY, createStaleBundleCheck } from './staleBundle'
+import { createStaleBundleCheck, entryScript } from './staleBundle'
 
-function memoryStorage(initial = {}) {
-  const data = { ...initial }
-  return {
-    getItem: (k) => (k in data ? data[k] : null),
-    setItem: (k, v) => { data[k] = v },
-  }
-}
+const page = (hash) => `<html><head>
+<script type="module" crossorigin src="/assets/index-${hash}.js"></script>
+<link rel="modulepreload" href="/assets/vendor-pFjnpeXZ.js">
+</head></html>`
 
-function setup({ versions, stored, active = null }) {
-  const queue = [...versions]
+function setup({ running = 'assets/index-AAA.js', served, active = null }) {
   const reload = vi.fn()
-  const storage = memoryStorage(stored ? { [BUILD_VERSION_KEY]: stored } : {})
   const check = createStaleBundleCheck({
-    getHealth: () => {
-      const next = queue.shift()
-      return next instanceof Error ? Promise.reject(next) : Promise.resolve({ version: next })
-    },
-    storage,
+    runningEntry: running,
+    fetchIndex: () => (served instanceof Error ? Promise.reject(served) : Promise.resolve(served)),
     loadActiveWorkout: () => active,
     reload,
   })
-  return { check, reload, storage }
+  return { check, reload }
 }
 
+describe('entryScript', () => {
+  it('picks the hashed entry script, not the vendor chunk', () => {
+    expect(entryScript(page('AAA'))).toBe('assets/index-AAA.js')
+  })
+
+  it('returns null when the page has no entry script', () => {
+    expect(entryScript('<html>502 Bad Gateway</html>')).toBeNull()
+  })
+})
+
 describe('createStaleBundleCheck', () => {
-  it('does not reload on a first visit', async () => {
-    const { check, reload, storage } = setup({ versions: ['a'] })
-    await check()
-    expect(reload).not.toHaveBeenCalled()
-    expect(storage.getItem(BUILD_VERSION_KEY)).toBe('a')
-  })
-
-  it('reloads at launch when the browser last saw a different version', async () => {
-    const { check, reload } = setup({ versions: ['b'], stored: 'a' })
+  it('reloads when the served entry script differs from the running one', async () => {
+    const { check, reload } = setup({ served: page('BBB') })
     await check()
     expect(reload).toHaveBeenCalledTimes(1)
   })
 
-  it('reloads on resume when the server version changed since this page loaded', async () => {
-    const { check, reload } = setup({ versions: ['a', 'b'], stored: 'a' })
-    await check()
-    expect(reload).not.toHaveBeenCalled()
-    await check()
-    expect(reload).toHaveBeenCalledTimes(1)
-  })
-
-  it('does not reload on resume when the version is unchanged', async () => {
-    const { check, reload } = setup({ versions: ['a', 'a', 'a'] })
-    await check()
-    await check()
+  it('does nothing when the bundle is current', async () => {
+    const { check, reload } = setup({ served: page('AAA') })
     await check()
     expect(reload).not.toHaveBeenCalled()
   })
 
-  it('holds off while a workout is in progress, then reloads once it ends', async () => {
-    let active = { templateId: '1' }
-    const reload = vi.fn()
-    const queue = ['a', 'b', 'b']
-    const check = createStaleBundleCheck({
-      getHealth: () => Promise.resolve({ version: queue.shift() }),
-      storage: memoryStorage(),
-      loadActiveWorkout: () => active,
-      reload,
-    })
-    await check()
+  it('holds off while a workout is in progress', async () => {
+    const { check, reload } = setup({ served: page('BBB'), active: { templateId: '1' } })
     await check()
     expect(reload).not.toHaveBeenCalled()
-    active = null
-    await check()
-    expect(reload).toHaveBeenCalledTimes(1)
   })
 
-  it('ignores a failed health check and keeps its baseline', async () => {
-    const { check, reload } = setup({ versions: ['a', new Error('offline'), 'a'] })
-    await check()
-    await check()
+  it('does nothing when the running entry is unknown (dev server)', async () => {
+    const { check, reload } = setup({ running: null, served: page('BBB') })
     await check()
     expect(reload).not.toHaveBeenCalled()
+  })
+
+  it('ignores a failed fetch and an error page', async () => {
+    const failed = setup({ served: new Error('offline') })
+    await failed.check()
+    expect(failed.reload).not.toHaveBeenCalled()
+
+    const errorPage = setup({ served: '<html>502 Bad Gateway</html>' })
+    await errorPage.check()
+    expect(errorPage.reload).not.toHaveBeenCalled()
   })
 })
