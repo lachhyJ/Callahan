@@ -72,7 +72,13 @@ jobs:
           host: ${{ secrets.NAS_HOST }}
           username: ${{ secrets.NAS_USER }}
           key: ${{ secrets.NAS_DEPLOY_SSH_KEY }}
-          script: ${{ github.event.inputs.sha }}
+          # Pin to the commit that triggered this run, not whatever origin/main
+          # is when the job reaches the NAS: otherwise another thread's later
+          # push gets built under this run's name and its failure is blamed on
+          # this one. A manual dispatch passes its own SHA, or blank for main.
+          # Runs queue in push order (concurrency group above), so pinning
+          # cannot deploy an older commit over a newer one.
+          script: ${{ github.event_name == 'push' && github.sha || github.event.inputs.sha }}
 
   # Separate from `deploy` so a failed test run, which skips the deploy job
   # entirely, still notifies. --fail-with-body makes a Telegram API error (bad

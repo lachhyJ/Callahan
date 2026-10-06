@@ -1,7 +1,7 @@
 #!/bin/bash
 # Forced-command target for the GitHub Actions deploy key (see authorized_keys).
-# SSH_ORIGINAL_COMMAND carries the ref to deploy: empty/unset for a normal
-# push-to-main deploy, or a full commit SHA for a manual rollback dispatch.
+# SSH_ORIGINAL_COMMAND carries the ref to deploy: the pushed commit SHA for a normal
+# push-to-main deploy, a SHA for a manual rollback dispatch, or empty for origin/main.
 set -euo pipefail
 
 REF="${SSH_ORIGINAL_COMMAND:-}"
