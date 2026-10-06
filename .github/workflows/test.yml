@@ -20,6 +20,21 @@ on:
   workflow_call:
 
 jobs:
+  tracked-files:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - name: No build output or backslash paths tracked
+        # A commit once added files under a directory literally named "bin\Debug"
+        # (backslash in the name), which the bin/ ignore rule did not match.
+        run: |
+          bad=$(git ls-files | grep -E '\\|(^|/)(bin|obj)/' || true)
+          if [ -n "$bad" ]; then
+            echo "Tracked build output or backslash paths:"
+            echo "$bad"
+            exit 1
+          fi
+
   backend:
     runs-on: ubuntu-24.04
     steps:
