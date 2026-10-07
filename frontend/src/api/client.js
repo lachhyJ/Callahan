@@ -326,6 +326,15 @@ export function updatePlanSlot(slotId, { weekStart, dayOfWeek = null, status = '
   }).then(afterWrite)
 }
 
+// Ties a Training-calendar event to a session for one week, for an event whose
+// title isn't recognised. calendarUid null unlinks.
+export function linkPlanSlot(slotId, { weekStart, calendarUid = null }) {
+  return apiFetch(`/api/plan/slots/${slotId}/link`, {
+    method: 'PUT',
+    body: JSON.stringify({ weekStart, calendarUid }),
+  }).then(afterWrite)
+}
+
 export function getRoutines() {
   return apiFetch('/api/routines')
 }

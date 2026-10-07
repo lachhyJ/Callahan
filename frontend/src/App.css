@@ -4948,6 +4948,24 @@ td {
 }
 
 .plan-slot-state { font-size: var(--text-xs); white-space: nowrap; }
+.plan-slot-part {
+  margin-left: var(--space-xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+.plan-calendar-note { border-left-color: var(--text-tertiary); }
+.plan-unplaced .plan-day-empty,
+.plan-other .plan-slot-part { display: block; margin-left: 0; }
+.plan-other-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  min-height: 44px;
+  padding: var(--space-2xs) 0;
+}
+.plan-other-row + .plan-other-row { border-top: 1px solid var(--border-subtle); }
+.plan-other-row select { min-height: 44px; font: inherit; font-size: var(--text-sm); }
 .plan-slot-done .plan-slot-state { color: var(--accent); }
 
 /* Missed is stated plainly and not coloured like an error: a dropped session in
