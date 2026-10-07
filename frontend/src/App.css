@@ -1808,12 +1808,16 @@ td {
 }
 
 .cue-toggle {
+  /* Block, left-aligned: the workout card inherits text-align: center. */
+  display: block;
+  width: fit-content;
+  text-align: left;
   background: none;
   border: none;
   /* Vertical padding, not min-height, to reach the 44px touch minimum while
      the label stays tight under the cue text. */
-  padding: 11px 4px;
-  margin: -6px 0 -6px -4px;
+  padding: 11px 8px;
+  margin: -6px 0 -6px -8px;
   font: inherit;
   font-size: var(--text-sm);
   color: var(--accent);
