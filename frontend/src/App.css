@@ -4997,14 +4997,22 @@ td {
 .plan-other .plan-slot-part { display: block; margin-left: 0; }
 .plan-other-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-xs);
-  min-height: 44px;
-  padding: var(--space-2xs) 0;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-2xs);
+  padding: var(--space-xs) 0;
 }
 .plan-other-row + .plan-other-row { border-top: 1px solid var(--border-subtle); }
-.plan-other-row select { min-height: 44px; font: inherit; font-size: var(--text-sm); }
+.plan-other-link { display: flex; align-items: center; gap: var(--space-xs); }
+.plan-other-link select { flex: 1; min-width: 0; }
+.plan-other-row select,
+.plan-other-row button {
+  min-height: 44px;
+  font: inherit;
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+}
+.plan-other-row button { padding: 0 var(--space-sm); }
 .plan-slot-done .plan-slot-state { color: var(--accent); }
 
 /* Missed is stated plainly and not coloured like an error: a dropped session in

@@ -147,6 +147,7 @@ public class CalendarMatcherTests
     {
         var r = CalendarMatcher.Match([Gym1, Gym2], [Ev("a", "  gym   2 ")]);
         Assert.Equal("a", r.BySlot[2].Uid);
+        Assert.Empty(r.Linked); // found by title, so nothing to unlink
         Assert.False(r.BySlot.ContainsKey(1));
     }
 
@@ -202,6 +203,7 @@ public class CalendarMatcherTests
         var r = CalendarMatcher.Match([linked], [Ev("b", "Dinner")]);
         Assert.Equal("b", r.BySlot[3].Uid);
         Assert.Empty(r.Other);
+        Assert.Equal([3], r.Linked);
     }
 
     [Fact]

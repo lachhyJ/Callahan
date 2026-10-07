@@ -46,6 +46,18 @@ function SlotRow({ slot, weekStart, dayOfWeek, onChange, calendar = false }) {
     }
   }
 
+  // Only for an event tied to this session by hand. One found by its title would
+  // just be found again, so there is nothing to undo.
+  async function unlink() {
+    setBusy(true)
+    try {
+      await linkPlanSlot(slot.slotId, { weekStart, calendarUid: null })
+      await onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (slot.kind === 'Rest') {
     return <div className="plan-slot plan-slot-rest">{slot.label}</div>
   }
@@ -105,6 +117,10 @@ function SlotRow({ slot, weekStart, dayOfWeek, onChange, calendar = false }) {
         >
           {state === 'Skipped' ? 'Unskip' : 'Skip'}
         </button>
+
+        {calendar && slot.isLinked && (
+          <button type="button" disabled={busy} onClick={unlink}>Unlink event</button>
+        )}
       </div>
     </div>
   )
@@ -253,14 +269,18 @@ function UnplacedList({ slots, weekStart, onChange }) {
 function OtherEvents({ events, unplaced, weekStart, onChange }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
+  // Which session is picked for each event; nothing is written until Link is pressed.
+  const [picked, setPicked] = useState({})
   if (!events?.length) return null
 
-  async function link(uid, slotId) {
+  async function link(uid) {
+    const slotId = picked[uid]
     if (!slotId) return
     setBusy(true)
     setError(null)
     try {
       await linkPlanSlot(Number(slotId), { weekStart, calendarUid: uid })
+      setPicked((p) => ({ ...p, [uid]: '' }))
       await onChange()
     } catch (err) {
       setError(err.message)
@@ -282,15 +302,24 @@ function OtherEvents({ events, unplaced, weekStart, onChange }) {
             <span className="plan-slot-part">{[formatDateMedium(e.day), e.timeOfDay].filter(Boolean).join(' · ')}</span>
           </span>
           {unplaced?.length > 0 && (
-            <select
-              aria-label={`Link ${e.title} to a session`}
-              value=""
-              disabled={busy}
-              onChange={(ev) => link(e.uid, ev.target.value)}
-            >
-              <option value="">Link to…</option>
-              {unplaced.map((s) => <option key={s.slotId} value={s.slotId}>{s.label}</option>)}
-            </select>
+            <span className="plan-other-link">
+              <select
+                aria-label={`Which session is ${e.title}?`}
+                value={picked[e.uid] ?? ''}
+                disabled={busy}
+                onChange={(ev) => setPicked((p) => ({ ...p, [e.uid]: ev.target.value }))}
+              >
+                <option value="">Which session?</option>
+                {unplaced.map((s) => <option key={s.slotId} value={s.slotId}>{s.label}</option>)}
+              </select>
+              <button
+                type="button"
+                disabled={busy || !picked[e.uid]}
+                onClick={() => link(e.uid)}
+              >
+                Link
+              </button>
+            </span>
           )}
         </div>
       ))}

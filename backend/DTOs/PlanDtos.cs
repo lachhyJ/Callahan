@@ -10,7 +10,8 @@ public record PlanSlotDto(
     bool IsManual,
     // Set only when the week is laid out from the calendar.
     string? TimeOfDay = null,
-    string? CalendarUid = null);
+    string? CalendarUid = null,
+    bool IsLinked = false);
 
 public record PlanDayDto(int DayOfWeek, DateOnly Date, string DayName, List<PlanSlotDto> Slots);
 

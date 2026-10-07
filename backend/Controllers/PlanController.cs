@@ -75,7 +75,7 @@ public class PlanController : ControllerBase
 
     private static PlanSlotDto ToDto(WeekPlanBuilder.SlotResult s) => new(
         s.SlotId, s.Label, s.Kind.ToString(), s.State.ToString(),
-        s.IsOptional, s.IsMoved, s.IsManual, s.TimeOfDay?.ToString(), s.CalendarUid);
+        s.IsOptional, s.IsMoved, s.IsManual, s.TimeOfDay?.ToString(), s.CalendarUid, s.IsLinked);
 
     private static PlanDayDto ToDto(WeekPlanBuilder.DayResult d) => new(
         d.DayOfWeek, d.Date, DayNames[d.DayOfWeek], d.Slots.Select(ToDto).ToList());

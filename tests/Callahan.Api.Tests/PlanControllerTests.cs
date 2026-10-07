@@ -94,6 +94,7 @@ public class PlanControllerTests
         Assert.False(week.CalendarUnavailable);
         var gym = Assert.Single(week.Days[3].Slots);
         Assert.Equal(("Gym 1", "Evening", "g"), (gym.Label, gym.TimeOfDay, gym.CalendarUid));
+        Assert.False(gym.IsLinked); // matched by its title
         Assert.Equal(["Field 1 - Acceleration & Jumps", "Aerobic - easy ride, or rest"], week.Unplaced!.Select(s => s.Label));
         Assert.Equal(["Dinner"], week.OtherEvents!.Select(e => e.Title));
     }
@@ -189,6 +190,7 @@ public class PlanControllerTests
         Assert.IsType<NoContentResult>(await controller.LinkSlot(field1, new LinkPlanSlotRequest(Monday, "odd")));
         var linked = await Week(controller);
         Assert.Equal(("Field 1 - Acceleration & Jumps", "Arvo"), (linked.Days[4].Slots.Single().Label, linked.Days[4].Slots.Single().TimeOfDay));
+        Assert.True(linked.Days[4].Slots.Single().IsLinked); // tied by hand, so it can be unlinked
         Assert.Empty(linked.OtherEvents!);
 
         Assert.IsType<NoContentResult>(await controller.LinkSlot(field1, new LinkPlanSlotRequest(Monday, null)));

@@ -97,7 +97,7 @@ public static class PlanWeekLoader
 
         var placements = matched.BySlot.ToDictionary(
             kv => kv.Key,
-            kv => new WeekPlanBuilder.Placement(kv.Value.Day, kv.Value.Part, kv.Value.Uid));
+            kv => new WeekPlanBuilder.Placement(kv.Value.Day, kv.Value.Part, kv.Value.Uid, matched.Linked.Contains(kv.Key)));
 
         // Done is week-level, by the same rule as the widget: the non-optional gym and
         // field slots, in program order, each fillable by a log from any day this week.

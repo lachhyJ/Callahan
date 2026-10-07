@@ -9,7 +9,9 @@ public static partial class CalendarMatcher
 {
     public record SlotKey(int SlotId, PlanSlotKind Kind, string Label, string? LinkedUid);
 
-    public record Result(Dictionary<int, CalendarEvent> BySlot, List<CalendarEvent> Other);
+    // Linked: the slots whose event was tied by hand rather than found by title, which
+    // are the only ones the page offers to unlink.
+    public record Result(Dictionary<int, CalendarEvent> BySlot, List<CalendarEvent> Other, HashSet<int> Linked);
 
     // The titles that mean this slot. Gym and Field slots answer to the short name the
     // program gives them ("Gym 1", "Field 2" - the seeded Field labels carry a subtitle,
@@ -28,6 +30,7 @@ public static partial class CalendarMatcher
     public static Result Match(IReadOnlyCollection<SlotKey> slots, IReadOnlyCollection<CalendarEvent> events)
     {
         var bySlot = new Dictionary<int, CalendarEvent>();
+        var linkedSlots = new HashSet<int>();
         var taken = new HashSet<string>();
         var ordered = events.OrderBy(e => e.Day).ThenBy(e => e.Part ?? TimeOfDay.Morning).ThenBy(e => e.Uid, StringComparer.Ordinal).ToList();
 
@@ -37,6 +40,7 @@ public static partial class CalendarMatcher
             var linked = ordered.FirstOrDefault(e => e.Uid == slot.LinkedUid && !taken.Contains(e.Uid));
             if (linked is null) continue;
             bySlot[slot.SlotId] = linked;
+            linkedSlots.Add(slot.SlotId);
             taken.Add(linked.Uid);
         }
 
@@ -51,7 +55,7 @@ public static partial class CalendarMatcher
             taken.Add(ev.Uid);
         }
 
-        return new Result(bySlot, ordered.Where(e => !taken.Contains(e.Uid)).ToList());
+        return new Result(bySlot, ordered.Where(e => !taken.Contains(e.Uid)).ToList(), linkedSlots);
     }
 
     private static string Normalise(string s) => Whitespace().Replace(s.Trim().ToLowerInvariant(), " ");

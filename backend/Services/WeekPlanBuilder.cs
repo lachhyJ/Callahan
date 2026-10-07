@@ -50,7 +50,9 @@ public static class WeekPlanBuilder
         bool IsManual,
         // Set only when the week is laid out from the calendar (BuildFromCalendar).
         TimeOfDay? TimeOfDay = null,
-        string? CalendarUid = null);
+        string? CalendarUid = null,
+        // The event was tied to this session by hand, so the page offers to unlink it.
+        bool IsLinked = false);
 
     public record DayResult(int DayOfWeek, DateOnly Date, List<SlotResult> Slots);
 
@@ -98,7 +100,7 @@ public static class WeekPlanBuilder
     }
 
     // Where the calendar put a session, and the event that says so.
-    public record Placement(DateOnly Day, TimeOfDay? Part, string Uid);
+    public record Placement(DateOnly Day, TimeOfDay? Part, string Uid, bool Linked = false);
 
     // The week laid out from the calendar: sessions with an event sit on its day,
     // the rest wait in Unplaced. Only Gym, Field and Aerobic slots are sessions -
@@ -137,7 +139,7 @@ public static class WeekPlanBuilder
             return new SlotResult(
                 slot.SlotId, slot.Label, slot.Kind, state, slot.IsOptional,
                 IsMoved: false, IsManual: ov?.Status == PlanSlotStatus.Done,
-                TimeOfDay: placement?.Part, CalendarUid: placement?.Uid);
+                TimeOfDay: placement?.Part, CalendarUid: placement?.Uid, IsLinked: placement?.Linked ?? false);
         }
 
         var days = new List<DayResult>();
