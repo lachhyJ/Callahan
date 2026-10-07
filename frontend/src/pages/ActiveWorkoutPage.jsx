@@ -357,6 +357,9 @@ export default function ActiveWorkoutPage() {
     return saved && saved.templateId === sessionKey ? saved : null
   })
   const [lbInputs, setLbInputs] = useState({})
+  // Diagnostic for the rapid-tap un-tick report (see logTick): when the previous
+  // tick landed. Remove with the audio diary.
+  const lastTickAtRef = useRef(0)
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
   // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
@@ -994,6 +997,16 @@ export default function ActiveWorkoutPage() {
       }
     }
     setError(null)
+    // Temporary, for the 2026-10-07 report that a fast run of ticks sometimes
+    // un-ticks a set: records which set each tap actually toggled, how soon
+    // after the last one, and where the page was scrolled, so a bad run shows
+    // whether the tap hit the wrong row or the rows moved under it.
+    {
+      const nowMs = Date.now()
+      const scroller = document.querySelector('.app-content')
+      logDiary(`tick ex=${exIdx} set=${setIdx} ${set.completed ? 'UNDO' : 'done'} +${lastTickAtRef.current ? nowMs - lastTickAtRef.current : '-'}ms scrollTop=${Math.round(scroller?.scrollTop ?? -1)}`)
+      lastTickAtRef.current = nowMs
+    }
     // A real tap that happens right before every rest timer starts, so it
     // covers entry points the templates-page unlock doesn't (resuming an
     // existing session, a stale-bundle reload mid-workout) without having
