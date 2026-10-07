@@ -9,7 +9,7 @@ vi.mock('./api/client', () => api)
 
 import {
   DUMBBELL_STEPS_KG, PLATE_SETS, calculatePlates, getAvailablePlates,
-  getCustomEquipment, getEquipmentType, guessEquipmentType, hydratePlateCalcSettings,
+  getCustomEquipment, getEquipmentType, pinStackJumps, guessEquipmentType, hydratePlateCalcSettings,
   nearestDumbbells, clearCustomEquipment,
   setAvailablePlates, setCustomEquipment, setEquipmentTypeOverride, describePlateDelta, calculatePlateDelta, plateLoadFor } from './plateCalc'
 
@@ -314,5 +314,30 @@ describe('calculatePlateDelta', () => {
 
   it('strips everything going back to an empty bar', () => {
     expect(calculatePlateDelta(25, 0, kg)).toEqual({ toAdd: [], toRemove: [{ plate: 25, count: 1 }] })
+  })
+})
+
+describe('pinStackJumps', () => {
+  const pcts = [2.5, 5, 7.5, 10]
+
+  it('rounds to 0.5kg on the kg grid and derives whole lb', () => {
+    const jumps = pinStackJumps(31.5, pcts, 'kg')
+    expect(jumps.map((j) => j.kg)).toEqual([32.5, 33, 34, 34.5])
+    expect(jumps.every((j) => Number.isInteger(j.lb))).toBe(true)
+    expect(jumps[1]).toMatchObject({ pct: 5, kg: 33, lb: 73 })
+  })
+
+  it('rounds to whole lb on the lb grid and reports the kg that would be stored', () => {
+    const jumps = pinStackJumps(31.5, pcts, 'lb')
+    expect(jumps.map((j) => j.lb)).toEqual([71, 73, 75, 76])
+    // 73lb is 33.11kg; the lb input stores it rounded down to the half-kg.
+    expect(jumps[1]).toMatchObject({ pct: 5, lb: 73, kg: 33 })
+  })
+
+  it('drops jumps that round to no increase, and duplicates', () => {
+    // 10kg: +2.5% is 10.25 -> 10.5 (up), +5% -> 10.5 (duplicate), +10% -> 11.
+    expect(pinStackJumps(10, pcts, 'kg').map((j) => j.kg)).toEqual([10.5, 11])
+    // 5kg: +2.5% is 5.125 -> 5 (no increase, dropped); +5% is 5.25 -> 5.5.
+    expect(pinStackJumps(5, [2.5, 5], 'kg').map((j) => j.kg)).toEqual([5.5])
   })
 })

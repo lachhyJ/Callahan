@@ -4,6 +4,7 @@ import {
   BAR_PRESETS,
   DUMBBELL_STEPS_KG,
   PLATE_SETS,
+  PROGRESSION_PERCENTAGES,
   calculatePlateDelta,
   calculatePlates,
   clearCustomEquipment,
@@ -18,6 +19,7 @@ import {
   getEquipmentTypeOverride,
   guessEquipmentType,
   nearestDumbbells,
+  pinStackJumps,
   setAvailableDumbbells,
   setAvailablePlates,
   setCustomEquipment,
@@ -172,10 +174,8 @@ function ExercisePlanNote({ plan, perSide }) {
   )
 }
 
-const KG_PER_LB = 0.45359237
 const EQUIPMENT_TYPE_LABELS = { barbell: 'Barbell', dumbbell: 'Dumbbell', added: 'Added/Machine', hidden: 'Hide' }
 
-const PROGRESSION_PERCENTAGES = [2.5, 5, 7.5, 10]
 
 export default function PlateCalcSheet({
   exerciseId,
@@ -475,14 +475,13 @@ export default function PlateCalcSheet({
   const hasPrevious = typeof previousTargetKg === 'number' && !Number.isNaN(previousTargetKg) && previousTargetKg > 0
   const smallestPlate = availablePlates.length > 0 ? Math.min(...availablePlates) : 1.25
   const progressionSuggestions =
-    hasPrevious
+    hasPrevious && equipmentType === 'hidden'
+      ? pinStackJumps(previousTargetKg, PROGRESSION_PERCENTAGES, 'kg').map(({ pct, kg, lb }) => ({ pct, achievable: kg, lb }))
+      : hasPrevious
       ? PROGRESSION_PERCENTAGES.map((pct) => {
           const raw = previousTargetKg * (1 + pct / 100)
           let achievable
-          if (equipmentType === 'hidden') {
-            // Pin stack: no plates to round to, so the plain percentage figure.
-            achievable = Math.round(raw * 10) / 10
-          } else if (equipmentType === 'barbell') {
+          if (equipmentType === 'barbell') {
             achievable = barWeightKg + 2 * roundToStep((raw - barWeightKg) / 2, smallestPlate)
           } else if (equipmentType === 'added') {
             achievable = addedBaseKg + roundToStep(raw - addedBaseKg, smallestPlate)
@@ -571,7 +570,7 @@ export default function PlateCalcSheet({
                 </div>
                 {suggestionsExpanded && (
                 <div className="plate-calc-chip-row">
-                  {progressionSuggestions.map(({ pct, achievable }) => (
+                  {progressionSuggestions.map(({ pct, achievable, lb }) => (
                     <button
                       key={pct}
                       type="button"
@@ -579,7 +578,7 @@ export default function PlateCalcSheet({
                       onClick={() => onApplyWeight?.(achievable)}
                     >
                       +{pct}% → {roundDisplay(achievable)}kg
-                      {equipmentType === 'hidden' && ` / ${Math.round((achievable / KG_PER_LB) * 10) / 10}lb`}
+                      {equipmentType === 'hidden' && ` / ${lb}lb`}
                     </button>
                   ))}
                 </div>

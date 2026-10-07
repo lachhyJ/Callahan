@@ -1404,6 +1404,50 @@ td {
   color: var(--text-tertiary);
 }
 
+/* Pin-stack chips sit between the calculator icon and the unit toggle, so the
+   toolbar spans the width instead of hugging the left edge. */
+.weight-input-toolbar--jumps {
+  right: 0;
+  padding-right: calc(var(--space-md) + var(--safe-right, 0px));
+}
+
+.weight-input-toolbar-jumps {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+.weight-input-toolbar-jump {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-left: none;
+  color: var(--text-tertiary);
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: nowrap;
+  touch-action: manipulation;
+  user-select: none;
+
+  & b {
+    font-size: var(--text-sm);
+    color: var(--text-h);
+  }
+
+  & span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 .weight-input-toolbar-unit {
   padding: var(--space-xs) var(--space-sm);
   font-size: var(--text-sm);

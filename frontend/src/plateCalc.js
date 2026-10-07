@@ -200,6 +200,40 @@ export function roundToStep(value, step) {
   return Math.max(0, Math.round(value / step) * step)
 }
 
+export const KG_PER_LB = 0.45359237
+
+// The "next jump" steps offered off last session's weight.
+export const PROGRESSION_PERCENTAGES = [2.5, 5, 7.5, 10]
+
+// Percentage jumps off last session's weight for a pin-stack machine, snapped to
+// a "grid" so they are numbers you could actually set rather than raw maths.
+// The grid is the unit being used: kg rounds to the nearest 0.5kg, lb to a
+// whole pound (a stack's own label is a guess at which is the true one, so the
+// caller picks). The other unit is derived from what would really be stored —
+// a lb value goes through the same round-down-to-0.5kg the lb input uses — so
+// the two numbers shown on a chip always describe the same weight. Jumps that
+// round to no increase are dropped, and so are duplicates (a light weight makes
+// +2.5% and +5% land on the same step); the smaller percentage keeps the label.
+export function pinStackJumps(previousKg, percentages, grid = 'kg') {
+  const lbOf = (kg) => Math.round(kg / KG_PER_LB)
+  const floorHalfKg = (lb) => Math.floor(lb * KG_PER_LB * 2) / 2
+  const seen = new Set()
+  const out = []
+  for (const pct of percentages) {
+    const raw = previousKg * (1 + pct / 100)
+    const jump =
+      grid === 'lb'
+        ? (() => { const lb = Math.round(raw / KG_PER_LB); return { pct, lb, kg: floorHalfKg(lb) } })()
+        : (() => { const kg = Math.round(raw * 2) / 2; return { pct, kg, lb: lbOf(kg) } })()
+    const increased = grid === 'lb' ? jump.lb > lbOf(previousKg) : jump.kg > previousKg
+    const key = grid === 'lb' ? jump.lb : jump.kg
+    if (!increased || seen.has(key)) continue
+    seen.add(key)
+    out.push(jump)
+  }
+  return out
+}
+
 // Given a target per-dumbbell weight, finds the closest available size(s).
 // Returns an exact match alone when the rack has one, otherwise the
 // nearest step below and above (either can be absent at the ends of the

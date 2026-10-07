@@ -15,7 +15,7 @@ import PushPrompt from '../components/PushPrompt'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
 import CueInput from '../components/CueInput'
-import { getAvailableDumbbells, getEquipmentType } from '../plateCalc'
+import { PROGRESSION_PERCENTAGES, getAvailableDumbbells, getEquipmentType, pinStackJumps } from '../plateCalc'
 import { warmupRamp } from '../utils/warmupRamp'
 import { trainingDayIso } from '../dateUtils'
 import { SET_TYPE_LABELS, formatClock, formatLoggedSet } from '../utils/format'
@@ -2285,6 +2285,21 @@ export default function ActiveWorkoutPage() {
         const isLb = focusedWeightCell in lbInputs
         const isPlateCalcOpen = openPlateCalc?.exIdx === focusedExIdx && openPlateCalc?.setIdx === focusedSetIdx
         const calcHidden = getEquipmentType(focusedExercise.exerciseId, focusedExercise.exerciseName) === 'hidden'
+        // Pin-stack exercises have no plate maths, so the calculator was only
+        // ever a way into the next-jump chips — and a Hide setting kept hiding
+        // them. Show them right here instead. The kg/lb toggle doubles as the
+        // rounding grid (0.5kg vs whole lb) while we find out which one the
+        // stacks really follow, and each chip prints the other unit too.
+        const previousKg = Number(focusedSet.previous?.weightKg)
+        const jumps =
+          calcHidden && focusedSet.type !== 'Warmup' && previousKg > 0
+            ? pinStackJumps(previousKg, PROGRESSION_PERCENTAGES, isLb ? 'lb' : 'kg')
+            : []
+        const applyJump = (jump) => {
+          if (isLb) updateLbInput(focusedExIdx, focusedSetIdx, String(jump.lb))
+          else updateSet(focusedExIdx, focusedSetIdx, 'weightKg', String(jump.kg))
+          cascadeWeightFromFirstWorking(focusedExIdx, focusedSetIdx, true)
+        }
         // Portalled to <body>, same reason as ConfirmSheet: position:fixed
         // inside .app-content (the scroll container) rides along with the
         // scroll gesture on iOS WKWebView instead of staying pinned to the
@@ -2297,7 +2312,7 @@ export default function ActiveWorkoutPage() {
         // scroll-coupled position happened to be.
         return createPortal(
           <div
-            className="weight-input-toolbar"
+            className={jumps.length > 0 ? 'weight-input-toolbar weight-input-toolbar--jumps' : 'weight-input-toolbar'}
             style={{ bottom: keyboardInset + KEYBOARD_ACCESSORY_HEIGHT }}
           >
             <button
@@ -2308,6 +2323,23 @@ export default function ActiveWorkoutPage() {
             >
               <PlateIcon width={14} height={14} /> {!calcHidden && 'Calculator'}
             </button>
+            {jumps.length > 0 && (
+              <div className="weight-input-toolbar-jumps">
+                {jumps.map((jump) => (
+                  <button
+                    key={jump.pct}
+                    type="button"
+                    className="weight-input-toolbar-jump"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => applyJump(jump)}
+                    aria-label={`Next jump plus ${jump.pct} percent: ${jump.kg} kilograms, ${jump.lb} pounds`}
+                  >
+                    <b>{isLb ? jump.lb : jump.kg}</b>
+                    <span>+{jump.pct}% · {isLb ? `${jump.kg}kg` : `${jump.lb}lb`}</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <button
               type="button"
               className="weight-input-toolbar-unit"
