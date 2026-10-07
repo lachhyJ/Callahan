@@ -61,6 +61,20 @@ export function earliestStartedAt(sessionKey, candidate) {
 // alone says whether a set is a warmup: n <= warmupSets. Sent alongside
 // nextSetNumber/totalSets so every surface can show "W1/2" then "Set 1/4"
 // without the native card's number-advancing logic needing to know.
+// The lowest-ordered working set from last session that no current row is
+// showing — what a re-added set should pick up after one was deleted. A middle
+// deletion renumbers the rows but each keeps its own `previous`, so matching by
+// "next setOrder" would hand the new row a duplicate of the last one's. Null
+// when every working set is already on screen (a genuinely extra set).
+export function unusedPreviousSet(previousSets, sets) {
+  const used = new Set(sets.map((s) => s.previous?.setOrder).filter((o) => o != null))
+  return (
+    (previousSets ?? [])
+      .filter((p) => p.setType !== 'Warmup' && !used.has(p.setOrder))
+      .sort((a, b) => a.setOrder - b.setOrder)[0] ?? null
+  )
+}
+
 export function warmupCount(ex) {
   return ex.sets.filter((s) => s.type === 'Warmup').length
 }

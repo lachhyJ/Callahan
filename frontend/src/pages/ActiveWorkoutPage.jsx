@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -96,6 +96,24 @@ function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = 
   return [...warmupRows, ...workingRows]
 }
 
+// A set added with "+ Add set". If it brings back one deleted earlier, it
+// picks up that set's Previous and prefill (grey, like the originals); a set
+// beyond what last session had starts blank.
+function blankSetRow(ex) {
+  const previous = unusedPreviousSet(ex.previousSets, ex.sets)
+  const type = previous && SET_TYPE_OPTIONS.includes(previous.setType) ? previous.setType : 'Normal'
+  return {
+    setOrder: ex.sets.length,
+    reps: !ex.isTimeBased && previous ? String(previous.reps) : '',
+    weightKg: !ex.isTimeBased && previous ? String(previous.weightKg) : '',
+    durationSeconds: ex.isTimeBased ? String(previous?.durationSeconds ?? ex.targetDurationSeconds ?? '') : '',
+    previous,
+    weightIsUserEntered: false,
+    completed: false,
+    type,
+  }
+}
+
 function exerciseFromStart(ex) {
   return {
     exerciseId: ex.exerciseId,
@@ -121,6 +139,8 @@ function exerciseFromStart(ex) {
     supersetRestSeconds: ex.supersetRestSeconds ?? null,
     readyToProgress: ex.readyToProgress ?? false,
     notes: '',
+    // Kept so a set deleted by mistake can come back with its Previous/prefill.
+    previousSets: ex.previousSets ?? [],
     sets: buildInitialSets(
       initialWorkingSetCount(ex),
       ex.previousSets,
@@ -1313,10 +1333,7 @@ export default function ActiveWorkoutPage() {
           ? ex
           : {
               ...ex,
-              sets: [
-                ...ex.sets,
-                { setOrder: ex.sets.length, reps: '', weightKg: '', previous: null, weightIsUserEntered: false, completed: false, type: 'Normal' },
-              ],
+              sets: [...ex.sets, blankSetRow(ex)],
             }
       )
     )

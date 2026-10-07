@@ -14,6 +14,7 @@ import {
   advanceHold,
   applyNativeCompletions,
   restSlotDrifted,
+  unusedPreviousSet,
 } from './activeWorkout'
 import { installStorageStub } from './test/storageStub'
 
@@ -628,5 +629,33 @@ describe('warmupSets on descriptors', () => {
     const ex = squat()
     ex[0].sets[1].completed = true // tick the last warmup; first working set is next
     expect(restDescriptorAfterSet(ex, 0, 1)).toMatchObject({ nextSetNumber: 3, totalSets: 4, warmupSets: 2 })
+  })
+})
+
+describe('unusedPreviousSet', () => {
+  const prev = [
+    { setOrder: 0, setType: 'Normal', weightKg: 50, reps: 8 },
+    { setOrder: 1, setType: 'Normal', weightKg: 55, reps: 6 },
+    { setOrder: 2, setType: 'Normal', weightKg: 60, reps: 5 },
+    { setOrder: 3, setType: 'Warmup', weightKg: 20, reps: 10 },
+  ]
+
+  it('returns the deleted middle set, not a duplicate of the last', () => {
+    const rows = [{ previous: prev[0] }, { previous: prev[2] }]
+    expect(unusedPreviousSet(prev, rows)).toBe(prev[1])
+  })
+
+  it('returns null when every working set is already on screen', () => {
+    const rows = [{ previous: prev[0] }, { previous: prev[1] }, { previous: prev[2] }]
+    expect(unusedPreviousSet(prev, rows)).toBeNull()
+  })
+
+  it('ignores warm-ups and tolerates missing history', () => {
+    expect(unusedPreviousSet([prev[3]], [])).toBeNull()
+    expect(unusedPreviousSet(undefined, [])).toBeNull()
+  })
+
+  it('treats a row with no previous as using nothing', () => {
+    expect(unusedPreviousSet(prev, [{ previous: null }])).toBe(prev[0])
   })
 })
