@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { getWeekPlan, getRoutines, updatePlanSlot, linkPlanSlot, markRoutineDone, undoRoutineDone } from '../api/client'
 import { isoDate, startOfWeek, trainingDayIso, formatDateMedium } from '../dateUtils'
 import { advanceHold } from '../activeWorkout'
@@ -309,16 +309,39 @@ export default function PlanPage() {
   const [plan, setPlan] = useState(null)
   const [error, setError] = useState(null)
   const [routines, setRoutines] = useState([])
+  const [refreshing, setRefreshing] = useState(false)
+  const loadedAt = useRef(0)
 
   const load = useCallback(async () => {
     try {
       setPlan(await getWeekPlan(weekStart))
+      loadedAt.current = Date.now()
     } catch (err) {
       setError(err.message)
     }
   }, [weekStart])
 
   useEffect(() => { load() }, [load])
+
+  // The calendar is read on every load, but the page stays mounted while the app is
+  // backgrounded, so a week planned in Calendar would sit stale until you navigated
+  // away. Re-read when the app comes back, at most every 10 seconds.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible' && Date.now() - loadedAt.current > 10_000) load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [load])
+
+  async function refresh() {
+    setRefreshing(true)
+    try {
+      await load()
+    } finally {
+      setRefreshing(false)
+    }
+  }
   // Routine items are seed content, not week-scoped — fetched once, not on
   // every week change.
   useEffect(() => { getRoutines().then(setRoutines).catch(() => {}) }, [])
@@ -347,6 +370,12 @@ export default function PlanPage() {
         </span>
         <button type="button" onClick={() => shiftWeek(7)}>Next →</button>
       </div>
+
+      {plan?.calendarEnabled && (
+        <button type="button" className="plan-refresh" disabled={refreshing} onClick={refresh}>
+          {refreshing ? 'Reading your calendar…' : 'Refresh from calendar'}
+        </button>
+      )}
 
       {error && <p className="error">{error}</p>}
       {!error && plan === null && <p>Loading the week…</p>}
