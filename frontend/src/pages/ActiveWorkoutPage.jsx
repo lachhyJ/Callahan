@@ -369,9 +369,6 @@ export default function ActiveWorkoutPage() {
     return saved && saved.templateId === sessionKey ? saved : null
   })
   const [lbInputs, setLbInputs] = useState({})
-  // Diagnostic for the rapid-tap un-tick report (see logTick): when the previous
-  // tick landed. Remove with the audio diary.
-  const lastTickAtRef = useRef(0)
   // When each set was last ticked done (`${exIdx}-${setIdx}`), so a repeat tap
   // moments later can be told apart from a deliberate un-tick (QUICK_UNDO_MS).
   const completedAtRef = useRef({})
@@ -1024,7 +1021,7 @@ export default function ActiveWorkoutPage() {
         if (!press || press.key !== key || press.id !== e.pointerId) return
         if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP_PX) return
         noteTapHandledByPointer(tickPointerHandledRef.current, key, Date.now())
-        toggleComplete(exIdx, setIdx, 'pointer')
+        toggleComplete(exIdx, setIdx)
       },
       onPointerCancel: () => {
         tickPressRef.current = null
@@ -1039,12 +1036,12 @@ export default function ActiveWorkoutPage() {
       },
       onClick: () => {
         if (consumeClickAfterPointerTap(tickPointerHandledRef.current, key, Date.now())) return
-        toggleComplete(exIdx, setIdx, 'click')
+        toggleComplete(exIdx, setIdx)
       },
     }
   }
 
-  function toggleComplete(exIdx, setIdx, source = 'click') {
+  function toggleComplete(exIdx, setIdx) {
     const exercise = exercises[exIdx]
     const set = exercise.sets[setIdx]
     if (!set.completed) {
@@ -1059,20 +1056,9 @@ export default function ActiveWorkoutPage() {
     }
     const tickKey = `${exIdx}-${setIdx}`
     if (set.completed && Date.now() - (completedAtRef.current[tickKey] ?? 0) < QUICK_UNDO_MS) {
-      logDiary(`tick ex=${exIdx} set=${setIdx} ignored: un-tick ${Date.now() - completedAtRef.current[tickKey]}ms after done`)
       return
     }
     setError(null)
-    // Temporary, for the 2026-10-07 report that a fast run of ticks sometimes
-    // un-ticks a set: records which set each tap actually toggled, how soon
-    // after the last one, and where the page was scrolled, so a bad run shows
-    // whether the tap hit the wrong row or the rows moved under it.
-    {
-      const nowMs = Date.now()
-      const scroller = document.querySelector('.app-content')
-      logDiary(`tick ex=${exIdx} set=${setIdx} ${set.completed ? 'UNDO' : 'done'} via ${source} +${lastTickAtRef.current ? nowMs - lastTickAtRef.current : '-'}ms scrollTop=${Math.round(scroller?.scrollTop ?? -1)}`)
-      lastTickAtRef.current = nowMs
-    }
     // A real tap that happens right before every rest timer starts, so it
     // covers entry points the templates-page unlock doesn't (resuming an
     // existing session, a stale-bundle reload mid-workout) without having
