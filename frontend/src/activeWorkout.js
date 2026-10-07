@@ -61,6 +61,34 @@ export function earliestStartedAt(sessionKey, candidate) {
 // alone says whether a set is a warmup: n <= warmupSets. Sent alongside
 // nextSetNumber/totalSets so every surface can show "W1/2" then "Set 1/4"
 // without the native card's number-advancing logic needing to know.
+// How long after a pointer-handled tap its follow-up click may still arrive.
+// iOS coalesces the clicks of a fast run of taps and delivers them late — after
+// a later tap's pointer-up — so the click for set 3 can land after set 2 has
+// been pointer-handled. Dedupe has to be per button and counted, not a single
+// "last handled" slot, or that late click reads as a fresh tap and ticks the
+// set again (the 2026-10-07 phantom ticks: `set=3 done via click +3ms` right
+// after `set=2 UNDO via pointer`).
+export const CLICK_DEDUPE_MS = 1500
+
+export function noteTapHandledByPointer(pending, key, now) {
+  const entry = pending[key]
+  if (entry && now - entry.at < CLICK_DEDUPE_MS) {
+    entry.n += 1
+    entry.at = now
+  } else {
+    pending[key] = { n: 1, at: now }
+  }
+}
+
+// True when this click is the follow-up to a tap already handled by pointer-up
+// (and so should be dropped); consumes one pending click for the button.
+export function consumeClickAfterPointerTap(pending, key, now) {
+  const entry = pending[key]
+  if (!entry || entry.n <= 0 || now - entry.at >= CLICK_DEDUPE_MS) return false
+  entry.n -= 1
+  return true
+}
+
 // The lowest-ordered working set from last session that no current row is
 // showing — what a re-added set should pick up after one was deleted. A middle
 // deletion renumbers the rows but each keeps its own `previous`, so matching by

@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -378,7 +378,7 @@ export default function ActiveWorkoutPage() {
   // Tick button press in flight, and when a pointer-handled tick last fired, so
   // the click that follows it can be dropped (see tickPointerHandlers).
   const tickPressRef = useRef(null)
-  const tickPointerHandledRef = useRef({ key: null, at: 0 })
+  const tickPointerHandledRef = useRef({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
   // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
@@ -1009,8 +1009,9 @@ export default function ActiveWorkoutPage() {
   // between. Pointer events fire for every touch regardless of that gesture
   // handling. A press that moves (a scroll starting on the button) fires
   // pointercancel or travels more than TAP_SLOP_PX and does nothing. The click
-  // that follows a handled tap is dropped; a click with no pointer events
-  // before it (keyboard, assistive tech) still toggles.
+  // that follows a handled tap is dropped (counted per button, because iOS can
+  // deliver it after later taps); a click with no pointer events before it
+  // (keyboard, assistive tech) still toggles.
   function tickPointerHandlers(exIdx, setIdx) {
     const key = `${exIdx}-${setIdx}`
     return {
@@ -1022,18 +1023,14 @@ export default function ActiveWorkoutPage() {
         tickPressRef.current = null
         if (!press || press.key !== key || press.id !== e.pointerId) return
         if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP_PX) return
-        tickPointerHandledRef.current = { key, at: Date.now() }
+        noteTapHandledByPointer(tickPointerHandledRef.current, key, Date.now())
         toggleComplete(exIdx, setIdx, 'pointer')
       },
       onPointerCancel: () => {
         tickPressRef.current = null
       },
       onClick: () => {
-        const handled = tickPointerHandledRef.current
-        if (handled.key === key && Date.now() - handled.at < 700) {
-          tickPointerHandledRef.current = { key: null, at: 0 }
-          return
-        }
+        if (consumeClickAfterPointerTap(tickPointerHandledRef.current, key, Date.now())) return
         toggleComplete(exIdx, setIdx, 'click')
       },
     }

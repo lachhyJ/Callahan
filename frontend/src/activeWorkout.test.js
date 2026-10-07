@@ -15,6 +15,9 @@ import {
   applyNativeCompletions,
   restSlotDrifted,
   unusedPreviousSet,
+  noteTapHandledByPointer,
+  consumeClickAfterPointerTap,
+  CLICK_DEDUPE_MS,
 } from './activeWorkout'
 import { installStorageStub } from './test/storageStub'
 
@@ -657,5 +660,40 @@ describe('unusedPreviousSet', () => {
 
   it('treats a row with no previous as using nothing', () => {
     expect(unusedPreviousSet(prev, [{ previous: null }])).toBe(prev[0])
+  })
+})
+
+describe('pointer-tap click dedupe', () => {
+  it('drops the click that follows a pointer-handled tap, once', () => {
+    const pending = {}
+    noteTapHandledByPointer(pending, '0-3', 1000)
+    expect(consumeClickAfterPointerTap(pending, '0-3', 1010)).toBe(true)
+    expect(consumeClickAfterPointerTap(pending, '0-3', 1020)).toBe(false)
+  })
+
+  it('still drops the earlier set click when it arrives after set 2 was pointer-handled', () => {
+    const pending = {}
+    noteTapHandledByPointer(pending, '0-3', 1000)
+    noteTapHandledByPointer(pending, '0-2', 1150)
+    // iOS delivers the clicks late and out of order relative to the pointer-ups.
+    expect(consumeClickAfterPointerTap(pending, '0-3', 1155)).toBe(true)
+    expect(consumeClickAfterPointerTap(pending, '0-2', 1160)).toBe(true)
+    expect(consumeClickAfterPointerTap(pending, '0-3', 1165)).toBe(false)
+  })
+
+  it('counts two quick taps on one button and drops both of their clicks', () => {
+    const pending = {}
+    noteTapHandledByPointer(pending, '0-1', 1000)
+    noteTapHandledByPointer(pending, '0-1', 1200)
+    expect(consumeClickAfterPointerTap(pending, '0-1', 1210)).toBe(true)
+    expect(consumeClickAfterPointerTap(pending, '0-1', 1220)).toBe(true)
+    expect(consumeClickAfterPointerTap(pending, '0-1', 1230)).toBe(false)
+  })
+
+  it('lets a click through when no pointer tap preceded it, or the window has passed', () => {
+    const pending = {}
+    expect(consumeClickAfterPointerTap(pending, '0-1', 1000)).toBe(false)
+    noteTapHandledByPointer(pending, '0-1', 1000)
+    expect(consumeClickAfterPointerTap(pending, '0-1', 1000 + CLICK_DEDUPE_MS)).toBe(false)
   })
 })
