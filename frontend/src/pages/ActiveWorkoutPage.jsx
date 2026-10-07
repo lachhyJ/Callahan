@@ -28,6 +28,12 @@ const REST_PRESETS = [60, 90, 120, 150, 180]
 const BREATHER_OPTIONS = [10, 20, 30]
 // How long typing in a set row must pause before the Live Activity is updated.
 const ACTIVITY_SYNC_DEBOUNCE_MS = 300
+// A tick on a set that was ticked done less than this long ago is dropped.
+// The 2026-10-07 diary showed a fast run of taps un-ticking the previous set:
+// the tap meant for the row below landed on the one just done, 125-200ms later,
+// while deliberate corrections were all 500ms or more apart. Quick-fire ticking
+// is a tap every ~150ms, so this sits between the two.
+const QUICK_UNDO_MS = 350
 
 function formatDuration(ms) {
   return formatClock(Math.floor(ms / 1000))
@@ -360,6 +366,9 @@ export default function ActiveWorkoutPage() {
   // Diagnostic for the rapid-tap un-tick report (see logTick): when the previous
   // tick landed. Remove with the audio diary.
   const lastTickAtRef = useRef(0)
+  // When each set was last ticked done (`${exIdx}-${setIdx}`), so a repeat tap
+  // moments later can be told apart from a deliberate un-tick (QUICK_UNDO_MS).
+  const completedAtRef = useRef({})
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
   // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
@@ -996,6 +1005,11 @@ export default function ActiveWorkoutPage() {
         return
       }
     }
+    const tickKey = `${exIdx}-${setIdx}`
+    if (set.completed && Date.now() - (completedAtRef.current[tickKey] ?? 0) < QUICK_UNDO_MS) {
+      logDiary(`tick ex=${exIdx} set=${setIdx} ignored: un-tick ${Date.now() - completedAtRef.current[tickKey]}ms after done`)
+      return
+    }
     setError(null)
     // Temporary, for the 2026-10-07 report that a fast run of ticks sometimes
     // un-ticks a set: records which set each tap actually toggled, how soon
@@ -1015,6 +1029,7 @@ export default function ActiveWorkoutPage() {
     // Ticking (or un-ticking) a hold set by hand stops any countdown on it.
     if (holdTimer && holdTimer.exIdx === exIdx && holdTimer.setIdx === setIdx) setHoldTimer(null)
     const nowCompleting = !set.completed
+    if (nowCompleting) completedAtRef.current[tickKey] = Date.now()
     // A heavier set than anything logged last time invalidates the readiness
     // flag mid-session, before the next /start round-trip would recompute it
     // server-side. A same-weight, higher-rep set correctly leaves it up.

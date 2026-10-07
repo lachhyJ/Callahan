@@ -1284,6 +1284,21 @@ td {
   vertical-align: middle;
 }
 
+/* A missed tap in a fast run of ticks was reading as a double-tap on text and
+   raising iOS's selection handles over a set number. Nothing in a row's
+   buttons or labels is worth selecting; the inputs stay selectable. */
+.set-row td,
+.set-row button {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.set-row input {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
 .set-row input {
   width: 48px;
   padding: var(--space-2xs);
