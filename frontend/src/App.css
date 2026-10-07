@@ -1692,6 +1692,9 @@ td {
   align-items: center;
   justify-content: center;
   transition: background var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+  /* No double-tap-zoom wait, and a scroll that starts on the button cancels the
+     pointer so it is not read as a tick. */
+  touch-action: manipulation;
 
   &.checked {
     background: var(--success-solid);
@@ -2290,17 +2293,23 @@ td {
   }
 }
 
+/* A pulsing dot in the left gutter, out of flow. The "Resting" pill that used to
+   sit in the title row wrapped the exercise name onto a second line the moment
+   a rest started, pushing every set row down ~16px under the next tap. */
+.exercise-card-header {
+  position: relative;
+}
+
 .resting-badge {
+  position: absolute;
+  left: calc(-1 * var(--space-sm));
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
-  align-items: center;
-  gap: var(--space-2xs);
-  flex-shrink: 0;
-  padding: 2px var(--space-xs);
-  border-radius: var(--radius-full);
-  background: var(--accent-bg);
-  color: var(--accent);
-  font-size: var(--text-xs);
-  font-weight: 600;
+}
+
+.ready-to-progress-badge--spent {
+  visibility: hidden;
 }
 
 .ready-to-progress-badge {

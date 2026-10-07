@@ -34,6 +34,8 @@ const ACTIVITY_SYNC_DEBOUNCE_MS = 300
 // while deliberate corrections were all 500ms or more apart. Quick-fire ticking
 // is a tap every ~150ms, so this sits between the two.
 const QUICK_UNDO_MS = 350
+// A press that travels further than this between down and up is a drag, not a tap.
+const TAP_SLOP_PX = 10
 
 function formatDuration(ms) {
   return formatClock(Math.floor(ms / 1000))
@@ -144,6 +146,10 @@ function exerciseFromStart(ex) {
     // slot. Null means "use the app default" — see groupRestSeconds.
     supersetRestSeconds: ex.supersetRestSeconds ?? null,
     readyToProgress: ex.readyToProgress ?? false,
+    // Whether the badge was up when the exercise loaded: if a heavier set
+    // clears readyToProgress mid-session its slot stays (invisible), so the
+    // title doesn't unwrap and shift every row up under the next tap.
+    readyAtStart: ex.readyToProgress ?? false,
     notes: '',
     // Kept so a set deleted by mistake can come back with its Previous/prefill.
     previousSets: ex.previousSets ?? [],
@@ -369,6 +375,10 @@ export default function ActiveWorkoutPage() {
   // When each set was last ticked done (`${exIdx}-${setIdx}`), so a repeat tap
   // moments later can be told apart from a deliberate un-tick (QUICK_UNDO_MS).
   const completedAtRef = useRef({})
+  // Tick button press in flight, and when a pointer-handled tick last fired, so
+  // the click that follows it can be dropped (see tickPointerHandlers).
+  const tickPressRef = useRef(null)
+  const tickPointerHandledRef = useRef({ key: null, at: 0 })
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
   // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
@@ -992,7 +1002,44 @@ export default function ActiveWorkoutPage() {
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
   }
 
-  function toggleComplete(exIdx, setIdx) {
+  // The tick button toggles on pointer-up rather than waiting for the click the
+  // browser synthesises. On the phone a fast run of ticks lost the second tap
+  // outright (no click, and iOS raised text-selection handles as if it were a
+  // double-tap on a word), so the log showed set 1 then set 3 with nothing
+  // between. Pointer events fire for every touch regardless of that gesture
+  // handling. A press that moves (a scroll starting on the button) fires
+  // pointercancel or travels more than TAP_SLOP_PX and does nothing. The click
+  // that follows a handled tap is dropped; a click with no pointer events
+  // before it (keyboard, assistive tech) still toggles.
+  function tickPointerHandlers(exIdx, setIdx) {
+    const key = `${exIdx}-${setIdx}`
+    return {
+      onPointerDown: (e) => {
+        tickPressRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, key }
+      },
+      onPointerUp: (e) => {
+        const press = tickPressRef.current
+        tickPressRef.current = null
+        if (!press || press.key !== key || press.id !== e.pointerId) return
+        if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP_PX) return
+        tickPointerHandledRef.current = { key, at: Date.now() }
+        toggleComplete(exIdx, setIdx, 'pointer')
+      },
+      onPointerCancel: () => {
+        tickPressRef.current = null
+      },
+      onClick: () => {
+        const handled = tickPointerHandledRef.current
+        if (handled.key === key && Date.now() - handled.at < 700) {
+          tickPointerHandledRef.current = { key: null, at: 0 }
+          return
+        }
+        toggleComplete(exIdx, setIdx, 'click')
+      },
+    }
+  }
+
+  function toggleComplete(exIdx, setIdx, source = 'click') {
     const exercise = exercises[exIdx]
     const set = exercise.sets[setIdx]
     if (!set.completed) {
@@ -1018,7 +1065,7 @@ export default function ActiveWorkoutPage() {
     {
       const nowMs = Date.now()
       const scroller = document.querySelector('.app-content')
-      logDiary(`tick ex=${exIdx} set=${setIdx} ${set.completed ? 'UNDO' : 'done'} +${lastTickAtRef.current ? nowMs - lastTickAtRef.current : '-'}ms scrollTop=${Math.round(scroller?.scrollTop ?? -1)}`)
+      logDiary(`tick ex=${exIdx} set=${setIdx} ${set.completed ? 'UNDO' : 'done'} via ${source} +${lastTickAtRef.current ? nowMs - lastTickAtRef.current : '-'}ms scrollTop=${Math.round(scroller?.scrollTop ?? -1)}`)
       lastTickAtRef.current = nowMs
     }
     // A real tap that happens right before every rest timer starts, so it
@@ -1883,15 +1930,19 @@ export default function ActiveWorkoutPage() {
                 </Link>
               </h2>
               {ex.primaryMuscle && <span className="primary-muscle">{ex.primaryMuscle}</span>}
-              {ex.readyToProgress && (
-                <Link to={`/exercises/${ex.exerciseId}`} className="ready-to-progress-badge">
+              {(ex.readyToProgress || ex.readyAtStart) && (
+                <Link
+                  to={`/exercises/${ex.exerciseId}`}
+                  className={ex.readyToProgress ? 'ready-to-progress-badge' : 'ready-to-progress-badge ready-to-progress-badge--spent'}
+                  aria-hidden={ex.readyToProgress ? undefined : true}
+                  tabIndex={ex.readyToProgress ? undefined : -1}
+                >
                   Ready to add weight
                 </Link>
               )}
               {isResting && (
-                <span className="resting-badge">
+                <span className="resting-badge" role="status" aria-label="Resting" title="Resting">
                   <span className="resting-dot" />
-                  Resting
                 </span>
               )}
             </div>
@@ -2163,7 +2214,7 @@ export default function ActiveWorkoutPage() {
                     <button
                       type="button"
                       className={s.completed ? 'check-btn checked' : 'check-btn'}
-                      onClick={() => toggleComplete(exIdx, setIdx)}
+                      {...tickPointerHandlers(exIdx, setIdx)}
                       aria-label={s.completed ? 'Mark set incomplete' : 'Mark set complete'}
                     >
                       {s.completed ? <CheckIcon /> : null}
