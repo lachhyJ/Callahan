@@ -21,6 +21,16 @@ public static class WeekSoFarLoader
             .Select(s => new WeekSoFarBuilder.SlotInput(s.Kind, s.Label, s.WorkoutTemplateId, s.ActivitySessionTypeId))
             .ToListAsync();
 
+        var (gym, activities) = await LoadLogsAsync(db, weekStart, weekEnd);
+
+        return WeekSoFarBuilder.Build(weekStart, trainingDay, slots, gym, activities);
+    }
+
+    // What was logged in the week, in the shape WeekSoFarBuilder reads. Also the
+    // Plan page's source for whether a session was done.
+    public static async Task<(List<WeekSoFarBuilder.GymLog> Gym, List<WeekSoFarBuilder.ActivityLog> Activities)> LoadLogsAsync(
+        AppDbContext db, DateOnly weekStart, DateOnly weekEnd)
+    {
         var gym = await db.WorkoutSessions
             .Where(s => s.Date >= weekStart && s.Date <= weekEnd)
             .OrderBy(s => s.Date).ThenBy(s => s.Id)
@@ -39,6 +49,6 @@ public static class WeekSoFarLoader
                 a.ActivitySessionType != null ? a.ActivitySessionType.Family : (SessionTypeFamily?)null))
             .ToListAsync();
 
-        return WeekSoFarBuilder.Build(weekStart, trainingDay, slots, gym, activities);
+        return (gym, activities);
     }
 }

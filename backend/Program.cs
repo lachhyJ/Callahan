@@ -4,6 +4,7 @@ using Callahan.Api;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Services;
+using Callahan.Api.Services.Calendar;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
@@ -47,6 +48,12 @@ builder.Services.AddHttpClient<TaperConsultService>(client =>
 builder.Services.AddHttpClient<GarminSyncClient>(client =>
 {
     client.Timeout = TimeSpan.FromMinutes(5);
+});
+// The Training calendar (iCloud CalDAV) the Plan page reads. Off until
+// Calendar:Username and Calendar:Password are set.
+builder.Services.AddHttpClient<ICalendarClient, CalDavCalendarClient>(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
 });
 builder.Services.AddHostedService<TaperReminderService>();
 

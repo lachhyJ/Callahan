@@ -23,4 +23,9 @@ public class PlanSlotWeek
     public int? DayOfWeek { get; set; }
 
     public PlanSlotStatus Status { get; set; }
+
+    // The Training-calendar event this slot is tied to for the week, when it was
+    // tied by hand (a tap on an event whose title the matcher didn't recognise).
+    // The calendar owns the day and part of day; this is only the link.
+    public string? CalendarUid { get; set; }
 }

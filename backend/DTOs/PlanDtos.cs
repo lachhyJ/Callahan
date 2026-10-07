@@ -7,7 +7,10 @@ public record PlanSlotDto(
     string State,
     bool IsOptional,
     bool IsMoved,
-    bool IsManual);
+    bool IsManual,
+    // Set only when the week is laid out from the calendar.
+    string? TimeOfDay = null,
+    string? CalendarUid = null);
 
 public record PlanDayDto(int DayOfWeek, DateOnly Date, string DayName, List<PlanSlotDto> Slots);
 
@@ -20,6 +23,19 @@ public record WeekPlanDto(
     DateOnly WeekStart,
     List<PlanDayDto> Days,
     List<string> Warnings,
-    AnkleCircuitDto? AnkleCircuit);
+    AnkleCircuitDto? AnkleCircuit,
+    // A calendar is configured. When true and CalendarUnavailable is false, Days holds
+    // the sessions the calendar placed, Unplaced the ones with no event yet, and
+    // OtherEvents the Training-calendar events that matched no session.
+    bool CalendarEnabled = false,
+    bool CalendarUnavailable = false,
+    string? CalendarMessage = null,
+    List<PlanSlotDto>? Unplaced = null,
+    List<CalendarEventDto>? OtherEvents = null);
+
+public record CalendarEventDto(string Uid, string Title, DateOnly Day, string? TimeOfDay);
 
 public record UpdatePlanSlotRequest(DateOnly WeekStart, int? DayOfWeek, string? Status);
+
+// CalendarUid null unlinks the slot for that week.
+public record LinkPlanSlotRequest(DateOnly WeekStart, string? CalendarUid);

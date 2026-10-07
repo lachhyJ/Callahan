@@ -2,6 +2,7 @@ using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
 using Callahan.Api.Services;
+using Callahan.Api.Services.Calendar;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -18,11 +19,13 @@ public class PlanController : ControllerBase
 
     private readonly AppDbContext _db;
     private readonly TimeProvider _time;
+    private readonly ICalendarClient? _calendar;
 
-    public PlanController(AppDbContext db, TimeProvider? time = null)
+    public PlanController(AppDbContext db, TimeProvider? time = null, ICalendarClient? calendar = null)
     {
         _db = db;
         _time = time ?? TimeProvider.System;
+        _calendar = calendar;
     }
 
     private static DateOnly MondayOf(DateOnly d) => CalendarDates.MondayOf(d);
@@ -33,24 +36,58 @@ public class PlanController : ControllerBase
     private DateOnly Today() => CalendarDates.TrainingDay(_time.LocalNow());
 
     [HttpGet]
-    public async Task<ActionResult<WeekPlanDto>> Get([FromQuery] DateOnly? weekStart)
+    public async Task<ActionResult<WeekPlanDto>> Get([FromQuery] DateOnly? weekStart, CancellationToken ct = default)
     {
         var today = Today();
-        var loaded = await PlanWeekLoader.LoadAsync(_db, MondayOf(weekStart ?? today), today);
+        var monday = MondayOf(weekStart ?? today);
+
+        var calendarOn = _calendar is { IsConfigured: true };
+        string? calendarMessage = null;
+
+        if (calendarOn)
+        {
+            try
+            {
+                var fromCalendar = await PlanWeekLoader.LoadFromCalendarAsync(_db, _calendar!, monday, today, ct);
+                return Ok(ToDto(fromCalendar));
+            }
+            catch (CalendarUnavailableException ex)
+            {
+                // The page still works from the program's own week; it just says so.
+                calendarMessage = ex.Message;
+            }
+        }
+
+        var loaded = await PlanWeekLoader.LoadAsync(_db, monday, today);
         var week = loaded.Week;
 
         var ankle = new AnkleCircuitDto(PlanWeekLoader.AnkleCircuitRoutineId, loaded.AnkleCompletedDates);
 
         return Ok(new WeekPlanDto(
             week.WeekStart,
-            week.Days.Select(d => new PlanDayDto(
-                d.DayOfWeek, d.Date, DayNames[d.DayOfWeek],
-                d.Slots.Select(s => new PlanSlotDto(
-                    s.SlotId, s.Label, s.Kind.ToString(), s.State.ToString(),
-                    s.IsOptional, s.IsMoved, s.IsManual)).ToList())).ToList(),
+            week.Days.Select(ToDto).ToList(),
             week.Warnings,
-            ankle));
+            ankle,
+            CalendarEnabled: calendarOn,
+            CalendarUnavailable: calendarOn,
+            CalendarMessage: calendarMessage));
     }
+
+    private static PlanSlotDto ToDto(WeekPlanBuilder.SlotResult s) => new(
+        s.SlotId, s.Label, s.Kind.ToString(), s.State.ToString(),
+        s.IsOptional, s.IsMoved, s.IsManual, s.TimeOfDay?.ToString(), s.CalendarUid);
+
+    private static PlanDayDto ToDto(WeekPlanBuilder.DayResult d) => new(
+        d.DayOfWeek, d.Date, DayNames[d.DayOfWeek], d.Slots.Select(ToDto).ToList());
+
+    private static WeekPlanDto ToDto(PlanWeekLoader.CalendarLoaded c) => new(
+        c.Week.WeekStart,
+        c.Week.Days.Select(ToDto).ToList(),
+        c.Week.Warnings,
+        new AnkleCircuitDto(PlanWeekLoader.AnkleCircuitRoutineId, c.AnkleCompletedDates),
+        CalendarEnabled: true,
+        Unplaced: c.Week.Unplaced.Select(ToDto).ToList(),
+        OtherEvents: c.OtherEvents.Select(e => new CalendarEventDto(e.Uid, e.Title, e.Day, e.Part?.ToString())).ToList());
 
     // Moving a slot and ticking it are the same write - both are "this week
     // deviates from the program here" - so they share one row and one endpoint.
@@ -76,7 +113,7 @@ public class PlanController : ControllerBase
 
         // A slot back on its default day with nothing manual said about it is
         // just the program - drop the row rather than storing a no-op deviation.
-        if (request.DayOfWeek is null && status == PlanSlotStatus.Auto)
+        if (request.DayOfWeek is null && status == PlanSlotStatus.Auto && row?.CalendarUid is null)
         {
             if (row is not null) _db.PlanSlotWeeks.Remove(row);
         }
@@ -94,6 +131,68 @@ public class PlanController : ControllerBase
         {
             row.DayOfWeek = request.DayOfWeek;
             row.Status = status;
+        }
+
+        await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // Ties a Training-calendar event to a session for one week - for an event whose
+    // title the matcher didn't recognise. The calendar still owns the day and part of
+    // day; this stores only which event is which session. A null CalendarUid unlinks.
+    [HttpPut("slots/{slotId}/link")]
+    public async Task<IActionResult> LinkSlot(int slotId, LinkPlanSlotRequest request, CancellationToken ct = default)
+    {
+        var slot = await _db.PlanSlots.FirstOrDefaultAsync(s => s.Id == slotId);
+        if (slot is null) return NotFound();
+        if (slot.Kind is not (PlanSlotKind.Gym or PlanSlotKind.Field or PlanSlotKind.Aerobic))
+        {
+            return BadRequest("Only gym, field and aerobic sessions are tied to calendar events.");
+        }
+
+        var start = MondayOf(request.WeekStart);
+        var uid = string.IsNullOrWhiteSpace(request.CalendarUid) ? null : request.CalendarUid.Trim();
+
+        if (uid is not null)
+        {
+            if (_calendar is not { IsConfigured: true }) return BadRequest("No calendar is set up.");
+
+            IReadOnlyList<CalendarEvent> events;
+            try
+            {
+                events = await _calendar.GetEventsAsync(start, start.AddDays(WeekPlanBuilder.DaysInWeek - 1), ct);
+            }
+            catch (CalendarUnavailableException ex)
+            {
+                return StatusCode(StatusCodes.Status502BadGateway, ex.Message);
+            }
+            if (!events.Any(e => e.Uid == uid && e.Day >= start && e.Day < start.AddDays(WeekPlanBuilder.DaysInWeek)))
+            {
+                return BadRequest("That event isn't in this week of the calendar.");
+            }
+
+            // One event stands for one session.
+            var others = await _db.PlanSlotWeeks
+                .Where(w => w.WeekStart == start && w.PlanSlotId != slotId && w.CalendarUid == uid)
+                .ToListAsync();
+            foreach (var o in others) o.CalendarUid = null;
+        }
+
+        var row = await _db.PlanSlotWeeks.FirstOrDefaultAsync(w => w.PlanSlotId == slotId && w.WeekStart == start);
+        if (row is null)
+        {
+            if (uid is not null)
+            {
+                _db.PlanSlotWeeks.Add(new PlanSlotWeek
+                {
+                    PlanSlotId = slotId, WeekStart = start, Status = PlanSlotStatus.Auto, CalendarUid = uid
+                });
+            }
+        }
+        else
+        {
+            row.CalendarUid = uid;
+            if (row.DayOfWeek is null && row.Status == PlanSlotStatus.Auto) _db.PlanSlotWeeks.Remove(row);
         }
 
         await _db.SaveChangesAsync();

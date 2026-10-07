@@ -1,4 +1,5 @@
 using Callahan.Api.Models;
+using Callahan.Api.Services.Calendar;
 
 namespace Callahan.Api.Services;
 
@@ -46,7 +47,10 @@ public static class WeekPlanBuilder
         // True when the state came from a manual call rather than logged data -
         // the page says so, because a tick you made yourself and a tick the app
         // worked out are different kinds of claim.
-        bool IsManual);
+        bool IsManual,
+        // Set only when the week is laid out from the calendar (BuildFromCalendar).
+        TimeOfDay? TimeOfDay = null,
+        string? CalendarUid = null);
 
     public record DayResult(int DayOfWeek, DateOnly Date, List<SlotResult> Slots);
 
@@ -91,6 +95,72 @@ public static class WeekPlanBuilder
         }
 
         return new WeekResult(weekStart, days, BuildWarnings(placed.Select(p => (p.Slot, p.Day)).ToList()));
+    }
+
+    // Where the calendar put a session, and the event that says so.
+    public record Placement(DateOnly Day, TimeOfDay? Part, string Uid);
+
+    // The week laid out from the calendar: sessions with an event sit on its day,
+    // the rest wait in Unplaced. Only Gym, Field and Aerobic slots are sessions -
+    // the Jump Block, rest markers and the ankle circuit never get an event.
+    public record CalendarWeekResult(
+        DateOnly WeekStart, List<DayResult> Days, List<SlotResult> Unplaced, List<string> Warnings);
+
+    // Unlike Build, "done" is a week-level question: a slot is done when its session
+    // was logged on any day of the week (filledSlotIds, from WeekSoFarBuilder.Fill),
+    // so a session done a day early or late does not read as a miss. Missed means the
+    // event's day has passed and the week has no such log.
+    public static CalendarWeekResult BuildFromCalendar(
+        DateOnly weekStart,
+        DateOnly today,
+        IReadOnlyCollection<SlotInput> slots,
+        IReadOnlyCollection<OverrideInput> overrides,
+        IReadOnlySet<int> filledSlotIds,
+        IReadOnlyDictionary<int, Placement> placements)
+    {
+        var byId = overrides.ToDictionary(o => o.SlotId);
+        var sessions = slots
+            .Where(s => s.Kind is PlanSlotKind.Gym or PlanSlotKind.Field or PlanSlotKind.Aerobic)
+            .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
+            .ToList();
+
+        SlotResult ResultFor(SlotInput slot)
+        {
+            byId.TryGetValue(slot.SlotId, out var ov);
+            placements.TryGetValue(slot.SlotId, out var placement);
+
+            var state = ov?.Status == PlanSlotStatus.Skipped ? SlotState.Skipped
+                : ov?.Status == PlanSlotStatus.Done || filledSlotIds.Contains(slot.SlotId) ? SlotState.Done
+                : placement is not null && placement.Day < today ? SlotState.Missed
+                : SlotState.Upcoming;
+
+            return new SlotResult(
+                slot.SlotId, slot.Label, slot.Kind, state, slot.IsOptional,
+                IsMoved: false, IsManual: ov?.Status == PlanSlotStatus.Done,
+                TimeOfDay: placement?.Part, CalendarUid: placement?.Uid);
+        }
+
+        var days = new List<DayResult>();
+        for (var d = 0; d < DaysInWeek; d++)
+        {
+            var date = weekStart.AddDays(d);
+            days.Add(new DayResult(
+                d, date,
+                sessions.Where(s => placements.TryGetValue(s.SlotId, out var p) && p.Day == date)
+                    .OrderBy(s => placements[s.SlotId].Part ?? TimeOfDay.Morning).ThenBy(s => s.SlotOrder)
+                    .Select(ResultFor).ToList()));
+        }
+
+        var unplaced = sessions.Where(s => !placements.ContainsKey(s.SlotId)).Select(ResultFor).ToList();
+
+        // Nothing placed yet means a week not planned yet, not a week breaking the
+        // rules - "0 field sessions" on a blank week is noise.
+        var placed = sessions
+            .Where(s => placements.ContainsKey(s.SlotId))
+            .Select(s => (Slot: s, Day: placements[s.SlotId].Day.DayNumber - weekStart.DayNumber))
+            .ToList();
+
+        return new CalendarWeekResult(weekStart, days, unplaced, placed.Count == 0 ? [] : BuildWarnings(placed));
     }
 
     private static SlotState ResolveState(

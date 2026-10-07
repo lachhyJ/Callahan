@@ -44,41 +44,11 @@ public static partial class WeekSoFarBuilder
         var gymSlots = slots.Where(s => s.Kind == PlanSlotKind.Gym).ToList();
         var fieldSlots = slots.Where(s => s.Kind == PlanSlotKind.Field).ToList();
 
-        var gymUsed = new bool[gymLogs.Count];
-        var activityUsed = new bool[activityLogs.Count];
-
-        // Gym: a slot is done when its own template was logged any day this week.
-        // One log fills one slot, so doing Gym 1 twice leaves a second, uncounted chip.
-        var gymFilled = new bool[gymSlots.Count];
-        for (var i = 0; i < gymSlots.Count; i++)
-        {
-            var at = IndexOf(gymLogs.Count, j => !gymUsed[j] && gymSlots[i].WorkoutTemplateId is int t && gymLogs[j].TemplateId == t);
-            if (at < 0) continue;
-            gymUsed[at] = true;
-            gymFilled[i] = true;
-        }
-
-        // Field, in two passes. First each slot takes an exact match on its own
-        // session type (Field 1, Field 2); then any slot still open takes the
-        // earliest unused session that counts as field (Pod, Solo, or another Field
-        // type), so a Pod session stands in for a Field 2 that was not logged.
-        var fieldFilled = new bool[fieldSlots.Count];
-        for (var i = 0; i < fieldSlots.Count; i++)
-        {
-            var at = IndexOf(activityLogs.Count, j =>
-                !activityUsed[j] && fieldSlots[i].ActivitySessionTypeId is int t && activityLogs[j].SessionTypeId == t);
-            if (at < 0) continue;
-            activityUsed[at] = true;
-            fieldFilled[i] = true;
-        }
-        for (var i = 0; i < fieldSlots.Count; i++)
-        {
-            if (fieldFilled[i]) continue;
-            var at = EarliestUnused(activityLogs, activityUsed, CountsTowardField);
-            if (at < 0) break;
-            activityUsed[at] = true;
-            fieldFilled[i] = true;
-        }
+        var fill = Fill(gymSlots, fieldSlots, gymLogs, activityLogs);
+        var gymUsed = fill.GymUsed;
+        var activityUsed = fill.ActivityUsed;
+        var gymFilled = fill.GymFilled;
+        var fieldFilled = fill.FieldFilled;
 
         var days = Enumerable.Range(0, 7)
             .Select(d => (Date: weekStart.AddDays(d), Chips: new List<WidgetChipDto>()))
@@ -115,6 +85,56 @@ public static partial class WeekSoFarBuilder
             new WidgetTallyDto(fieldFilled.Count(f => f), fieldSlots.Count),
             left,
             days.Select((d, i) => new WidgetWeekDayDto(i, d.Chips)).ToList());
+    }
+
+    // Which of the program's gym and field slots the week's logs fill, and which
+    // logs were used up doing it. Shared with the Plan page (WeekPlanBuilder), so the
+    // widget and the page cannot disagree about whether a session was done.
+    public record FillResult(bool[] GymFilled, bool[] FieldFilled, bool[] GymUsed, bool[] ActivityUsed);
+
+    public static FillResult Fill(
+        IReadOnlyList<SlotInput> gymSlots,
+        IReadOnlyList<SlotInput> fieldSlots,
+        IReadOnlyList<GymLog> gymLogs,
+        IReadOnlyList<ActivityLog> activityLogs)
+    {
+        var gymUsed = new bool[gymLogs.Count];
+        var activityUsed = new bool[activityLogs.Count];
+
+        // Gym: a slot is done when its own template was logged any day this week.
+        // One log fills one slot, so doing Gym 1 twice leaves a second, uncounted chip.
+        var gymFilled = new bool[gymSlots.Count];
+        for (var i = 0; i < gymSlots.Count; i++)
+        {
+            var at = IndexOf(gymLogs.Count, j => !gymUsed[j] && gymSlots[i].WorkoutTemplateId is int t && gymLogs[j].TemplateId == t);
+            if (at < 0) continue;
+            gymUsed[at] = true;
+            gymFilled[i] = true;
+        }
+
+        // Field, in two passes. First each slot takes an exact match on its own
+        // session type (Field 1, Field 2); then any slot still open takes the
+        // earliest unused session that counts as field (Pod, Solo, or another Field
+        // type), so a Pod session stands in for a Field 2 that was not logged.
+        var fieldFilled = new bool[fieldSlots.Count];
+        for (var i = 0; i < fieldSlots.Count; i++)
+        {
+            var at = IndexOf(activityLogs.Count, j =>
+                !activityUsed[j] && fieldSlots[i].ActivitySessionTypeId is int t && activityLogs[j].SessionTypeId == t);
+            if (at < 0) continue;
+            activityUsed[at] = true;
+            fieldFilled[i] = true;
+        }
+        for (var i = 0; i < fieldSlots.Count; i++)
+        {
+            if (fieldFilled[i]) continue;
+            var at = EarliestUnused(activityLogs, activityUsed, CountsTowardField);
+            if (at < 0) break;
+            activityUsed[at] = true;
+            fieldFilled[i] = true;
+        }
+
+        return new FillResult(gymFilled, fieldFilled, gymUsed, activityUsed);
     }
 
     private static bool CountsTowardField(ActivityLog a) =>
