@@ -1785,8 +1785,11 @@ td {
   line-height: 1.4;
   display: block;
   resize: none;
-  overflow-y: auto;
-  max-height: 200px;
+  /* Never scrolls internally: a scrollable textarea swallows a swipe that
+     starts on it, so the session wouldn't scroll. CueInput sizes it to its
+     content (or to three lines when collapsed). */
+  overflow: hidden;
+  touch-action: pan-y;
   /* Reset the global `textarea { min-height: 60px }` — that default is for real
      multi-line fields; this one auto-grows to its content (see CueInput) and a
      one-line cue was being padded out to 60px, leaving dead space above Target. */
@@ -1802,6 +1805,21 @@ td {
     opacity: 0.5;
     font-style: italic;
   }
+}
+
+.cue-toggle {
+  background: none;
+  border: none;
+  /* Vertical padding, not min-height, to reach the 44px touch minimum while
+     the label stays tight under the cue text. */
+  padding: 11px 4px;
+  margin: -6px 0 -6px -4px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--accent);
+  text-decoration: underline;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .rest-input {
