@@ -1029,6 +1029,14 @@ export default function ActiveWorkoutPage() {
       onPointerCancel: () => {
         tickPressRef.current = null
       },
+      // Cancelling touchend stops iOS synthesising a click for the touch at all.
+      // Even with the per-button dedupe above, a late click for the previous tap
+      // kept surfacing 3-7ms after the next tap's pointer-up and ticking its
+      // button again (2026-10-07, worst when un-ticking a run of sets). The
+      // pointer handlers own touch taps; clicks are left for keyboard and mouse.
+      onTouchEnd: (e) => {
+        if (e.cancelable) e.preventDefault()
+      },
       onClick: () => {
         if (consumeClickAfterPointerTap(tickPointerHandledRef.current, key, Date.now())) return
         toggleComplete(exIdx, setIdx, 'click')
