@@ -560,10 +560,6 @@ export function attachSeasonTournaments(id) {
   return apiFetch(`/api/seasons/${id}/attach-tournaments`, { method: 'POST' })
 }
 
-export function getHealth() {
-  return apiFetch('/api/health')
-}
-
 export function getMonthlyReports() {
   return apiFetch('/api/MonthlyReports')
 }
