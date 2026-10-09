@@ -455,7 +455,7 @@ export default function PlanPage() {
 
   return (
     <main className="page">
-      <h1>This week</h1>
+      <h1>Planner</h1>
 
       <div className="plan-weeknav">
         <button type="button" onClick={() => shiftWeek(-7)}>← Previous</button>

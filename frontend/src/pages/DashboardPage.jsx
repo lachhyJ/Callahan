@@ -27,7 +27,7 @@ const QUICK_LINKS = [
   { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
-  { to: '/plan', label: 'This week', Icon: CalendarIcon },
+  { to: '/plan', label: 'Planner', Icon: CalendarIcon },
   { to: '/routines', label: 'Routines', Icon: CheckIcon },
   { to: '/taper', label: 'Tapering', Icon: TaperIcon },
   { to: '/reports', label: 'Reports', Icon: ReportIcon },
