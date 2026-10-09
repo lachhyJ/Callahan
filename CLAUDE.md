@@ -34,6 +34,10 @@ Live at `callahan.ljlab.online`.
 Pushes that touch only `docs/**`, `.claude/**` or `*.md` don't deploy (`paths-ignore`), so the
 app's build footer shows the last *code* commit. After any push, say which commit
 the footer should now read — the latest commit, or the last non-docs one.
+For a push that changes frontend code, also say that the phone only picks it up on
+the next resume (the webview reloads itself then if the served bundle differs), and
+that while a workout is active it keeps the old bundle until that session ends. The
+user should not have to remember either.
 
 The workflow reads the NAS address and SSH user from repo secrets; third-party actions are pinned to commit SHAs (bump deliberately).
 
