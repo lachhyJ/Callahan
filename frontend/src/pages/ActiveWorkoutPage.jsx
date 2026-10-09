@@ -4,13 +4,13 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
 import { ackNativeCompletions, endWorkoutActivity, noteServerTimer, readNativeRestState, syncWorkoutActivity } from '../restActivity'
 import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
-import { tapSetComplete } from '../haptics'
+import { pressHeld, tapSetComplete } from '../haptics'
 import PushPrompt from '../components/PushPrompt'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
 import ConfirmSheet from '../components/ConfirmSheet'
@@ -36,6 +36,8 @@ const ACTIVITY_SYNC_DEBOUNCE_MS = 300
 const QUICK_UNDO_MS = 350
 // A press that travels further than this between down and up is a drag, not a tap.
 const TAP_SLOP_PX = 10
+// How long a finger must rest on a set number before the move popup opens.
+const LONG_PRESS_MS = 450
 
 function formatDuration(ms) {
   return formatClock(Math.floor(ms / 1000))
@@ -119,6 +121,27 @@ function blankSetRow(ex) {
     weightIsUserEntered: false,
     completed: false,
     type,
+  }
+}
+
+// Warm-ups re-ramp off the first working row: grey untouched rows follow, typed
+// or ticked ones stay. Shared by a set-type change and a set move, both of which
+// can change which row is the first working one or how many warm-ups there are.
+function reRampWarmups(ex, sets) {
+  const warmupCount = sets.filter((s) => s.type === 'Warmup').length
+  const working = sets.find((s) => s.type !== 'Warmup')
+  const ramp = rampFnFor(ex)(working?.weightKg, warmupCount)
+  if (ramp.length === 0) return { ...ex, sets }
+  let w = -1
+  return {
+    ...ex,
+    sets: sets.map((s) => {
+      if (s.type !== 'Warmup') return s
+      const r = ramp[++w]
+      return !r || s.completed || s.weightIsUserEntered
+        ? s
+        : { ...s, weightKg: String(r.weightKg), reps: String(r.reps) }
+    }),
   }
 }
 
@@ -376,6 +399,8 @@ export default function ActiveWorkoutPage() {
   // the click that follows it can be dropped (see tickPointerHandlers).
   const tickPressRef = useRef(null)
   const tickPointerHandledRef = useRef({})
+  const longPressRef = useRef({ timer: null, x: 0, y: 0, fired: { key: null, at: 0 } })
+  const [movePopup, setMovePopup] = useState(null)
   const [focusedWeightCell, setFocusedWeightCell] = useState(null)
   // Cells actually typed into since their last blur, keyed the same as
   // lbInputs (`${exIdx}-${setIdx}`) — merely focusing then blurring a weight
@@ -672,7 +697,13 @@ export default function ActiveWorkoutPage() {
                   // paths, which both route through here) is as "user entered" as
                   // it gets — stops it from being grey, and from being clobbered
                   // by a later cascade off the first working set.
-                  : { ...s, [field]: value, ...(field === 'weightKg' ? { weightIsUserEntered: true } : {}) }
+                  : {
+                      ...s,
+                      [field]: value,
+                      ...(field === 'weightKg' ? { weightIsUserEntered: true } : {}),
+                      ...(field === 'reps' ? { repsIsUserEntered: true } : {}),
+                      ...(field === 'durationSeconds' ? { durationIsUserEntered: true } : {}),
+                    }
               ),
             }
       )
@@ -1009,8 +1040,7 @@ export default function ActiveWorkoutPage() {
   // that follows a handled tap is dropped (counted per button, because iOS can
   // deliver it after later taps); a click with no pointer events before it
   // (keyboard, assistive tech) still toggles.
-  function tickPointerHandlers(exIdx, setIdx) {
-    const key = `${exIdx}-${setIdx}`
+  function pointerTapHandlers(key, action) {
     return {
       onPointerDown: (e) => {
         tickPressRef.current = { id: e.pointerId, x: e.clientX, y: e.clientY, key }
@@ -1021,7 +1051,7 @@ export default function ActiveWorkoutPage() {
         if (!press || press.key !== key || press.id !== e.pointerId) return
         if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > TAP_SLOP_PX) return
         noteTapHandledByPointer(tickPointerHandledRef.current, key, Date.now())
-        toggleComplete(exIdx, setIdx)
+        action()
       },
       onPointerCancel: () => {
         tickPressRef.current = null
@@ -1036,9 +1066,72 @@ export default function ActiveWorkoutPage() {
       },
       onClick: () => {
         if (consumeClickAfterPointerTap(tickPointerHandledRef.current, key, Date.now())) return
-        toggleComplete(exIdx, setIdx)
+        action()
       },
     }
+  }
+
+  function tickPointerHandlers(exIdx, setIdx) {
+    return pointerTapHandlers(`${exIdx}-${setIdx}`, () => toggleComplete(exIdx, setIdx))
+  }
+
+  // Holding a set number opens the move popup; a plain tap still opens the set
+  // type menu. A press that travels (a scroll starting on the number) cancels
+  // the timer, and the click that follows a long press is swallowed.
+  function setNumberHandlers(exIdx, setIdx) {
+    const key = `set-${exIdx}-${setIdx}`
+    const lp = longPressRef.current
+    const cancel = () => {
+      clearTimeout(lp.timer)
+      lp.timer = null
+    }
+    return {
+      onPointerDown: (e) => {
+        cancel()
+        lp.x = e.clientX
+        lp.y = e.clientY
+        lp.timer = setTimeout(() => {
+          lp.timer = null
+          lp.fired = { key, at: Date.now() }
+          setOpenTypeMenu(null)
+          setMovePopup({ exIdx, setIdx })
+          pressHeld()
+        }, LONG_PRESS_MS)
+      },
+      onPointerMove: (e) => {
+        if (lp.timer && Math.hypot(e.clientX - lp.x, e.clientY - lp.y) > TAP_SLOP_PX) cancel()
+      },
+      onPointerUp: cancel,
+      onPointerCancel: cancel,
+      onPointerLeave: cancel,
+      onContextMenu: (e) => e.preventDefault(),
+      onClick: () => {
+        if (lp.fired.key === key && Date.now() - lp.fired.at < 800) {
+          lp.fired = { key: null, at: 0 }
+          return
+        }
+        setMovePopup(null)
+        setOpenTypeMenu(openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx ? null : { exIdx, setIdx })
+      },
+    }
+  }
+
+  // Swap a set with its neighbour (see moveSetRow for what travels). The popup
+  // follows the row so a second tap keeps moving the same set.
+  function moveSet(exIdx, setIdx, dir) {
+    const ex = exercises[exIdx]
+    if (!ex || !canMoveSetRow(ex.sets, setIdx, dir)) return
+    setExercises((prev) =>
+      prev.map((e, i) =>
+        i !== exIdx
+          ? e
+          : reRampWarmups(
+              e,
+              moveSetRow(e.sets, setIdx, dir, { timeBased: e.isTimeBased, targetDurationSeconds: e.targetDurationSeconds }),
+            )
+      )
+    )
+    setMovePopup({ exIdx, setIdx: setIdx + dir })
   }
 
   function toggleComplete(exIdx, setIdx) {
@@ -1286,21 +1379,7 @@ export default function ActiveWorkoutPage() {
           const at = rest.findLastIndex((s) => s.type === 'Warmup') + 1
           sets = [...rest.slice(0, at), row, ...rest.slice(at)].map((s, j) => ({ ...s, setOrder: j }))
         }
-        const warmupCount = sets.filter((s) => s.type === 'Warmup').length
-        const working = sets.find((s) => s.type !== 'Warmup')
-        const ramp = rampFnFor(ex)(working?.weightKg, warmupCount)
-        if (ramp.length === 0) return { ...ex, sets }
-        let w = -1
-        return {
-          ...ex,
-          sets: sets.map((s) => {
-            if (s.type !== 'Warmup') return s
-            const r = ramp[++w]
-            return !r || s.completed || s.weightIsUserEntered
-              ? s
-              : { ...s, weightKg: String(r.weightKg), reps: String(r.reps) }
-          }),
-        }
+        return reRampWarmups(ex, sets)
       })
     )
   }
@@ -1399,7 +1478,14 @@ export default function ActiveWorkoutPage() {
           ? ex
           : {
               ...ex,
-              sets: [...ex.sets, blankSetRow(ex)],
+              // A set brought back after a deletion returns to its own slot, so
+              // its number and its Previous agree; a genuinely extra set still
+              // goes on the end.
+              sets: (() => {
+                const row = blankSetRow(ex)
+                const at = insertIndexForPrevious(ex.sets, row.previous)
+                return [...ex.sets.slice(0, at), row, ...ex.sets.slice(at)].map((x, j) => ({ ...x, setOrder: j }))
+              })(),
             }
       )
     )
@@ -2054,11 +2140,33 @@ export default function ActiveWorkoutPage() {
                   <td className="set-number-cell">
                     <button
                       type="button"
-                      className={`set-number set-type-${s.type.toLowerCase()}`}
-                      onClick={() => setOpenTypeMenu(openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx ? null : { exIdx, setIdx })}
+                      className={`set-number set-type-${s.type.toLowerCase()}${movePopup?.exIdx === exIdx && movePopup?.setIdx === setIdx ? ' set-number--held' : ''}`}
+                      {...setNumberHandlers(exIdx, setIdx)}
                     >
                       {SET_TYPE_LABELS[s.type] || workingSetNumber}
                     </button>
+                    {movePopup?.exIdx === exIdx && movePopup?.setIdx === setIdx && (
+                      <>
+                        <div className="picker-backdrop" onClick={() => setMovePopup(null)} />
+                        <div className="set-move-popup" role="group" aria-label="Move set">
+                          {[-1, 1].map((dir) => {
+                            const can = canMoveSetRow(ex.sets, setIdx, dir)
+                            return (
+                              <button
+                                key={dir}
+                                type="button"
+                                className="set-move-btn"
+                                aria-label={dir < 0 ? 'Move set up' : 'Move set down'}
+                                aria-disabled={!can}
+                                {...pointerTapHandlers(`move-${dir}`, () => moveSet(exIdx, setIdx, dir))}
+                              >
+                                {dir < 0 ? '▲' : '▼'}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </>
+                    )}
                     {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
                       <div className="set-type-menu">
                         {SET_TYPE_OPTIONS.map((opt) => (

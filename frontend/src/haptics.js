@@ -10,3 +10,10 @@ export function tapSetComplete() {
   if (!isNative) return
   Haptics.impact({ style: ImpactStyle.Light }).catch(() => {})
 }
+
+// A firmer tap when a long press registers, so the popup that follows feels
+// like it was caused by the hold rather than appearing on its own.
+export function pressHeld() {
+  if (!isNative) return
+  Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {})
+}

@@ -1990,6 +1990,48 @@ td {
   color: var(--info-text);
 }
 
+.set-number--held {
+  border-color: var(--accent);
+}
+
+/* The long-press popup: a small pill of up/down arrows to the right of the set
+   number. Disabled arrows stay in place (greyed) so the pill does not change
+   shape as the set moves. */
+.set-move-popup {
+  position: absolute;
+  top: 50%;
+  left: calc(100% - var(--space-xs));
+  transform: translateY(-50%);
+  z-index: var(--z-dropdown);
+  display: flex;
+  gap: var(--space-2xs);
+  padding: var(--space-2xs);
+  background: var(--surface-overlay);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  box-shadow: var(--elevation-raised), var(--shadow);
+}
+
+.set-move-btn {
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--radius-full);
+  background: transparent;
+  color: var(--text-h);
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+
+  &[aria-disabled='true'] {
+    color: var(--text-tertiary);
+    opacity: 0.4;
+  }
+}
+
 .set-type-menu {
   position: absolute;
   top: 100%;

@@ -18,6 +18,9 @@ import {
   noteTapHandledByPointer,
   consumeClickAfterPointerTap,
   CLICK_DEDUPE_MS,
+  canMoveSetRow,
+  moveSetRow,
+  insertIndexForPrevious,
 } from './activeWorkout'
 import { installStorageStub } from './test/storageStub'
 
@@ -695,5 +698,87 @@ describe('pointer-tap click dedupe', () => {
     expect(consumeClickAfterPointerTap(pending, '0-1', 1000)).toBe(false)
     noteTapHandledByPointer(pending, '0-1', 1000)
     expect(consumeClickAfterPointerTap(pending, '0-1', 1000 + CLICK_DEDUPE_MS)).toBe(false)
+  })
+})
+
+describe('manual set reordering', () => {
+  const row = (order, o = {}) => ({
+    setOrder: order,
+    previous: { setOrder: order, weightKg: 50 + order, reps: 8 },
+    weightKg: String(50 + order),
+    reps: '8',
+    weightIsUserEntered: false,
+    repsIsUserEntered: false,
+    completed: false,
+    type: 'Normal',
+    ...o,
+  })
+
+  it('swaps typed values and leaves Previous and slot numbers where they are', () => {
+    const sets = [row(0, { weightKg: '100', weightIsUserEntered: true }), row(1, { weightKg: '90', weightIsUserEntered: true })]
+    const out = moveSetRow(sets, 0, 1)
+    expect(out.map((s) => s.weightKg)).toEqual(['90', '100'])
+    expect(out.map((s) => s.previous.setOrder)).toEqual([0, 1])
+    expect(out.map((s) => s.setOrder)).toEqual([0, 1])
+  })
+
+  it('reverts the slot a typed value leaves to its own grey default', () => {
+    const sets = [row(0, { weightKg: '100', weightIsUserEntered: true }), row(1)]
+    const out = moveSetRow(sets, 0, 1)
+    expect(out[0]).toMatchObject({ weightKg: '50', weightIsUserEntered: false })
+    expect(out[1]).toMatchObject({ weightKg: '100', weightIsUserEntered: true })
+  })
+
+  it('moves typed reps independently of weight', () => {
+    const sets = [row(0, { reps: '12', repsIsUserEntered: true }), row(1)]
+    const out = moveSetRow(sets, 0, 1)
+    expect(out[0]).toMatchObject({ reps: '8', repsIsUserEntered: false })
+    expect(out[1]).toMatchObject({ reps: '12', repsIsUserEntered: true })
+  })
+
+  it('carries a changed set type with the row', () => {
+    const sets = [row(0, { type: 'Failure' }), row(1)]
+    const out = moveSetRow(sets, 0, 1)
+    expect(out.map((s) => s.type)).toEqual(['Normal', 'Failure'])
+  })
+
+  it('does nothing when neither row has anything of the athlete in it', () => {
+    const sets = [row(0), row(1)]
+    expect(canMoveSetRow(sets, 0, 1)).toBe(false)
+    expect(moveSetRow(sets, 0, 1)).toBe(sets)
+  })
+
+  it('will not move past the ends, a ticked row, or the warm-up boundary', () => {
+    const typed = { weightIsUserEntered: true }
+    const sets = [
+      row(0, { type: 'Warmup', ...typed }),
+      row(1, { completed: true, ...typed }),
+      row(2, typed),
+      row(3, typed),
+    ]
+    expect(canMoveSetRow(sets, 0, -1)).toBe(false)
+    expect(canMoveSetRow(sets, 0, 1)).toBe(false) // warm-up into working
+    expect(canMoveSetRow(sets, 2, -1)).toBe(false) // past a ticked row
+    expect(canMoveSetRow(sets, 2, 1)).toBe(true)
+    expect(canMoveSetRow(sets, 3, 1)).toBe(false)
+  })
+})
+
+describe('insertIndexForPrevious', () => {
+  const r = (o, prev) => ({ type: 'Normal', previous: prev == null ? null : { setOrder: prev }, setOrder: o })
+
+  it('puts a re-added set back in its original slot', () => {
+    const sets = [r(0, 0), r(1, 2), r(2, 3)]
+    expect(insertIndexForPrevious(sets, { setOrder: 1 })).toBe(1)
+  })
+
+  it('goes before rows with no Previous and after warm-ups', () => {
+    const sets = [{ ...r(0, null), type: 'Warmup' }, r(1, 1), r(2, null)]
+    expect(insertIndexForPrevious(sets, { setOrder: 2 })).toBe(2)
+  })
+
+  it('appends when it has no earlier slot to return to', () => {
+    expect(insertIndexForPrevious([r(0, 0)], null)).toBe(1)
+    expect(insertIndexForPrevious([r(0, 0), r(1, 1)], { setOrder: 5 })).toBe(2)
   })
 })

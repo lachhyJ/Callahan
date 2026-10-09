@@ -61,6 +61,66 @@ export function earliestStartedAt(sessionKey, candidate) {
 // alone says whether a set is a warmup: n <= warmupSets. Sent alongside
 // nextSetNumber/totalSets so every surface can show "W1/2" then "Set 1/4"
 // without the native card's number-advancing logic needing to know.
+// Manual set reordering. A set row is two things: the slot it sits in (its
+// number, last session's Previous for that number, the grey auto-fill that
+// comes from it) and what the athlete put into it (typed weight/reps/hold, the
+// set type). Moving a set moves only the second part; each slot reverts to its
+// own grey default when a typed value leaves it. Two untouched rows have
+// nothing to swap, so there is nothing to move. Ticked rows never move and
+// nothing moves past one, and warm-ups stay above working sets.
+const touched = (s) => !!(s.weightIsUserEntered || s.repsIsUserEntered || s.durationIsUserEntered)
+
+export function canMoveSetRow(sets, idx, dir) {
+  const to = idx + dir
+  if (to < 0 || to >= sets.length) return false
+  const a = sets[idx]
+  const b = sets[to]
+  if (a.completed || b.completed) return false
+  if ((a.type === 'Warmup') !== (b.type === 'Warmup')) return false
+  return touched(a) || touched(b) || a.type !== b.type
+}
+
+export function moveSetRow(sets, idx, dir, { timeBased = false, targetDurationSeconds = null } = {}) {
+  if (!canMoveSetRow(sets, idx, dir)) return sets
+  const to = idx + dir
+  const slotDefaults = (slot) => ({
+    weightKg: !timeBased && slot.previous ? String(slot.previous.weightKg) : '',
+    reps: !timeBased && slot.previous ? String(slot.previous.reps) : '',
+    durationSeconds: timeBased ? String(slot.previous?.durationSeconds ?? targetDurationSeconds ?? '') : '',
+  })
+  // `slot` keeps its own position-bound fields; `from` supplies what was typed.
+  const fill = (slot, from) => {
+    const d = slotDefaults(slot)
+    return {
+      ...slot,
+      type: from.type,
+      weightKg: from.weightIsUserEntered ? from.weightKg : d.weightKg,
+      weightIsUserEntered: !!from.weightIsUserEntered,
+      reps: from.repsIsUserEntered ? from.reps : d.reps,
+      repsIsUserEntered: !!from.repsIsUserEntered,
+      durationSeconds: from.durationIsUserEntered ? from.durationSeconds : d.durationSeconds,
+      durationIsUserEntered: !!from.durationIsUserEntered,
+    }
+  }
+  const next = sets.slice()
+  next[idx] = fill(sets[idx], sets[to])
+  next[to] = fill(sets[to], sets[idx])
+  return next
+}
+
+// Where a set re-added after a deletion belongs: ahead of the first working row
+// that has no Previous or a later one, so its label and its Previous match again.
+// Warm-ups are skipped (re-added sets are working sets).
+export function insertIndexForPrevious(sets, previous) {
+  const firstWorking = sets.findIndex((s) => s.type !== 'Warmup')
+  if (!previous || firstWorking === -1) return sets.length
+  for (let i = firstWorking; i < sets.length; i++) {
+    const p = sets[i].previous
+    if (!p || p.setOrder > previous.setOrder) return i
+  }
+  return sets.length
+}
+
 // How long after a pointer-handled tap its follow-up click may still arrive.
 // iOS coalesces the clicks of a fast run of taps and delivers them late — after
 // a later tap's pointer-up — so the click for set 3 can land after set 2 has
