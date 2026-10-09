@@ -1430,36 +1430,48 @@ td {
   display: flex;
   flex: 1;
   min-width: 0;
+  gap: var(--space-xs);
 }
 
 .weight-input-toolbar-jump {
   flex: 1;
   min-width: 0;
-  min-height: 44px;
+  min-height: 48px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2px;
+  gap: 1px;
+  padding: var(--space-2xs) var(--space-xs);
   background: var(--surface-overlay);
   border: 1px solid var(--border);
-  border-left: none;
+  border-radius: var(--radius-lg);
   color: var(--text-tertiary);
-  font-size: 11px;
-  line-height: 1.25;
+  font-size: var(--text-xs);
+  line-height: 1.2;
   white-space: nowrap;
   touch-action: manipulation;
   user-select: none;
 
   & b {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     color: var(--text-h);
   }
+}
 
-  & span {
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* With chips the strip is a row of separate pills, not one joined capsule: the
+   joined version had no breathing room and clipped the second line. */
+.weight-input-toolbar--jumps {
+  gap: var(--space-xs);
+
+  .weight-input-toolbar-calc {
+    border-radius: var(--radius-full);
+  }
+
+  .weight-input-toolbar-unit {
+    border-left: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    min-width: 48px;
   }
 }
 
@@ -1881,9 +1893,10 @@ td {
   padding: 11px 8px;
   margin: -6px 0 -6px -8px;
   font: inherit;
-  font-size: var(--text-sm);
-  color: var(--accent);
-  text-decoration: underline;
+  font-size: var(--text-xs);
+  /* Quiet: it only needs to be findable, not to compete with the cue. */
+  color: var(--text-tertiary);
+  text-decoration: none;
   user-select: none;
   touch-action: manipulation;
 }

@@ -2403,9 +2403,10 @@ export default function ActiveWorkoutPage() {
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => applyJump(jump)}
                     aria-label={`Next jump plus ${jump.pct} percent: ${jump.kg} kilograms, ${jump.lb} pounds`}
+                    title={`+${jump.pct}%`}
                   >
                     <b>{isLb ? jump.lb : jump.kg}</b>
-                    <span>+{jump.pct}% · {isLb ? `${jump.kg}kg` : `${jump.lb}lb`}</span>
+                    <span>{isLb ? `${jump.kg} kg` : `${jump.lb} lb`}</span>
                   </button>
                 ))}
               </div>
