@@ -98,12 +98,12 @@ public class PlanController : ControllerBase
 
         if (request.DayOfWeek is int d && (d < 0 || d >= WeekPlanBuilder.DaysInWeek))
         {
-            return BadRequest($"DayOfWeek must be 0-{WeekPlanBuilder.DaysInWeek - 1}.");
+            return BadRequest(new { error = $"DayOfWeek must be 0-{WeekPlanBuilder.DaysInWeek - 1}." });
         }
 
         if (!Enum.TryParse<PlanSlotStatus>(request.Status ?? nameof(PlanSlotStatus.Auto), out var status))
         {
-            return BadRequest($"Unknown status '{request.Status}'.");
+            return BadRequest(new { error = $"Unknown status '{request.Status}'." });
         }
 
         var start = MondayOf(request.WeekStart);
@@ -147,7 +147,7 @@ public class PlanController : ControllerBase
         if (slot is null) return NotFound();
         if (slot.Kind is not (PlanSlotKind.Gym or PlanSlotKind.Field or PlanSlotKind.Aerobic))
         {
-            return BadRequest("Only gym, field and aerobic sessions are tied to calendar events.");
+            return BadRequest(new { error = "Only gym, field and aerobic sessions are tied to calendar events." });
         }
 
         var start = MondayOf(request.WeekStart);
@@ -155,7 +155,7 @@ public class PlanController : ControllerBase
 
         if (uid is not null)
         {
-            if (_calendar is not { IsConfigured: true }) return BadRequest("No calendar is set up.");
+            if (_calendar is not { IsConfigured: true }) return BadRequest(new { error = "No calendar is set up." });
 
             IReadOnlyList<CalendarEvent> events;
             try
@@ -164,11 +164,11 @@ public class PlanController : ControllerBase
             }
             catch (CalendarUnavailableException ex)
             {
-                return StatusCode(StatusCodes.Status502BadGateway, ex.Message);
+                return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
             }
             if (!events.Any(e => e.Uid == uid && e.Day >= start && e.Day < start.AddDays(WeekPlanBuilder.DaysInWeek)))
             {
-                return BadRequest("That event isn't in this week of the calendar.");
+                return BadRequest(new { error = "That event isn't in this week of the calendar." });
             }
 
             // One event stands for one session.
@@ -196,6 +196,90 @@ public class PlanController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
+        return NoContent();
+    }
+
+    // Puts a session on a day and part of the day by writing to the Training calendar:
+    // a new event if the session has none this week, otherwise the same event moved.
+    // The calendar stays the only place the day lives; nothing is stored about it here.
+    [HttpPut("slots/{slotId}/place")]
+    public async Task<IActionResult> PlaceSlot(int slotId, PlacePlanSlotRequest request, CancellationToken ct = default)
+    {
+        var slot = await _db.PlanSlots.FirstOrDefaultAsync(s => s.Id == slotId);
+        if (slot is null) return NotFound();
+        if (slot.Kind is not (PlanSlotKind.Gym or PlanSlotKind.Field or PlanSlotKind.Aerobic))
+        {
+            return BadRequest(new { error = "Only gym, field and aerobic sessions go in the calendar." });
+        }
+        if (!Enum.TryParse<TimeOfDay>(request.TimeOfDay, out var part) || !Enum.IsDefined(part))
+        {
+            return BadRequest(new { error = "TimeOfDay must be Morning, Arvo or Evening." });
+        }
+        var start = MondayOf(request.WeekStart);
+        if (request.Day < start || request.Day > start.AddDays(WeekPlanBuilder.DaysInWeek - 1))
+        {
+            return BadRequest(new { error = "That day isn't in this week." });
+        }
+        if (_calendar is not { IsConfigured: true }) return BadRequest(new { error = "No calendar is set up." });
+
+        try
+        {
+            var match = await PlanWeekLoader.MatchAsync(_db, _calendar, start, ct);
+            if (match.Matched.BySlot.TryGetValue(slotId, out var existing))
+            {
+                await _calendar.MoveEventAsync(existing, request.Day, part, ct);
+            }
+            else
+            {
+                // Titled with the short name (Gym 1, Field 2) so it is found by title again.
+                await _calendar.CreateEventAsync(WeekSoFarBuilder.ShortLabel(slot.Label), request.Day, part, ct);
+            }
+        }
+        catch (CalendarConflictException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (CalendarUnavailableException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+        }
+
+        return NoContent();
+    }
+
+    // Takes a session out of the calendar by deleting its event, and forgets any link.
+    [HttpDelete("slots/{slotId}/event")]
+    public async Task<IActionResult> RemoveSlotEvent(int slotId, [FromQuery] DateOnly weekStart, CancellationToken ct = default)
+    {
+        if (!await _db.PlanSlots.AnyAsync(s => s.Id == slotId)) return NotFound();
+        if (_calendar is not { IsConfigured: true }) return BadRequest(new { error = "No calendar is set up." });
+
+        var start = MondayOf(weekStart);
+        try
+        {
+            var match = await PlanWeekLoader.MatchAsync(_db, _calendar, start, ct);
+            if (match.Matched.BySlot.TryGetValue(slotId, out var existing))
+            {
+                await _calendar.DeleteEventAsync(existing, ct);
+            }
+        }
+        catch (CalendarConflictException ex)
+        {
+            return Conflict(new { error = ex.Message });
+        }
+        catch (CalendarUnavailableException ex)
+        {
+            return StatusCode(StatusCodes.Status502BadGateway, new { error = ex.Message });
+        }
+
+        var row = await _db.PlanSlotWeeks.FirstOrDefaultAsync(w => w.PlanSlotId == slotId && w.WeekStart == start);
+        if (row is not null)
+        {
+            row.CalendarUid = null;
+            if (row.DayOfWeek is null && row.Status == PlanSlotStatus.Auto) _db.PlanSlotWeeks.Remove(row);
+            await _db.SaveChangesAsync();
+        }
+
         return NoContent();
     }
 }

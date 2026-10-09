@@ -65,6 +65,84 @@ public class CalDavCalendarClient(
         }
     }
 
+    public async Task CreateEventAsync(string title, DateOnly day, TimeOfDay part, CancellationToken ct)
+    {
+        EnsureConfigured();
+        var uid = IcalEventWriter.NewUid();
+        var ics = IcalEventWriter.Create(uid, title, TimeOfDayBuckets.DefaultStart(day, part), time.GetUtcNow().UtcDateTime);
+        // The file name leaves out the "@callahan" half of the UID: an "@" in a URL path is
+        // one more thing a server could handle oddly, and the name carries no meaning.
+        await WriteAsync(HttpMethod.Put, uid[..uid.IndexOf('@')] + ".ics", null, ics, ifMatch: null, createOnly: true, ct);
+    }
+
+    public async Task MoveEventAsync(CalendarEvent existing, DateOnly day, TimeOfDay part, CancellationToken ct)
+    {
+        EnsureConfigured();
+        if (existing.Href is null || existing.Ics is null)
+        {
+            throw new CalendarUnavailableException("That event can't be moved because its address is unknown.");
+        }
+
+        string ics;
+        try
+        {
+            ics = IcalEventWriter.Reschedule(existing.Ics, TimeOfDayBuckets.DefaultStart(day, part), time.GetUtcNow().UtcDateTime);
+        }
+        catch (FormatException ex)
+        {
+            throw new CalendarUnavailableException(ex.Message, ex);
+        }
+        await WriteAsync(HttpMethod.Put, null, existing.Href, ics, existing.ETag, createOnly: false, ct);
+    }
+
+    public async Task DeleteEventAsync(CalendarEvent existing, CancellationToken ct)
+    {
+        EnsureConfigured();
+        if (existing.Href is null) throw new CalendarUnavailableException("That event can't be removed because its address is unknown.");
+        await WriteAsync(HttpMethod.Delete, null, existing.Href, null, existing.ETag, createOnly: false, ct);
+    }
+
+    private void EnsureConfigured()
+    {
+        if (!IsConfigured) throw new CalendarUnavailableException("The calendar isn't set up on this server.");
+    }
+
+    // One write to the Training calendar. A new event goes to <calendar>/<name>, an
+    // existing one to the address it was read from.
+    private async Task WriteAsync(HttpMethod method, string? newName, string? href, string? body, string? ifMatch, bool createOnly, CancellationToken ct)
+    {
+        try
+        {
+            var calendar = await CalendarUrlAsync(ct);
+            var url = href is null ? new Uri(calendar, newName!) : new Uri(calendar, href);
+
+            using var request = new HttpRequestMessage(method, url);
+            var credentials = Convert.ToBase64String(
+                Encoding.UTF8.GetBytes($"{config["Calendar:Username"]}:{config["Calendar:Password"]}"));
+            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
+            if (ifMatch is not null) request.Headers.TryAddWithoutValidation("If-Match", ifMatch);
+            if (createOnly) request.Headers.TryAddWithoutValidation("If-None-Match", "*");
+            if (body is not null) request.Content = new StringContent(body, Encoding.UTF8, "text/calendar");
+
+            using var response = await http.SendAsync(request, ct);
+
+            if (response.IsSuccessStatusCode) return;
+            // Removing something already gone is the outcome that was asked for.
+            if (method == HttpMethod.Delete && response.StatusCode == HttpStatusCode.NotFound) return;
+            if (response.StatusCode == HttpStatusCode.PreconditionFailed) throw new CalendarConflictException();
+            if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                throw new CalendarUnavailableException("The calendar rejected the login. Check the app-specific password.");
+            }
+            throw new CalendarUnavailableException($"The calendar server answered {(int)response.StatusCode}.");
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            logger.LogWarning(ex, "Couldn't write to the Training calendar");
+            throw new CalendarUnavailableException("Couldn't reach your calendar.", ex);
+        }
+    }
+
     private static string Utc(DateOnly d) => d.ToDateTime(TimeOnly.MinValue).ToString("yyyyMMdd'T'HHmmss'Z'");
 
     private async Task<Uri> CalendarUrlAsync(CancellationToken ct)

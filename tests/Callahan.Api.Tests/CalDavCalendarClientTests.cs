@@ -14,7 +14,7 @@ public class CalDavCalendarClientTests
 {
     private const string Dav = "xmlns:d=\"DAV:\" xmlns:c=\"urn:ietf:params:xml:ns:caldav\"";
 
-    private record Seen(string Method, string Path, string? Depth, string? Auth, string Body);
+    private record Seen(string Method, string Path, string? Depth, string? Auth, string Body, string? IfMatch = null, string? IfNoneMatch = null);
 
     private sealed class Stub(Func<Seen, (HttpStatusCode, string)> reply) : HttpMessageHandler
     {
@@ -27,7 +27,9 @@ public class CalDavCalendarClientTests
                 request.RequestUri!.AbsolutePath,
                 request.Headers.TryGetValues("Depth", out var d) ? d.Single() : null,
                 request.Headers.Authorization?.ToString(),
-                request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct));
+                request.Content is null ? "" : await request.Content.ReadAsStringAsync(ct),
+                request.Headers.TryGetValues("If-Match", out var m) ? m.Single() : null,
+                request.Headers.TryGetValues("If-None-Match", out var n) ? n.Single() : null);
             Requests.Add(seen);
             var (status, body) = reply(seen);
             return new HttpResponseMessage(status) { Content = new StringContent(body, Encoding.UTF8, "application/xml") };
@@ -169,6 +171,110 @@ public class CalDavCalendarClientTests
         var stub = new Stub(_ => (HttpStatusCode.OK, ""));
         await Assert.ThrowsAsync<CalendarUnavailableException>(
             () => Client(stub, "", null).GetEventsAsync(Mon, Mon.AddDays(6), default));
+        Assert.Empty(stub.Requests);
+    }
+
+    // --- writes ------------------------------------------------------------------
+
+    private static readonly CalendarEvent Existing = new(
+        "a", "Gym 1", new DateOnly(2026, 10, 6), TimeOfDay.Morning, "\"e1\"", "/123/calendars/training/a.ics",
+        "BEGIN:VCALENDAR\r\nBEGIN:VEVENT\r\nUID:a\r\nSUMMARY:Gym 1\r\nDESCRIPTION:Heavy\r\nDTSTART:20261006T070000\r\nDTEND:20261006T083000\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n");
+
+    private static Stub WritesReturn(HttpStatusCode status) =>
+        new(r => r.Method is "PUT" or "DELETE" ? (status, "") : ICloudLike(r));
+
+    [Fact]
+    public async Task ANewEventIsPutInTheTrainingCalendarAndOnlyIfItDoesNotExist()
+    {
+        var stub = WritesReturn(HttpStatusCode.Created);
+
+        await Client(stub, "create@example.com").CreateEventAsync("Gym 2", new DateOnly(2026, 10, 8), TimeOfDay.Evening, default);
+
+        var put = stub.Requests.Single(r => r.Method == "PUT");
+        Assert.StartsWith("/123/calendars/training/callahan-", put.Path);
+        Assert.EndsWith(".ics", put.Path);
+        Assert.DoesNotContain("@", put.Path);
+        Assert.Matches(@"^callahan-[0-9a-f]{32}$", put.Body.Split("\r\n").Single(l => l.StartsWith("UID:"))[4..].Replace("@callahan", ""));
+        Assert.Equal("*", put.IfNoneMatch); // never overwrites an event that is already there
+        Assert.Null(put.IfMatch);
+        Assert.Contains("SUMMARY:Gym 2", put.Body);
+        Assert.Contains("DTSTART:20261008T180000", put.Body);
+        Assert.Contains("DTEND:20261008T193000", put.Body);
+    }
+
+    [Fact]
+    public async Task AMoveRewritesOnlyTheTimeAndCarriesTheETagItWasReadWith()
+    {
+        var stub = WritesReturn(HttpStatusCode.NoContent);
+
+        await Client(stub, "move@example.com").MoveEventAsync(Existing, new DateOnly(2026, 10, 8), TimeOfDay.Arvo, default);
+
+        var put = stub.Requests.Single(r => r.Method == "PUT");
+        Assert.Equal("/123/calendars/training/a.ics", put.Path);
+        Assert.Equal("\"e1\"", put.IfMatch);
+        Assert.Null(put.IfNoneMatch);
+        Assert.Contains("DESCRIPTION:Heavy", put.Body);
+        Assert.Contains("DTSTART:20261008T120000", put.Body);
+        Assert.Contains("DTEND:20261008T133000", put.Body); // still 90 minutes, as it was
+    }
+
+    [Fact]
+    public async Task ADeleteCarriesTheETagToo()
+    {
+        var stub = WritesReturn(HttpStatusCode.NoContent);
+
+        await Client(stub, "delete@example.com").DeleteEventAsync(Existing, default);
+
+        var delete = stub.Requests.Single(r => r.Method == "DELETE");
+        Assert.Equal(("/123/calendars/training/a.ics", "\"e1\""), (delete.Path, delete.IfMatch));
+    }
+
+    [Fact]
+    public async Task DeletingSomethingAlreadyGoneIsNotAnError()
+    {
+        await Client(WritesReturn(HttpStatusCode.NotFound), "gone@example.com").DeleteEventAsync(Existing, default);
+    }
+
+    [Fact]
+    public async Task AnEventChangedSinceItWasReadIsAConflictForMovesAndDeletes()
+    {
+        var client = Client(WritesReturn(HttpStatusCode.PreconditionFailed), "conflict@example.com");
+
+        await Assert.ThrowsAsync<CalendarConflictException>(
+            () => client.MoveEventAsync(Existing, new DateOnly(2026, 10, 8), TimeOfDay.Arvo, default));
+        await Assert.ThrowsAsync<CalendarConflictException>(() => client.DeleteEventAsync(Existing, default));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, "app-specific password")]
+    [InlineData(HttpStatusCode.InternalServerError, "500")]
+    public async Task OtherWriteFailuresAreCalendarUnavailable(HttpStatusCode status, string saying)
+    {
+        var client = Client(WritesReturn(status), $"fail{(int)status}@example.com");
+        var ex = await Assert.ThrowsAsync<CalendarUnavailableException>(
+            () => client.CreateEventAsync("Gym 2", new DateOnly(2026, 10, 8), TimeOfDay.Evening, default));
+        Assert.Contains(saying, ex.Message);
+    }
+
+    [Fact]
+    public async Task AnEventWithNoAddressOrBodyCannotBeMovedOrRemoved()
+    {
+        var stub = WritesReturn(HttpStatusCode.NoContent);
+        var client = Client(stub, "noaddr@example.com");
+        var bare = Existing with { Href = null, Ics = null };
+
+        await Assert.ThrowsAsync<CalendarUnavailableException>(
+            () => client.MoveEventAsync(bare, new DateOnly(2026, 10, 8), TimeOfDay.Arvo, default));
+        await Assert.ThrowsAsync<CalendarUnavailableException>(() => client.DeleteEventAsync(bare, default));
+        Assert.DoesNotContain(stub.Requests, r => r.Method is "PUT" or "DELETE");
+    }
+
+    [Fact]
+    public async Task WritesNeedCredentialsAndDoNotCallOutWithout()
+    {
+        var stub = WritesReturn(HttpStatusCode.Created);
+        await Assert.ThrowsAsync<CalendarUnavailableException>(
+            () => Client(stub, "", null).CreateEventAsync("Gym 2", new DateOnly(2026, 10, 8), TimeOfDay.Evening, default));
         Assert.Empty(stub.Requests);
     }
 }

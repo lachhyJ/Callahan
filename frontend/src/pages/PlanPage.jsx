@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { getWeekPlan, getRoutines, updatePlanSlot, linkPlanSlot, markRoutineDone, undoRoutineDone } from '../api/client'
+import { getWeekPlan, getRoutines, updatePlanSlot, linkPlanSlot, placePlanSlot, removePlanSlotEvent, markRoutineDone, undoRoutineDone } from '../api/client'
 import { isoDate, startOfWeek, trainingDayIso, formatDateMedium } from '../dateUtils'
 import { advanceHold } from '../activeWorkout'
 import { playBeepNow } from '../audio'
@@ -26,9 +26,70 @@ const STATE_LABEL = {
   Rest: '',
 }
 
+const PARTS = ['Morning', 'Arvo', 'Evening']
+
+// Where a session goes in the Training calendar. The calendar is the only place the
+// day lives, so this writes to it: an unplaced session gets a new event, a placed one
+// has its event moved. Removing deletes the event, so it asks first.
+function PlaceControls({ slot, weekStart, days, currentDate, open, onChange }) {
+  const today = trainingDayIso()
+  const [date, setDate] = useState(currentDate ?? (days.find((d) => d.date >= today) ?? days[0]).date)
+  const [part, setPart] = useState(slot.timeOfDay ?? 'Morning')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState(null)
+  const [confirming, setConfirming] = useState(false)
+
+  // A write can fail because the event changed under us; either way the page
+  // re-reads, so what is shown afterwards is what the calendar actually says.
+  async function run(write) {
+    setBusy(true)
+    setError(null)
+    try {
+      await write()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setConfirming(false)
+      await onChange()
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="plan-slot-actions plan-place" hidden={!open}>
+      <select aria-label={`Day for ${slot.label}`} value={date} disabled={busy} onChange={(e) => setDate(e.target.value)}>
+        {days.map((d) => <option key={d.date} value={d.date}>{formatDateMedium(d.date)}</option>)}
+      </select>
+      <select aria-label={`Time of day for ${slot.label}`} value={part} disabled={busy} onChange={(e) => setPart(e.target.value)}>
+        {PARTS.map((p) => <option key={p} value={p}>{p}</option>)}
+      </select>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => run(() => placePlanSlot(slot.slotId, { weekStart, day: date, timeOfDay: part }))}
+      >
+        {currentDate ? 'Move' : 'Add to calendar'}
+      </button>
+
+      {currentDate && !confirming && (
+        <button type="button" disabled={busy} onClick={() => setConfirming(true)}>Remove from calendar</button>
+      )}
+      {currentDate && confirming && (
+        <span className="plan-place-confirm">
+          Delete this event from your calendar?
+          <button type="button" disabled={busy} onClick={() => run(() => removePlanSlotEvent(slot.slotId, weekStart))}>Delete</button>
+          <button type="button" disabled={busy} onClick={() => setConfirming(false)}>Keep</button>
+        </span>
+      )}
+
+      {error && <p className="error plan-place-error">{error}</p>}
+    </div>
+  )
+}
+
 // In calendar mode the calendar owns the day, so a slot here can only be ticked or
 // skipped: there is no day picker, and nothing is written about where it sits.
-function SlotRow({ slot, weekStart, dayOfWeek, onChange, calendar = false }) {
+function SlotRow({ slot, weekStart, dayOfWeek, onChange, calendar = false, days = [], date = null }) {
   const [busy, setBusy] = useState(false)
   // Controls stay closed by default. The common use of this page is a glance at
   // what's outstanding; rearranging is a Sunday job. Showing a day picker and
@@ -122,6 +183,10 @@ function SlotRow({ slot, weekStart, dayOfWeek, onChange, calendar = false }) {
           <button type="button" disabled={busy} onClick={unlink}>Unlink event</button>
         )}
       </div>
+
+      {calendar && (
+        <PlaceControls slot={slot} weekStart={weekStart} days={days} currentDate={date} open={open} onChange={onChange} />
+      )}
     </div>
   )
 }
@@ -249,7 +314,7 @@ function AnkleStrip({ ankle, items, days, onChange }) {
 
 // Sessions the calendar has no event for yet. Putting one in the Training calendar
 // (named like the session) places it on the next load.
-function UnplacedList({ slots, weekStart, onChange }) {
+function UnplacedList({ slots, weekStart, days, onChange }) {
   if (!slots?.length) return null
   return (
     <section className="plan-day plan-unplaced">
@@ -257,9 +322,9 @@ function UnplacedList({ slots, weekStart, onChange }) {
         <span className="plan-day-name">Not in your calendar yet</span>
       </header>
       {slots.map((slot) => (
-        <SlotRow key={slot.slotId} slot={slot} weekStart={weekStart} dayOfWeek={null} onChange={onChange} calendar />
+        <SlotRow key={slot.slotId} slot={slot} weekStart={weekStart} dayOfWeek={null} onChange={onChange} calendar days={days} />
       ))}
-      <p className="plan-day-empty">Add it to your Training calendar, named like the session, e.g. Gym 2.</p>
+      <p className="plan-day-empty">Tap a session to put it on a day, or add it in Calendar named like the session, e.g. Gym 2.</p>
     </section>
   )
 }
@@ -452,13 +517,15 @@ export default function PlanPage() {
                         dayOfWeek={calendarMode ? null : day.dayOfWeek}
                         onChange={load}
                         calendar={calendarMode}
+                        days={plan.days}
+                        date={day.date}
                       />
                     ))}
               </section>
             ))}
             {calendarMode && (
               <>
-                <UnplacedList slots={plan.unplaced} weekStart={plan.weekStart} onChange={load} />
+                <UnplacedList slots={plan.unplaced} weekStart={plan.weekStart} days={plan.days} onChange={load} />
                 <OtherEvents
                   events={plan.otherEvents}
                   unplaced={plan.unplaced}

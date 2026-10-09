@@ -12,4 +12,7 @@ public record CalendarEvent(
     // Null for an all-day event, which has no part of the day.
     TimeOfDay? Part,
     string? ETag = null,
-    string? Href = null);
+    string? Href = null,
+    // The event's whole iCalendar resource as read, so a move can change the time and
+    // leave everything else (notes, alarms, a time zone) as it was.
+    string? Ics = null);

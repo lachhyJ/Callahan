@@ -43,12 +43,38 @@ public class PlanControllerTests
 
     // --- calendar mode -----------------------------------------------------
 
-    private sealed class FakeCalendar(IReadOnlyList<CalendarEvent>? events = null, string? down = null, bool configured = true) : ICalendarClient
+    private sealed class FakeCalendar(
+        IReadOnlyList<CalendarEvent>? events = null, string? down = null, bool configured = true, Exception? writeFails = null) : ICalendarClient
     {
         public bool IsConfigured => configured;
 
+        public List<(string Title, DateOnly Day, TimeOfDay Part)> Created { get; } = [];
+        public List<(string Uid, DateOnly Day, TimeOfDay Part)> Moved { get; } = [];
+        public List<string> Deleted { get; } = [];
+
         public Task<IReadOnlyList<CalendarEvent>> GetEventsAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
             down is not null ? throw new CalendarUnavailableException(down) : Task.FromResult(events ?? []);
+
+        public Task CreateEventAsync(string title, DateOnly day, TimeOfDay part, CancellationToken ct)
+        {
+            if (writeFails is not null) throw writeFails;
+            Created.Add((title, day, part));
+            return Task.CompletedTask;
+        }
+
+        public Task MoveEventAsync(CalendarEvent existing, DateOnly day, TimeOfDay part, CancellationToken ct)
+        {
+            if (writeFails is not null) throw writeFails;
+            Moved.Add((existing.Uid, day, part));
+            return Task.CompletedTask;
+        }
+
+        public Task DeleteEventAsync(CalendarEvent existing, CancellationToken ct)
+        {
+            if (writeFails is not null) throw writeFails;
+            Deleted.Add(existing.Uid);
+            return Task.CompletedTask;
+        }
     }
 
     private static CalendarEvent Ev(string uid, string title, int dayOffset, TimeOfDay? part = TimeOfDay.Morning) =>
@@ -256,5 +282,143 @@ public class PlanControllerTests
 
         Assert.Equal("Field 1 - Acceleration & Jumps", Assert.Single(week.Days[3].Slots).Label);
         Assert.Empty(week.OtherEvents!);
+    }
+
+    // --- writing to the calendar ----------------------------------------------
+
+    private static PlacePlanSlotRequest At(int dayOffset, string part = "Evening") => new(Monday, Monday.AddDays(dayOffset), part);
+
+    [Fact]
+    public async Task PlacingASessionWithNoEventCreatesOneTitledWithItsShortName()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (_, field1, aerobic, _) = SeedSessions(db);
+        var calendar = new FakeCalendar();
+        var controller = Controller(db, calendar);
+
+        Assert.IsType<NoContentResult>(await controller.PlaceSlot(field1, At(3, "Morning")));
+        Assert.IsType<NoContentResult>(await controller.PlaceSlot(aerobic, At(5, "Arvo")));
+
+        Assert.Equal(
+            [("Field 1", Monday.AddDays(3), TimeOfDay.Morning), ("Aerobic", Monday.AddDays(5), TimeOfDay.Arvo)],
+            calendar.Created);
+        Assert.Empty(calendar.Moved);
+    }
+
+    [Fact]
+    public async Task PlacingASessionThatAlreadyHasAnEventMovesItInsteadOfAddingAnother()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (gym, _, _, _) = SeedSessions(db);
+        var calendar = new FakeCalendar([Ev("g", "Gym 1", 1)]);
+
+        Assert.IsType<NoContentResult>(await Controller(db, calendar).PlaceSlot(gym, At(4, "Morning")));
+
+        Assert.Equal([("g", Monday.AddDays(4), TimeOfDay.Morning)], calendar.Moved);
+        Assert.Empty(calendar.Created);
+    }
+
+    [Fact]
+    public async Task APlacementMovesTheEventLinkedToTheSessionNotOneThatMerelySharesATitle()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (_, field1, _, _) = SeedSessions(db);
+        var calendar = new FakeCalendar([Ev("odd", "Sprints", 2)]);
+        var controller = Controller(db, calendar);
+        await controller.LinkSlot(field1, new LinkPlanSlotRequest(Monday, "odd"));
+
+        await controller.PlaceSlot(field1, At(4));
+
+        Assert.Equal(["odd"], calendar.Moved.Select(m => m.Uid));
+        Assert.Empty(calendar.Created);
+    }
+
+    [Fact]
+    public async Task BadPlacementsAreRefusedAndWriteNothing()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (gym, _, _, _) = SeedSessions(db);
+        var rest = db.PlanSlots.Single(s => s.Kind == PlanSlotKind.Rest).Id;
+        var routine = db.PlanSlots.Single(s => s.Kind == PlanSlotKind.Routine).Id;
+        var calendar = new FakeCalendar();
+        var controller = Controller(db, calendar);
+
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(gym, At(1, "Midnight")));
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(gym, At(1, "7")));
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(gym, At(7))); // the Monday after
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(gym, At(-1)));
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(rest, At(1)));
+        Assert.IsType<BadRequestObjectResult>(await controller.PlaceSlot(routine, At(1)));
+        Assert.IsType<NotFoundResult>(await controller.PlaceSlot(9999, At(1)));
+        Assert.IsType<BadRequestObjectResult>(await Controller(db, null).PlaceSlot(gym, At(1)));
+        Assert.IsType<BadRequestObjectResult>(await Controller(db, new FakeCalendar(configured: false)).PlaceSlot(gym, At(1)));
+        Assert.Empty(calendar.Created);
+        Assert.Empty(calendar.Moved);
+    }
+
+    [Fact]
+    public async Task AChangedEventIs409AndAnUnreachableCalendarIs502()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (gym, _, _, _) = SeedSessions(db);
+
+        var conflict = await Controller(db, new FakeCalendar([Ev("g", "Gym 1", 1)], writeFails: new CalendarConflictException()))
+            .PlaceSlot(gym, At(2));
+        Assert.IsType<ConflictObjectResult>(conflict);
+
+        var unreachable = await Controller(db, new FakeCalendar([Ev("g", "Gym 1", 1)], writeFails: new CalendarUnavailableException("down")))
+            .PlaceSlot(gym, At(2));
+        Assert.Equal(502, Assert.IsType<ObjectResult>(unreachable).StatusCode);
+
+        var readFails = await Controller(db, new FakeCalendar(down: "down")).PlaceSlot(gym, At(2));
+        Assert.Equal(502, Assert.IsType<ObjectResult>(readFails).StatusCode);
+    }
+
+    [Fact]
+    public async Task RemovingASessionDeletesItsEventAndForgetsTheLink()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (_, field1, _, _) = SeedSessions(db);
+        var calendar = new FakeCalendar([Ev("odd", "Sprints", 2)]);
+        var controller = Controller(db, calendar);
+        await controller.LinkSlot(field1, new LinkPlanSlotRequest(Monday, "odd"));
+
+        Assert.IsType<NoContentResult>(await controller.RemoveSlotEvent(field1, Monday));
+
+        Assert.Equal(["odd"], calendar.Deleted);
+        Assert.Empty(db.PlanSlotWeeks);
+    }
+
+    [Fact]
+    public async Task RemovingASessionWithNoEventDeletesNothing()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (gym, _, _, _) = SeedSessions(db);
+        var calendar = new FakeCalendar([Ev("d", "Dinner", 2)]);
+
+        Assert.IsType<NoContentResult>(await Controller(db, calendar).RemoveSlotEvent(gym, Monday));
+
+        Assert.Empty(calendar.Deleted);
+    }
+
+    [Fact]
+    public async Task RemovingKeepsATickMadeByHand()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var (gym, _, _, _) = SeedSessions(db);
+        var controller = Controller(db, new FakeCalendar([Ev("g", "Gym 1", 1)]));
+        await controller.UpdateSlot(gym, new UpdatePlanSlotRequest(Monday, null, "Done"));
+
+        await controller.RemoveSlotEvent(gym, Monday);
+
+        Assert.Equal(PlanSlotStatus.Done, db.PlanSlotWeeks.Single().Status);
     }
 }

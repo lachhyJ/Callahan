@@ -40,3 +40,7 @@ public record UpdatePlanSlotRequest(DateOnly WeekStart, int? DayOfWeek, string? 
 
 // CalendarUid null unlinks the slot for that week.
 public record LinkPlanSlotRequest(DateOnly WeekStart, string? CalendarUid);
+
+// Puts a session on a day and part of the day in the Training calendar: creates its
+// event, or moves the one it already has. TimeOfDay is Morning, Arvo or Evening.
+public record PlacePlanSlotRequest(DateOnly WeekStart, DateOnly Day, string TimeOfDay);

@@ -19,7 +19,7 @@ public static class IcalEventParser
             if (name == "BEGIN" && value == "VEVENT") { current = new(); continue; }
             if (name == "END" && value == "VEVENT")
             {
-                if (current is not null && Build(current, userZone, etag, href) is { } ev) events.Add(ev);
+                if (current is not null && Build(current, userZone, etag, href, ics) is { } ev) events.Add(ev);
                 current = null;
                 continue;
             }
@@ -31,7 +31,7 @@ public static class IcalEventParser
         return events;
     }
 
-    private static CalendarEvent? Build(Dictionary<string, (string Params, string Value)> p, TimeZoneInfo zone, string? etag, string? href)
+    private static CalendarEvent? Build(Dictionary<string, (string Params, string Value)> p, TimeZoneInfo zone, string? etag, string? href, string raw)
     {
         if (!p.TryGetValue("UID", out var uid) || string.IsNullOrWhiteSpace(uid.Value)) return null;
         if (p.ContainsKey("RRULE")) return null;
@@ -44,7 +44,7 @@ public static class IcalEventParser
         if (value.Length == 8)
         {
             if (!DateTime.TryParseExact(value, "yyyyMMdd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date)) return null;
-            return new CalendarEvent(uid.Value.Trim(), title.Trim(), DateOnly.FromDateTime(date), null, etag, href);
+            return new CalendarEvent(uid.Value.Trim(), title.Trim(), DateOnly.FromDateTime(date), null, etag, href, raw);
         }
 
         var utc = value.EndsWith('Z');
@@ -53,7 +53,7 @@ public static class IcalEventParser
         if (utc) dt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), zone);
 
         var (day, part) = TimeOfDayBuckets.FromStart(dt);
-        return new CalendarEvent(uid.Value.Trim(), title.Trim(), day, part, etag, href);
+        return new CalendarEvent(uid.Value.Trim(), title.Trim(), day, part, etag, href, raw);
     }
 
     // Unfolds continuation lines (a leading space or tab) and splits NAME;PARAMS:VALUE.

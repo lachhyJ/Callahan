@@ -335,6 +335,23 @@ export function linkPlanSlot(slotId, { weekStart, calendarUid = null }) {
   }).then(afterWrite)
 }
 
+// Puts a session on a day and part of the day by writing to the Training calendar:
+// creates its event, or moves the one it already has. timeOfDay is Morning, Arvo or
+// Evening.
+export function placePlanSlot(slotId, { weekStart, day, timeOfDay }) {
+  return apiFetch(`/api/plan/slots/${slotId}/place`, {
+    method: 'PUT',
+    body: JSON.stringify({ weekStart, day, timeOfDay }),
+  }).then(afterWrite)
+}
+
+// Deletes the session's event from the Training calendar.
+export function removePlanSlotEvent(slotId, weekStart) {
+  return apiFetch(`/api/plan/slots/${slotId}/event?weekStart=${weekStart}`, {
+    method: 'DELETE',
+  }).then(afterWrite)
+}
+
 export function getRoutines() {
   return apiFetch('/api/routines')
 }

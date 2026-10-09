@@ -68,11 +68,20 @@ public static class PlanWeekLoader
     public record CalendarLoaded(
         WeekPlanBuilder.CalendarWeekResult Week, List<CalendarEvent> OtherEvents, List<DateOnly> AnkleCompletedDates);
 
-    // The week as the Training calendar has it. Reads the calendar first, so a
-    // calendar that can't be reached throws CalendarUnavailableException before
-    // anything else is queried and the caller can fall back to the program's week.
-    public static async Task<CalendarLoaded> LoadFromCalendarAsync(
-        AppDbContext db, ICalendarClient calendar, DateOnly weekStart, DateOnly today, CancellationToken ct)
+    // The week's calendar events matched to the program's sessions. Shared by the page
+    // and by the writes (which have to find the event a session is already on).
+    public record WeekMatch(
+        DateOnly Start,
+        DateOnly End,
+        List<WeekPlanBuilder.SlotInput> Slots,
+        List<PlanSlotWeek> WeekRows,
+        CalendarMatcher.Result Matched);
+
+    // Reads the calendar first, so a calendar that can't be reached throws
+    // CalendarUnavailableException before anything else is queried and the caller can
+    // fall back to the program's week.
+    public static async Task<WeekMatch> MatchAsync(
+        AppDbContext db, ICalendarClient calendar, DateOnly weekStart, CancellationToken ct)
     {
         var start = CalendarDates.MondayOf(weekStart);
         var end = start.AddDays(WeekPlanBuilder.DaysInWeek - 1);
@@ -82,18 +91,26 @@ public static class PlanWeekLoader
             .ToList();
 
         var slots = await SlotsAsync(db);
-
         var weekRows = await db.PlanSlotWeeks.Where(w => w.WeekStart == start).ToListAsync();
-        var overrides = weekRows
-            .Select(w => new WeekPlanBuilder.OverrideInput(w.PlanSlotId, w.DayOfWeek, w.Status))
-            .ToList();
         var linked = weekRows.Where(w => w.CalendarUid != null).ToDictionary(w => w.PlanSlotId, w => w.CalendarUid!);
 
         var sessions = slots
             .Where(s => s.Kind is PlanSlotKind.Gym or PlanSlotKind.Field or PlanSlotKind.Aerobic)
             .Select(s => new CalendarMatcher.SlotKey(s.SlotId, s.Kind, s.Label, linked.GetValueOrDefault(s.SlotId)))
             .ToList();
-        var matched = CalendarMatcher.Match(sessions, events);
+
+        return new WeekMatch(start, end, slots, weekRows, CalendarMatcher.Match(sessions, events));
+    }
+
+    // The week as the Training calendar has it.
+    public static async Task<CalendarLoaded> LoadFromCalendarAsync(
+        AppDbContext db, ICalendarClient calendar, DateOnly weekStart, DateOnly today, CancellationToken ct)
+    {
+        var (start, end, slots, weekRows, matched) = await MatchAsync(db, calendar, weekStart, ct);
+
+        var overrides = weekRows
+            .Select(w => new WeekPlanBuilder.OverrideInput(w.PlanSlotId, w.DayOfWeek, w.Status))
+            .ToList();
 
         var placements = matched.BySlot.ToDictionary(
             kv => kv.Key,
