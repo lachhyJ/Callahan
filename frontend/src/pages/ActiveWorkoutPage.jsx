@@ -2168,6 +2168,8 @@ export default function ActiveWorkoutPage() {
                       </>
                     )}
                     {openTypeMenu?.exIdx === exIdx && openTypeMenu?.setIdx === setIdx && (
+                      <>
+                      <div className="picker-backdrop" onClick={() => setOpenTypeMenu(null)} />
                       <div className="set-type-menu">
                         {SET_TYPE_OPTIONS.map((opt) => (
                           <button key={opt} type="button" onClick={() => setType(exIdx, setIdx, opt)}>
@@ -2178,6 +2180,7 @@ export default function ActiveWorkoutPage() {
                           Remove set
                         </button>
                       </div>
+                      </>
                     )}
                   </td>
                   <td className="previous-cell">
