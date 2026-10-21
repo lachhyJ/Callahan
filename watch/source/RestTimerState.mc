@@ -245,9 +245,11 @@ class RestTimerState {
         return name + " " + (_nextSetNumber - _warmupSets).toString() + "/" + (_totalSets - _warmupSets).toString();
     }
 
-    // Long names ("Dumbbell Bench Press (Incline, Neutral Grip)") shrink the
-    // whole value font to fit the field width. Drop a trailing parenthetical
-    // first, then cut at a word boundary so the line stays readable.
+    // A name too wide for the field is either shrunk (when it is the main
+    // value) or dropped (when it is the second line or the label), e.g.
+    // "Dumbbell Bench Press (Incline, Neutral Grip)". Drop a trailing
+    // parenthetical first, then cut at a word boundary so the line stays
+    // readable.
     function exerciseName() as String {
         if (_exerciseName == null) {
             return "";

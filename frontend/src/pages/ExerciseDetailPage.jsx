@@ -7,7 +7,7 @@ import { formatDateMedium } from '../dateUtils'
 import { SET_TYPE_LABELS, formatLoggedSet, formatWeight } from '../utils/format'
 
 const PAGE_SIZE = 10
-// Past this the watch field shrinks its font to fit the name.
+// Past this a name may not fit the watch field: it shrinks the text or drops the line.
 const WATCH_NAME_HINT_LENGTH = 20
 
 const CHART_RANGES = [
