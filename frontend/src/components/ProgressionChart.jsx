@@ -24,7 +24,7 @@ export default function ProgressionChart({ points }) {
   const rawMin = Math.min(...values)
   const rawMax = Math.max(...values)
   const pad = Math.max(1, (rawMax - rawMin) * 0.2 || rawMax * 0.1 || 1)
-  const yMin = Math.max(0, rawMin - pad)
+  const yMin = rawMin - pad
   const yMax = rawMax + pad
 
   const step = niceStep(yMax - yMin)
