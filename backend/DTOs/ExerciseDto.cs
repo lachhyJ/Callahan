@@ -8,7 +8,7 @@ public record ExerciseDto(int Id, string Name, string Category, string? PrimaryM
 // templates (if any) each exercise is programmed into, so the picker can
 // surface "from your other templates" first — the driving use case is an
 // exercise prescribed in one day but performed in another.
-public record PickableExerciseDto(int Id, string Name, string Category, bool IsAssisted, bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds, bool IsBodyweight, List<string> TemplateNames);
+public record PickableExerciseDto(int Id, string Name, string Category, bool IsAssisted, bool IsTimeBased, bool IsPerSide, int PerSideDelaySeconds, bool IsBodyweight, List<string> TemplateNames, string? ShortName = null);
 
 public record CreateExerciseRequestDto(string Name, string Category);
 
@@ -19,6 +19,8 @@ public record UpdateExerciseTimeBasedRequestDto(bool IsTimeBased, bool IsPerSide
 public record UpdateExerciseBodyweightRequestDto(bool IsBodyweight);
 
 public record UpdateExerciseNameRequestDto(string Name);
+
+public record UpdateExerciseShortNameRequestDto(string? ShortName);
 
 public record ExerciseHistoryEntryDto(int WorkoutSessionId, DateOnly Date, string? Notes, List<PreviousSetDto> Sets);
 
@@ -45,4 +47,5 @@ public record ExerciseStatsDto(
     decimal BestSessionVolume,
     List<ChartPointDto> Chart,
     ProgressionReadinessDto? ProgressionReadiness = null,
-    string Basis = nameof(LiftBasis.E1Rm));
+    string Basis = nameof(LiftBasis.E1Rm),
+    string? ShortName = null);

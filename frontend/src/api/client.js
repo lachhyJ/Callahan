@@ -152,6 +152,13 @@ export function updateExerciseName(exerciseId, name) {
   })
 }
 
+export function updateExerciseShortName(exerciseId, shortName) {
+  return apiFetch(`/api/exercises/${exerciseId}/short-name`, {
+    method: 'PUT',
+    body: JSON.stringify({ shortName }),
+  })
+}
+
 export function getWorkoutSessions({ start, end } = {}) {
   const params = new URLSearchParams()
   if (start) params.set('start', start)
@@ -405,6 +412,9 @@ export function scheduleRestTimer(durationSeconds, rest, suppressPush = false) {
     body: JSON.stringify({
       durationSeconds,
       ...setSlotFields(rest),
+      // The watch field is glance-sized: it gets the exercise's short name when
+      // one is set (the Live Activity and in-app bar keep the full name).
+      exerciseName: rest.exerciseShortName ?? rest.exerciseName ?? 'Workout',
       suppressPush,
       doneLabel: rest.doneLabel ?? '',
     }),

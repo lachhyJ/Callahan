@@ -24,7 +24,8 @@ public record WorkoutTemplateExerciseStartDto(
     bool SupersetWithNext,
     int? SupersetRestSeconds,
     List<PreviousSetDto> PreviousSets,
-    bool ReadyToProgress);
+    bool ReadyToProgress,
+    string? ShortName = null);
 
 public record WorkoutTemplateStartDto(
     int TemplateId,

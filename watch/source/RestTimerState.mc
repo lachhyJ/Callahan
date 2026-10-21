@@ -245,8 +245,64 @@ class RestTimerState {
         return name + " " + (_nextSetNumber - _warmupSets).toString() + "/" + (_totalSets - _warmupSets).toString();
     }
 
+    // Long names ("Dumbbell Bench Press (Incline, Neutral Grip)") shrink the
+    // whole value font to fit the field width. Drop a trailing parenthetical
+    // first, then cut at a word boundary so the line stays readable.
     function exerciseName() as String {
-        return _exerciseName != null ? _exerciseName : "";
+        if (_exerciseName == null) {
+            return "";
+        }
+        return shortenName(_exerciseName);
+    }
+
+    private static const MAX_NAME_CHARS = 20;
+
+    static function shortenName(full as String) as String {
+        var name = full;
+        var chars = name.toCharArray();
+
+        if (chars.size() > 0 && chars[chars.size() - 1] == ')') {
+            var open = -1;
+            for (var i = chars.size() - 1; i >= 0; i--) {
+                if (chars[i] == '(') {
+                    open = i;
+                    break;
+                }
+            }
+            if (open > 0) {
+                var head = name.substring(0, open);
+                if (head != null) {
+                    name = head;
+                }
+            }
+        }
+
+        // Trim the space left before the dropped parenthetical.
+        chars = name.toCharArray();
+        var end = chars.size();
+        while (end > 0 && chars[end - 1] == ' ') {
+            end--;
+        }
+        if (end < chars.size()) {
+            var trimmed = name.substring(0, end);
+            if (trimmed != null) {
+                name = trimmed;
+            }
+            chars = name.toCharArray();
+        }
+
+        if (chars.size() <= MAX_NAME_CHARS) {
+            return name;
+        }
+        var cut = MAX_NAME_CHARS;
+        for (var j = MAX_NAME_CHARS; j > 0; j--) {
+            if (chars[j] == ' ') {
+                cut = j;
+                break;
+            }
+        }
+        var cutName = name.substring(0, cut);
+        return cutName != null ? cutName : name;
     }
 
     static function vibrateRestOver() as Void {

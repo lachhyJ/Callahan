@@ -27,6 +27,10 @@ public class Exercise
     // sibling of IsAssisted/IsTimeBased.
     public bool IsBodyweight { get; set; }
 
+    // A glanceable label for surfaces too small for Name (the Garmin data
+    // field). Null falls back to Name; set it only where Name runs long.
+    public string? ShortName { get; set; }
+
     public ICollection<ExerciseSet> Sets { get; set; } = [];
     public ICollection<ExerciseMuscleTarget> MuscleTargets { get; set; } = [];
 }

@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseBodyweight, updateExerciseName, updateExerciseTimeBased } from '../api/client'
+import { getExerciseCues, getExerciseHistory, getExerciseStats, updateCue, updateExerciseAssisted, updateExerciseBodyweight, updateExerciseName, updateExerciseShortName, updateExerciseTimeBased } from '../api/client'
 import CueInput from '../components/CueInput'
 import ProgressionChart from '../components/ProgressionChart'
 import { formatDateMedium } from '../dateUtils'
 import { SET_TYPE_LABELS, formatLoggedSet, formatWeight } from '../utils/format'
 
 const PAGE_SIZE = 10
+// Past this the watch field shrinks its font to fit the name.
+const WATCH_NAME_HINT_LENGTH = 20
 
 const CHART_RANGES = [
   { label: '3M', days: 90 },
@@ -126,6 +128,16 @@ export default function ExerciseDetailPage() {
     })
   }
 
+  function handleShortNameChange(value) {
+    setStats((s) => ({ ...s, shortName: value }))
+  }
+
+  function handleShortNameBlur() {
+    const trimmed = (stats.shortName ?? '').trim()
+    setStats((s) => ({ ...s, shortName: trimmed || null }))
+    updateExerciseShortName(exerciseId, trimmed || null).catch(() => {})
+  }
+
   function loadMore() {
     setLoadingMore(true)
     getExerciseHistory(exerciseId, PAGE_SIZE, history.length)
@@ -225,6 +237,22 @@ export default function ExerciseDetailPage() {
           </label>
         )}
       </p>
+
+      <label className="watch-name">
+        Watch name
+        <input
+          type="text"
+          value={stats.shortName ?? ''}
+          maxLength={24}
+          placeholder={stats.exerciseName}
+          onChange={(e) => handleShortNameChange(e.target.value)}
+          onBlur={handleShortNameBlur}
+          aria-label="Short name for the watch"
+        />
+        {!stats.shortName && stats.exerciseName.length > WATCH_NAME_HINT_LENGTH && (
+          <span className="watch-name-hint">Long for the watch. Add a short name.</span>
+        )}
+      </label>
 
       {cues.map((c) => (
         <CueInput
