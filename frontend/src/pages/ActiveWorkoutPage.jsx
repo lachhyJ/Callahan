@@ -149,6 +149,7 @@ function exerciseFromStart(ex) {
   return {
     exerciseId: ex.exerciseId,
     exerciseName: ex.exerciseName,
+    exerciseShortName: ex.shortName ?? null,
     targetReps: ex.targetReps,
     restSeconds: ex.restSeconds,
     tempo: ex.tempo,
@@ -895,6 +896,7 @@ export default function ActiveWorkoutPage() {
   function startBreather(ex) {
     startRestTimer({
       exerciseName: `Breather · ${ex.exerciseName}`,
+      exerciseShortName: `Breather · ${ex.exerciseShortName ?? ex.exerciseName}`,
       targetReps: '',
       targetWeightKg: '',
       enteredReps: '',
@@ -919,6 +921,7 @@ export default function ActiveWorkoutPage() {
       totalSeconds: duration,
       timerId: null,
       exerciseName: descriptor.exerciseName,
+      exerciseShortName: descriptor.exerciseShortName ?? null,
       targetReps: descriptor.targetReps,
       // Weight already carried into the set you are about to do, so the Live
       // Activity can read "115 kg x 6" rather than just the rep target.
@@ -1516,6 +1519,7 @@ export default function ActiveWorkoutPage() {
       exerciseFromStart({
         exerciseId: exercise.id,
         exerciseName: exercise.name,
+        shortName: exercise.shortName ?? null,
         targetReps: '',
         restSeconds: 90,
         tempo: null,

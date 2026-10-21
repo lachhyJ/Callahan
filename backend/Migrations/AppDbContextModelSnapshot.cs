@@ -470,6 +470,9 @@ namespace Callahan.Api.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(8);
 
+                    b.Property<string>("ShortName")
+                        .HasColumnType("TEXT");
+
                     b.HasKey("Id");
 
                     b.ToTable("Exercises");

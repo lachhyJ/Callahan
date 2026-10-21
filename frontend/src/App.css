@@ -1838,6 +1838,33 @@ td {
   }
 }
 
+.watch-name {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: var(--space-xs) 0;
+  color: var(--text-tertiary);
+  font-size: var(--text-xs);
+
+  & input {
+    flex: 1 1 10ch;
+    min-width: 0;
+    min-height: 44px;
+    padding: 2px 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-size: var(--text-sm);
+  }
+}
+
+.watch-name-hint {
+  flex-basis: 100%;
+}
+
 .cue-input {
   background: transparent;
   border: none;

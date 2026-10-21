@@ -186,6 +186,7 @@ export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) 
     const ex = exercises[ti]
     return {
       exerciseName: ex.exerciseName,
+      exerciseShortName: ex.exerciseShortName,
       targetReps: ex.targetReps,
       targetWeightKg: ex.sets[j].weightKg,
       isBodyweight: ex.isBodyweight ?? false,
@@ -472,6 +473,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
 
   const sameExercise = {
     exerciseName: ex.exerciseName,
+    exerciseShortName: ex.exerciseShortName,
     targetReps: ex.targetReps,
     targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
     isBodyweight: ex.isBodyweight ?? false,
@@ -493,6 +495,7 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
       const nx = exercises[next.i]
       return {
         exerciseName: nx.exerciseName,
+        exerciseShortName: nx.exerciseShortName,
         targetReps: nx.targetReps,
         targetWeightKg: nx.sets[next.j].weightKg,
         isBodyweight: nx.isBodyweight ?? false,

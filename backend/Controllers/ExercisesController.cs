@@ -55,13 +55,13 @@ public class ExercisesController : ControllerBase
 
         var exercises = await _db.Exercises
             .OrderBy(e => e.Category).ThenBy(e => e.Name)
-            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds, e.IsBodyweight })
+            .Select(e => new { e.Id, e.Name, e.Category, e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds, e.IsBodyweight, e.ShortName })
             .ToListAsync();
 
         var result = exercises
             .Select(e => new PickableExerciseDto(
                 e.Id, e.Name, e.Category.ToString(), e.IsAssisted, e.IsTimeBased, e.IsPerSide, e.PerSideDelaySeconds, e.IsBodyweight,
-                templateNamesByExercise.GetValueOrDefault(e.Id, [])))
+                templateNamesByExercise.GetValueOrDefault(e.Id, []), e.ShortName))
             .ToList();
 
         return Ok(result);
@@ -143,6 +143,19 @@ public class ExercisesController : ControllerBase
         return NoContent();
     }
 
+    [HttpPut("{id}/short-name")]
+    public async Task<IActionResult> UpdateShortName(int id, UpdateExerciseShortNameRequestDto request)
+    {
+        var exercise = await _db.Exercises.FindAsync(id);
+        if (exercise is null) return NotFound();
+
+        var shortName = request.ShortName?.Trim();
+        exercise.ShortName = string.IsNullOrEmpty(shortName) ? null : shortName;
+        await _db.SaveChangesAsync();
+
+        return NoContent();
+    }
+
     [HttpGet("{id}/history")]
     public async Task<ActionResult<ExerciseHistoryPageDto>> GetHistory(int id, [FromQuery] int limit = 10, [FromQuery] int offset = 0)
     {
@@ -215,7 +228,7 @@ public class ExercisesController : ControllerBase
 
         if (sets.Count == 0)
         {
-            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, 0, 0, 0, 0, []));
+            return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, 0, 0, 0, 0, [], ShortName: exercise.ShortName));
         }
 
         var progressionReadiness = await GetProgressionReadiness(id);
@@ -239,7 +252,7 @@ public class ExercisesController : ControllerBase
             .Select(x => new ChartPointDto(x.Date, x.MaxWeight))
             .ToList();
 
-        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness, basis.ToString()));
+        return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness, basis.ToString(), exercise.ShortName));
     }
 
     // Known edge case, not solved here: assumes the exercise sits in exactly
