@@ -65,7 +65,7 @@
   /* Approximate rendered height of the floating rest-timer bar (.global-rest-bar
      / .rest-bar), gap included — used to grow scroll padding so content
      doesn't end up hidden behind it while a rest timer is showing. */
-  --rest-bar-clearance: 56px;
+  --rest-bar-clearance: 96px;
 
   /* ── Safe-area insets ──
      Prefer values published by the native shell (SafeAreaViewController injects
