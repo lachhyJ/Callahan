@@ -119,14 +119,6 @@ export function CalendarIcon(props) {
   )
 }
 
-export function FlameIcon(props) {
-  return (
-    <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M10 2c1 3-3 4-3 7.5a3 3 0 0 0 6 0c1 0 1.5 1 1.5 2a4.5 4.5 0 0 1-9 0C5.5 8 8 6.5 10 2z" />
-    </svg>
-  )
-}
-
 export function DocumentIcon(props) {
   return (
     <svg viewBox="0 0 20 20" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>

@@ -38,7 +38,6 @@ const SCREENS = [
   { name: 'wellness', path: '/wellness' },
   { name: 'exercises', path: '/exercises' },
   { name: 'games', path: '/ultimate' },
-  { name: 'streaks', path: '/streaks' },
   { name: 'reports', path: '/reports' },
 ]
 

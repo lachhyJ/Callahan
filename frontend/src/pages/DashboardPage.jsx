@@ -13,7 +13,7 @@ import TimeZoneSetting from '../components/TimeZoneSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
 import { trackAction } from '../usage'
-import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, FlameIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
+import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
 
 
 const WEEKDAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -24,7 +24,6 @@ const MONTH_FORMAT = { month: 'long', year: 'numeric' }
 
 // Three-column grid the layout was built for; rows fill left to right.
 const QUICK_LINKS = [
-  { to: '/streaks', label: 'Streaks', Icon: FlameIcon },
   { to: '/trends', label: 'Trends', Icon: ChartIcon },
   { to: '/program', label: 'Program', Icon: DocumentIcon },
   { to: '/plan', label: 'Planner', Icon: CalendarIcon },

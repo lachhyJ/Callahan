@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { getLiftTrends, getLoadTrend, getRunTypeTrends, getSeasonStrength, getTrends, getUltimateDistanceTrend } from '../api/client'
+import StreakCards from '../components/StreakCards'
 import ConsistencyTrendChart from '../components/ConsistencyTrendChart'
 import VolumeTrendChart from '../components/VolumeTrendChart'
 import LiftTrendsList from '../components/LiftTrendsList'
@@ -119,6 +120,8 @@ export default function TrendsPage() {
   return (
     <main className="page">
       <h1>Trends</h1>
+
+      <StreakCards />
 
       {error && <p className="error">{error}</p>}
       {!error && months === null && <p>Loading trends…</p>}

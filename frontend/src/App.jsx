@@ -25,7 +25,6 @@ import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import UltimateGameDetailPage from './pages/UltimateGameDetailPage'
 import GamesListPage from './pages/GamesListPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
-import StreakPage from './pages/StreakPage'
 import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
 import ProgramPage from './pages/ProgramPage'
@@ -45,7 +44,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/streaks', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -295,7 +294,7 @@ function AppRoutes() {
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
-          <Route path="/streaks" element={<ProtectedRoute><StreakPage /></ProtectedRoute>} />
+          <Route path="/streaks" element={<Navigate to="/trends" replace />} />
           <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
