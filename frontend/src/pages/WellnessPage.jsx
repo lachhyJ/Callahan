@@ -107,7 +107,7 @@ export default function WellnessPage() {
         />
       )}
 
-      {rows && <LoadBalanceTile rows={rows} />}
+      {rows && <LoadBalanceTile rows={rows} days={statusRange(rangeKey).days} />}
 
       {error && <p className="error">{error}</p>}
       {!error && !loaded && <p>Loading…</p>}

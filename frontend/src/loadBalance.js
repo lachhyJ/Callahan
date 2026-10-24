@@ -1,12 +1,14 @@
+import { isoDate } from './dateUtils'
+
 // Garmin Training Load Balance: a rolling-window load split into low aerobic,
 // high aerobic and anaerobic, each against Garmin's own target range for that
 // day. The sync stores it per day on the wellness rows (balance* fields).
 
 // Lowest to highest intensity, the order Garmin Connect draws them.
 export const BALANCE_BARS = [
-  { key: 'aerobicLow', label: 'Low aerobic', value: 'balanceAerobicLow', min: 'balanceAerobicLowMin', max: 'balanceAerobicLowMax' },
-  { key: 'aerobicHigh', label: 'High aerobic', value: 'balanceAerobicHigh', min: 'balanceAerobicHighMin', max: 'balanceAerobicHighMax' },
-  { key: 'anaerobic', label: 'Anaerobic', value: 'balanceAnaerobic', min: 'balanceAnaerobicMin', max: 'balanceAnaerobicMax' },
+  { key: 'aerobicLow', label: 'Low aerobic', short: 'Low', value: 'balanceAerobicLow', min: 'balanceAerobicLowMin', max: 'balanceAerobicLowMax' },
+  { key: 'aerobicHigh', label: 'High aerobic', short: 'High', value: 'balanceAerobicHigh', min: 'balanceAerobicHighMin', max: 'balanceAerobicHighMax' },
+  { key: 'anaerobic', label: 'Anaerobic', short: 'Anaerobic', value: 'balanceAnaerobic', min: 'balanceAnaerobicMin', max: 'balanceAnaerobicMax' },
 ]
 
 // The track runs a little past the larger of the target max and the value, so
@@ -64,4 +66,27 @@ export function balanceHeadline(phrase) {
   if (!phrase) return null
   const text = phrase.toLowerCase().replace(/_/g, ' ').trim()
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : null
+}
+
+// One bar's value and Garmin's target range for each of the `days` days ending
+// at `end`, oldest first. A day with no value is a gap (value null); the range
+// is carried per day because Garmin moves it with the load, so the target is a
+// band that drifts, not a fixed pair of lines. Dates are the stored ISO dates.
+export function buildBalanceSeries(rows, bar, days, end = new Date()) {
+  const byDate = new Map((rows ?? []).map((r) => [r.date, r]))
+  const out = []
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(end)
+    d.setDate(d.getDate() - i)
+    const date = isoDate(d)
+    const row = byDate.get(date)
+    const value = row?.[bar.value] ?? null
+    out.push({
+      date,
+      value,
+      min: value == null ? null : row[bar.min] ?? null,
+      max: value == null ? null : row[bar.max] ?? null,
+    })
+  }
+  return out
 }

@@ -5636,3 +5636,30 @@ td {
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+
+.load-balance-trend-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  margin-top: var(--space-md);
+}
+
+.load-balance-trend-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.load-balance-trend-band {
+  fill: var(--ts-productive);
+  opacity: 0.22;
+  stroke: none;
+}
+
+.load-balance-trend-note {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}

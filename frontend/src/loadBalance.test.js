@@ -4,6 +4,7 @@ import {
   balanceBarGeometry,
   balanceHeadline,
   balanceState,
+  buildBalanceSeries,
   latestBalanceRow,
   overallBalanceState,
 } from './loadBalance'
@@ -126,5 +127,28 @@ describe('overallBalanceState', () => {
   it('is null with nothing to place', () => {
     expect(overallBalanceState({ date: '2026-10-01', balancePhrase: 'X' })).toBeNull()
     expect(overallBalanceState(null)).toBeNull()
+  })
+})
+
+describe('buildBalanceSeries', () => {
+  const low = BALANCE_BARS[0]
+  const end = new Date(2026, 9, 24)
+
+  it('returns one entry per day, oldest first, with each day\'s own target range', () => {
+    const rows = [SEP_15, OCT_22].map((r) => ({ ...r }))
+    const series = buildBalanceSeries(rows, low, 60, end)
+    expect(series).toHaveLength(60)
+    expect(series[0].date).toBe('2026-08-26')
+    expect(series[59].date).toBe('2026-10-24')
+    const sep = series.find((p) => p.date === '2026-09-15')
+    expect(sep).toMatchObject({ value: 245.05133, min: 194, max: 457 })
+    const oct = series.find((p) => p.date === '2026-10-22')
+    expect(oct).toMatchObject({ value: 225.95972, min: 190, max: 453 })
+  })
+
+  it('leaves unsynced days as gaps with no range', () => {
+    const series = buildBalanceSeries([SEP_15], low, 30, end)
+    const gap = series.find((p) => p.date === '2026-10-01')
+    expect(gap).toEqual({ date: '2026-10-01', value: null, min: null, max: null })
   })
 })

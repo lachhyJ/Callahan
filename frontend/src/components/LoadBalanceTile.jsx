@@ -1,10 +1,13 @@
+import { useState } from 'react'
 import { formatDateRange } from '../dateUtils'
+import LoadBalanceTrend from './LoadBalanceTrend'
 import {
   BALANCE_BARS,
   BALANCE_STATE_LABEL,
   balanceBarGeometry,
   balanceHeadline,
   balanceState,
+  buildBalanceSeries,
   latestBalanceRow,
   overallBalanceState,
 } from '../loadBalance'
@@ -15,10 +18,12 @@ const pct = (fraction) => `${(fraction * 100).toFixed(1)}%`
 // anaerobic load, each drawn against Garmin's target range for the day. Colour
 // is never the only channel - every bar prints its state as a word and its
 // target range as numbers, and the track has an aria-label.
-export default function LoadBalanceTile({ rows }) {
+export default function LoadBalanceTile({ rows, days = 84 }) {
+  const [trendKey, setTrendKey] = useState(BALANCE_BARS[0].key)
   const latest = latestBalanceRow(rows)
   if (!latest) return null
 
+  const trendBar = BALANCE_BARS.find((b) => b.key === trendKey)
   const headline = balanceHeadline(latest.balancePhrase)
   const overall = overallBalanceState(latest)
 
@@ -82,6 +87,24 @@ export default function LoadBalanceTile({ rows }) {
           )
         })}
       </div>
+
+      <div className="load-balance-trend-head">
+        <h3 className="load-balance-trend-title">Over time</h3>
+        <div className="training-status-range" role="group" aria-label="Load balance trend">
+          {BALANCE_BARS.map((b) => (
+            <button
+              key={b.key}
+              type="button"
+              className={`training-status-range-btn${b.key === trendKey ? ' active' : ''}`}
+              aria-pressed={b.key === trendKey}
+              onClick={() => setTrendKey(b.key)}
+            >
+              {b.short}
+            </button>
+          ))}
+        </div>
+      </div>
+      <LoadBalanceTrend series={buildBalanceSeries(rows, trendBar, days)} label={trendBar.label} />
     </section>
   )
 }
