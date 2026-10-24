@@ -160,9 +160,11 @@ public class MonthlyReportsController : ControllerBase
         // report is first opened mid-month - so the lock is only final if the
         // snapshot was computed on or after the lock date. An earlier one holds
         // part of the month and is rebuilt here like an old-schema row.
+        var computedBeforeLock = existing is not null
+            && DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(existing.ComputedAt, DateTimeKind.Utc), _time.LocalTimeZone)) < lockDate;
         var snapshotIsFinal = existing is not null
             && existing.SchemaVersion >= CurrentReportSchemaVersion
-            && DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(existing.ComputedAt, DateTimeKind.Utc), _time.LocalTimeZone)) >= lockDate;
+            && !computedBeforeLock;
 
         if (shouldBeLocked && snapshotIsFinal && existing is not null)
         {
@@ -177,9 +179,13 @@ public class MonthlyReportsController : ControllerBase
             // Past the lock point with no snapshot, one written under an older
             // report shape, or one computed before the month locked — compute
             // and store. Rebuilding overwrites
-            // the existing row rather than replacing it, so ViewedAt survives.
+            // the existing row rather than replacing it, so ViewedAt survives -
+            // except when the row predates the lock: that view was of the
+            // provisional month, not this report, and keeping it would mean the
+            // dashboard's "report is ready" banner never fires for the month.
             var toSnapshot = await _builder.BuildAsync(year, month);
-            toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false, ViewedAt = existing?.ViewedAt };
+            var viewedAt = computedBeforeLock ? null : existing?.ViewedAt;
+            toSnapshot = toSnapshot with { IsLocked = true, IsProvisional = false, ViewedAt = viewedAt };
 
             var isNewRow = existing is null;
             if (existing is null)
@@ -190,6 +196,7 @@ public class MonthlyReportsController : ControllerBase
             existing.ReportJson = Serialize(toSnapshot);
             existing.ComputedAt = _time.GetUtcNow().UtcDateTime;
             existing.SchemaVersion = CurrentReportSchemaVersion;
+            existing.ViewedAt = viewedAt;
 
             try
             {

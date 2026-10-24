@@ -163,6 +163,14 @@ export default function DashboardPage() {
     return () => cancelIdle(handle)
   }, [])
 
+  // Without a "shown" event, zero open/dismiss rows can't distinguish a banner
+  // nobody tapped from one that never rendered. Keyed on the report so the
+  // cached-then-fresh double callback above counts once.
+  const bannerReportKey = unviewedReport ? `${unviewedReport.year}-${unviewedReport.month}` : null
+  useEffect(() => {
+    if (bannerReportKey) trackAction('report-banner', 'shown')
+  }, [bannerReportKey])
+
   function dismissUnviewedReport() {
     if (!unviewedReport) return
     trackAction('report-banner', 'dismiss')

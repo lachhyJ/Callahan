@@ -422,7 +422,8 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
 
     // Opening a report mid-month (MarkViewed) stores a snapshot of the month
     // so far. Once the month locks, that partial snapshot must be rebuilt,
-    // not served as the final report.
+    // not served as the final report - and the mid-month view must not count
+    // as having seen the locked report, or the dashboard banner never fires.
     [Fact]
     public async Task SnapshotComputedBeforeTheLockDay_IsRebuiltOnceLocked()
     {
@@ -433,7 +434,7 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
         // As if that view happened on 15 Jan, while the month was provisional.
         var row = _db.MonthlyReports.Single();
         row.ComputedAt = new DateTime(Year, Month, 15, 0, 0, 0, DateTimeKind.Utc);
-        var viewedAt = row.ViewedAt;
+        Assert.NotNull(row.ViewedAt);
         _db.WorkoutSessions.Add(new WorkoutSession { Date = new DateOnly(Year, Month, 20) });
         _db.WorkoutSessions.Add(new WorkoutSession { Date = new DateOnly(Year, Month, 27) });
         await _db.SaveChangesAsync();
@@ -442,7 +443,8 @@ public class MonthlyReportSnapshotRebuildTests : IDisposable
 
         Assert.True(dto.IsLocked);
         Assert.Equal(3, dto.Consistency.TotalSessions);
-        Assert.Equal(viewedAt, dto.ViewedAt);
+        Assert.Null(dto.ViewedAt);
+        Assert.Null(_db.MonthlyReports.Single().ViewedAt);
     }
 
     [Fact]
