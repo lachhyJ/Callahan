@@ -43,32 +43,44 @@ public class WorkoutTemplatesController : ControllerBase
 
         if (template is null) return NotFound();
 
-        var lastSession = await _db.WorkoutSessions
+        // Prefill per exercise, not per session: the latest session of this
+        // template may have skipped an exercise (or the template may have
+        // gained it since), and a single "last session" would then leave it
+        // blank even though an earlier session logged it.
+        var exerciseIds = template.Exercises.Select(te => te.ExerciseId).ToList();
+        var recentSessions = await _db.WorkoutSessions
             .Where(s => s.WorkoutTemplateId == id)
-            .Include(s => s.Sets)
             .OrderByDescending(s => s.Date)
             .ThenByDescending(s => s.Id)
-            .FirstOrDefaultAsync();
+            .Select(s => new
+            {
+                s.Date,
+                Sets = s.Sets.Where(x => exerciseIds.Contains(x.ExerciseId)).ToList()
+            })
+            .ToListAsync();
 
         var exercises = template.Exercises
             .OrderBy(te => te.ExerciseOrder)
             .Select(te =>
             {
-                var previousSets = lastSession?.Sets
+                var source = recentSessions.FirstOrDefault(s => s.Sets.Any(x => x.ExerciseId == te.ExerciseId));
+                var lastSets = source?.Sets
                     .Where(s => s.ExerciseId == te.ExerciseId)
                     .OrderBy(s => s.SetOrder)
-                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString(), s.DurationSeconds))
                     .ToList() ?? [];
+
+                var previousSets = lastSets
+                    .Select(s => new PreviousSetDto(s.SetOrder, s.Reps, s.WeightKg, s.SetType.ToString(), s.DurationSeconds))
+                    .ToList();
 
                 var primaryMuscle = te.Exercise.MuscleTargets.Where(mt => mt.IsPrimary).Select(mt => mt.MuscleGroup.ToString()).FirstOrDefault();
 
                 var readiness = ProgressionReadinessChecker.Evaluate(
                     new ProgressionReadinessChecker.SlotInput(te.TargetSets, te.TargetRepsMax),
-                    lastSession?.Date,
-                    lastSession?.Sets
-                        .Where(s => s.ExerciseId == te.ExerciseId)
+                    source?.Date,
+                    lastSets
                         .Select(s => new ProgressionReadinessChecker.SetInput(s.SetOrder, s.Reps, s.SetType))
-                        .ToList() ?? []);
+                        .ToList());
 
                 return new WorkoutTemplateExerciseStartDto(
                     te.Id, te.ExerciseId, te.Exercise.Name, te.TargetSets, te.WarmupSets, te.TargetReps, te.RestSeconds, te.Tempo, te.Cue, primaryMuscle,
