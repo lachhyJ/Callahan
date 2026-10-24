@@ -5,6 +5,7 @@ import {
   balanceHeadline,
   balanceState,
   latestBalanceRow,
+  overallBalanceState,
 } from './loadBalance'
 
 // Real values from Garmin payloads on the account (15 Sep, 8 Oct, 22 Oct 2026).
@@ -106,5 +107,24 @@ describe('balanceHeadline', () => {
     expect(balanceHeadline('BALANCED')).toBe('Balanced')
     expect(balanceHeadline(null)).toBeNull()
     expect(balanceHeadline('')).toBeNull()
+  })
+})
+
+describe('overallBalanceState', () => {
+  it('is over when the only out-of-range bar is over (22 Oct)', () => {
+    expect(overallBalanceState(OCT_22)).toBe('over')
+  })
+
+  it('lets a shortage outrank an overshoot, as the phrase does (15 Sep)', () => {
+    expect(overallBalanceState(SEP_15)).toBe('short')
+  })
+
+  it('is on when every bar is in range', () => {
+    expect(overallBalanceState({ ...OCT_22, balanceAnaerobic: 100 })).toBe('on')
+  })
+
+  it('is null with nothing to place', () => {
+    expect(overallBalanceState({ date: '2026-10-01', balancePhrase: 'X' })).toBeNull()
+    expect(overallBalanceState(null)).toBeNull()
   })
 })

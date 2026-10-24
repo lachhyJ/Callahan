@@ -34,6 +34,16 @@ export function balanceBarGeometry(value, min, max) {
   return { zoneStart: min / domain, zoneEnd: max / domain, fill: value / domain }
 }
 
+// The worst state across the three bars, 'short' over 'over' over 'on', for the
+// dot beside Garmin's headline. Taken from the numbers, not the phrase, for the
+// same reason as the bars: a shortage outranks "focus" in the phrase.
+export function overallBalanceState(row) {
+  const states = BALANCE_BARS.map((b) => balanceState(row?.[b.value], row?.[b.min], row?.[b.max]))
+  if (states.includes('short')) return 'short'
+  if (states.includes('over')) return 'over'
+  return states.includes('on') ? 'on' : null
+}
+
 // The newest row that carries a balance. Any one value counts, so a day with
 // only some of the fields still shows what it has.
 export function latestBalanceRow(rows) {

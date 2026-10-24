@@ -6,6 +6,7 @@ import {
   balanceHeadline,
   balanceState,
   latestBalanceRow,
+  overallBalanceState,
 } from '../loadBalance'
 
 const pct = (fraction) => `${(fraction * 100).toFixed(1)}%`
@@ -19,6 +20,7 @@ export default function LoadBalanceTile({ rows }) {
   if (!latest) return null
 
   const headline = balanceHeadline(latest.balancePhrase)
+  const overall = overallBalanceState(latest)
 
   return (
     <section className="load-balance" aria-label="Training load balance">
@@ -26,7 +28,15 @@ export default function LoadBalanceTile({ rows }) {
         <h2 className="load-balance-title">Load balance</h2>
         <span className="load-balance-date">{formatDateRange(latest.date, latest.date)}</span>
       </div>
-      {headline && <p className="load-balance-headline">{headline}</p>}
+      {headline && (
+        <div className="load-balance-verdict">
+          <span className="load-balance-verdict-label">Garmin feedback</span>
+          <p className="load-balance-headline">
+            {overall && <span className={`load-balance-dot is-${overall}`} aria-hidden="true" />}
+            {headline}
+          </p>
+        </div>
+      )}
 
       <div className="load-balance-bars">
         {BALANCE_BARS.map((bar) => {

@@ -5537,12 +5537,36 @@ td {
   color: var(--text);
 }
 
+.load-balance-verdict {
+  margin-top: var(--space-sm);
+}
+
+/* Small caption so the headline reads as Garmin's changing verdict, not a title. */
+.load-balance-verdict-label {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+
 .load-balance-headline {
-  margin: var(--space-2xs) 0 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+  margin: 0;
   font-size: var(--text-xl);
   font-weight: var(--font-semibold);
   color: var(--text-h);
 }
+
+.load-balance-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-full);
+}
+
+.load-balance-dot.is-on    { background: var(--ts-productive); }
+.load-balance-dot.is-short { background: var(--ts-unproductive); }
+.load-balance-dot.is-over  { background: var(--ts-maintaining); }
 
 .load-balance-bars {
   display: flex;
