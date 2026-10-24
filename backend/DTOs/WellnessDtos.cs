@@ -25,7 +25,17 @@ public record DailyWellnessDto(
     int? AcuteLoad,
     int? ChronicLoad,
     double? AcwrRatio,
-    double? Vo2Max);
+    double? Vo2Max,
+    double? BalanceAerobicLow,
+    double? BalanceAerobicHigh,
+    double? BalanceAnaerobic,
+    int? BalanceAerobicLowMin,
+    int? BalanceAerobicLowMax,
+    int? BalanceAerobicHighMin,
+    int? BalanceAerobicHighMax,
+    int? BalanceAnaerobicMin,
+    int? BalanceAnaerobicMax,
+    string? BalancePhrase);
 
 // Phase 5 readiness insight: today's wellness read against a trailing personal
 // baseline, delivered as finished plain-language strings (see
@@ -89,7 +99,17 @@ public record UpsertDailyWellnessRequest(
     int? AcuteLoad = null,
     int? ChronicLoad = null,
     double? AcwrRatio = null,
-    double? Vo2Max = null);
+    double? Vo2Max = null,
+    double? BalanceAerobicLow = null,
+    double? BalanceAerobicHigh = null,
+    double? BalanceAnaerobic = null,
+    int? BalanceAerobicLowMin = null,
+    int? BalanceAerobicLowMax = null,
+    int? BalanceAerobicHighMin = null,
+    int? BalanceAerobicHighMax = null,
+    int? BalanceAnaerobicMin = null,
+    int? BalanceAnaerobicMax = null,
+    string? BalancePhrase = null);
 
 // Merge-only counterpart for backfilling the Training Status columns without
 // re-sending (and so possibly nulling) the rest of a day's row. Unlike the PUT
@@ -101,4 +121,14 @@ public record PatchTrainingStatusRequest(
     int? AcuteLoad = null,
     int? ChronicLoad = null,
     double? AcwrRatio = null,
-    double? Vo2Max = null);
+    double? Vo2Max = null,
+    double? BalanceAerobicLow = null,
+    double? BalanceAerobicHigh = null,
+    double? BalanceAnaerobic = null,
+    int? BalanceAerobicLowMin = null,
+    int? BalanceAerobicLowMax = null,
+    int? BalanceAerobicHighMin = null,
+    int? BalanceAerobicHighMax = null,
+    int? BalanceAnaerobicMin = null,
+    int? BalanceAnaerobicMax = null,
+    string? BalancePhrase = null);

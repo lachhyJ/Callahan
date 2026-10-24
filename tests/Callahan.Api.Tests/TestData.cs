@@ -20,7 +20,7 @@ internal static class TestData
     }
 
     // One day of wellness, by metric name. Named arguments into the DTO rather
-    // than 19 positional ones: most of its slots are int?, so a field inserted
+    // than 35 positional ones: most of its slots are int?, so a field inserted
     // into the record would otherwise still compile and quietly feed each test
     // the wrong metric.
     public static DailyWellnessDto Wellness(
@@ -32,5 +32,8 @@ internal static class TestData
             HrvLastNightAvg: hrv, HrvWeeklyAvg: null, HrvStatus: null,
             TrainingReadinessScore: readiness, TrainingReadinessLevel: null, TrainingReadinessFeedback: null,
             RestingHeartRate: rhr, BodyBatteryHigh: null, BodyBatteryLow: null, AvgStressLevel: null,
-            TrainingStatusCode: null, TrainingStatusPhrase: null, AcuteLoad: null, ChronicLoad: null, AcwrRatio: null, Vo2Max: null);
+            TrainingStatusCode: null, TrainingStatusPhrase: null, AcuteLoad: null, ChronicLoad: null, AcwrRatio: null, Vo2Max: null,
+            BalanceAerobicLow: null, BalanceAerobicHigh: null, BalanceAnaerobic: null,
+            BalanceAerobicLowMin: null, BalanceAerobicLowMax: null, BalanceAerobicHighMin: null, BalanceAerobicHighMax: null,
+            BalanceAnaerobicMin: null, BalanceAnaerobicMax: null, BalancePhrase: null);
 }

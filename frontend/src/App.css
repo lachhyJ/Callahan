@@ -2577,7 +2577,7 @@ td {
 
 .rest-countdown-mini {
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-md);
+  font-size: var(--text-base);
 }
 
 .stat-grid {
@@ -5507,4 +5507,108 @@ td {
   font-size: var(--text-sm);
   touch-action: manipulation;
   user-select: none;
+}
+
+/* ── Garmin Training Load Balance tile (/wellness) ──
+   Same section rhythm as the status band above it. The target zone is a
+   tinted block behind the fill; fill colour reuses the status palette. */
+.load-balance {
+  margin: 0 0 var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.load-balance-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+}
+
+.load-balance-title {
+  margin: 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  color: var(--text-h);
+}
+
+.load-balance-date {
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+
+.load-balance-headline {
+  margin: var(--space-2xs) 0 0;
+  font-size: var(--text-xl);
+  font-weight: var(--font-semibold);
+  color: var(--text-h);
+}
+
+.load-balance-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  margin-top: var(--space-md);
+}
+
+.load-balance-bar-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  font-size: var(--text-sm);
+}
+
+.load-balance-bar-label {
+  color: var(--text-h);
+}
+
+.load-balance-bar-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-xs);
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.load-balance-bar-state {
+  font-size: var(--text-xs);
+  color: var(--text);
+}
+
+.load-balance-track {
+  position: relative;
+  height: 14px;
+  margin-top: var(--space-2xs);
+  border-radius: var(--radius-full);
+  background: var(--border-subtle);
+  overflow: hidden;
+}
+
+.load-balance-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--ts-productive);
+  opacity: 0.28;
+}
+
+.load-balance-fill {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  border-radius: var(--radius-full);
+  background: var(--ts-unknown);
+}
+
+.load-balance-fill.is-on    { background: var(--ts-productive); }
+.load-balance-fill.is-short { background: var(--ts-unproductive); }
+.load-balance-fill.is-over  { background: var(--ts-maintaining); }
+
+.load-balance-target {
+  margin-top: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }

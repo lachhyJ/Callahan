@@ -40,8 +40,24 @@ public class DailyWellness
     public double? AcwrRatio { get; set; }
     public double? Vo2Max { get; set; }
 
+    // Garmin Training Load Balance: trailing-window (about 4 weeks, undocumented)
+    // load split by kind, each against Garmin's own target range for that day.
+    // Refreshed daily and returned per date, so it lives per day like the status
+    // above. The phrase ("AEROBIC_HIGH_SHORTAGE", "ANAEROBIC_FOCUS") is kept raw:
+    // a shortage outranks "focus" in it, so it can't be derived from the bars.
+    public double? BalanceAerobicLow { get; set; }
+    public double? BalanceAerobicHigh { get; set; }
+    public double? BalanceAnaerobic { get; set; }
+    public int? BalanceAerobicLowMin { get; set; }
+    public int? BalanceAerobicLowMax { get; set; }
+    public int? BalanceAerobicHighMin { get; set; }
+    public int? BalanceAerobicHighMax { get; set; }
+    public int? BalanceAnaerobicMin { get; set; }
+    public int? BalanceAnaerobicMax { get; set; }
+    public string? BalancePhrase { get; set; }
+
     // Merged raw Garmin payloads keyed by probe method name (get_sleep_data,
-    // get_hrv_data, get_training_readiness, get_stats) - never queried, kept
+    // get_hrv_data, get_training_readiness, get_stats, get_training_status) - never queried, kept
     // so a field not modelled above is still recoverable from already-synced
     // rows without re-hitting Garmin.
     public string? RawJson { get; set; }

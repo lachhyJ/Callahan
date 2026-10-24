@@ -183,13 +183,23 @@ public class WellnessController : ControllerBase
         existing.ChronicLoad = request.ChronicLoad;
         existing.AcwrRatio = request.AcwrRatio;
         existing.Vo2Max = request.Vo2Max;
+        existing.BalanceAerobicLow = request.BalanceAerobicLow;
+        existing.BalanceAerobicHigh = request.BalanceAerobicHigh;
+        existing.BalanceAnaerobic = request.BalanceAnaerobic;
+        existing.BalanceAerobicLowMin = request.BalanceAerobicLowMin;
+        existing.BalanceAerobicLowMax = request.BalanceAerobicLowMax;
+        existing.BalanceAerobicHighMin = request.BalanceAerobicHighMin;
+        existing.BalanceAerobicHighMax = request.BalanceAerobicHighMax;
+        existing.BalanceAnaerobicMin = request.BalanceAnaerobicMin;
+        existing.BalanceAnaerobicMax = request.BalanceAnaerobicMax;
+        existing.BalancePhrase = request.BalancePhrase;
         existing.RawJson = request.RawJson;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(existing));
     }
 
-    // Backfill path for the Training Status columns only. Writes just the fields
+    // Backfill path for the Training Status and Load Balance columns only. Writes just the fields
     // the request carries (null = leave alone), so a status-only backfill can
     // never null out a day's sleep / HRV / readiness the way a full PUT would.
     // A request with nothing to write is a no-op and creates no row.
@@ -203,7 +213,12 @@ public class WellnessController : ControllerBase
 
         if (request.TrainingStatusCode is null && request.TrainingStatusPhrase is null
             && request.AcuteLoad is null && request.ChronicLoad is null
-            && request.AcwrRatio is null && request.Vo2Max is null)
+            && request.AcwrRatio is null && request.Vo2Max is null
+            && request.BalanceAerobicLow is null && request.BalanceAerobicHigh is null
+            && request.BalanceAnaerobic is null && request.BalancePhrase is null
+            && request.BalanceAerobicLowMin is null && request.BalanceAerobicLowMax is null
+            && request.BalanceAerobicHighMin is null && request.BalanceAerobicHighMax is null
+            && request.BalanceAnaerobicMin is null && request.BalanceAnaerobicMax is null)
         {
             return NoContent();
         }
@@ -225,6 +240,16 @@ public class WellnessController : ControllerBase
         if (request.ChronicLoad is not null) existing.ChronicLoad = request.ChronicLoad;
         if (request.AcwrRatio is not null) existing.AcwrRatio = request.AcwrRatio;
         if (request.Vo2Max is not null) existing.Vo2Max = request.Vo2Max;
+        if (request.BalanceAerobicLow is not null) existing.BalanceAerobicLow = request.BalanceAerobicLow;
+        if (request.BalanceAerobicHigh is not null) existing.BalanceAerobicHigh = request.BalanceAerobicHigh;
+        if (request.BalanceAnaerobic is not null) existing.BalanceAnaerobic = request.BalanceAnaerobic;
+        if (request.BalanceAerobicLowMin is not null) existing.BalanceAerobicLowMin = request.BalanceAerobicLowMin;
+        if (request.BalanceAerobicLowMax is not null) existing.BalanceAerobicLowMax = request.BalanceAerobicLowMax;
+        if (request.BalanceAerobicHighMin is not null) existing.BalanceAerobicHighMin = request.BalanceAerobicHighMin;
+        if (request.BalanceAerobicHighMax is not null) existing.BalanceAerobicHighMax = request.BalanceAerobicHighMax;
+        if (request.BalanceAnaerobicMin is not null) existing.BalanceAnaerobicMin = request.BalanceAnaerobicMin;
+        if (request.BalanceAnaerobicMax is not null) existing.BalanceAnaerobicMax = request.BalanceAnaerobicMax;
+        if (request.BalancePhrase is not null) existing.BalancePhrase = request.BalancePhrase;
 
         await _db.SaveChangesAsync();
         return Ok(ToDto(existing));

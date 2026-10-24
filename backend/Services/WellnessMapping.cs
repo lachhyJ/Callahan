@@ -20,7 +20,10 @@ public static class WellnessMapping
         w.HrvLastNightAvg, w.HrvWeeklyAvg, w.HrvStatus,
         w.TrainingReadinessScore, w.TrainingReadinessLevel, w.TrainingReadinessFeedback,
         w.RestingHeartRate, w.BodyBatteryHigh, w.BodyBatteryLow, w.AvgStressLevel,
-        w.TrainingStatusCode, w.TrainingStatusPhrase, w.AcuteLoad, w.ChronicLoad, w.AcwrRatio, w.Vo2Max);
+        w.TrainingStatusCode, w.TrainingStatusPhrase, w.AcuteLoad, w.ChronicLoad, w.AcwrRatio, w.Vo2Max,
+        w.BalanceAerobicLow, w.BalanceAerobicHigh, w.BalanceAnaerobic,
+        w.BalanceAerobicLowMin, w.BalanceAerobicLowMax, w.BalanceAerobicHighMin, w.BalanceAerobicHighMax,
+        w.BalanceAnaerobicMin, w.BalanceAnaerobicMax, w.BalancePhrase);
 
     private static readonly Func<DailyWellness, DailyWellnessDto> Compiled = Projection.Compile();
 
