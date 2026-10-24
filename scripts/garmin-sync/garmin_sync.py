@@ -212,6 +212,10 @@ def to_int(value):
     return int(round(value)) if value is not None else None
 
 
+def to_float(value):
+    return float(value) if value is not None else None
+
+
 def to_payload(activity, activity_type):
     summary_id = activity.get("activityId")
     distance_m = activity.get("distance")
@@ -600,7 +604,7 @@ def fetch_wellness(client, cdate):
 
 
 def parse_training_status(payload, cdate):
-    """Pick the Training Status fields for `cdate` out of get_training_status.
+    """Pick the Training Status and Load Balance fields for `cdate` out of get_training_status.
 
     The payload is "most recent" shaped, keyed by device id, and VO2max in
     particular carries its own calendarDate (it only changes every few days).
@@ -615,6 +619,16 @@ def parse_training_status(payload, cdate):
         "chronicLoad": None,
         "acwrRatio": None,
         "vo2Max": None,
+        "balanceAerobicLow": None,
+        "balanceAerobicHigh": None,
+        "balanceAnaerobic": None,
+        "balanceAerobicLowMin": None,
+        "balanceAerobicLowMax": None,
+        "balanceAerobicHighMin": None,
+        "balanceAerobicHighMax": None,
+        "balanceAnaerobicMin": None,
+        "balanceAnaerobicMax": None,
+        "balancePhrase": None,
     }
 
     by_device = ((payload.get("mostRecentTrainingStatus") or {}).get("latestTrainingStatusData")) or {}
@@ -633,6 +647,28 @@ def parse_training_status(payload, cdate):
     vo2 = (payload.get("mostRecentVO2Max") or {}).get("generic") or {}
     if vo2.get("calendarDate") == cdate and vo2.get("vo2MaxPreciseValue") is not None:
         out["vo2Max"] = float(vo2["vo2MaxPreciseValue"])
+
+    # Training Load Balance rides the same response: a rolling-window load split
+    # (aerobic low / aerobic high / anaerobic) with Garmin's target range for each.
+    # It is refreshed daily and returned per date, so it gets the same
+    # calendarDate guard as the status above.
+    balance_map = ((payload.get("mostRecentTrainingLoadBalance") or {}).get("metricsTrainingLoadBalanceDTOMap")) or {}
+    balances = [b for b in balance_map.values() if isinstance(b, dict)]
+    balance = next((b for b in balances if b.get("primaryTrainingDevice")), balances[0] if balances else {})
+    if balance.get("calendarDate") == cdate:
+        for key, src, conv in (
+            ("balanceAerobicLow", "monthlyLoadAerobicLow", to_float),
+            ("balanceAerobicHigh", "monthlyLoadAerobicHigh", to_float),
+            ("balanceAnaerobic", "monthlyLoadAnaerobic", to_float),
+            ("balanceAerobicLowMin", "monthlyLoadAerobicLowTargetMin", to_int),
+            ("balanceAerobicLowMax", "monthlyLoadAerobicLowTargetMax", to_int),
+            ("balanceAerobicHighMin", "monthlyLoadAerobicHighTargetMin", to_int),
+            ("balanceAerobicHighMax", "monthlyLoadAerobicHighTargetMax", to_int),
+            ("balanceAnaerobicMin", "monthlyLoadAnaerobicTargetMin", to_int),
+            ("balanceAnaerobicMax", "monthlyLoadAnaerobicTargetMax", to_int),
+        ):
+            out[key] = conv(balance.get(src))
+        out["balancePhrase"] = balance.get("trainingBalanceFeedbackPhrase")
 
     return out
 
@@ -682,7 +718,7 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
 
 
 def cmd_sync_training_status(client, days, start, dry_run, api_base):
-    """Backfill only the Training Status columns: one Garmin call per day (vs five
+    """Backfill only the Training Status and Load Balance columns: one Garmin call per day (vs five
     for --wellness) and a merge-only PATCH, so existing sleep / HRV / readiness on
     a day's row can't be touched. Same --wellness-days / --wellness-start window
     and resume behaviour as cmd_sync_wellness."""
@@ -868,7 +904,7 @@ def main():
                               "Resumable: if a run stops early (e.g. rate-limited), it logs the date to resume "
                               "from.")
     parser.add_argument("--wellness-status-only", action="store_true",
-                         help="With --wellness: backfill only Training Status (code, phrase, load, ACWR, VO2max). "
+                         help="With --wellness: backfill only Training Status and Load Balance (code, phrase, load, ACWR, VO2max, balance). "
                               "One Garmin call per day instead of five, written with a merge-only PATCH that "
                               "leaves sleep/HRV/readiness untouched. Use with --wellness-start for a backfill.")
     parser.add_argument("--dump-laps", action="store_true",

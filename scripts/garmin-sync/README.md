@@ -272,8 +272,9 @@ script stops and logs the exact `--wellness-start` date to resume from,
 rather than restarting the whole backfill from scratch.
 
 **Backfilling just Training Status:** add `--wellness-status-only` to backfill
-the Training Status columns (code, phrase, acute/chronic load, ACWR, VO2max)
-without a full wellness re-pull. It makes one Garmin call per day instead of
+the Training Status columns (code, phrase, acute/chronic load, ACWR, VO2max) and
+the Load Balance columns (three loads, their target ranges, the feedback phrase;
+both ride the same `get_training_status` response) without a full wellness re-pull. It makes one Garmin call per day instead of
 five and writes through `PATCH /api/wellness/training-status`, which only sets
 the fields it's sent — a day's sleep / HRV / readiness are never touched, which
 a full `--wellness` run would rewrite (and null, if a call came back empty).

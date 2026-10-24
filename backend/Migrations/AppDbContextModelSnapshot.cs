@@ -363,6 +363,36 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("AwakeSeconds")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double?>("BalanceAerobicHigh")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("BalanceAerobicHighMax")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BalanceAerobicHighMin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("BalanceAerobicLow")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("BalanceAerobicLowMax")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BalanceAerobicLowMin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<double?>("BalanceAnaerobic")
+                        .HasColumnType("REAL");
+
+                    b.Property<int?>("BalanceAnaerobicMax")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("BalanceAnaerobicMin")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("BalancePhrase")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("BodyBatteryHigh")
                         .HasColumnType("INTEGER");
 

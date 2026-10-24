@@ -11,6 +11,7 @@ import {
 import WellnessSparkline from '../components/WellnessSparkline'
 import MetricTrendChart from '../components/MetricTrendChart'
 import TrainingStatusBand from '../components/TrainingStatusBand'
+import LoadBalanceTile from '../components/LoadBalanceTile'
 import { peekCache, staleWhileRevalidate } from '../swrCache'
 import {
   DEFAULT_STATUS_RANGE,
@@ -105,6 +106,8 @@ export default function WellnessPage() {
           }
         />
       )}
+
+      {rows && <LoadBalanceTile rows={rows} />}
 
       {error && <p className="error">{error}</p>}
       {!error && !loaded && <p>Loading…</p>}
