@@ -227,6 +227,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             doneLabel: call.getString("doneLabel") ?? "",
             following: (call.getObject("following")).flatMap(Self.parseFollowing)
         )
+        let upcoming = (call.getArray("upcoming") ?? []).compactMap { ($0 as? JSObject).flatMap(Self.parseFollowing) }
         self.currentEndAt = endAt
         let serverBase = call.getString("serverBase") ?? ""
         let authToken = call.getString("authToken") ?? ""
@@ -236,6 +237,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             if !serverBase.isEmpty, !authToken.isEmpty {
                 await RestTimerStore.shared.setServer(base: serverBase, token: authToken)
             }
+            await RestTimerStore.shared.setUpcoming(upcoming)
             if let endAt {
                 await RestTimerStore.shared.set(endAt: endAt, totalSeconds: totalSeconds)
             } else {

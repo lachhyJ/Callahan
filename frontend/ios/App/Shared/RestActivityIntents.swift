@@ -122,6 +122,10 @@ actor RestTimerStore {
     /// The server-side timer that currently mirrors this rest. Absent means the
     /// server is not known to match, so JS must re-sync it on its next run.
     private let serverTimerIdKey = "callahan.rest.serverTimerId"
+    /// The slots the card steps through on the next ticks, handed down by JS on
+    /// every sync. Kept here rather than in the activity's ContentState, which
+    /// ActivityKit caps at about 4 KB. See `completeSet`.
+    private let upcomingKey = "callahan.rest.upcoming"
 
     var endAt: Date? {
         let t = UserDefaults.standard.double(forKey: endAtKey)
@@ -130,6 +134,18 @@ actor RestTimerStore {
     var totalSeconds: Int { UserDefaults.standard.integer(forKey: totalKey) }
     var pendingCompletions: Int { UserDefaults.standard.integer(forKey: pendingCompletionsKey) }
     var serverTimerId: String? { UserDefaults.standard.string(forKey: serverTimerIdKey) }
+
+    var upcoming: [RestActivityAttributes.ContentState.Following] {
+        guard let data = UserDefaults.standard.data(forKey: upcomingKey),
+              let list = try? JSONDecoder().decode([RestActivityAttributes.ContentState.Following].self, from: data)
+        else { return [] }
+        return list
+    }
+
+    func setUpcoming(_ list: [RestActivityAttributes.ContentState.Following]) {
+        if list.isEmpty { UserDefaults.standard.removeObject(forKey: upcomingKey) }
+        else if let data = try? JSONEncoder().encode(list) { UserDefaults.standard.set(data, forKey: upcomingKey) }
+    }
 
     func setServer(base: String, token: String) {
         UserDefaults.standard.set(base, forKey: serverBaseKey)
@@ -181,6 +197,27 @@ actor RestTimerStore {
         }
     }
 
+    /// Tell the server where the workout has got to after a tick that started no
+    /// rest, so the watch does not sit on the last rest's slot until the next one.
+    /// Best effort, and after `syncServerTimer` has cancelled the old timer: a
+    /// pending timer always wins over progress, so the other order would hide it.
+    func syncProgress(state: RestActivityAttributes.ContentState) async {
+        let defaults = UserDefaults.standard
+        guard let base = defaults.string(forKey: serverBaseKey), !base.isEmpty,
+              let token = defaults.string(forKey: authTokenKey), !token.isEmpty else { return }
+        let body: [String: Any] = [
+            "exerciseName": state.exerciseName,
+            "targetReps": state.targetReps,
+            "targetWeight": state.targetWeight,
+            "enteredReps": state.enteredReps,
+            "nextSetNumber": state.nextSetNumber,
+            "totalSets": state.totalSets,
+            "warmupSets": state.warmupSets ?? 0,
+            "doneLabel": state.doneLabel
+        ]
+        _ = await Self.post(base: base, token: token, path: "/api/resttimer/progress", body: body)
+    }
+
     /// Short timeout: the intent is only given a few seconds of background time,
     /// and the card has already been updated by the time this runs.
     private static func post(base: String, token: String, path: String, body: [String: Any]?) async -> Data? {
@@ -216,6 +253,7 @@ actor RestTimerStore {
     func standDown(reason: String = "RestTimerStore.standDown") {
         clear()
         setServerTimerId(nil)
+        setUpcoming([])
         announce(endAt: nil, reason: reason)
     }
 
@@ -275,7 +313,9 @@ actor RestTimerStore {
     func completeSet(reason: String = "CompleteSetIntent") async {
         UserDefaults.standard.set(pendingCompletions + 1, forKey: pendingCompletionsKey)
 
-        var synced: (state: RestActivityAttributes.ContentState, endAt: Date?)?
+        var synced: (state: RestActivityAttributes.ContentState, endAt: Date?, progress: Bool)?
+        var queue = upcoming
+        var consumedQueued = false
         for activity in Activity<RestActivityAttributes>.activities {
             var state = activity.content.state
             // A tick on a real set always rests, including an exercise's last one
@@ -288,23 +328,26 @@ actor RestTimerStore {
             // *before* it is repointed at whatever comes next.
             let restForTick = state.restSeconds
             let restIsLastInSuperset = state.isLastInSuperset
-            if tickedRealSet, advanced > state.totalSets, let next = state.following, !next.doneLabel.isEmpty {
+            if tickedRealSet, let queued = queue.first {
+                // JS spelled out what each next tick lands on, so a non-last
+                // superset member steps to the partner's set, not to this
+                // exercise's next one.
+                if !queued.doneLabel.isEmpty {
+                    state.doneLabel = queued.doneLabel
+                    state.nextSetNumber = advanced
+                    state.following = nil
+                } else {
+                    Self.advance(&state, to: queued)
+                }
+                consumedQueued = true
+            } else if tickedRealSet, advanced > state.totalSets, let next = state.following, !next.doneLabel.isEmpty {
                 // Nothing follows this exercise: the card reads the done label
                 // once the rest ends, still counting past the end as before.
                 state.doneLabel = next.doneLabel
                 state.nextSetNumber = advanced
                 state.following = nil
             } else if tickedRealSet, advanced > state.totalSets, let next = state.following {
-                state.exerciseName = next.exerciseName
-                state.targetReps = next.targetReps
-                state.targetWeight = next.targetWeight
-                state.enteredReps = next.enteredReps
-                state.nextSetNumber = next.nextSetNumber
-                state.totalSets = next.totalSets
-                state.warmupSets = next.warmupSets
-                state.restSeconds = next.restSeconds
-                state.isLastInSuperset = next.isLastInSuperset
-                state.following = nil
+                Self.advance(&state, to: next)
             } else {
                 state.nextSetNumber = advanced
             }
@@ -319,18 +362,42 @@ actor RestTimerStore {
                 set(endAt: end, totalSeconds: restForTick)
                 announce(endAt: end, reason: reason)
                 await activity.update(ActivityContent(state: state, staleDate: end))
-                synced = (state, end)
+                synced = (state, end, false)
             } else {
                 state.endAt = nil
                 state.totalSeconds = 0
                 clear()
                 announce(endAt: nil, reason: "\(reason) (no rest left)")
                 await activity.update(ActivityContent(state: state, staleDate: nil))
-                synced = (state, nil)
+                synced = (state, nil, tickedRealSet)
             }
         }
+        if consumedQueued {
+            queue.removeFirst()
+            setUpcoming(queue)
+        }
         // After the card has moved, so the button still feels instant.
-        if let synced { await syncServerTimer(state: synced.state, endAt: synced.endAt) }
+        if let synced {
+            await syncServerTimer(state: synced.state, endAt: synced.endAt)
+            // No rest to poll for: say where the round has got to instead.
+            if synced.progress { await syncProgress(state: synced.state) }
+        }
+    }
+
+    /// Point the card at `next`: the set that takes over once the current one is
+    /// ticked. Clears `following`, which described the slot being left.
+    private static func advance(_ state: inout RestActivityAttributes.ContentState,
+                                to next: RestActivityAttributes.ContentState.Following) {
+        state.exerciseName = next.exerciseName
+        state.targetReps = next.targetReps
+        state.targetWeight = next.targetWeight
+        state.enteredReps = next.enteredReps
+        state.nextSetNumber = next.nextSetNumber
+        state.totalSets = next.totalSets
+        state.warmupSets = next.warmupSets
+        state.restSeconds = next.restSeconds
+        state.isLastInSuperset = next.isLastInSuperset
+        state.following = nil
     }
 
     /// Moves the countdown without disturbing which set the card describes —
