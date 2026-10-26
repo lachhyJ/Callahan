@@ -17,6 +17,7 @@ enum DeepLink {
         "plan": "/plan",
         "wellness": "/wellness",
         "dashboard": "/dashboard",
+        "quotes": "/quotes",
     ]
 
     /// The URLs widgets set as their tap target. Compiled into both the app and the
@@ -26,6 +27,7 @@ enum DeepLink {
     static let plan = link("plan")
     static let wellness = link("wellness")
     static let dashboard = link("dashboard")
+    static let quotes = link("quotes")
 
     private static func link(_ host: String) -> URL {
         URL(string: "\(scheme)://\(host)")!

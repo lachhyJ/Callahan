@@ -37,6 +37,8 @@
 		A1B2C3D4E5F60718293A4B64 /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */; };
 		A1B2C3D4E5F60718293A4B66 /* WidgetAPI.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */; };
 		A1B2C3D4E5F60718293A4B68 /* WeekWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B67 /* WeekWidget.swift */; };
+		A1B2C3D4E5F60718293A4B6A /* QuotesWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B69 /* QuotesWidget.swift */; };
+		A1B2C3D4E5F60718293A4B6C /* QuotePicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B6B /* QuotePicker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -94,6 +96,8 @@
 		A1B2C3D4E5F60718293A4B62 /* DeepLink.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DeepLink.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetAPI.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B67 /* WeekWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WeekWidget.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B69 /* QuotesWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuotesWidget.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B6B /* QuotePicker.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = QuotePicker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +127,8 @@
 				0D5D65BEB4AA1A5C113C4E12 /* RestActivityWidget.swift */,
 				A1B2C3D4E5F60718293A4B5C /* TrainingStatusWidget.swift */,
 				A1B2C3D4E5F60718293A4B67 /* WeekWidget.swift */,
+				A1B2C3D4E5F60718293A4B69 /* QuotesWidget.swift */,
+				A1B2C3D4E5F60718293A4B6B /* QuotePicker.swift */,
 				A1B2C3D4E5F60718293A4B65 /* WidgetAPI.swift */,
 				A1B2C3D4E5F60718293A4B5E /* Widget.xcconfig */,
 			);
@@ -356,6 +362,8 @@
 				8E6C82338FBAFC8DE26F29A5 /* RestActivityWidget.swift in Sources */,
 				A1B2C3D4E5F60718293A4B5D /* TrainingStatusWidget.swift in Sources */,
 				A1B2C3D4E5F60718293A4B68 /* WeekWidget.swift in Sources */,
+				A1B2C3D4E5F60718293A4B6A /* QuotesWidget.swift in Sources */,
+				A1B2C3D4E5F60718293A4B6C /* QuotePicker.swift in Sources */,
 				A1B2C3D4E5F60718293A4B66 /* WidgetAPI.swift in Sources */,
 				A1B2C3D4E5F60718293A4B64 /* DeepLink.swift in Sources */,
 				98CD03F89297B60B7CA4C6D8 /* RestActivityAttributes.swift in Sources */,

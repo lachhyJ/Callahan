@@ -7,5 +7,6 @@ struct CallahanWidgetsBundle: WidgetBundle {
         RestActivityWidget()
         TrainingStatusWidget()
         WeekWidget()
+        QuotesWidget()
     }
 }
