@@ -22,6 +22,9 @@ import {
   canMoveSetRow,
   moveSetRow,
   insertIndexForPrevious,
+  rememberRemovedWarmup,
+  takeRemovedWarmup,
+  warmupInsertIndex,
 } from './activeWorkout'
 import { installStorageStub } from './test/storageStub'
 
@@ -829,5 +832,39 @@ describe('upcomingDescriptors', () => {
     const done = gymOne().map((e) => ({ ...e, sets: e.sets.map((x) => ({ ...x, completed: true })) }))
     expect(upcomingDescriptors(done)).toEqual([])
     expect(upcomingDescriptors(null)).toEqual([])
+  })
+})
+
+describe('removed warm-ups', () => {
+  const w = (o) => ({ type: 'Warmup', setOrder: o, previous: { setOrder: o } })
+  const n = (o) => ({ type: 'Normal', setOrder: o, previous: { setOrder: o } })
+
+  it('remembers a deleted warm-up by its slot in the warm-up block, with its Previous', () => {
+    const sets = [w(0), w(1), w(2), n(3)]
+    expect(rememberRemovedWarmup([], sets, 1)).toEqual([{ at: 1, previous: { setOrder: 1 } }])
+    expect(rememberRemovedWarmup(undefined, sets, 0)).toEqual([{ at: 0, previous: { setOrder: 0 } }])
+  })
+
+  it('leaves the list alone when a working set is deleted', () => {
+    const removed = [{ at: 0, previous: null }]
+    expect(rememberRemovedWarmup(removed, [w(0), n(1)], 1)).toBe(removed)
+  })
+
+  it('gives back the earliest slot first and drops it from the list', () => {
+    const removed = [{ at: 2, previous: null }, { at: 0, previous: null }]
+    const taken = takeRemovedWarmup(removed)
+    expect(taken.slot.at).toBe(0)
+    expect(taken.rest).toEqual([{ at: 2, previous: null }])
+    expect(takeRemovedWarmup([])).toBeNull()
+    expect(takeRemovedWarmup(undefined)).toBeNull()
+  })
+
+  it('puts a restored warm-up in its slot, never past the end of the warm-up block', () => {
+    const sets = [w(0), w(1), n(2)]
+    expect(warmupInsertIndex(sets, { at: 1 })).toBe(1)
+    expect(warmupInsertIndex(sets, { at: 0 })).toBe(0)
+    // Another warm-up was deleted too, so the block is shorter than the old slot.
+    expect(warmupInsertIndex(sets, { at: 4 })).toBe(2)
+    expect(warmupInsertIndex([n(0)], { at: 1 })).toBe(0)
   })
 })

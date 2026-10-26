@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, clearRestProgress, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, postRestProgress, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -109,9 +109,14 @@ function buildInitialSets(targetSets, previousSets, warmupSets = 0, timeBased = 
 // A set added with "+ Add set". If it brings back one deleted earlier, it
 // picks up that set's Previous and prefill (grey, like the originals); a set
 // beyond what last session had starts blank.
-function blankSetRow(ex) {
-  const previous = unusedPreviousSet(ex.previousSets, ex.sets)
-  const type = previous && SET_TYPE_OPTIONS.includes(previous.setType) ? previous.setType : 'Normal'
+//
+// `warmupSlot` (from takeRemovedWarmup) makes it a warm-up instead, carrying the
+// deleted warm-up's Previous.
+function blankSetRow(ex, warmupSlot = null) {
+  const previous = warmupSlot ? warmupSlot.previous : unusedPreviousSet(ex.previousSets, ex.sets)
+  const type = warmupSlot
+    ? 'Warmup'
+    : previous && SET_TYPE_OPTIONS.includes(previous.setType) ? previous.setType : 'Normal'
   return {
     setOrder: ex.sets.length,
     reps: !ex.isTimeBased && previous ? String(previous.reps) : '',
@@ -1403,7 +1408,9 @@ export default function ActiveWorkoutPage() {
       if (remainingSets.length === 0) {
         return prev.filter((_, i) => i !== exIdx)
       }
-      return prev.map((e, i) => (i !== exIdx ? e : { ...e, sets: remainingSets }))
+      return prev.map((e, i) => (i !== exIdx
+        ? e
+        : { ...e, sets: remainingSets, removedWarmups: rememberRemovedWarmup(e.removedWarmups, e.sets, setIdx) }))
     })
     setOpenTypeMenu(null)
   }
@@ -1480,21 +1487,24 @@ export default function ActiveWorkoutPage() {
 
   function addSet(exIdx) {
     setExercises((prev) =>
-      prev.map((ex, i) =>
-        i !== exIdx
-          ? ex
-          : {
-              ...ex,
-              // A set brought back after a deletion returns to its own slot, so
-              // its number and its Previous agree; a genuinely extra set still
-              // goes on the end.
-              sets: (() => {
-                const row = blankSetRow(ex)
-                const at = insertIndexForPrevious(ex.sets, row.previous)
-                return [...ex.sets.slice(0, at), row, ...ex.sets.slice(at)].map((x, j) => ({ ...x, setOrder: j }))
-              })(),
-            }
-      )
+      prev.map((ex, i) => {
+        if (i !== exIdx) return ex
+        // A deleted warm-up comes back first, as a warm-up in its own slot,
+        // and takes the ramp like any untouched warm-up row.
+        const taken = takeRemovedWarmup(ex.removedWarmups)
+        if (taken) {
+          const row = blankSetRow(ex, taken.slot)
+          const at = warmupInsertIndex(ex.sets, taken.slot)
+          const sets = [...ex.sets.slice(0, at), row, ...ex.sets.slice(at)].map((x, j) => ({ ...x, setOrder: j }))
+          return reRampWarmups({ ...ex, removedWarmups: taken.rest }, sets)
+        }
+        // A set brought back after a deletion returns to its own slot, so
+        // its number and its Previous agree; a genuinely extra set still
+        // goes on the end.
+        const row = blankSetRow(ex)
+        const at = insertIndexForPrevious(ex.sets, row.previous)
+        return { ...ex, sets: [...ex.sets.slice(0, at), row, ...ex.sets.slice(at)].map((x, j) => ({ ...x, setOrder: j })) }
+      })
     )
   }
 

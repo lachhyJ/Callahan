@@ -108,9 +108,36 @@ export function moveSetRow(sets, idx, dir, { timeBased = false, targetDurationSe
   return next
 }
 
+// A deleted warm-up is remembered as its position inside the warm-up block plus
+// its Previous, so `+ Add set` can bring it back as a warm-up in that slot.
+// A working set leaves the list as it was. `removed` is the exercise's list so far.
+export function rememberRemovedWarmup(removed, sets, setIdx) {
+  const row = sets[setIdx]
+  if (!row || row.type !== 'Warmup') return removed ?? []
+  const at = sets.slice(0, setIdx).filter((s) => s.type === 'Warmup').length
+  return [...(removed ?? []), { at, previous: row.previous ?? null }]
+}
+
+// The earliest-slot deleted warm-up first - the same rule working sets follow
+// (unusedPreviousSet takes the lowest setOrder), and warm-ups sit above them.
+export function takeRemovedWarmup(removed) {
+  if (!removed?.length) return null
+  const slot = removed.reduce((a, b) => (b.at < a.at ? b : a))
+  const i = removed.indexOf(slot)
+  return { slot, rest: [...removed.slice(0, i), ...removed.slice(i + 1)] }
+}
+
+// Index to put a restored warm-up at: its old slot, clamped to the end of the
+// warm-up block so warm-ups stay contiguous at the top (nextSetNumber <=
+// warmupSets is how every surface tells a warm-up from a working set).
+export function warmupInsertIndex(sets, slot) {
+  const warmups = sets.filter((s) => s.type === 'Warmup').length
+  return Math.min(slot.at, warmups)
+}
+
 // Where a set re-added after a deletion belongs: ahead of the first working row
 // that has no Previous or a later one, so its label and its Previous match again.
-// Warm-ups are skipped (re-added sets are working sets).
+// Warm-ups are skipped here; a deleted warm-up comes back via takeRemovedWarmup.
 export function insertIndexForPrevious(sets, previous) {
   const firstWorking = sets.findIndex((s) => s.type !== 'Warmup')
   if (!previous || firstWorking === -1) return sets.length
