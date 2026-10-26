@@ -35,14 +35,25 @@ public static class DevSeed
         // (Dev:FixedNow), so Playwright baselines don't drift day to day; on the
         // real clock the dates move, and so does which weekday the template
         // rotation starts on.
-        var rng = new Random(20260904);
+        // One stream per domain, not one shared stream: the workout loop draws a
+        // number of values that depends on the catalog (how many template
+        // exercises and sets exist), so on a shared stream every later domain -
+        // wellness especially - shifted whenever the DB's catalog differed from
+        // the one the baselines were recorded on. Separate streams keep runs,
+        // games, Ultimate and wellness identical whatever the catalog holds.
+        const int baseSeed = 20260904;
+        var workoutRng = new Random(baseSeed + 1);
+        var runRng = new Random(baseSeed + 2);
+        var gameRng = new Random(baseSeed + 3);
+        var ultimateRng = new Random(baseSeed + 4);
+        var wellnessRng = new Random(baseSeed + 5);
         var today = time.Today();
         var windowStart = today.AddDays(-70);
 
         // Fake Garmin training metrics (see GarminActivityMetrics) on an
         // activity, scaled by a 0..1 intensity. ~1 in 8 is left unscored, like
         // real data where a short / no-HR session gets no training effect.
-        void ApplyFakeGarminMetrics(Activity a, double intensity)
+        void ApplyFakeGarminMetrics(Activity a, double intensity, Random rng)
         {
             if (rng.Next(8) == 0) return;
             a.ActivityTrainingLoad = Math.Round(30m + (decimal)(intensity * 95) + rng.Next(-8, 9), 0);
@@ -75,7 +86,7 @@ public static class DevSeed
                 var progress = sessionDates.Count > 1 ? i / (double)(sessionDates.Count - 1) : 1.0;
 
                 // Stored times are UTC; 17:30 is the intended wall-clock time in the app's current zone.
-                var localStart = date.ToDateTime(new TimeOnly(17, 30)).AddMinutes(rng.Next(-15, 15));
+                var localStart = date.ToDateTime(new TimeOnly(17, 30)).AddMinutes(workoutRng.Next(-15, 15));
                 var startedAt = TimeZoneInfo.ConvertTimeToUtc(localStart, time.LocalTimeZone);
                 var session = new WorkoutSession
                 {
@@ -83,7 +94,7 @@ public static class DevSeed
                     Name = template.Name,
                     WorkoutTemplateId = template.Id,
                     StartedAt = startedAt,
-                    FinishedAt = startedAt.AddMinutes(50 + rng.Next(0, 25)),
+                    FinishedAt = startedAt.AddMinutes(50 + workoutRng.Next(0, 25)),
                 };
 
                 foreach (var te in template.Exercises.OrderBy(e => e.ExerciseOrder))
@@ -121,7 +132,7 @@ public static class DevSeed
                         {
                             ExerciseId = te.ExerciseId,
                             SetOrder = s,
-                            Reps = ParseTargetReps(te.TargetReps, rng),
+                            Reps = ParseTargetReps(te.TargetReps, workoutRng),
                             WeightKg = weight,
                             SetType = isWarmup ? SetType.Warmup : SetType.Normal,
                         });
@@ -138,26 +149,26 @@ public static class DevSeed
         for (var d = windowStart; d < today; d = d.AddDays(1))
         {
             var isRunDay = d.DayOfWeek is DayOfWeek.Tuesday or DayOfWeek.Saturday;
-            if (isRunDay && rng.NextDouble() < 0.7)
+            if (isRunDay && runRng.NextDouble() < 0.7)
             {
-                var distanceKm = Math.Round(4m + (decimal)rng.NextDouble() * 6m, 2);
-                var runType = runTypes.Count > 0 ? runTypes[rng.Next(runTypes.Count)] : null;
+                var distanceKm = Math.Round(4m + (decimal)runRng.NextDouble() * 6m, 2);
+                var runType = runTypes.Count > 0 ? runTypes[runRng.Next(runTypes.Count)] : null;
                 var run = new Activity
                 {
                     Date = d,
                     Type = ActivityType.Running,
                     Source = ActivitySource.Manual,
-                    DurationSeconds = (int)(distanceKm * 60m * (5m + (decimal)rng.NextDouble())),
+                    DurationSeconds = (int)(distanceKm * 60m * (5m + (decimal)runRng.NextDouble())),
                     DistanceKm = distanceKm,
                     Calories = (int)(distanceKm * 65m),
-                    AvgHeartRate = 140 + rng.Next(-10, 15),
+                    AvgHeartRate = 140 + runRng.Next(-10, 15),
                     ActivitySessionTypeId = runType?.Id,
                     // Keep the primary-in-SessionTags invariant true for seed data.
                     SessionTags = runType is null
                         ? new()
                         : new() { new ActivitySessionTag { ActivitySessionTypeId = runType.Id } },
                 };
-                ApplyFakeGarminMetrics(run, 0.35 + rng.NextDouble() * 0.4);
+                ApplyFakeGarminMetrics(run, 0.35 + runRng.NextDouble() * 0.4, runRng);
                 db.Activities.Add(run);
             }
         }
@@ -185,21 +196,21 @@ public static class DevSeed
                 Date = gameDate,
                 Type = ActivityType.Ultimate,
                 Source = ActivitySource.Manual,
-                DurationSeconds = 4200 + rng.Next(-300, 300),
-                DistanceKm = Math.Round(3m + (decimal)rng.NextDouble() * 2m, 2),
+                DurationSeconds = 4200 + gameRng.Next(-300, 300),
+                DistanceKm = Math.Round(3m + (decimal)gameRng.NextDouble() * 2m, 2),
                 Tournament = tournament,
                 ActivitySessionTypeId = gameType?.Id,
                 SessionTags = gameType is null
                     ? new()
                     : new() { new ActivitySessionTag { ActivitySessionTypeId = gameType.Id } },
-                FinalScoreFor = 13 + rng.Next(0, 3),
-                FinalScoreAgainst = 9 + rng.Next(0, 6),
+                FinalScoreFor = 13 + gameRng.Next(0, 3),
+                FinalScoreAgainst = 9 + gameRng.Next(0, 6),
                 OnFieldSeconds = 2400,
                 OffFieldSeconds = 1800,
                 LivePlaySeconds = 1500,
-                PointsPlayed = 12 + rng.Next(0, 4),
+                PointsPlayed = 12 + gameRng.Next(0, 4),
             };
-            ApplyFakeGarminMetrics(game, 0.7 + rng.NextDouble() * 0.25);
+            ApplyFakeGarminMetrics(game, 0.7 + gameRng.NextDouble() * 0.25, gameRng);
             db.Activities.Add(game);
         }
 
@@ -224,13 +235,13 @@ public static class DevSeed
                     Date = d,
                     Type = ActivityType.Ultimate,
                     Source = ActivitySource.Manual,
-                    DurationSeconds = 3000 + rng.Next(-600, 900),
-                    DistanceKm = indoor ? null : Math.Round(2m + (decimal)rng.NextDouble() * 5m, 2),
-                    AvgHeartRate = 130 + rng.Next(-12, 18),
+                    DurationSeconds = 3000 + ultimateRng.Next(-600, 900),
+                    DistanceKm = indoor ? null : Math.Round(2m + (decimal)ultimateRng.NextDouble() * 5m, 2),
+                    AvgHeartRate = 130 + ultimateRng.Next(-12, 18),
                     ActivitySessionTypeId = stype.Id,
                     SessionTags = new() { new ActivitySessionTag { ActivitySessionTypeId = stype.Id } },
                 };
-                ApplyFakeGarminMetrics(sess, indoor ? 0.2 : 0.4 + rng.NextDouble() * 0.4);
+                ApplyFakeGarminMetrics(sess, indoor ? 0.2 : 0.4 + ultimateRng.NextDouble() * 0.4, ultimateRng);
                 db.Activities.Add(sess);
             }
         }
@@ -240,17 +251,17 @@ public static class DevSeed
             db.DailyWellness.Add(new DailyWellness
             {
                 Date = d,
-                SleepSeconds = 6 * 3600 + rng.Next(0, 7200),
-                SleepScore = 55 + rng.Next(0, 40),
-                HrvLastNightAvg = 45 + rng.Next(-10, 20),
+                SleepSeconds = 6 * 3600 + wellnessRng.Next(0, 7200),
+                SleepScore = 55 + wellnessRng.Next(0, 40),
+                HrvLastNightAvg = 45 + wellnessRng.Next(-10, 20),
                 HrvWeeklyAvg = 50,
                 HrvStatus = "Balanced",
-                TrainingReadinessScore = 40 + rng.Next(0, 55),
+                TrainingReadinessScore = 40 + wellnessRng.Next(0, 55),
                 TrainingReadinessLevel = "Moderate",
-                RestingHeartRate = 52 + rng.Next(-4, 6),
-                BodyBatteryHigh = 80 + rng.Next(0, 15),
-                BodyBatteryLow = 15 + rng.Next(0, 15),
-                AvgStressLevel = 20 + rng.Next(0, 25),
+                RestingHeartRate = 52 + wellnessRng.Next(-4, 6),
+                BodyBatteryHigh = 80 + wellnessRng.Next(0, 15),
+                BodyBatteryLow = 15 + wellnessRng.Next(0, 15),
+                AvgStressLevel = 20 + wellnessRng.Next(0, 25),
                 CreatedAt = DateTime.UtcNow,
             });
         }

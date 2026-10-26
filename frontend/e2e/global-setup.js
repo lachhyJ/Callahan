@@ -42,11 +42,19 @@ export default async function globalSetup() {
   }
   // reuseExistingServer will happily use a dev backend someone already has on
   // this port, which runs on the real clock. Refuse rather than screenshot it.
-  const { today } = await seedRes.json()
+  const { today, database } = await seedRes.json()
   if (today !== ANCHOR_DATE) {
     throw new Error(
       `Backend on ${API_BASE} seeded for ${today}, not the e2e anchor ${ANCHOR_DATE}. ` +
         `Stop whatever is serving that port so Playwright starts its own (Dev__FixedNow).`,
+    )
+  }
+  // Same idea for the database: a dev backend on the real callahan.db has a
+  // catalog the baselines weren't recorded against (see playwright.config.js).
+  if (database !== 'e2e.db') {
+    throw new Error(
+      `Backend on ${API_BASE} is using database "${database}", not e2e.db. ` +
+        `Stop whatever is serving that port so Playwright starts its own.`,
     )
   }
   await api.dispose()

@@ -197,7 +197,10 @@ if (app.Environment.IsDevelopment() && builder.Configuration.GetValue<bool>("Aut
         var today = await DevSeed.RunAsync(db, time);
         // Echoed so the e2e global setup can confirm it's talking to a backend
         // pinned to its anchor date, not a stray dev server on the same port.
-        return Results.Ok(new { today });
+        // Also echoed: the file the seed just wrote to, so global setup can refuse
+        // a backend running on a dev DB whose catalog differs from a fresh one.
+        var database = Path.GetFileName(db.Database.GetDbConnection().DataSource);
+        return Results.Ok(new { today, database });
     }).AllowAnonymous();
 }
 

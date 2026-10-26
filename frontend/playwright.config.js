@@ -64,10 +64,19 @@ export default defineConfig({
       // — confirmed live 2026-09-04, the env var was silently ignored with
       // --launch-profile. So the profile's other env vars (dev-login gate) are set
       // explicitly below instead of inherited from the profile.
-      command: 'dotnet run --project backend/Callahan.Api.csproj --no-launch-profile',
+      // The e2e backend gets its own DB, deleted before every start, so the
+      // catalog the seed reads is exactly what the migrations create — not
+      // whatever a developer's App_Data/callahan.db has accumulated (imported
+      // exercises, edited templates), which made the seeded fixture, and so
+      // every baseline, differ from machine to machine. global-setup refuses a
+      // reused backend that isn't on this file.
+      command:
+        'rm -f backend/App_Data/e2e.db backend/App_Data/e2e.db-shm backend/App_Data/e2e.db-wal && ' +
+        'dotnet run --project backend/Callahan.Api.csproj --no-launch-profile',
       cwd: '..',
       env: {
         ASPNETCORE_ENVIRONMENT: 'Development',
+        ConnectionStrings__Default: 'Data Source=App_Data/e2e.db',
         Auth__AllowDevLogin: 'true',
         // Off the shared default (8080) — see the port-collision note on `use` above.
         ASPNETCORE_URLS: 'http://localhost:8099',
