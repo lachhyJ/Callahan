@@ -71,6 +71,7 @@ const SCROLLED = [
   { name: 'wellness-scrolled', path: '/wellness' },
   { name: 'dashboard-scrolled', path: '/dashboard' },
   { name: 'history-scrolled', path: '/history' },
+  { name: 'exercises-scrolled', path: '/exercises' },
   // Last full month before the pinned anchor (2026-09-08), so it is a settled report.
   { name: 'report-detail', path: '/reports/2026/8' },
 ]
