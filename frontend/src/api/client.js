@@ -639,3 +639,21 @@ export function getTimeZone() {
 export function setTimeZone(zone) {
   return apiFetch('/api/timezone', { method: 'PUT', body: JSON.stringify({ zone }) })
 }
+
+// The list behind the lock-screen quotes widget. Every write reloads the widgets so
+// a change is eligible at once (the widget's own refresh is only the backstop).
+export function getQuotes() {
+  return apiFetch('/api/quotes')
+}
+
+export function addQuotes(texts) {
+  return apiFetch('/api/quotes', { method: 'POST', body: JSON.stringify({ texts }) }).then(afterWrite)
+}
+
+export function deleteQuote(id) {
+  return apiFetch(`/api/quotes/${id}`, { method: 'DELETE' }).then(afterWrite)
+}
+
+export function restoreQuote(id) {
+  return apiFetch(`/api/quotes/${id}/restore`, { method: 'POST' }).then(afterWrite)
+}

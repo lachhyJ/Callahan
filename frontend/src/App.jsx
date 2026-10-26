@@ -36,6 +36,7 @@ import RecentlyDeletedPage from './pages/RecentlyDeletedPage'
 import GarminStrengthReviewPage from './pages/GarminStrengthReviewPage'
 import ReportsPage from './pages/ReportsPage'
 import ReportDetailPage from './pages/ReportDetailPage'
+import QuotesPage from './pages/QuotesPage'
 import './App.css'
 
 const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon }
@@ -44,7 +45,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate', '/quotes']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -304,6 +305,7 @@ function AppRoutes() {
           <Route path="/wellness" element={<ProtectedRoute><WellnessPage /></ProtectedRoute>} />
           <Route path="/recently-deleted" element={<ProtectedRoute><RecentlyDeletedPage /></ProtectedRoute>} />
           <Route path="/garmin-strength-review" element={<ProtectedRoute><GarminStrengthReviewPage /></ProtectedRoute>} />
+          <Route path="/quotes" element={<ProtectedRoute><QuotesPage /></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute><ReportsPage /></ProtectedRoute>} />
           <Route path="/reports/:year/:month" element={<ProtectedRoute><ReportDetailPage /></ProtectedRoute>} />
           {/* Muscle balance folded into Trends — keep old bookmarks/PWA shortcuts working. */}

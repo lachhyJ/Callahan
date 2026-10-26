@@ -5663,3 +5663,94 @@ td {
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+
+/* Lock screen quotes: a standalone housekeeping page, reached from a quiet link
+   at the foot of the Dashboard and from the widget's tap target. */
+.footer-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.quotes-add {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+
+  textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+.quotes-add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+
+  button {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+}
+
+.quotes-note,
+.quotes-warning,
+.quotes-count {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-tertiary);
+}
+
+.quotes-toast {
+  position: sticky;
+  top: var(--space-sm);
+  z-index: 5;
+}
+
+.quotes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.quotes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-xs) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.quotes-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.quotes-long {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.quotes-delete {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-h);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.quotes-warning {
+  color: var(--warning-text);
+}

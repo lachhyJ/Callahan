@@ -421,6 +421,7 @@ export default function DashboardPage() {
       <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
 
       <TimeZoneSetting />
+      <Link to="/quotes" className="footer-link section-gap">Lock screen quotes</Link>
       <BuildFooter />
     </main>
   )
