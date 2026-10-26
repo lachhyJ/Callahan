@@ -29,7 +29,7 @@ struct QuotesEntry: TimelineEntry {
 struct QuotesProvider: TimelineProvider {
 
     private static let cacheKey = "callahan.widget.lastQuotes"
-    /// Entries built ahead, one per local midnight. A refetch happens well inside
+    /// Entries built ahead, one per training day (starting at 3 am). A refetch happens well inside
     /// this, so it only matters when the widget cannot refresh for a long stretch.
     private static let daysAhead = 14
     /// An edit made in the app also forces a reload (`WidgetBridge.reload()`), so
@@ -68,14 +68,16 @@ struct QuotesProvider: TimelineProvider {
     static func entries(from quotes: [WidgetQuote], now: Date, calendar: Calendar = .current) -> [QuotesEntry] {
         guard !quotes.isEmpty else { return [QuotesEntry(date: now, state: .empty)] }
 
-        let today = calendar.startOfDay(for: now)
+        // The quote changes when the app starts a new training day (3 am), not at
+        // midnight, so each entry begins at a cutoff.
+        let today = QuotePicker.trainingDayStart(containing: now, calendar: calendar)
         return (0..<daysAhead).compactMap { offset -> QuotesEntry? in
-            guard let day = calendar.date(byAdding: .day, value: offset, to: today),
-                  let quote = QuotePicker.pick(from: quotes, dayKey: QuotePicker.dayKey(for: day, calendar: calendar))
+            guard let start = calendar.date(byAdding: .day, value: offset, to: today),
+                  let quote = QuotePicker.pick(from: quotes, dayKey: QuotePicker.dayKey(for: start, calendar: calendar))
             else { return nil }
             // Today's entry is dated now (an entry in the past is fine, but "now" is
-            // honest); the rest start at their midnight.
-            return QuotesEntry(date: offset == 0 ? now : day, state: .quote(quote.text))
+            // honest); the rest start at their cutoff.
+            return QuotesEntry(date: offset == 0 ? now : start, state: .quote(quote.text))
         }
     }
 

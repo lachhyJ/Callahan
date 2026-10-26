@@ -22,10 +22,25 @@ struct WidgetQuote: Codable, Equatable {
 /// No WidgetKit here so the file compiles on its own for a standalone check.
 enum QuotePicker {
 
-    /// The device's calendar day as "yyyy-MM-dd". Local on purpose: a quote has no
-    /// business following the server's 3 am training-day cutoff.
+    /// The hour the app starts treating it as a new day: before it, a moment still
+    /// counts for the day before. Mirrors `CalendarDates.TrainingDayCutoffHour`
+    /// (backend) and `TRAINING_DAY_CUTOFF_HOUR` (dateUtils.js); there is no shared
+    /// source across C#, JS and Swift, so change them together.
+    static let cutoffHour = 3
+
+    /// When the training day containing `date` began (the cutoff hour, device zone).
+    /// The device zone is the app's zone in practice: the app prompts to switch zone
+    /// when the phone changes, and the widget has to work with no network.
+    static func trainingDayStart(containing date: Date, calendar: Calendar = .current) -> Date {
+        let day = calendar.component(.hour, from: date) < cutoffHour
+            ? calendar.date(byAdding: .day, value: -1, to: date) ?? date
+            : date
+        return calendar.date(bySettingHour: cutoffHour, minute: 0, second: 0, of: day) ?? day
+    }
+
+    /// The training day as "yyyy-MM-dd", the thing the pick is keyed on.
     static func dayKey(for date: Date, calendar: Calendar = .current) -> String {
-        let c = calendar.dateComponents([.year, .month, .day], from: date)
+        let c = calendar.dateComponents([.year, .month, .day], from: trainingDayStart(containing: date, calendar: calendar))
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 
