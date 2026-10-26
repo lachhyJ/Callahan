@@ -54,12 +54,43 @@ for (const { name, path } of SCREENS) {
     // fullPage would just be the viewport anyway. The top of each screen is the
     // stable part worth guarding.
     //
-    // Consequence: anything below the first viewport (e.g. Trends' lower sections,
-    // thousands of px down) or on a detail route (/reports/{y}/{m}) is NOT covered.
-    // Re-running this suite after such a change won't catch it. Either add a
-    // targeted entry that scrolls/navigates to the change and screenshots that
-    // element, or treat DOM + geometry checks as the verification of record.
+    // Below-the-fold coverage for Trends and the report detail route lives in
+    // the SCROLLED screens further down; other screens' lower sections are still
+    // uncovered, so treat DOM + geometry checks as the record for those.
     await expect(page).toHaveScreenshot(`${name}.png`)
+  })
+}
+
+// The first-viewport shots above stop at the fold, so the lower parts of long screens
+// (Trends is several viewports tall; a report is a stack of sections) had no baseline.
+// These step #app-scroll down one viewport at a time and shoot each stop. Stops are
+// numbered, so a screen that grows or shrinks adds/removes a shot rather than
+// silently moving content out of coverage.
+const SCROLLED = [
+  { name: 'trends-scrolled', path: '/trends' },
+  { name: 'wellness-scrolled', path: '/wellness' },
+  { name: 'dashboard-scrolled', path: '/dashboard' },
+  { name: 'history-scrolled', path: '/history' },
+  // Last full month before the pinned anchor (2026-09-08), so it is a settled report.
+  { name: 'report-detail', path: '/reports/2026/8' },
+]
+
+for (const { name, path } of SCROLLED) {
+  test(`${name} screen`, async ({ page }) => {
+    await pinClock(page)
+    await page.goto(path)
+    await page.waitForLoadState('networkidle')
+    await hideBuildTag(page)
+    const scroller = page.locator('#app-scroll')
+    const { client, total } = await scroller.evaluate((el) => ({ client: el.clientHeight, total: el.scrollHeight }))
+    // Overlap each step slightly so a section straddling a boundary is seen whole in one of the two.
+    const step = client - 120
+    const stops = Math.max(1, Math.ceil((total - client) / step) + 1)
+    for (let i = 0; i < stops; i++) {
+      await scroller.evaluate((el, top) => { el.scrollTo({ top, behavior: 'instant' }) }, i * step)
+      await page.waitForTimeout(150) // let lazy/animated charts settle after the jump
+      await expect(page).toHaveScreenshot(`${name}-${i + 1}.png`)
+    }
   })
 }
 
