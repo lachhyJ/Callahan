@@ -2,8 +2,7 @@ import { useState } from 'react'
 import { formatDateRange } from '../dateUtils'
 import {
   axisTicks,
-  buildStatusDays,
-  buildStatusRuns,
+  buildStatusWindow,
   formatAcwr,
   latestStatusRow,
   STATUS_BAND_DAYS,
@@ -30,14 +29,14 @@ export default function TrainingStatusBand({ rows, days, compact = false, headEx
   const latest = latestStatusRow(rows)
   if (!latest) return null
 
-  const statusDays = buildStatusDays(rows, days)
-  const runs = buildStatusRuns(statusDays)
+  const { statusDays, runs, bandRuns } = buildStatusWindow(rows, days)
   const statusRuns = runs.filter((r) => r.code != null)
   const current = statusMeta(latest.trainingStatusCode)
   const acwr = formatAcwr(latest)
 
   // The current run's start comes from our own per-day codes, not Garmin's
-  // sinceDate (see buildStatusRuns). It can only be as far back as the window.
+  // sinceDate (see buildStatusRuns), reaching back past the window's edge by the
+  // look-back (see buildStatusWindow). The band alone uses bandRuns, clamped.
   const currentRun = [...statusRuns].reverse().find((r) => r.end === latest.date)
 
   const newestFirst = [...statusRuns].reverse()
@@ -69,7 +68,7 @@ export default function TrainingStatusBand({ rows, days, compact = false, headEx
         role="img"
         aria-label={`Training status, last ${days} days. Most recent: ${summary}`}
       >
-        {runs.map((r) => (
+        {bandRuns.map((r) => (
           <span
             key={r.start}
             className="training-status-seg"

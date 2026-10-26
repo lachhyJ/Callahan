@@ -4,13 +4,19 @@ import { isoDate } from './dateUtils'
 // alike - the 12 weeks Garmin Connect shows, so the band reads the same everywhere.
 export const STATUS_BAND_DAYS = 84
 
+// Extra days fetched before the band's window, so a run that straddles the left
+// edge still knows when it really began. Only the band is trimmed back to the
+// window; the run list keeps the true start. A run older than this is still
+// clipped, but at 4 weeks of look-back that is the rare long stretch.
+export const STATUS_LOOKBACK_DAYS = 28
+
 // swrCache key for the wellness rows behind the band, shared by the dashboard
 // card and /wellness so opening either paints from the other's last fetch. The
 // key is fixed (not built from the date range): a range key changes every day,
 // so the first open of each day had nothing cached and the band drew in from
 // empty. The window length is in the key so changing it can't serve a
 // wrong-sized cached range.
-export const WELLNESS_ROWS_CACHE_KEY = `wellness-rows-${STATUS_BAND_DAYS}d`
+export const WELLNESS_ROWS_CACHE_KEY = `wellness-rows-${STATUS_BAND_DAYS + STATUS_LOOKBACK_DAYS}d`
 
 export function wellnessRowsCacheKey(days) {
   return `wellness-rows-${days}d`
@@ -100,6 +106,29 @@ export function buildStatusRuns(statusDays) {
     }
   }
   return runs
+}
+
+function daysBetween(a, b) {
+  const [ay, am, ad] = a.split('-').map(Number)
+  const [by, bm, bd] = b.split('-').map(Number)
+  return Math.round((Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad)) / 86400000)
+}
+
+// Runs for the `days`-day window ending at `end`, built from STATUS_LOOKBACK_DAYS
+// of extra history so the run straddling the window's left edge keeps its real
+// start. `statusDays` is the window alone (axis, band width); `runs` is every
+// run that touches the window with its true start (the list and "since" label);
+// `bandRuns` is the same runs with the straddler's start clamped to the window,
+// so the band's widths still add up to `days`.
+export function buildStatusWindow(rows, days, end = new Date()) {
+  const allDays = buildStatusDays(rows, days + STATUS_LOOKBACK_DAYS, end)
+  const statusDays = allDays.slice(STATUS_LOOKBACK_DAYS)
+  const windowStart = statusDays[0].date
+  const runs = buildStatusRuns(allDays).filter((r) => r.end >= windowStart)
+  const bandRuns = runs.map((r) =>
+    r.start >= windowStart ? r : { ...r, start: windowStart, days: daysBetween(windowStart, r.end) + 1 },
+  )
+  return { statusDays, runs, bandRuns }
 }
 
 // The most recent day that has a status, with its ACWR figures, for the

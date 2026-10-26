@@ -1,14 +1,17 @@
 import { describe, expect, it } from 'vitest'
+import { isoDate } from './dateUtils'
 import {
   axisTicks,
   buildStatusDays,
   buildStatusRuns,
+  buildStatusWindow,
   DEFAULT_STATUS_RANGE,
   formatAcwr,
   latestStatusRow,
   STATUS_RANGES,
   statusMeta,
   statusRange,
+  STATUS_LOOKBACK_DAYS,
   TRAINING_STATUS,
   wellnessRowsCacheKey,
 } from './trainingStatus'
@@ -81,6 +84,49 @@ describe('buildStatusRuns', () => {
 
   it('returns no runs for no days', () => {
     expect(buildStatusRuns([])).toEqual([])
+  })
+})
+
+describe('buildStatusWindow', () => {
+  // A 7-day window ending 2 Oct 2026 starts 26 Sep. Code 7 began 20 Sep, before
+  // the window; code 3 runs 1-2 Oct.
+  const rows = [
+    ...['20', '21', '22', '23', '24', '25', '26', '27', '28', '29', '30'].map((d) => ({
+      date: `2026-09-${d}`,
+      trainingStatusCode: 7,
+    })),
+    { date: '2026-10-01', trainingStatusCode: 3 },
+    { date: '2026-10-02', trainingStatusCode: 3 },
+  ]
+
+  it('keeps the true start of a run clipped by the window edge, and clamps it in the band only', () => {
+    const { runs, bandRuns } = buildStatusWindow(rows, 7, END)
+    expect(runs[0]).toEqual({ code: 7, start: '2026-09-20', end: '2026-09-30', days: 11 })
+    expect(bandRuns[0]).toEqual({ code: 7, start: '2026-09-26', end: '2026-09-30', days: 5 })
+    expect(bandRuns[1]).toEqual({ code: 3, start: '2026-10-01', end: '2026-10-02', days: 2 })
+  })
+
+  it('makes the band widths add up to exactly the window length', () => {
+    const { statusDays, bandRuns } = buildStatusWindow(rows, 7, END)
+    expect(statusDays).toHaveLength(7)
+    expect(statusDays[0].date).toBe('2026-09-26')
+    expect(bandRuns.reduce((n, r) => n + r.days, 0)).toBe(7)
+  })
+
+  it('drops runs that ended before the window', () => {
+    const { runs } = buildStatusWindow([{ date: '2026-09-10', trainingStatusCode: 4 }, ...rows], 7, END)
+    expect(runs.every((r) => r.end >= '2026-09-26')).toBe(true)
+    expect(runs.some((r) => r.code === 4)).toBe(false)
+  })
+
+  it('cannot see further back than the look-back', () => {
+    const dense = Array.from({ length: 120 }, (_, i) => ({
+      date: isoDate(new Date(2026, 9, 2 - i)),
+      trainingStatusCode: 7,
+    }))
+    const { runs } = buildStatusWindow(dense, 7, END)
+    expect(runs).toHaveLength(1)
+    expect(runs[0].start).toBe(isoDate(new Date(2026, 9, 2 - (6 + STATUS_LOOKBACK_DAYS))))
   })
 })
 

@@ -16,6 +16,7 @@ import { peekCache, staleWhileRevalidate } from '../swrCache'
 import {
   DEFAULT_STATUS_RANGE,
   STATUS_BAND_DAYS,
+  STATUS_LOOKBACK_DAYS,
   STATUS_RANGES,
   statusRange,
   WELLNESS_ROWS_CACHE_KEY,
@@ -23,9 +24,10 @@ import {
 } from '../trainingStatus'
 
 // The metric charts and sparklines plot the last 12 weeks; the status band can
-// reach further back (its longest range), so one fetch covers the longer of the two.
+// reach further back (its longest range, plus the look-back that keeps a run's
+// start honest at the window edge), so one fetch covers the longer of the two.
 const HISTORY_DAYS = STATUS_BAND_DAYS
-const FETCH_DAYS = Math.max(HISTORY_DAYS, ...STATUS_RANGES.map((r) => r.days))
+const FETCH_DAYS = Math.max(HISTORY_DAYS, ...STATUS_RANGES.map((r) => r.days)) + STATUS_LOOKBACK_DAYS
 // Own cache key: this page fetches a longer window than the dashboard card, so
 // it can't share the card's 84-day key. It still seeds from that key on a cold
 // start so arriving from the card paints at once, then upgrades when this lands.
