@@ -43,6 +43,9 @@ class RestTimerState {
     private var _lastResponseCode as Number;
 
     private var _timerId as String?;
+    // The progress slot last put on screen, so the same one polled again every
+    // ~5s doesn't re-enter the screen or undo a later rest.
+    private var _progressId as String?;
     // The id of the rest that last ran to zero. A poll already in flight when
     // it finished can still come back 200 for that same timer (the server
     // only drops it ~3s early); without this it would restart a countdown
@@ -121,6 +124,13 @@ class RestTimerState {
                 _offsetKnown = true;
             }
 
+            // No rest running, but the phone has said where the workout has got
+            // to: a set ticked that started no rest.
+            if (result.isProgress()) {
+                onProgress(result);
+                return;
+            }
+
             // The timer that just finished, seen again by a stale response:
             // not a new rest.
             if (_state != STATE_COUNTING && _finishedTimerId != null
@@ -161,6 +171,34 @@ class RestTimerState {
         if (_state == STATE_COUNTING && responseCode == 204 && remainingSeconds() > AMBIGUOUS_204_WINDOW_SECONDS) {
             finishRest();
         }
+    }
+
+    // A progress slot is only served while no rest is pending, so seeing one
+    // while Counting means the server dropped the timer: a skip or cancel, or
+    // the ~3s early removal. Same call as an ambiguous 204: only act when
+    // there's clearly more than that window left, otherwise tick() finishes the
+    // countdown and the next poll applies the slot.
+    private function onProgress(result as RestTimerCurrentResult) as Void {
+        if (_state == STATE_COUNTING) {
+            if (remainingSeconds() <= AMBIGUOUS_204_WINDOW_SECONDS) {
+                return;
+            }
+            finishRest();
+        }
+
+        if (_progressId != null && result.progressId.equals(_progressId)) {
+            return;
+        }
+        _progressId = result.progressId;
+        _exerciseName = result.exerciseName;
+        _targetReps = result.targetReps;
+        _targetWeight = result.targetWeight;
+        _enteredReps = result.enteredReps;
+        _doneLabel = result.doneLabel;
+        _nextSetNumber = result.nextSetNumber;
+        _totalSets = result.totalSets;
+        _warmupSets = result.warmupSets;
+        _state = _doneLabel.length() > 0 ? STATE_DONE : STATE_NEXT_SET;
     }
 
     // The rest is over, naturally or by skip: hold the next-set (or done)

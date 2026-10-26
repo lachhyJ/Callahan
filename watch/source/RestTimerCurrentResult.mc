@@ -12,7 +12,8 @@ import Toybox.Time;
 // PORTS to a full watch app unchanged.
 class RestTimerCurrentResult {
     var timerId as String;
-    var endsAtUtc as Moment;
+    // Null for a progress-only result (see progressId).
+    var endsAtUtc as Moment?;
     var exerciseName as String;
     var targetReps as String;
     // The server's clock at the moment it answered — lets RestTimerState
@@ -30,10 +31,14 @@ class RestTimerCurrentResult {
     var nextSetNumber as Number;
     var totalSets as Number;
     var warmupSets as Number;
+    // Set instead of timerId/endsAtUtc when no rest is running but the phone has
+    // said where the workout has got to (a tick that started no rest). Changes on
+    // every push, so the same slot polled twice is recognisable. Empty for a rest.
+    var progressId as String;
 
     function initialize(
         timerIdIn as String,
-        endsAtUtcIn as Moment,
+        endsAtUtcIn as Moment?,
         exerciseNameIn as String,
         targetRepsIn as String,
         serverNowUtcIn as Moment,
@@ -42,7 +47,8 @@ class RestTimerCurrentResult {
         doneLabelIn as String,
         nextSetNumberIn as Number,
         totalSetsIn as Number,
-        warmupSetsIn as Number
+        warmupSetsIn as Number,
+        progressIdIn as String
     ) {
         timerId = timerIdIn;
         endsAtUtc = endsAtUtcIn;
@@ -55,6 +61,11 @@ class RestTimerCurrentResult {
         nextSetNumber = nextSetNumberIn;
         totalSets = totalSetsIn;
         warmupSets = warmupSetsIn;
+        progressId = progressIdIn;
+    }
+
+    function isProgress() as Boolean {
+        return progressId.length() > 0;
     }
 
     // The response's endsAtUtc is ISO-8601, e.g. "2026-09-24T13:05:32.420582+00:00".
@@ -99,16 +110,24 @@ class RestTimerCurrentResult {
         return part != null ? part.toNumber() : null;
     }
 
-    // Null when either timestamp doesn't parse; the caller treats that like
-    // any other response with no usable result.
+    // Null when a timestamp doesn't parse; the caller treats that like any other
+    // response with no usable result. A progress-only response has no endsAtUtc
+    // and doesn't need one.
     static function fromDictionary(data as Dictionary<String, Object?>) as RestTimerCurrentResult? {
-        var endsAtUtc = parseIso8601(stringOrEmpty(data["endsAtUtc"]));
         var serverNowUtc = parseIso8601(stringOrEmpty(data["serverNowUtc"]));
-        if (endsAtUtc == null || serverNowUtc == null) {
+        if (serverNowUtc == null) {
             return null;
         }
+        var progressId = stringOrEmpty(data["progressId"]);
+        var endsAtUtc = null;
+        if (progressId.length() == 0) {
+            endsAtUtc = parseIso8601(stringOrEmpty(data["endsAtUtc"]));
+            if (endsAtUtc == null) {
+                return null;
+            }
+        }
         return new RestTimerCurrentResult(
-            data["timerId"] as String,
+            progressId.length() > 0 ? "" : data["timerId"] as String,
             endsAtUtc,
             data["exerciseName"] as String,
             data["targetReps"] as String,
@@ -118,7 +137,8 @@ class RestTimerCurrentResult {
             stringOrEmpty(data["doneLabel"]),
             numberOrZero(data["nextSetNumber"]),
             numberOrZero(data["totalSets"]),
-            numberOrZero(data["warmupSets"])
+            numberOrZero(data["warmupSets"]),
+            progressId
         );
     }
 
