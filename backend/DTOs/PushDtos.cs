@@ -24,6 +24,36 @@ public record RestTimerScheduleRequest(
 
 public record RestTimerScheduleResponse(string TimerId);
 
+// Where the workout stands when no rest is running: the next set, described the
+// same way a rest's is. Pushed on every set tick that does not start a rest
+// (a non-last superset member), so the watch can follow along between rests.
+public record RestProgressRequest(
+    string ExerciseName,
+    string TargetReps,
+    int NextSetNumber,
+    int TotalSets,
+    string TargetWeight = "",
+    string EnteredReps = "",
+    string DoneLabel = "",
+    int WarmupSets = 0);
+
+// What GET /api/resttimer/current returns when no rest is pending but a progress
+// slot is held. Deliberately has no timerId/endsAtUtc: a watch build that
+// predates it parses those as missing, drops the response, and carries on.
+// ProgressId changes on every push, so the watch can tell a new slot from the
+// one it already shows.
+public record RestProgressResponse(
+    string ProgressId,
+    string ExerciseName,
+    string TargetReps,
+    int NextSetNumber,
+    int TotalSets,
+    DateTimeOffset ServerNowUtc,
+    string TargetWeight,
+    string EnteredReps,
+    string DoneLabel,
+    int WarmupSets);
+
 public record RestTimerCurrentResponse(
     string TimerId,
     DateTimeOffset EndsAtUtc,

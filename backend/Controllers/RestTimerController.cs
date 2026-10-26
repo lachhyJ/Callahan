@@ -24,9 +24,17 @@ public class RestTimerController : ControllerBase
     // stakes (worst case: one missed alert).
     private static readonly ConcurrentDictionary<string, PendingTimer> PendingTimers = new();
 
+    private sealed record ProgressSlot(string Id, DateTimeOffset UpdatedAtUtc, RestProgressRequest Request);
+
+    // Latest-wins, in-memory, like PendingTimers: one user, and losing it on a
+    // restart only means the watch shows its last rest until the next tick.
+    private static ProgressSlot? Progress;
+    private static readonly object ProgressLock = new();
+
     private readonly ILogger<RestTimerController> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly double _pushLeadSeconds;
+    private readonly double _progressTtlSeconds;
     private readonly TimeProvider _time;
 
     public RestTimerController(ILogger<RestTimerController> logger, IServiceScopeFactory scopeFactory, IConfiguration config, TimeProvider? time = null)
@@ -34,6 +42,10 @@ public class RestTimerController : ControllerBase
         _logger = logger;
         _scopeFactory = scopeFactory;
         _pushLeadSeconds = config.GetValue("RestTimer:PushLeadSeconds", 3.0);
+        // Safety net for an abandoned workout; finishing or discarding one
+        // clears the slot explicitly. Long enough that a no-rest stretch of a
+        // superset never expires mid-session.
+        _progressTtlSeconds = config.GetValue("RestTimer:ProgressTtlSeconds", 3 * 3600.0);
         _time = time ?? TimeProvider.System;
     }
 
@@ -66,6 +78,10 @@ public class RestTimerController : ControllerBase
         var scheduledAtUtc = _time.GetUtcNow();
         var endsAtUtc = scheduledAtUtc.AddSeconds(request.DurationSeconds);
         PendingTimers[timerId] = new PendingTimer(cts, scheduledAtUtc, endsAtUtc, request);
+        // A rest supersedes the slot: its own descriptor already says what is
+        // next, and leaving the slot would make a skipped rest read as progress
+        // instead of the 204 the watch uses to spot a skip.
+        ClearProgressSlot();
 
         LastFire = FireAfterDelay(timerId, request.DurationSeconds, request.ExerciseName, request.TargetReps, request.NextSetNumber, request.TotalSets, request.WarmupSets, request.SuppressPush, cts.Token);
 
@@ -83,6 +99,32 @@ public class RestTimerController : ControllerBase
         return Ok();
     }
 
+    [HttpPost("progress")]
+    public IActionResult SetProgress(RestProgressRequest request)
+    {
+        lock (ProgressLock)
+        {
+            Progress = new ProgressSlot(Guid.NewGuid().ToString("N"), _time.GetUtcNow(), request);
+        }
+
+        return Ok();
+    }
+
+    [HttpPost("progress/clear")]
+    public IActionResult ClearProgress()
+    {
+        ClearProgressSlot();
+        return Ok();
+    }
+
+    private static void ClearProgressSlot()
+    {
+        lock (ProgressLock)
+        {
+            Progress = null;
+        }
+    }
+
     // Returns the most-recently-scheduled pending timer, for the Garmin data field
     // to poll. There should only ever be one entry (the phone cancels before it
     // reschedules), but that invariant isn't enforced anywhere, so order by
@@ -94,8 +136,11 @@ public class RestTimerController : ControllerBase
     // not "the last-seen timer finished" — callers that have already seen a
     // TimerId should keep counting down locally rather than treat a later 204 as
     // a cancellation.
+    //
+    // With no timer pending, a held progress slot comes back instead (200,
+    // RestProgressResponse); a pending timer always wins over it.
     [HttpGet("current")]
-    public ActionResult<RestTimerCurrentResponse> Current()
+    public ActionResult<object> Current()
     {
         var newest = PendingTimers
             .OrderByDescending(kvp => kvp.Value.ScheduledAtUtc)
@@ -104,7 +149,7 @@ public class RestTimerController : ControllerBase
 
         if (newest.Timer is null)
         {
-            return NoContent();
+            return CurrentProgress() is { } progress ? Ok(progress) : NoContent();
         }
 
         var request = newest.Timer.Request;
@@ -120,6 +165,26 @@ public class RestTimerController : ControllerBase
             request.EnteredReps ?? "",
             request.DoneLabel ?? "",
             request.WarmupSets));
+    }
+
+    private RestProgressResponse? CurrentProgress()
+    {
+        ProgressSlot? slot;
+        lock (ProgressLock)
+        {
+            slot = Progress;
+        }
+
+        var now = _time.GetUtcNow();
+        if (slot is null || (now - slot.UpdatedAtUtc).TotalSeconds > _progressTtlSeconds)
+        {
+            return null;
+        }
+
+        var r = slot.Request;
+        return new RestProgressResponse(
+            slot.Id, r.ExerciseName, r.TargetReps, r.NextSetNumber, r.TotalSets, now,
+            r.TargetWeight ?? "", r.EnteredReps ?? "", r.DoneLabel ?? "", r.WarmupSets);
     }
 
     private async Task FireAfterDelay(string timerId, int durationSeconds, string exerciseName, string targetReps, int nextSetNumber, int totalSets, int warmupSets, bool suppressPush, CancellationToken token)

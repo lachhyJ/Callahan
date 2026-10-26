@@ -42,6 +42,27 @@ public class RestTimerWireFormatTests
         Assert.StartsWith(expectedPrefix, value);
     }
 
+    // A watch build from before progress slots parses `endsAtUtc` by key and
+    // drops a response without one; if this ever gained that key (or timerId),
+    // an old build would start a countdown from a progress slot.
+    [Fact]
+    public void ProgressResponseCarriesNoTimerKeysAndThePollersStrings()
+    {
+        var dto = new RestProgressResponse(
+            "p1", "Calf Raise", "12", 1, 3, new DateTimeOffset(2026, 10, 27, 1, 2, 3, TimeSpan.Zero),
+            "40 kg", "12", "", 0);
+        var json = JsonSerializer.SerializeToElement(dto, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        var keys = json.EnumerateObject().Select(p => p.Name).Order().ToList();
+        Assert.Equal(
+            new[] { "doneLabel", "enteredReps", "exerciseName", "nextSetNumber", "progressId", "serverNowUtc",
+                    "targetReps", "targetWeight", "totalSets", "warmupSets" }.Order(),
+            keys);
+        Assert.StartsWith("2026-10-27T01:02:03", json.GetProperty("serverNowUtc").GetString());
+        foreach (var key in new[] { "progressId", "targetWeight", "enteredReps", "doneLabel", "exerciseName", "targetReps" })
+            Assert.Equal(JsonValueKind.String, json.GetProperty(key).ValueKind);
+    }
+
     [Fact]
     public void StringSlotsAreNeverNull()
     {

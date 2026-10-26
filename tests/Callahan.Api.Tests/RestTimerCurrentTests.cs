@@ -49,6 +49,7 @@ public class RestTimerCurrentTests
     {
         var field = typeof(RestTimerController).GetField("PendingTimers", BindingFlags.NonPublic | BindingFlags.Static)!;
         ((IDictionary)field.GetValue(null)!).Clear();
+        typeof(RestTimerController).GetField("Progress", BindingFlags.NonPublic | BindingFlags.Static)!.SetValue(null, null);
     }
 
     private static (RestTimerController Controller, ServiceProvider Services) NewController(ILogger<PushNotificationService>? pushLogger = null, TimeProvider? time = null)
@@ -148,6 +149,106 @@ public class RestTimerCurrentTests
 
         controller.Schedule(Request(90));
         var body = Assert.IsType<RestTimerCurrentResponse>(Assert.IsType<OkObjectResult>(controller.Current().Result).Value);
+
+        Assert.Equal("", body.TargetWeight);
+        Assert.Equal("", body.EnteredReps);
+        Assert.Equal("", body.DoneLabel);
+    }
+
+    private static RestProgressRequest Progress(string exercise = "Calf Raise") =>
+        new(exercise, "12", 1, 3, "40 kg", "12");
+
+    [Fact]
+    public void ReturnsTheProgressSlotWhenNoRestIsPending()
+    {
+        var (controller, _) = NewController();
+
+        controller.SetProgress(Progress());
+        var ok = Assert.IsType<OkObjectResult>(controller.Current().Result);
+        var body = Assert.IsType<RestProgressResponse>(ok.Value);
+
+        Assert.Equal("Calf Raise", body.ExerciseName);
+        Assert.Equal("40 kg", body.TargetWeight);
+        Assert.Equal("12", body.EnteredReps);
+        Assert.Equal(1, body.NextSetNumber);
+        Assert.Equal(3, body.TotalSets);
+        Assert.NotEmpty(body.ProgressId);
+    }
+
+    [Fact]
+    public void EachProgressPushGetsANewId()
+    {
+        var (controller, _) = NewController();
+
+        controller.SetProgress(Progress());
+        var first = Assert.IsType<RestProgressResponse>(Assert.IsType<OkObjectResult>(controller.Current().Result).Value);
+        controller.SetProgress(Progress());
+        var second = Assert.IsType<RestProgressResponse>(Assert.IsType<OkObjectResult>(controller.Current().Result).Value);
+
+        Assert.NotEqual(first.ProgressId, second.ProgressId);
+    }
+
+    [Fact]
+    public void APendingRestWinsOverTheProgressSlot()
+    {
+        var (controller, _) = NewController();
+
+        controller.SetProgress(Progress("Pull-up"));
+        controller.Schedule(Request(90, "Back Squat"));
+        // Schedule after progress clears it; push again to prove precedence,
+        // not just clearing.
+        controller.SetProgress(Progress("Pull-up"));
+
+        var ok = Assert.IsType<OkObjectResult>(controller.Current().Result);
+        Assert.IsType<RestTimerCurrentResponse>(ok.Value);
+    }
+
+    [Fact]
+    public void ScheduleClearsTheProgressSlot()
+    {
+        // A skipped rest must read as 204 (the watch's skip signal), not as
+        // stale progress from before the rest started.
+        var (controller, _) = NewController();
+
+        controller.SetProgress(Progress());
+        var scheduled = Assert.IsType<RestTimerScheduleResponse>(Assert.IsType<OkObjectResult>(controller.Schedule(Request(90)).Result).Value);
+        controller.Cancel(scheduled.TimerId);
+
+        Assert.IsType<NoContentResult>(controller.Current().Result);
+    }
+
+    [Fact]
+    public void ClearRemovesTheProgressSlot()
+    {
+        var (controller, _) = NewController();
+
+        controller.SetProgress(Progress());
+        controller.ClearProgress();
+
+        Assert.IsType<NoContentResult>(controller.Current().Result);
+    }
+
+    [Fact]
+    public void ProgressExpiresAfterTheTtl()
+    {
+        var time = new FakeTimeProvider();
+        var (controller, _) = NewController(time: time);
+
+        controller.SetProgress(Progress());
+        time.Advance(TimeSpan.FromHours(2.9));
+        Assert.IsType<OkObjectResult>(controller.Current().Result);
+
+        time.Advance(TimeSpan.FromHours(0.2));
+        Assert.IsType<NoContentResult>(controller.Current().Result);
+    }
+
+    [Fact]
+    public void OmittedProgressFieldsComeBackEmptyNotNull()
+    {
+        var (controller, _) = NewController();
+
+        controller.SetProgress(new RestProgressRequest("Plank", "30s", 1, 3));
+        var body = Assert.IsType<RestProgressResponse>(Assert.IsType<OkObjectResult>(controller.Current().Result).Value);
 
         Assert.Equal("", body.TargetWeight);
         Assert.Equal("", body.EnteredReps);
