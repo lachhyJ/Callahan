@@ -74,9 +74,9 @@ public static class DevSeed
                 // overload so History/Trends has a real trend line, not flat noise.
                 var progress = sessionDates.Count > 1 ? i / (double)(sessionDates.Count - 1) : 1.0;
 
-                // Stored times are UTC; 17:30 is the intended Melbourne wall-clock time.
+                // Stored times are UTC; 17:30 is the intended wall-clock time in the app's current zone.
                 var localStart = date.ToDateTime(new TimeOnly(17, 30)).AddMinutes(rng.Next(-15, 15));
-                var startedAt = TimeZoneInfo.ConvertTimeToUtc(localStart, TimeZoneInfo.FindSystemTimeZoneById("Australia/Melbourne"));
+                var startedAt = TimeZoneInfo.ConvertTimeToUtc(localStart, time.LocalTimeZone);
                 var session = new WorkoutSession
                 {
                     Date = date,
