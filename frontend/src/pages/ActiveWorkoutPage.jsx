@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
-import { cancelRestTimer, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious } from '../activeWorkout'
+import { cancelRestTimer, clearRestProgress, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, postRestProgress, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -632,6 +632,7 @@ export default function ActiveWorkoutPage() {
       syncWorkoutActivity({
         rest: restTimer,
         lastSet: upcoming ?? (allDone ? { ...lastRestRef.current, doneLabel: workoutDoneLabel() } : lastRestRef.current),
+        upcoming: upcomingDescriptors(exercises),
         sessionStartedAt: startedAt.getTime(),
         templateName,
         templateSubtitle,
@@ -1028,6 +1029,9 @@ export default function ActiveWorkoutPage() {
     // one (which after this tick is setIdx + 1) — suppressesRest needs the
     // real index to judge whether this tick closed out the round.
     if (suppressesRest(updatedExercises, exIdx, setIdx)) {
+      // No rest means nothing for the Garmin field to poll, so tell it where
+      // the round has got to instead.
+      postRestProgress(restDescriptorAfterSet(updatedExercises, exIdx, setIdx)).catch(() => {})
       return
     }
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
@@ -1583,6 +1587,7 @@ export default function ActiveWorkoutPage() {
     setConfirming(null)
     if (layoutChanged && keepLayout) await persistLayout()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
+    clearRestProgress().catch(() => {})
     clearRestTimerStore()
     // Explicitly, not via the rest-timer effect's teardown: neither ending path
     // sets restTimer to null before navigating away, so that effect's else
@@ -1637,6 +1642,7 @@ export default function ActiveWorkoutPage() {
     // A rearrangement is worth keeping even when the logged sets aren't.
     if (layoutChanged && keepLayout) await persistLayout()
     if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
+    clearRestProgress().catch(() => {})
     clearRestTimerStore()
     // Explicitly, not via the rest-timer effect's teardown: neither ending path
     // sets restTimer to null before navigating away, so that effect's else

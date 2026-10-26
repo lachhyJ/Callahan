@@ -421,6 +421,25 @@ export function scheduleRestTimer(durationSeconds, rest, suppressPush = false) {
   })
 }
 
+// Where the workout stands when a tick starts no rest (a non-last superset
+// member), so the Garmin field can follow along between rests. `rest` is a set
+// descriptor, spelled the same way scheduleRestTimer's is.
+export function postRestProgress(rest) {
+  return apiFetch('/api/resttimer/progress', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...setSlotFields(rest),
+      exerciseName: rest.exerciseShortName ?? rest.exerciseName ?? 'Workout',
+      doneLabel: rest.doneLabel ?? '',
+    }),
+  })
+}
+
+// The workout is over (saved or discarded): the watch goes back to idle.
+export function clearRestProgress() {
+  return apiFetch('/api/resttimer/progress/clear', { method: 'POST' })
+}
+
 export function cancelRestTimer(timerId) {
   return apiFetch(`/api/resttimer/cancel/${timerId}`, { method: 'POST' })
 }

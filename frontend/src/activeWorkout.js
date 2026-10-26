@@ -213,15 +213,40 @@ export function nextSetDescriptor(exercises, fromIdx = 0, withFollowing = true) 
 // `{ workoutDone: true }` when nothing at all is left after it. Built by ticking a copy and asking what the
 // ambient card would then describe — the same answer the app reaches on its
 // next sync, so the card doesn't jump when the webview wakes.
+function withTicked(exercises, ti, j) {
+  return exercises.map((e, idx) =>
+    idx !== ti ? e : { ...e, sets: e.sets.map((s, k) => (k === j ? { ...s, completed: true } : s)) }
+  )
+}
+
 function followingDescriptor(exercises, ti, j) {
   const ex = exercises[ti]
   if (ex.sets.some((s, k) => k !== j && !s.completed)) return null
-  const ticked = exercises.map((e, idx) =>
-    idx !== ti ? e : { ...e, sets: e.sets.map((s, k) => (k === j ? { ...s, completed: true } : s)) }
-  )
+  const ticked = withTicked(exercises, ti, j)
   // Nothing left after it: say so, and let the caller supply the label (only the
   // page knows whether a finisher has been added — "Finisher?" vs "Finished").
   return nextSetDescriptor(ticked, 0, false) ?? { workoutDone: true }
+}
+
+// The sets that will be the card's slot after each of the next ticks, in order:
+// what nextSetDescriptor would say after ticking the one before. The lock-screen
+// button cannot look into the workout, so a tick that starts no rest (a non-last
+// superset member) would otherwise leave it pointing at the same exercise's next
+// set instead of whoever's turn is next. Native steps through this list instead.
+// Ends in `{ workoutDone: true }` when it reaches the end of the session; shorter
+// than `count` is fine, native falls back to its own advance when it runs out.
+// Same "sets are ticked in order" assumption as the rest of this module.
+export function upcomingDescriptors(exercises, count = 8) {
+  const out = []
+  let current = exercises
+  while (current && out.length < count) {
+    const due = ambientTarget(current, 0)
+    if (!due) break
+    current = withTicked(current, due.i, due.j)
+    out.push(nextSetDescriptor(current, 0, false) ?? { workoutDone: true })
+    if (out[out.length - 1].workoutDone) break
+  }
+  return out
 }
 
 // The rest duration for a set inside superset group [groupStart, groupEnd]:

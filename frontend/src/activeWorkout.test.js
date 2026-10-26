@@ -7,6 +7,7 @@ import {
   isTimeSet,
   nextSetDescriptor,
   restDescriptorAfterSet,
+  upcomingDescriptors,
   supersetGroupBounds,
   suppressesRest,
   isSupersetRestOwner,
@@ -780,5 +781,53 @@ describe('insertIndexForPrevious', () => {
   it('appends when it has no earlier slot to return to', () => {
     expect(insertIndexForPrevious([r(0, 0)], null)).toBe(1)
     expect(insertIndexForPrevious([r(0, 0), r(1, 1)], { setOrder: 5 })).toBe(2)
+  })
+})
+
+describe('upcomingDescriptors', () => {
+  // The lock-screen button steps through this list on a tick that starts no rest.
+  function gymOne() {
+    return [
+      { ...exercise('Pull-Ups', 60, '3', [set(0, 3), set(0, 3)]), supersetWithNext: true },
+      { ...exercise('Calf Raise', 60, '12', [set(20, 12), set(20, 12)]), supersetWithNext: true },
+      { ...exercise('Copenhagen', 60, '20', [set(0, 20), set(0, 20)]), supersetWithNext: false },
+    ]
+  }
+
+  const names = (list) => list.map((d) => d.workoutDone ? 'DONE' : `${d.exerciseName} ${d.nextSetNumber}`)
+
+  it('walks the superset rotation, not one exercise\'s sets', () => {
+    expect(names(upcomingDescriptors(gymOne()))).toEqual([
+      'Calf Raise 1', 'Copenhagen 1', 'Pull-Ups 2', 'Calf Raise 2', 'Copenhagen 2', 'DONE',
+    ])
+  })
+
+  it('starts after the card\'s own slot, wherever the workout has got to', () => {
+    const ex = gymOne()
+    ex[0].sets[0].completed = true // the card now points at Calf Raise 1
+    expect(names(upcomingDescriptors(ex)).slice(0, 2)).toEqual(['Copenhagen 1', 'Pull-Ups 2'])
+  })
+
+  it('flags which slots start a rest, so the button makes the checkbox\'s call', () => {
+    const rested = upcomingDescriptors(gymOne()).filter((d) => !d.workoutDone).map((d) => d.isLastInSuperset)
+    // Calf Raise, then Copenhagen (the group's last), then round two.
+    expect(rested).toEqual([false, true, false, false, true])
+  })
+
+  it('carries what the watch shows: weight and reps for the slot', () => {
+    const [calf] = upcomingDescriptors(gymOne())
+    expect(calf).toMatchObject({ exerciseName: 'Calf Raise', targetWeightKg: '20', enteredReps: '12', totalSets: 2 })
+  })
+
+  it('stops at count without a done marker when the workout is longer', () => {
+    const list = upcomingDescriptors(gymOne(), 3)
+    expect(list).toHaveLength(3)
+    expect(list.some((d) => d.workoutDone)).toBe(false)
+  })
+
+  it('is empty when nothing is left to tick, and tolerates no exercises', () => {
+    const done = gymOne().map((e) => ({ ...e, sets: e.sets.map((x) => ({ ...x, completed: true })) }))
+    expect(upcomingDescriptors(done)).toEqual([])
+    expect(upcomingDescriptors(null)).toEqual([])
   })
 })

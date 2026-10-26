@@ -36,7 +36,7 @@ function followingFields(following, workoutDoneLabel) {
 // The activity belongs to the workout, not to a rest period: it goes up when a
 // session starts and comes down when it is finished or discarded, so Skip zeroes
 // the countdown instead of tearing the card down. `rest` is null between sets.
-export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateName, templateSubtitle, workoutDoneLabel } = {}) {
+export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, upcoming, templateName, templateSubtitle, workoutDoneLabel } = {}) {
   if (!available) return
   const detail = rest ?? lastSet ?? {}
   RestActivity.sync({
@@ -57,6 +57,9 @@ export function syncWorkoutActivity({ rest, sessionStartedAt, lastSet, templateN
     // ticked (see followingDescriptor in activeWorkout.js). Absent when nothing
     // follows. Carries its own restSeconds: the rest for *its* set, not this one.
     following: followingFields(detail.following, workoutDoneLabel),
+    // The slots the card steps through on the next ticks, so a lock-screen tick
+    // lands on the real next exercise rather than the same one's next set.
+    upcoming: (upcoming ?? []).map((d) => followingFields(d, workoutDoneLabel)).filter(Boolean),
     // Non-empty once the session has nothing left: "Finisher?" / "Finished".
     doneLabel: detail.doneLabel ?? '',
     sessionStartedAt: sessionStartedAt ?? Date.now(),
