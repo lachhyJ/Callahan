@@ -182,6 +182,19 @@ def callahan_request(method, api_base, path, token, payload):
     return resp.json(), token
 
 
+def is_future_date_rejection(err):
+    """True when the backend refused a day as being in the future. The container is
+    pinned to Melbourne, so while the app is set to a zone behind it (travel) the
+    run's "today" is a day ahead of the app's, and that one day is rejected."""
+    resp = err.response
+    if resp is None or resp.status_code != 400:
+        return False
+    try:
+        return "future" in str(resp.json().get("error", "")).lower()
+    except (ValueError, AttributeError):
+        return False
+
+
 def post_activity(api_base, token, payload):
     return callahan_request("POST", api_base, "/api/activities", token, payload)
 
@@ -707,6 +720,8 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
                 synced += 1
                 last_ok_date = cdate
             except requests.HTTPError as e:
+                if is_future_date_rejection(e):
+                    continue  # app zone is behind Melbourne - not a failure, nothing to record
                 log(f"Failed to sync wellness for {cdate}: {e}")
                 skipped += 1
 
@@ -754,6 +769,8 @@ def cmd_sync_training_status(client, days, start, dry_run, api_base):
                 synced += 1
                 last_ok_date = cdate
             except requests.HTTPError as e:
+                if is_future_date_rejection(e):
+                    continue  # app zone is behind Melbourne - not a failure, nothing to record
                 log(f"Failed to patch training status for {cdate}: {e}")
                 skipped += 1
 
