@@ -1153,6 +1153,27 @@ namespace Callahan.Api.Migrations
                     b.ToTable("PushSubscriptions");
                 });
 
+            modelBuilder.Entity("Callahan.Api.Models.Quote", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Quotes");
+                });
+
             modelBuilder.Entity("Callahan.Api.Models.Routine", b =>
                 {
                     b.Property<int>("Id")

@@ -74,6 +74,20 @@ public class WidgetController : ControllerBase
         return Ok(await WeekSoFarLoader.LoadAsync(_db, today));
     }
 
+    // The whole live quote list for the lock-screen widget. An empty list is a normal
+    // state (nothing added yet), so it is a 200 with [] rather than a 204.
+    [HttpGet("quotes")]
+    public async Task<ActionResult<List<WidgetQuoteDto>>> GetQuotes()
+    {
+        if (!KeyMatches()) return NotFound();
+
+        var quotes = await _db.Quotes
+            .OrderBy(q => q.Id)
+            .Select(q => new WidgetQuoteDto(q.Id, q.Text))
+            .ToListAsync();
+        return Ok(quotes);
+    }
+
     private bool KeyMatches()
     {
         var configured = _config["Widget:Key"];

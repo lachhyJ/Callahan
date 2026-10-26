@@ -38,6 +38,7 @@ public class AppDbContext : DbContext
     public DbSet<PlanSlotWeek> PlanSlotWeeks => Set<PlanSlotWeek>();
     public DbSet<PlateCalcSetting> PlateCalcSettings => Set<PlateCalcSetting>();
     public DbSet<AppSetting> AppSettings => Set<AppSetting>();
+    public DbSet<Quote> Quotes => Set<Quote>();
     public DbSet<PendingGarminStrengthActivity> PendingGarminStrengthActivities => Set<PendingGarminStrengthActivity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -104,6 +105,7 @@ public class AppDbContext : DbContext
         // Listing/purging deleted rows explicitly opts out via IgnoreQueryFilters().
         modelBuilder.Entity<WorkoutSession>().HasQueryFilter(s => s.DeletedAt == null);
         modelBuilder.Entity<Activity>().HasQueryFilter(a => a.DeletedAt == null);
+        modelBuilder.Entity<Quote>().HasQueryFilter(q => q.DeletedAt == null);
 
         modelBuilder.Entity<Activity>()
             .HasIndex(a => a.GarminActivityId)
