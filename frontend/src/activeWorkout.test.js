@@ -15,6 +15,7 @@ import {
   advanceHold,
   applyNativeCompletions,
   refreshedRestSlot,
+  watchSlotStale,
   unusedPreviousSet,
   noteTapHandledByPointer,
   consumeClickAfterPointerTap,
@@ -670,6 +671,31 @@ describe('refreshedRestSlot', () => {
     const moved = { ...ex, sets: [wu(false, 50), ex.sets[0], ex.sets[1], ex.sets[2]] }
     const out = refreshedRestSlot(armed, nextSetDescriptor([moved]))
     expect(out).toMatchObject({ nextSetNumber: 1, warmupSets: 1, targetWeightKg: '50' })
+  })
+})
+
+describe('watchSlotStale', () => {
+  const shown = { exerciseName: 'Bench', nextSetNumber: 2, totalSets: 4, targetReps: '8', targetWeightKg: 80, enteredReps: '8' }
+
+  it('is false when the workout still points at the slot the watch was given', () => {
+    expect(watchSlotStale(shown, { ...shown })).toBe(false)
+  })
+
+  it('is true when the weight or typed reps change', () => {
+    expect(watchSlotStale(shown, { ...shown, targetWeightKg: 82.5 })).toBe(true)
+    expect(watchSlotStale(shown, { ...shown, enteredReps: '6' })).toBe(true)
+  })
+
+  it('is true when the next set moves, as after an un-tick or a set added or deleted', () => {
+    expect(watchSlotStale(shown, { ...shown, nextSetNumber: 1 })).toBe(true)
+    expect(watchSlotStale(shown, { ...shown, exerciseName: 'Row' })).toBe(true)
+    expect(watchSlotStale(shown, { ...shown, totalSets: 5 })).toBe(true)
+    expect(watchSlotStale(shown, { ...shown, holdLabel: '30s' })).toBe(true)
+  })
+
+  it('is false before the watch has been told anything, or with no upcoming set', () => {
+    expect(watchSlotStale(null, shown)).toBe(false)
+    expect(watchSlotStale(shown, null)).toBe(false)
   })
 })
 

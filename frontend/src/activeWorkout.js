@@ -618,3 +618,16 @@ export function refreshedRestSlot(rest, upcoming) {
   for (const key of REST_SLOT_KEYS) patch[key] = upcoming[key]
   return { ...rest, ...patch }
 }
+
+// True when the set the workout now points at is no longer the one the watch
+// was last told about, for any reason: weight or reps edited after a rest has
+// ended, a set un-ticked, a set added or deleted. Unlike refreshedRestSlot this
+// counts a different set as drift, because with no rest running the watch's
+// only copy is the last slot it was given. Null `shown` means the watch has
+// not been told anything this session, which is not drift (it reads idle).
+export function watchSlotStale(shown, upcoming) {
+  if (!shown || !upcoming) return false
+  const a = setSlotFields(shown)
+  const b = setSlotFields(upcoming)
+  return Object.keys(a).some((key) => a[key] !== b[key]) || (shown.holdLabel ?? '') !== (upcoming.holdLabel ?? '')
+}

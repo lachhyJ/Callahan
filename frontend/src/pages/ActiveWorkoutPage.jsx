@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, clearRestProgress, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, postRestProgress, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, refreshedRestSlot, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, refreshedRestSlot, watchSlotStale, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -669,8 +669,28 @@ export default function ActiveWorkoutPage() {
     const updated = refreshedRestSlot(restTimer, nextSetDescriptor(exercises))
     if (!updated) return
     const timeout = setTimeout(() => {
+      watchSlotRef.current = updated
       setRestTimer({ ...updated, timerId: null })
       resyncServerTimer(updated, restTimer.endAt)
+    }, 1000)
+    return () => clearTimeout(timeout)
+  }, [exercises, restTimer])
+
+  // The same drift with no rest running: weight or reps edited after a rest has
+  // ended, a tick un-done, a set added or deleted. The rest effect above only
+  // exists while a timer does, and the watch holds its last slot until told
+  // otherwise, so post the set the workout now points at as progress. A pending
+  // rest outranks progress server-side and is covered above, so skip while one
+  // runs. Null until a rest is scheduled or progress posted: before that the
+  // watch is idle and should stay that way.
+  const watchSlotRef = useRef(null)
+  useEffect(() => {
+    if (restTimer) return
+    const upcoming = nextSetDescriptor(exercises)
+    if (!watchSlotStale(watchSlotRef.current, upcoming)) return
+    const timeout = setTimeout(() => {
+      watchSlotRef.current = upcoming
+      postRestProgress(upcoming).catch(() => {})
     }, 1000)
     return () => clearTimeout(timeout)
   }, [exercises, restTimer])
@@ -924,6 +944,7 @@ export default function ActiveWorkoutPage() {
     // Native: no unlock needed, and the beep and notification are both armed
     // below from the rest-timer effect.
     unlockAudio()
+    watchSlotRef.current = descriptor
     setRestTimer({
       endAt: Date.now() + duration * 1000,
       totalSeconds: duration,
@@ -1038,7 +1059,9 @@ export default function ActiveWorkoutPage() {
     if (suppressesRest(updatedExercises, exIdx, setIdx)) {
       // No rest means nothing for the Garmin field to poll, so tell it where
       // the round has got to instead.
-      postRestProgress(restDescriptorAfterSet(updatedExercises, exIdx, setIdx)).catch(() => {})
+      const progress = restDescriptorAfterSet(updatedExercises, exIdx, setIdx)
+      watchSlotRef.current = progress
+      postRestProgress(progress).catch(() => {})
       return
     }
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
