@@ -523,15 +523,21 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
   const restSeconds = groupRestSeconds(exercises, groupStart, groupEnd, exIdx)
 
+  // The set due is the first unticked one, not the row after the one just
+  // ticked: a row turned into a Warmup moves above ticked working sets, so the
+  // two differ. With nothing left unticked it describes the row past the tick
+  // (an over-the-end number, which native reads as "Last set done").
+  const due = ex.sets.findIndex((s) => !s.completed)
+  const at = due === -1 ? setIdx + 1 : due
   const sameExercise = {
     exerciseName: ex.exerciseName,
     exerciseShortName: ex.exerciseShortName,
     targetReps: ex.targetReps,
-    targetWeightKg: ex.sets[setIdx + 1]?.weightKg,
+    targetWeightKg: ex.sets[at]?.weightKg,
     isBodyweight: ex.isBodyweight ?? false,
-    enteredReps: ex.sets[setIdx + 1]?.reps,
-    holdLabel: holdLabelFor(ex, ex.sets[setIdx + 1]),
-    nextSetNumber: setIdx + 2,
+    enteredReps: ex.sets[at]?.reps,
+    holdLabel: holdLabelFor(ex, ex.sets[at]),
+    nextSetNumber: at + 1,
     totalSets: ex.sets.length,
     warmupSets: warmupCount(ex),
     restSeconds,
@@ -586,14 +592,29 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
     : { ...sameExercise, workoutDone: true }
 }
 
-// True when the weight or reps typed into the set a rest is waiting on no
-// longer match what the rest was scheduled with (the Live Activity card and the
-// watch both read the scheduled copy). Only the same set counts: a different
-// exercise or set number is a different rest, not an edit to this one.
-export function restSlotDrifted(rest, upcoming) {
-  if (!rest || !upcoming) return false
-  if (upcoming.exerciseName !== rest.exerciseName || upcoming.nextSetNumber !== rest.nextSetNumber) return false
+// The fields describing the set a rest is waiting on, as opposed to the rest
+// itself (endAt, totalSeconds, restSeconds, cardRestSeconds, doneLabel).
+const REST_SLOT_KEYS = ['nextSetNumber', 'totalSets', 'warmupSets', 'targetWeightKg', 'enteredReps', 'holdLabel', 'targetReps', 'isBodyweight']
+
+// The running rest with its set fields brought back in line with the workout,
+// or null when they already match. The Live Activity card, the rest-over
+// notification and the watch all read the copy scheduled when the rest began,
+// so an edit to the set it is waiting on (weight, reps, or a type change that
+// moved it and changed the warm-up count) has to be pushed into that copy. The
+// timing is never touched: the rest's length belongs to the exercise just done.
+// A different exercise is another rest, not an edit to this one.
+export function refreshedRestSlot(rest, upcoming) {
+  if (!rest || !upcoming || upcoming.exerciseName !== rest.exerciseName) return null
   const scheduled = setSlotFields(rest)
   const current = setSlotFields(upcoming)
-  return scheduled.targetWeight !== current.targetWeight || scheduled.enteredReps !== current.enteredReps
+  const moved = scheduled.targetWeight !== current.targetWeight
+    || scheduled.enteredReps !== current.enteredReps
+    || scheduled.nextSetNumber !== current.nextSetNumber
+    || scheduled.totalSets !== current.totalSets
+    || scheduled.warmupSets !== current.warmupSets
+    || (rest.holdLabel ?? '') !== (upcoming.holdLabel ?? '')
+  if (!moved) return null
+  const patch = {}
+  for (const key of REST_SLOT_KEYS) patch[key] = upcoming[key]
+  return { ...rest, ...patch }
 }

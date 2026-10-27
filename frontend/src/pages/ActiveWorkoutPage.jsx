@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { isRestOver } from '../restExpiry'
 import { cancelRestTimer, clearRestProgress, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, postRestProgress, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, restSlotDrifted, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
+import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, refreshedRestSlot, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { setPosition } from '../utils/setSlot'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
@@ -655,18 +655,20 @@ export default function ActiveWorkoutPage() {
   }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
   useEffect(() => () => clearTimeout(activitySyncTimerRef.current), [])
 
-  // Editing the weight or reps of the set you are resting for. The Live Activity
-  // follows through the sync above, but the server timer (what the Garmin field
-  // polls) was scheduled with the values at the start of the rest, and the watch
-  // ignores a poll whose timerId it already has. So reschedule the same end time
-  // under a new id once typing pauses; the watch picks the new values up as a
-  // fresh countdown that lands on the same second.
+  // Editing the set you are resting for: its weight or reps, or a type change
+  // that moves it (a row turned into a Warmup shifts which set is due and how
+  // many warm-ups there are). The Live Activity shows the copy scheduled when
+  // the rest began, and so does the server timer (what the Garmin field polls),
+  // and the watch ignores a poll whose timerId it already has. So refresh the
+  // set fields and reschedule the same end time under a new id once typing
+  // pauses; the watch picks the new values up as a fresh countdown that lands
+  // on the same second. The beep is unaffected: RestAudio.schedule treats an
+  // unchanged endAt as already armed (the notification body keeps the old text).
   useEffect(() => {
     if (!restTimer?.timerId || restTimer.endAt - Date.now() < 3000) return
-    const upcoming = nextSetDescriptor(exercises)
-    if (!restSlotDrifted(restTimer, upcoming)) return
+    const updated = refreshedRestSlot(restTimer, nextSetDescriptor(exercises))
+    if (!updated) return
     const timeout = setTimeout(() => {
-      const updated = { ...restTimer, targetWeightKg: upcoming.targetWeightKg, enteredReps: upcoming.enteredReps }
       setRestTimer({ ...updated, timerId: null })
       resyncServerTimer(updated, restTimer.endAt)
     }, 1000)

@@ -14,7 +14,7 @@ import {
   isSupersetGroupConfigOwner,
   advanceHold,
   applyNativeCompletions,
-  restSlotDrifted,
+  refreshedRestSlot,
   unusedPreviousSet,
   noteTapHandledByPointer,
   consumeClickAfterPointerTap,
@@ -203,12 +203,32 @@ describe('restDescriptorAfterSet', () => {
 
   it('points at the next set of the same exercise when one is left', () => {
     const ex = session()
-    ex[0].sets[1].completed = false // ticking set 2, set 3 still to go
+    // Set 2 has just been ticked (both callers pass the post-tick array), set 3 is still to go.
     const d = restDescriptorAfterSet(ex, 0, 1)
     expect(d.exerciseName).toBe('Bench Press')
     expect(d.nextSetNumber).toBe(3)
     expect(d.totalSets).toBe(3)
     expect(d.restSeconds).toBe(120)
+  })
+
+  it('names the first unticked set when a warm-up was moved above ticked working sets', () => {
+    const ex = session()
+    ex[0].sets = [{ ...set(40, 5), type: 'Warmup' }, set(80, 6, true), set(80, 6, true), set(85, 6, false)]
+    const d = restDescriptorAfterSet(ex, 0, 2) // just ticked index 2; the warm-up is still open
+    expect(d.nextSetNumber).toBe(1)
+    expect(d.warmupSets).toBe(1)
+    expect(d.targetWeightKg).toBe('40')
+    expect(d.totalSets).toBe(4)
+    // and it agrees with what the ambient card would say after the same tick
+    expect(d).toMatchObject({ nextSetNumber: nextSetDescriptor(ex).nextSetNumber, targetWeightKg: nextSetDescriptor(ex).targetWeightKg })
+  })
+
+  it('does the same for a restored warm-up inserted above ticked rows', () => {
+    const ex = session()
+    ex[0].sets = [set(80, 6, true), { ...set(40, 5), type: 'Warmup' }, set(80, 6, true), set(85, 6, false)]
+    const d = restDescriptorAfterSet(ex, 0, 2)
+    expect(d.nextSetNumber).toBe(2)
+    expect(d.targetWeightKg).toBe('40')
   })
 
   it('rolls over to the first set of the next exercise after the last set', () => {
@@ -601,26 +621,55 @@ describe('applyNativeCompletions', () => {
   })
 })
 
-describe('restSlotDrifted', () => {
-  const rest = { exerciseName: 'Bench', nextSetNumber: 2, targetReps: '8', targetWeightKg: 80, enteredReps: '8' }
+describe('refreshedRestSlot', () => {
+  const rest = {
+    exerciseName: 'Bench', nextSetNumber: 2, totalSets: 4, warmupSets: 0, targetReps: '8',
+    targetWeightKg: 80, enteredReps: '8', endAt: 5000, totalSeconds: 120, restSeconds: 120, cardRestSeconds: 90,
+  }
 
-  it('is false when the set still matches what the rest was scheduled with', () => {
-    expect(restSlotDrifted(rest, { ...rest })).toBe(false)
+  it('is null when the set still matches what the rest was scheduled with', () => {
+    expect(refreshedRestSlot(rest, { ...rest })).toBeNull()
   })
 
-  it('is true when the weight or the typed reps change', () => {
-    expect(restSlotDrifted(rest, { ...rest, targetWeightKg: 82.5 })).toBe(true)
-    expect(restSlotDrifted(rest, { ...rest, enteredReps: '6' })).toBe(true)
+  it('picks up an edited weight or typed reps', () => {
+    expect(refreshedRestSlot(rest, { ...rest, targetWeightKg: 82.5 }).targetWeightKg).toBe(82.5)
+    expect(refreshedRestSlot(rest, { ...rest, enteredReps: '6' }).enteredReps).toBe('6')
   })
 
-  it('ignores a different exercise or set number: that is another rest, not an edit', () => {
-    expect(restSlotDrifted(rest, { ...rest, exerciseName: 'Row', targetWeightKg: 50 })).toBe(false)
-    expect(restSlotDrifted(rest, { ...rest, nextSetNumber: 3, targetWeightKg: 50 })).toBe(false)
+  it('follows a type change that moves the set and the warm-up count, leaving the timing alone', () => {
+    const upcoming = { ...rest, nextSetNumber: 1, warmupSets: 1, targetWeightKg: 50, restSeconds: 60, endAt: 9 }
+    const out = refreshedRestSlot(rest, upcoming)
+    expect(out).toMatchObject({ nextSetNumber: 1, warmupSets: 1, totalSets: 4, targetWeightKg: 50 })
+    expect(out).toMatchObject({ endAt: 5000, totalSeconds: 120, restSeconds: 120, cardRestSeconds: 90 })
   })
 
-  it('is false with nothing to compare', () => {
-    expect(restSlotDrifted(null, rest)).toBe(false)
-    expect(restSlotDrifted(rest, null)).toBe(false)
+  it('follows a moved set number or warm-up count even when weight and reps are unchanged', () => {
+    expect(refreshedRestSlot(rest, { ...rest, nextSetNumber: 3 }).nextSetNumber).toBe(3)
+    expect(refreshedRestSlot(rest, { ...rest, warmupSets: 1 }).warmupSets).toBe(1)
+    expect(refreshedRestSlot(rest, { ...rest, totalSets: 5 }).totalSets).toBe(5)
+  })
+
+  it('follows a changed hold duration', () => {
+    const held = { ...rest, holdLabel: '30s' }
+    expect(refreshedRestSlot(held, { ...held, holdLabel: '45s' }).holdLabel).toBe('45s')
+  })
+
+  it('ignores a different exercise: that is another rest, not an edit', () => {
+    expect(refreshedRestSlot(rest, { ...rest, exerciseName: 'Row', targetWeightKg: 50 })).toBeNull()
+  })
+
+  it('is null with nothing to compare', () => {
+    expect(refreshedRestSlot(null, rest)).toBeNull()
+    expect(refreshedRestSlot(rest, null)).toBeNull()
+  })
+
+  it('heals a rest armed before a Warmup was moved above the ticked sets', () => {
+    const wu = (done, w) => ({ ...set(w, 5, done), type: 'Warmup' })
+    const ex = exercise('Squat', 90, '5', [set(100, 5, true), set(100, 5, true), set(105, 5), set(110, 5)])
+    const armed = restDescriptorAfterSet([ex], 0, 1)
+    const moved = { ...ex, sets: [wu(false, 50), ex.sets[0], ex.sets[1], ex.sets[2]] }
+    const out = refreshedRestSlot(armed, nextSetDescriptor([moved]))
+    expect(out).toMatchObject({ nextSetNumber: 1, warmupSets: 1, targetWeightKg: '50' })
   })
 })
 
