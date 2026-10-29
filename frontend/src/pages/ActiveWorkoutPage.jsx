@@ -1446,7 +1446,15 @@ export default function ActiveWorkoutPage() {
 
   function confirmRemoveExercise(exIdx) {
     setConfirming(null)
-    setExercises((prev) => prev.filter((_, i) => i !== exIdx))
+    setExercises((prev) => {
+      // Removing the last member of a superset would otherwise leave the one
+      // before it linked to whatever exercise slides up into the gap.
+      const next = prev.filter((_, i) => i !== exIdx)
+      if (exIdx > 0 && !prev[exIdx].supersetWithNext && prev[exIdx - 1].supersetWithNext) {
+        next[exIdx - 1] = { ...next[exIdx - 1], supersetWithNext: false }
+      }
+      return next
+    })
     setOpenTypeMenu(null)
   }
 
@@ -2072,6 +2080,7 @@ export default function ActiveWorkoutPage() {
               <div className="exercise-move-controls">
                 <button type="button" onClick={() => moveExercise(exIdx, -1)} disabled={exIdx === 0} aria-label={`Move ${ex.exerciseName} up`}>▲</button>
                 <button type="button" onClick={() => moveExercise(exIdx, 1)} disabled={exIdx === exercises.length - 1} aria-label={`Move ${ex.exerciseName} down`}>▼</button>
+                <button type="button" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>✕</button>
               </div>
             ) : (
               <button type="button" className="remove-exercise-btn" onClick={() => removeExercise(exIdx)} aria-label={`Remove ${ex.exerciseName}`}>
@@ -2625,6 +2634,13 @@ function ExercisePickerSheet({ pickable, addedExerciseIds, onPick, onCreated, on
   const [newExerciseCategory, setNewExerciseCategory] = useState(null)
   const [creatingExercise, setCreatingExercise] = useState(false)
   const [createExerciseError, setCreateExerciseError] = useState(null)
+  // Same keyboard avoidance as PlateCalcSheet: the sheet is pinned to the
+  // bottom of the layout viewport, which the keyboard doesn't shrink, so a
+  // short filtered list left the search field itself behind the keyboard.
+  // While the keyboard is up the sheet sits on top of it at a fixed height,
+  // so it doesn't jump with every keystroke as the results shrink.
+  const keyboardInset = useKeyboardInset()
+  const keyboardLift = keyboardInset > 0 ? keyboardInset + KEYBOARD_ACCESSORY_HEIGHT : 0
 
   async function handleCreate(name) {
     setCreateExerciseError(null)
@@ -2653,10 +2669,26 @@ function ExercisePickerSheet({ pickable, addedExerciseIds, onPick, onCreated, on
     const typedName = exercisePickerQuery.trim()
     const offerCreate = shouldOfferCreate(exercisePickerQuery, pickable)
 
-    return (
+    // Portalled to <body> for the same reason as PlateCalcSheet: position:fixed
+    // inside the scroll container rides along with a scroll on iOS WKWebView.
+    return createPortal(
       <>
         <div className="sheet-backdrop visible" onClick={onClose} />
-        <div className="day-detail-sheet exercise-picker-sheet open" role="dialog" aria-modal="true" aria-label="Add an exercise">
+        <div
+          className="day-detail-sheet exercise-picker-sheet open"
+          style={
+            keyboardLift > 0
+              ? {
+                  top: 'var(--space-xl)',
+                  bottom: keyboardLift,
+                  maxHeight: 'none',
+                }
+              : undefined
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label="Add an exercise"
+        >
           <div className="day-detail-sheet-header">
             <strong>Add an exercise</strong>
             <button type="button" className="sheet-close-btn" onClick={onClose}>×</button>
@@ -2738,5 +2770,5 @@ function ExercisePickerSheet({ pickable, addedExerciseIds, onPick, onCreated, on
           )}
         </div>
       </>
-    )
+    , document.body)
 }

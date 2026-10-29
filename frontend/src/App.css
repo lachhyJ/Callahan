@@ -2155,6 +2155,9 @@ td {
   flex-direction: column;
   gap: var(--space-2xs);
   overflow-y: auto;
+  /* Fills a keyboard-lifted fixed-height sheet and scrolls within it. */
+  flex: 1;
+  min-height: 0;
 }
 
 .exercise-create {
