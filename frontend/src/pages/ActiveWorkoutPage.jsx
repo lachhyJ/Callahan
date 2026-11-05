@@ -2,14 +2,12 @@ import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
-import { isRestOver } from '../restExpiry'
-import { cancelRestTimer, clearRestProgress, createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, postRestProgress, scheduleRestTimer, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, applyNativeCompletions, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, nextSetDescriptor, restDescriptorAfterSet, upcomingDescriptors, refreshedRestSlot, watchSlotStale, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
-import { setPosition } from '../utils/setSlot'
+import { createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
-import { clearRestTimer as clearRestTimerStore, loadRestTimer, saveRestTimer } from '../restTimer'
-import { ackNativeCompletions, endWorkoutActivity, noteServerTimer, readNativeRestState, syncWorkoutActivity } from '../restActivity'
-import { cancelScheduledBeep, isNativeAudio, logDiary, playBeepNow, restAudioDiagnostics, scheduleBeep, unlockAudio } from '../audio'
+import { useRestTimer } from '../useRestTimer'
+import { endWorkoutActivity } from '../restActivity'
+import { isNativeAudio, playBeepNow, restAudioDiagnostics, unlockAudio } from '../audio'
 import { pressHeld, tapSetComplete } from '../haptics'
 import PushPrompt from '../components/PushPrompt'
 import { BellIcon, CheckIcon, PlateIcon, ReorderIcon } from '../icons'
@@ -26,8 +24,6 @@ const SET_TYPE_OPTIONS = ['Warmup', 'Normal', 'Failure', 'Drop']
 const REST_PRESETS = [60, 90, 120, 150, 180]
 // Manual "quick breather" (e.g. between legs on split squats): cycles on tap.
 const BREATHER_OPTIONS = [10, 20, 30]
-// How long typing in a set row must pause before the Live Activity is updated.
-const ACTIVITY_SYNC_DEBOUNCE_MS = 300
 // A tick on a set that was ticked done less than this long ago is dropped.
 // The 2026-10-07 diary showed a fast run of taps un-ticking the previous set:
 // the tap meant for the row below landed on the one just done, 125-200ms later,
@@ -274,30 +270,6 @@ function upcomingWeightsKg(sets, setIdx) {
     .filter((kg) => kg !== null && !Number.isNaN(kg))
 }
 
-// Body text for the native rest-over notification: "Trap Bar Deadlift · set 4 of 5".
-function nextSetLabel(rest) {
-  const parts = [rest.exerciseName]
-  const position = setPosition(rest, true)
-  if (position) parts.push(position)
-  return parts.filter(Boolean).join(' · ') || 'Next set.'
-}
-
-// A rest the card started while this webview was suspended: native owns endAt,
-// and the descriptor is rebuilt from wherever the workout has now got to.
-function restTimerFromNative(exercises, native) {
-  const detail = nextSetDescriptor(exercises)
-  if (!detail) return null
-  // Spread the whole descriptor so nothing the sync/schedule paths read
-  // (bodyweight, hold label, superset flag) is silently dropped.
-  return {
-    ...detail,
-    endAt: native.endAt,
-    totalSeconds: native.totalSeconds || detail.restSeconds,
-    timerId: null,
-    doneLabel: '',
-  }
-}
-
 function completedSetsFor(ex) {
   return ex.sets.filter((s) => s.completed && (s.reps !== '' || isTimeSet(s)))
 }
@@ -373,9 +345,6 @@ export default function ActiveWorkoutPage() {
   // dropping an empty planned row. One sheet, driven by this, so the weight of
   // the dialog matches the weight of what it is about to do.
   const [confirming, setConfirming] = useState(null)
-  // Restored from the shared store on mount so a rest timer started here
-  // keeps counting (and stays visible via the global mini bar) if the
-  // athlete navigates away to check the dashboard/program and comes back.
   const [breatherSeconds, setBreatherSeconds] = useState(() => {
     try {
       const saved = Number(localStorage.getItem('breatherSeconds'))
@@ -393,10 +362,6 @@ export default function ActiveWorkoutPage() {
       // Preference only; losing it just resets to 20s.
     }
   }
-  const [restTimer, setRestTimer] = useState(() => {
-    const saved = loadRestTimer()
-    return saved && saved.templateId === sessionKey ? saved : null
-  })
   const [lbInputs, setLbInputs] = useState({})
   // When each set was last ticked done (`${exIdx}-${setIdx}`), so a repeat tap
   // moments later can be told apart from a deliberate un-tick (QUICK_UNDO_MS).
@@ -442,15 +407,6 @@ export default function ActiveWorkoutPage() {
   // loaded, so the end-of-session prompt can tell whether anything was
   // rearranged. Template-backed exercises only; null for a custom session.
   const layoutBaselineRef = useRef(null)
-  // Last rest period's exercise/set, so the card still says what you just did
-  // once the countdown has finished.
-  const lastRestRef = useRef(null)
-  // The current restTimer for effects that outlive a render (reconcile).
-  const restTimerRef = useRef(null)
-  restTimerRef.current = restTimer
-  // Read by the native-reconcile effect, which is registered once and so cannot
-  // close over the live `exercises` value.
-  const exercisesRef = useRef(null)
   const headerRef = useRef(null)
   const keyboardInset = useKeyboardInset()
 
@@ -528,10 +484,6 @@ export default function ActiveWorkoutPage() {
   }, [exercises])
 
   useEffect(() => {
-    exercisesRef.current = exercises
-  }, [exercises])
-
-  useEffect(() => {
     if (!exercises) return
     // A session's start time only ever moves earlier, never later.
     //
@@ -561,139 +513,9 @@ export default function ActiveWorkoutPage() {
     }
   }, [])
 
-  useEffect(() => {
-    if (!restTimer) return
-    // Derived from an absolute end timestamp, not decremented per tick — so
-    // whenever `now` catches up (even after a long throttled gap), the
-    // remaining time is always correct rather than having drifted.
-    // Exact, not rounded: rounding cleared the rest up to 0.5s early, which
-    // cancelled a native beep that hadn't started sounding yet (restExpiry.js).
-    if (isRestOver(restTimer.endAt, now.getTime())) {
-      // Web only: this effect advances just while the tab is visible, so a
-      // backgrounded phone relies on the push. Natively the beep was armed on
-      // the audio clock when the rest started and has already sounded — playing
-      // again here would double it.
-      if (!isNativeAudio) playBeepNow()
-      setRestTimer(null)
-    }
-  }, [now, restTimer])
-
-  // Mirrors restTimer into the shared store as its own effect (not inlined
-  // into a setState updater) so the global mini bar can pick it up on other
-  // pages — a stray call here previously fired setState on GlobalRestBar
-  // synchronously mid-render of this component.
-  // Deliberately does NOT depend on `exercises`. The beep is armed on the audio
-  // hardware clock (the only clock that survives suspension), and re-arming
-  // re-anchors on a baseline that moves whenever that hardware idles — so a
-  // re-arm mid-rest can land the beep seconds early, or twice. `exercises`
-  // changes on every keystroke in a weight field, which was doing exactly that
-  // during real workouts. The activity sync below still tracks it; the beep
-  // tracks only the timer that owns it.
-  useEffect(() => {
-    if (restTimer) {
-      saveRestTimer({ ...restTimer, templateId: sessionKey })
-      lastRestRef.current = restTimer
-      logDiary(`schedule effect: arming endAt=${restTimer.endAt} (in ${Math.round((restTimer.endAt - Date.now()) / 1000)}s)`)
-      scheduleBeep(restTimer.endAt, {
-        title: 'Rest over',
-        body: nextSetLabel(restTimer),
-      })
-    } else {
-      // No prior log here before 2026-09-23 — meant this branch's
-      // cancelScheduledBeep() was invisible in the diary no matter what
-      // nulled restTimer (tick effect, skipRest, saveSession/discardSession).
-      // lastRestRef still holds whichever rest was last armed, so its endAt
-      // is useful context even though it may already be stale by the time
-      // this runs.
-      logDiary(`schedule effect: restTimer cleared, cancelling (was armed for endAt=${lastRestRef.current?.endAt ?? 'none'})`)
-      clearRestTimerStore()
-      // Say which rest this cancel is for. A webview resuming from suspension
-      // still holds the previous, long-expired rest, and clears it on its first
-      // tick; without the endAt that cancel also killed a rest the Live Activity
-      // had just started natively. With none armed locally (first mount) pass 0,
-      // so native ignores it if it holds a rest and reconcile adopts that one.
-      cancelScheduledBeep({ endAt: lastRestRef.current?.endAt ?? 0, caller: 'schedule effect' })
-    }
-  }, [restTimer, sessionKey])
-
-  // The activity belongs to the workout, so this updates it rather than
-  // creating and destroying it: between sets it stays up with the countdown
-  // zeroed, which is why Skip no longer makes the card vanish. lastRestRef
-  // keeps the exercise/set line populated once the rest has ended — the effect
-  // above sets it, and effects run in declaration order.
-  //
-  // `exercises` changes on every keystroke in a set row, and each sync is a
-  // bridge call plus a Live Activity update. So a change to the rows alone is
-  // sent once typing pauses; anything else - above all a rest starting,
-  // moving or ending - goes straight through and cancels a pending one.
-  const activitySyncTimerRef = useRef(null)
-  // undefined, never a real restTimer value, so the first sync after mount is immediate.
-  const lastSyncedRestRef = useRef(undefined)
-  useEffect(() => {
-    const send = () => {
-      activitySyncTimerRef.current = null
-      const upcoming = nextSetDescriptor(exercises)
-      const allDone = !upcoming && exercises?.some((ex) => ex.sets.length > 0)
-      syncWorkoutActivity({
-        rest: restTimer,
-        lastSet: upcoming ?? (allDone ? { ...lastRestRef.current, doneLabel: workoutDoneLabel() } : lastRestRef.current),
-        upcoming: upcomingDescriptors(exercises),
-        sessionStartedAt: startedAt.getTime(),
-        templateName,
-        templateSubtitle,
-        workoutDoneLabel: workoutDoneLabel(),
-      })
-    }
-    clearTimeout(activitySyncTimerRef.current)
-    const restChanged = lastSyncedRestRef.current !== restTimer
-    lastSyncedRestRef.current = restTimer
-    if (restChanged) send()
-    else activitySyncTimerRef.current = setTimeout(send, ACTIVITY_SYNC_DEBOUNCE_MS)
-  // workoutDoneLabel is a per-render function that reads only finishers and exercises,
-  // both listed here, so it is safe to leave out.
-  // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [restTimer, startedAt, exercises, finishers, templateName, templateSubtitle])
-  useEffect(() => () => clearTimeout(activitySyncTimerRef.current), [])
-
-  // Editing the set you are resting for: its weight or reps, or a type change
-  // that moves it (a row turned into a Warmup shifts which set is due and how
-  // many warm-ups there are). The Live Activity shows the copy scheduled when
-  // the rest began, and so does the server timer (what the Garmin field polls),
-  // and the watch ignores a poll whose timerId it already has. So refresh the
-  // set fields and reschedule the same end time under a new id once typing
-  // pauses; the watch picks the new values up as a fresh countdown that lands
-  // on the same second. The beep is unaffected: RestAudio.schedule treats an
-  // unchanged endAt as already armed (the notification body keeps the old text).
-  useEffect(() => {
-    if (!restTimer?.timerId || restTimer.endAt - Date.now() < 3000) return
-    const updated = refreshedRestSlot(restTimer, nextSetDescriptor(exercises))
-    if (!updated) return
-    const timeout = setTimeout(() => {
-      watchSlotRef.current = updated
-      setRestTimer({ ...updated, timerId: null })
-      resyncServerTimer(updated, restTimer.endAt)
-    }, 1000)
-    return () => clearTimeout(timeout)
-  }, [exercises, restTimer])
-
-  // The same drift with no rest running: weight or reps edited after a rest has
-  // ended, a tick un-done, a set added or deleted. The rest effect above only
-  // exists while a timer does, and the watch holds its last slot until told
-  // otherwise, so post the set the workout now points at as progress. A pending
-  // rest outranks progress server-side and is covered above, so skip while one
-  // runs. Null until a rest is scheduled or progress posted: before that the
-  // watch is idle and should stay that way.
-  const watchSlotRef = useRef(null)
-  useEffect(() => {
-    if (restTimer) return
-    const upcoming = nextSetDescriptor(exercises)
-    if (!watchSlotStale(watchSlotRef.current, upcoming)) return
-    const timeout = setTimeout(() => {
-      watchSlotRef.current = upcoming
-      postRestProgress(upcoming).catch(() => {})
-    }, 1000)
-    return () => clearTimeout(timeout)
-  }, [exercises, restTimer])
+  const { restTimer, startRestTimer, adjustRest, skipRest, postProgress, endRestForSession } = useRestTimer({
+    sessionKey, now, exercises, setExercises, startedAt, templateName, templateSubtitle, finishers, workoutDoneLabel,
+  })
 
   const stats = useMemo(() => {
     if (!exercises) return { volume: 0, setCount: 0 }
@@ -914,11 +736,6 @@ export default function ActiveWorkoutPage() {
     return !finisherAdded && finishers.length > 0 ? 'Finisher?' : 'Finished'
   }
 
-  // Takes a full rest descriptor ({ exerciseName, targetReps, targetWeightKg,
-  // enteredReps, nextSetNumber, totalSets, restSeconds }) rather than an
-  // exercise + set number, so the caller can describe the next set of a
-  // *different* exercise once one exercise is finished (see
-  // restDescriptorAfterSet).
   // Not tied to any set: a short, labelled countdown that reuses the normal
   // rest path (in-app bar, beep, Live Activity) via a synthetic descriptor.
   function startBreather(ex) {
@@ -931,55 +748,6 @@ export default function ActiveWorkoutPage() {
       restSeconds: breatherSeconds,
       isLastInSuperset: true,
     })
-  }
-
-  async function startRestTimer(descriptor) {
-    if (restTimer?.timerId) {
-      cancelRestTimer(restTimer.timerId).catch(() => {})
-    }
-    const duration = descriptor.restSeconds || 90
-    const doneLabel = descriptor.workoutDone ? workoutDoneLabel() : ''
-    // Web: unlock the beep element inside this tap so the countdown effect can
-    // sound it later, and a backgrounded phone falls back to the server push.
-    // Native: no unlock needed, and the beep and notification are both armed
-    // below from the rest-timer effect.
-    unlockAudio()
-    watchSlotRef.current = descriptor
-    setRestTimer({
-      endAt: Date.now() + duration * 1000,
-      totalSeconds: duration,
-      timerId: null,
-      exerciseName: descriptor.exerciseName,
-      exerciseShortName: descriptor.exerciseShortName ?? null,
-      targetReps: descriptor.targetReps,
-      // Weight already carried into the set you are about to do, so the Live
-      // Activity can read "115 kg x 6" rather than just the rep target.
-      targetWeightKg: descriptor.targetWeightKg,
-      enteredReps: descriptor.enteredReps,
-      holdLabel: descriptor.holdLabel ?? '',
-      following: descriptor.following ?? null,
-      nextSetNumber: descriptor.nextSetNumber,
-      totalSets: descriptor.totalSets,
-      warmupSets: descriptor.warmupSets ?? 0,
-      restSeconds: duration,
-      cardRestSeconds: descriptor.cardRestSeconds ?? duration,
-      isLastInSuperset: descriptor.isLastInSuperset ?? true,
-      isBodyweight: descriptor.isBodyweight ?? false,
-      doneLabel,
-    })
-    // Native schedules its own local notification in scheduleBeep, which fires
-    // on the device clock instead of arriving over APNs a few seconds late —
-    // booking the server push too would double the alert. Still schedule
-    // server-side either way (suppressing the push when native) so
-    // PendingTimers has an entry for the Garmin watch data field to poll;
-    // that's the one thing native itself has no server-side record of.
-    try {
-      const { timerId } = await scheduleRestTimer(duration, { ...descriptor, doneLabel }, isNativeAudio)
-      noteServerTimer(timerId)
-      setRestTimer((prev) => (prev ? { ...prev, timerId } : prev))
-    } catch {
-      // Local countdown still works even if the backend push couldn't be scheduled.
-    }
   }
 
   // Called synchronously from the tick handler, before React has committed
@@ -1060,8 +828,7 @@ export default function ActiveWorkoutPage() {
       // No rest means nothing for the Garmin field to poll, so tell it where
       // the round has got to instead.
       const progress = restDescriptorAfterSet(updatedExercises, exIdx, setIdx)
-      watchSlotRef.current = progress
-      postRestProgress(progress).catch(() => {})
+      postProgress(progress)
       return
     }
     startRestTimer(restDescriptorAfterSet(updatedExercises, exIdx, setIdx))
@@ -1279,123 +1046,6 @@ export default function ActiveWorkoutPage() {
     // finishHold reads `exercises`; re-run only when the tick or timer moves.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [holdTimer, now])
-
-  // The Live Activity's buttons mutate the timer natively while this webview is
-  // suspended, so on every return to the foreground take native's word for it.
-  // Skip clears the timer outright; -15s/+15s just move endAt.
-  useEffect(() => {
-    let cancelled = false
-    async function reconcile() {
-      const native = await readNativeRestState()
-      if (cancelled || !native) return
-
-      // Native only expires `RestTimerStore` on its own didBecomeActive, which
-      // fires after this visibilitychange — so a rest that already finished
-      // (and was already beeped and torn down) in the background can still
-      // read back as `active: true` with a past `endAt` in the gap. Treating
-      // that as a fresh rest revives a dead timer with an elapsed endAt,
-      // which the schedule effect immediately hands to the native beep as
-      // "too close to arm — just sound it", ducking audio for no reason.
-      if (native.active && native.endAt && native.endAt <= Date.now()) {
-        logDiary(`reconcile: native.active but endAt=${native.endAt} already past, treating inactive`)
-        native.active = false
-      }
-
-      // Sets ticked from the card come back as a count. Apply them before the
-      // timer below, so the rest native started is described by the set the
-      // workout has actually advanced to.
-      let current = exercisesRef.current
-      const pending = native.pendingCompletions || 0
-      if (pending > 0) {
-        const result = applyNativeCompletions(current, pending)
-        if (result) {
-          current = result.exercises
-          exercisesRef.current = current
-          setExercises(current)
-          ackNativeCompletions(result.applied)
-        } else {
-          // Nothing could be applied (no sets left, or no rep target to stand
-          // in). Drop them rather than replaying the same press every resume.
-          ackNativeCompletions(pending)
-        }
-      }
-
-      // Each branch below also brings the server's timer (what the Garmin field
-      // polls) into line: the card's buttons only ever touched native state, so
-      // the server still holds the pre-press timer. Side effects live out here
-      // rather than in a setRestTimer updater, which StrictMode runs twice.
-      const prev = restTimerRef.current
-      if (!native.active) {
-        if (prev) {
-          logDiary('reconcile: native inactive, clearing local restTimer')
-          if (prev.timerId) cancelRestTimer(prev.timerId).catch(() => {})
-          setRestTimer(null)
-        }
-        return
-      }
-      // A rest that started from the card while there was no local timer —
-      // "Set done" on a locked phone is exactly this case.
-      if (!prev) {
-        logDiary(`reconcile: no local restTimer, adopting native endAt=${native.endAt}`)
-        const adopted = restTimerFromNative(current, native)
-        // The card's button already put this rest on the server when it could;
-        // only schedule one if it could not (no network, logged out).
-        if (adopted && native.serverTimerId) {
-          setRestTimer({ ...adopted, timerId: native.serverTimerId })
-        } else {
-          setRestTimer(adopted)
-          if (adopted) resyncServerTimer(adopted, native.endAt)
-        }
-        return
-      }
-      if (native.endAt && Math.abs(native.endAt - prev.endAt) > 1000) {
-        logDiary(`reconcile: native endAt=${native.endAt} diverges from local endAt=${prev.endAt}, adopting native`)
-        if (native.serverTimerId && native.serverTimerId !== prev.timerId) {
-          // A card button already moved the server's timer (and cancelled the old).
-          setRestTimer({ ...prev, endAt: native.endAt, timerId: native.serverTimerId })
-        } else {
-          setRestTimer({ ...prev, endAt: native.endAt, timerId: null })
-          resyncServerTimer(prev, native.endAt)
-        }
-      }
-    }
-    reconcile()
-    document.addEventListener('visibilitychange', reconcile)
-    return () => {
-      cancelled = true
-      document.removeEventListener('visibilitychange', reconcile)
-    }
-  }, [])
-
-  // Points the server's pending timer (what the Garmin field polls) at a new
-  // end: cancel the old one, schedule a replacement for whatever is left. At
-  // least 1s, the server's floor, so a rest adjusted to "now" still schedules.
-  // Called from event handlers and reconcile, never from a state updater - an
-  // updater runs twice under StrictMode and would schedule twice.
-  function resyncServerTimer(rest, endAt) {
-    if (rest.timerId) cancelRestTimer(rest.timerId).catch(() => {})
-    const remaining = Math.max(1, Math.round((endAt - Date.now()) / 1000))
-    scheduleRestTimer(remaining, rest, isNativeAudio)
-      .then(({ timerId }) => {
-        noteServerTimer(timerId)
-        setRestTimer((cur) => (cur ? { ...cur, timerId } : cur))
-      })
-      .catch(() => {})
-  }
-
-  function adjustRest(deltaSeconds) {
-    if (!restTimer) return
-    const newEndAt = Math.max(Date.now(), restTimer.endAt + deltaSeconds * 1000)
-    resyncServerTimer(restTimer, newEndAt)
-    setRestTimer({ ...restTimer, endAt: newEndAt, timerId: null })
-  }
-
-  function skipRest() {
-    if (restTimer?.timerId) {
-      cancelRestTimer(restTimer.timerId).catch(() => {})
-    }
-    setRestTimer(null)
-  }
 
   // Changing a set's type. A row turned into a Warmup moves to the bottom of
   // the exercise's existing warm-ups (ahead of the working sets, where the
@@ -1629,14 +1279,7 @@ export default function ActiveWorkoutPage() {
   async function saveSession() {
     setConfirming(null)
     if (layoutChanged && keepLayout) await persistLayout()
-    if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
-    clearRestProgress().catch(() => {})
-    clearRestTimerStore()
-    // Explicitly, not via the rest-timer effect's teardown: neither ending path
-    // sets restTimer to null before navigating away, so that effect's else
-    // branch never runs and the natively-armed beep stayed live. It then went
-    // off minutes later, after the session had already been saved.
-    cancelScheduledBeep({ caller: 'saveSession/discardSession' })
+    endRestForSession()
     setError(null)
     setSaving(true)
     try {
@@ -1684,14 +1327,7 @@ export default function ActiveWorkoutPage() {
     setConfirming(null)
     // A rearrangement is worth keeping even when the logged sets aren't.
     if (layoutChanged && keepLayout) await persistLayout()
-    if (restTimer?.timerId) cancelRestTimer(restTimer.timerId).catch(() => {})
-    clearRestProgress().catch(() => {})
-    clearRestTimerStore()
-    // Explicitly, not via the rest-timer effect's teardown: neither ending path
-    // sets restTimer to null before navigating away, so that effect's else
-    // branch never runs and the natively-armed beep stayed live. It then went
-    // off minutes later, after the session had already been saved.
-    cancelScheduledBeep({ caller: 'saveSession/discardSession' })
+    endRestForSession()
     clearActiveWorkout()
     endWorkoutActivity()
     navigate('/')
