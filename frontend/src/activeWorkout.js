@@ -417,8 +417,13 @@ function targetAfterTick(exercises, exIdx) {
 // the athlete was being asked to do and what the card was showing them when
 // they pressed it. Sets with neither a typed nor a target rep count are left
 // alone rather than saved as a blank.
-export function applyNativeCompletions(exercises, count) {
+//
+// `times` holds when each press happened (epoch ms, oldest first). It can be
+// shorter than `count` when presses were banked by an older native build; the
+// times then belong to the newest presses, and the older ones save no time.
+export function applyNativeCompletions(exercises, count, times = []) {
   if (!exercises || count <= 0) return null
+  const timeOffset = count - times.length
   const next = exercises.map((ex) => ({ ...ex, sets: ex.sets.map((set) => ({ ...set })) }))
   let applied = 0
   let target = ambientTarget(next, 0)
@@ -429,6 +434,8 @@ export function applyNativeCompletions(exercises, count) {
     if (reps === '' || reps == null) break
     set.reps = String(reps)
     set.completed = true
+    const at = times[applied - timeOffset]
+    set.completedAt = Number.isFinite(at) ? new Date(at).toISOString() : null
     applied += 1
     target = targetAfterTick(next, target.i)
   }

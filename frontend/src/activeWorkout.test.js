@@ -586,6 +586,21 @@ describe('applyNativeCompletions', () => {
     expect(ex[0].sets[0].completed).toBe(false) // input untouched
   })
 
+  it('stamps each set with its press time, not the time the app woke', () => {
+    const ex = [exercise('Squat', 120, '5', [set(100, '', false), set(100, '', false)])]
+    const t1 = Date.UTC(2026, 10, 6, 1, 0, 0)
+    const t2 = Date.UTC(2026, 10, 6, 1, 3, 0)
+    const sets = applyNativeCompletions(ex, 2, [t1, t2]).exercises[0].sets
+    expect(sets.map((s) => s.completedAt)).toEqual([new Date(t1).toISOString(), new Date(t2).toISOString()])
+  })
+
+  it('gives the newest presses the times when fewer times than presses were banked', () => {
+    const ex = [exercise('Squat', 120, '5', [set(100, '', false), set(100, '', false)])]
+    const t2 = Date.UTC(2026, 10, 6, 1, 3, 0)
+    const sets = applyNativeCompletions(ex, 2, [t2]).exercises[0].sets
+    expect(sets.map((s) => s.completedAt)).toEqual([null, new Date(t2).toISOString()])
+  })
+
   it('rotates through a superset rather than finishing one member first', () => {
     const ex = [
       { ...exercise('A', 60, '8', [set(20, 8), set(20, 8)]), supersetWithNext: true },

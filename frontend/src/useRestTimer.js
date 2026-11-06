@@ -185,7 +185,7 @@ export function useRestTimer({ sessionKey, now, exercises, setExercises, started
       let current = exercisesRef.current
       const pending = native.pendingCompletions || 0
       if (pending > 0) {
-        const result = applyNativeCompletions(current, pending)
+        const result = applyNativeCompletions(current, pending, native.pendingCompletionTimes || [])
         if (result) {
           current = result.exercises
           exercisesRef.current = current

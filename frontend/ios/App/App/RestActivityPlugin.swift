@@ -131,6 +131,7 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
             let endAt = await RestTimerStore.shared.endAt
             let total = await RestTimerStore.shared.totalSeconds
             let pending = await RestTimerStore.shared.pendingCompletions
+            let pendingTimes = await RestTimerStore.shared.pendingCompletionTimes
             // Set only when a card button's own server call succeeded, so JS can
             // adopt it instead of scheduling a duplicate.
             let serverTimerId = await RestTimerStore.shared.serverTimerId ?? ""
@@ -140,12 +141,14 @@ public class RestActivityPlugin: CAPPlugin, CAPBridgedPlugin {
                     "endAt": endAt.timeIntervalSince1970 * 1000,
                     "totalSeconds": total,
                     "pendingCompletions": pending,
+                    "pendingCompletionTimes": pendingTimes,
                     "serverTimerId": serverTimerId
                 ])
             } else {
                 call.resolve([
                     "active": false,
                     "pendingCompletions": pending,
+                    "pendingCompletionTimes": pendingTimes,
                     "serverTimerId": serverTimerId
                 ])
             }

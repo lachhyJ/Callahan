@@ -114,6 +114,11 @@ actor RestTimerStore {
     private let totalKey = "callahan.rest.totalSeconds"
     /// Sets ticked from the card that JS has not applied yet.
     private let pendingCompletionsKey = "callahan.rest.pendingCompletions"
+    /// When each of those presses happened (epoch ms), oldest first, so the set
+    /// saves its real tick time rather than the time JS woke up. Can be shorter
+    /// than the count (presses banked by a build before this existed); the
+    /// times then belong to the newest presses.
+    private let pendingCompletionTimesKey = "callahan.rest.pendingCompletionTimes"
     /// What the card's buttons need to reach the server on their own (the Garmin
     /// field polls it, and the webview that normally keeps it current is
     /// suspended while the phone is locked). Handed down by JS on every sync.
@@ -133,6 +138,9 @@ actor RestTimerStore {
     }
     var totalSeconds: Int { UserDefaults.standard.integer(forKey: totalKey) }
     var pendingCompletions: Int { UserDefaults.standard.integer(forKey: pendingCompletionsKey) }
+    var pendingCompletionTimes: [Double] {
+        UserDefaults.standard.array(forKey: pendingCompletionTimesKey) as? [Double] ?? []
+    }
     var serverTimerId: String? { UserDefaults.standard.string(forKey: serverTimerIdKey) }
 
     var upcoming: [RestActivityAttributes.ContentState.Following] {
@@ -261,7 +269,9 @@ actor RestTimerStore {
     /// rather than zeroing, so a press that lands while the app is waking is not
     /// swallowed by the acknowledgement of the ones before it.
     func acknowledgeCompletions(_ count: Int) {
-        UserDefaults.standard.set(max(0, pendingCompletions - count), forKey: pendingCompletionsKey)
+        let remaining = max(0, pendingCompletions - count)
+        UserDefaults.standard.set(remaining, forKey: pendingCompletionsKey)
+        UserDefaults.standard.set(Array(pendingCompletionTimes.suffix(remaining)), forKey: pendingCompletionTimesKey)
     }
 
     /// Tells the audio plugin the timer moved under it. Posted on the main queue
@@ -312,6 +322,7 @@ actor RestTimerStore {
     /// its next run and re-syncs from there.
     func completeSet(reason: String = "CompleteSetIntent") async {
         UserDefaults.standard.set(pendingCompletions + 1, forKey: pendingCompletionsKey)
+        UserDefaults.standard.set(pendingCompletionTimes + [Date().timeIntervalSince1970 * 1000], forKey: pendingCompletionTimesKey)
 
         var synced: (state: RestActivityAttributes.ContentState, endAt: Date?, progress: Bool)?
         var queue = upcoming
