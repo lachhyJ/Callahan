@@ -103,3 +103,69 @@ export function useKeyboardInset() {
 
   return inset
 }
+
+// The flip side of useLockDocumentScroll: by snapping window.scrollY back to
+// 0 it also cancels iOS's own "scroll the focused field above the keyboard"
+// pan, and nothing else scrolls #app-scroll to compensate. The active
+// workout's set inputs do it themselves (scrollToSetRow); every other form —
+// Tapering, Log activity, Quotes, Login, … — left the field behind the
+// keyboard (reported 2026-11-06 on Tapering). This restores that behaviour
+// app-wide, scrolling only the app's own scroller and only when the field is
+// actually obscured, so pages that already position their own fields no-op.
+const FIELD_MARGIN_PX = 24
+
+function isTextEntry(el) {
+  if (!el) return false
+  if (el.tagName === 'TEXTAREA' || el.isContentEditable) return true
+  if (el.tagName !== 'INPUT') return false
+  return !['checkbox', 'radio', 'button', 'submit', 'reset', 'range', 'color', 'file', 'hidden'].includes(el.type)
+}
+
+export function useScrollFocusedFieldIntoView() {
+  useEffect(() => {
+    let timer = null
+
+    function ensureVisible() {
+      const el = document.activeElement
+      if (!isTextEntry(el)) return
+      const scroller = document.getElementById('app-scroll')
+      // Fields in fixed sheets (plate calc, add-exercise) lift themselves.
+      if (!scroller || !scroller.contains(el)) return
+      const vv = window.visualViewport
+      const visibleBottom = Math.min(
+        scroller.getBoundingClientRect().bottom,
+        vv ? vv.height + vv.offsetTop : window.innerHeight,
+      )
+      const visibleTop = scroller.getBoundingClientRect().top
+      const r = el.getBoundingClientRect()
+      let delta = 0
+      if (r.bottom > visibleBottom - FIELD_MARGIN_PX) delta = r.bottom - visibleBottom + FIELD_MARGIN_PX
+      else if (r.top < visibleTop + FIELD_MARGIN_PX) delta = r.top - visibleTop - FIELD_MARGIN_PX
+      if (delta === 0) return
+      const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      scroller.scrollBy({ top: delta, behavior: reduceMotion ? 'auto' : 'smooth' })
+    }
+
+    // Wait for the keyboard animation / webview resize to settle before
+    // measuring, same reasoning as SETTLE_DELAY_MS above.
+    function schedule() {
+      clearTimeout(timer)
+      timer = setTimeout(ensureVisible, SETTLE_DELAY_MS + 100)
+    }
+
+    function onFocusIn(e) {
+      if (isTextEntry(e.target)) schedule()
+    }
+
+    const vv = window.visualViewport
+    document.addEventListener('focusin', onFocusIn)
+    vv?.addEventListener('resize', schedule)
+    window.addEventListener('resize', schedule)
+    return () => {
+      clearTimeout(timer)
+      document.removeEventListener('focusin', onFocusIn)
+      vv?.removeEventListener('resize', schedule)
+      window.removeEventListener('resize', schedule)
+    }
+  }, [])
+}

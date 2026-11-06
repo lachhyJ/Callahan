@@ -11,7 +11,7 @@ import { formatClock } from './utils/format'
 import TimeZonePrompt from './components/TimeZonePrompt'
 import { startUsageTracking, trackAction, trackRoute } from './usage'
 import { hydratePlateCalcSettings } from './plateCalc'
-import { useLockDocumentScroll } from './useKeyboardInset'
+import { useLockDocumentScroll, useScrollFocusedFieldIntoView } from './useKeyboardInset'
 import { BackIcon, DashboardIcon, PlayIcon, WorkoutIcon } from './icons'
 import LoginPage from './pages/LoginPage'
 import WorkoutTemplatesPage from './pages/WorkoutTemplatesPage'
@@ -260,6 +260,7 @@ function AppRoutes() {
   const { restTimer, isTicking, now } = useGlobalRestTimer()
   useRouteTracking(isAuthenticated)
   useLockDocumentScroll()
+  useScrollFocusedFieldIntoView()
 
   // Pull the server's copy of the plate-calc settings into localStorage once
   // signed in, so a custom bar weight or pared-down plate list survives the
