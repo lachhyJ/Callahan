@@ -113,7 +113,7 @@ public class WorkoutSessionsController : ControllerBase
             CategorySummary(session.Sets),
             session.Sets
                 .OrderBy(set => set.SetOrder)
-                .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString(), set.DurationSeconds))
+                .Select(set => new ExerciseSetDto(set.Id, set.ExerciseId, set.Exercise.Name, set.Reps, set.WeightKg, set.SetOrder, set.SetType.ToString(), set.DurationSeconds, set.CompletedAt))
                 .ToList(),
             notes,
             session.GarminActivityId is null ? null : new GarminStrengthDto(
@@ -161,7 +161,8 @@ public class WorkoutSessionsController : ControllerBase
                 WeightKg = isTimeSet ? 0m : s.WeightKg,
                 SetOrder = order,
                 SetType = Enum.Parse<SetType>(s.SetType, ignoreCase: true),
-                DurationSeconds = s.DurationSeconds
+                DurationSeconds = s.DurationSeconds,
+                CompletedAt = s.CompletedAt?.ToUniversalTime()
             };
         }).ToList();
 

@@ -27,4 +27,10 @@ public class ExerciseSet
     // int -> int? migration across every read site); volume and e1RM skip any
     // row with a non-null DurationSeconds.
     public int? DurationSeconds { get; set; }
+
+    // When the set was ticked done in the app, UTC. Null on sets logged before
+    // this existed, imported sets, and sets ticked from the Live Activity
+    // (native banks only a count, not a time). Lets a set be lined up against
+    // the matched Garmin activity's HR stream to measure recovery in each rest.
+    public DateTime? CompletedAt { get; set; }
 }

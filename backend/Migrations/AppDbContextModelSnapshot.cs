@@ -838,6 +838,9 @@ namespace Callahan.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("DurationSeconds")
                         .HasColumnType("INTEGER");
 

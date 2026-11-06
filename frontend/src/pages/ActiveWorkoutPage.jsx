@@ -981,7 +981,7 @@ export default function ActiveWorkoutPage() {
         ? ex
         : {
             ...ex,
-            sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed })),
+            sets: ex.sets.map((s, j) => (j !== setIdx ? s : { ...s, completed: !s.completed, completedAt: s.completed ? null : new Date().toISOString() })),
             readyToProgress: loggingHeavier ? false : ex.readyToProgress,
           }
     )
@@ -1018,7 +1018,7 @@ export default function ActiveWorkoutPage() {
         : {
             ...ex,
             sets: ex.sets.map((s, j) =>
-              j !== setIdx ? s : { ...s, durationSeconds: String(seconds), completed: true }
+              j !== setIdx ? s : { ...s, durationSeconds: String(seconds), completed: true, completedAt: new Date().toISOString() }
             ),
           }
     )
@@ -1293,6 +1293,9 @@ export default function ActiveWorkoutPage() {
             setOrder: s.setOrder,
             setType: s.type,
             durationSeconds: timed ? Number(s.durationSeconds) : null,
+            // Tick time, for lining sets up against the Garmin HR stream. Null
+            // for sets ticked from the Live Activity, which banks no time.
+            completedAt: s.completedAt ?? null,
           }
         })
       )
