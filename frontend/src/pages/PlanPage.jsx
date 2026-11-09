@@ -10,7 +10,7 @@ const DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 // doesn't know Lachlan's shifts, so it can't tell him which session to drop —
 // but it can make sure he isn't deciding from memory.
 const RULES = [
-  'In-season, Gym A is Monday and Gym B is Friday, both heavy legs. With no club, Gym 1 → 2 → 3 is week order. Either way the spacing is what keeps a heavy leg day off the front of a field session.',
+  'In-season, Gym A is Monday and Gym B is Friday, both heavy legs. Off-season (any week without club), Gym 1 → 2 → 3 is week order. Either way the spacing is what keeps a heavy leg day off the front of a field session.',
   'Missed a gym session? The next gym session is the one you missed, not the scheduled one. One-gym weeks happen: do the template that is due.',
   'Never heavy legs before a speed session or club — same day or the day before. In-season that means never Wednesday or Saturday.',
   'Speed and jump work goes first in the day, always.',

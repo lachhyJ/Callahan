@@ -241,7 +241,7 @@ public class WeekPlanBuilderTests
     {
         // The in-season week: Gym B (heavy) on Friday, an optional pod on Saturday. The
         // pod is optional, so Friday heavy legs before it is the program's own shape.
-        var pod = new SlotInput(3, 5, 1, PlanSlotKind.Field, "Pod (optional)", true, null, 6, null, null);
+        var pod = new SlotInput(3, 5, 1, PlanSlotKind.Field, "Pod", true, null, 6, null, null);
         var week = Build(
             Monday, Monday,
             [Field(1, 3, label: "Field 1"), Gym(2, 4, LowerBodyLoad.Heavy, 8, "Gym B"), pod],

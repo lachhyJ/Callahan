@@ -120,8 +120,9 @@ UPDATE WorkoutTemplateExercises SET Cue = REPLACE(Cue, '4 second lower', '3-4 se
  WHERE WorkoutTemplateId IN (6, 8) AND ExerciseId = 92;");
 
             // --- No-club block edits (Gym 1/2/3) -----------------------------------
-            // Gym 1: the rep range had drifted to 12/12 against a '20-25' target.
-            migrationBuilder.Sql("UPDATE WorkoutTemplateExercises SET TargetRepsMin = 20, TargetRepsMax = 25 WHERE WorkoutTemplateId = 4 AND ExerciseId = 67;");
+            // Gym 1 pogos: the rep range had drifted to 12/12 against a '20-25' target, and the
+            // rest was 90 s where the doc says 45 (same as Gym A).
+            migrationBuilder.Sql("UPDATE WorkoutTemplateExercises SET TargetRepsMin = 20, TargetRepsMax = 25, RestSeconds = 45 WHERE WorkoutTemplateId = 4 AND ExerciseId = 67;");
 
             // Gym 2: Skater Bounds moves to the Sunday primer / Field 2 (it has no logged sets);
             // order becomes RDL, Incline, Row, Face Pull, Seated Calf, Pallof; calf range 15-20.

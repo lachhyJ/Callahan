@@ -25,6 +25,13 @@ namespace Callahan.Api.Migrations
             // Session type ids: 9 Field 1, 6 Pod (seed in AppDbContext).
             migrationBuilder.Sql("UPDATE PlanSlots SET Block = 2 WHERE Block = 0;");
 
+            // v4 renamed Field 1 (Defence & Acceleration). Labels are what the Plan page shows; the
+            // calendar matches on the part before " - ", so this does not change matching.
+            migrationBuilder.Sql("UPDATE PlanSlots SET Label = 'Field 1 - Defence & Acceleration' WHERE ActivitySessionTypeId = 9 AND Block = 2;");
+
+            // The pod slot is labelled plain "Pod" so a calendar event titled "Pod" matches it
+            // (matching keys on the label); IsOptional is what makes it optional.
+
             migrationBuilder.Sql(@"
 INSERT INTO PlanSlots (DefaultDayOfWeek, SlotOrder, Kind, Label, IsOptional, WorkoutTemplateId, ActivitySessionTypeId, RoutineId, Block)
 SELECT 0, 1, 0, 'Gym A', 0, 7, NULL, NULL, 1
@@ -41,8 +48,8 @@ SELECT 4, 1, 0, 'Gym B', 0, 8, NULL, NULL, 1
 WHERE EXISTS (SELECT 1 FROM WorkoutTemplates WHERE Id = 8)
   AND NOT EXISTS (SELECT 1 FROM PlanSlots WHERE Block = 1 AND Label = 'Gym B');
 INSERT INTO PlanSlots (DefaultDayOfWeek, SlotOrder, Kind, Label, IsOptional, WorkoutTemplateId, ActivitySessionTypeId, RoutineId, Block)
-SELECT 5, 1, 1, 'Pod (optional)', 1, NULL, 6, NULL, 1
-WHERE NOT EXISTS (SELECT 1 FROM PlanSlots WHERE Block = 1 AND Label = 'Pod (optional)');");
+SELECT 5, 1, 1, 'Pod', 1, NULL, 6, NULL, 1
+WHERE NOT EXISTS (SELECT 1 FROM PlanSlots WHERE Block = 1 AND Label = 'Pod');");
         }
 
         /// <inheritdoc />

@@ -4,12 +4,13 @@ import { clearCacheKey } from '../swrCache'
 
 const MODES = [
   { value: 'InSeason', label: 'In-season', hint: 'Gym A / B' },
-  { value: 'NoClub', label: 'No club', hint: 'Gym 1 / 2 / 3' },
+  { value: 'NoClub', label: 'Off-season', hint: 'Gym 1 / 2 / 3' },
 ]
 
-// Which block of the program you're in. Flipped by hand (block dates are approximate and
-// shift when the club confirms; any week without club is a no-club week) and decides which
-// gym templates "Start a workout" offers. Rendered on the Dashboard and on the picker
+// Which block of the program you're in. "Off-season" is the label for the doc's no-club
+// block (NoClub internally): Christmas break, off-season, any week without club. Flipped by
+// hand, since block dates are approximate and shift when the club confirms. Decides which
+// gym templates "Start a workout" offers; rendered on the Dashboard and on the picker
 // itself, where a wrong list is noticed.
 export default function TrainingModeSetting({ onChange }) {
   const [mode, setMode] = useState(null)
