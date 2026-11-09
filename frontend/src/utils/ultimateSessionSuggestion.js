@@ -9,8 +9,13 @@
 //
 // Checked in this order because a title like "Throws- Solo" should read as
 // a Throws session, not a Solo one — "throws" is checked before the more
-// generic "solo".
+// generic "solo". The two field sessions come first of all: program v4 asks for
+// Field 1 to be recorded as its own watch activity, and a title like "Field 1 pod"
+// is that session, not a pod. Their session types have long names ("Field 1 -
+// Acceleration & ..."), so they match on the name's start (prefix: true).
 const TITLE_KEYWORDS = [
+  { keyword: 'field 1', name: 'Field 1', prefix: true },
+  { keyword: 'field 2', name: 'Field 2', prefix: true },
   { keyword: 'throws', name: 'Throws' },
   { keyword: 'solo', name: 'Solo' },
   { keyword: 'pod', name: 'Pod' },
@@ -26,5 +31,5 @@ export function suggestUltimateSessionType(activity, sessionTypes) {
   const match = TITLE_KEYWORDS.find(({ keyword }) => title.includes(keyword))
   if (!match) return null
 
-  return sessionTypes.find((t) => t.name === match.name) ?? null
+  return sessionTypes.find((t) => (match.prefix ? t.name.startsWith(match.name) : t.name === match.name)) ?? null
 }
