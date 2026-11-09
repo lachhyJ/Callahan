@@ -1,6 +1,6 @@
 ---
 name: claim-check
-description: Check the claims a piece of work rests on, and the claims it produces, before acting on either. Use when a plan or backlog item asserts something about this codebase that heavier work depends on ("this needs a migration", "extend the existing script"); when acting on a plan or prompt authored outside the current session; when running a parameter sweep or diagnostic over the Ultimate stream data; when tuning anything against the committed fixtures; when asked whether a displayed metric is meaningful or indicates a problem; when verifying that a migration, backup, or data repair preserved state; when a user reports symptoms in prose and asks why (even without the words "diagnose" or "root cause"); when a user attributes an observed UI effect to a specific cause ("why does marking it complete change the row height"); when a user asserts a factual premise about their own data or system state while asking for something else ("the import added junk", "nothing uses this", "that field is always empty"); and always before presenting a measured number or root cause as a finding — including a negative one ("not worth it") or a retraction. Trigger on "why is X wrong", "why did X happen", "why does X change Y", "X still fired after I stopped it", "diagnose", "sweep", "tune", "root cause", "is this stat useful", "did this change anything", or any conclusion about the app derived from a measurement rather than read directly.
+description: Check the claims a piece of work rests on, and the claims it produces, before acting on either. Use when a plan or backlog item asserts something about this codebase that heavier work depends on ("this needs a migration", "extend the existing script"); when shaping or planning a feature from a backlog idea, whose "first X" / "new infrastructure" assertions set the scope and cost of the whole thing; when acting on a plan or prompt authored outside the current session; when running a parameter sweep or diagnostic over the Ultimate stream data; when tuning anything against the committed fixtures; when asked whether a displayed metric is meaningful or indicates a problem; when verifying that a migration, backup, or data repair preserved state; when a user reports symptoms in prose and asks why (even without the words "diagnose" or "root cause"); when a user attributes an observed UI effect to a specific cause ("why does marking it complete change the row height"); when a user asserts a factual premise about their own data or system state while asking for something else ("the import added junk", "nothing uses this", "that field is always empty"); and always before presenting a measured number or root cause as a finding — including a negative one ("not worth it") or a retraction. Trigger on "why is X wrong", "why did X happen", "why does X change Y", "X still fired after I stopped it", "diagnose", "sweep", "tune", "root cause", "is this stat useful", "did this change anything", or any conclusion about the app derived from a measurement rather than read directly.
 ---
 
 # Claim Check
@@ -106,6 +106,48 @@ that exact target and confirm the plan's stated precondition ("doesn't
 exist", "is empty", "is stale") still holds. The plan→execute boundary is
 the checkpoint; "I just wrote this" is not verification.
 
+**"First X" claims in a shaping pass.** A calorie-photo backlog idea said the
+backend had no outbound API key or call today, so "first outbound API key"
+was listed as new infrastructure. `TaperConsultService` already calls the
+Anthropic API with an `Anthropic__ApiKey` env var and degrades to a 503 when
+it is unset. It was caught only because exploration happened to open
+`Program.cs`, not because this skill fired. The same note's cost figure ("a
+cent or two per photo") was unmeasured: priced from the model table it is
+about right for a Sonnet-tier model and roughly 30x too high for Haiku-tier.
+When shaping from a backlog idea, first list every "first X", "no existing Y"
+and "new infrastructure" assertion in the item, grep the code for each, and
+price any cost figure from the model table before scope is set.
+
+**"A simple rule will do" is a claim about a distribution.** A backlog item
+for shortening exercise names on the Garmin field chose a rule (drop a
+trailing parenthetical, cut at a word boundary) over a display-name column.
+Nobody ran the rule on the real names: 22 of 71 were over 20 characters, and
+the rule mangled many ("Single Leg Standing Calf Raise" became "Single Leg
+Standing"). The column got built anyway after a rule-based version shipped.
+When an item rejects a heavier option because a rule is enough, run the rule
+over the actual population before building it and list every failure.
+
+**Grep the vocabulary, not only the structures the request names.** A
+handoff for moving from 3 gym templates to 2 named two coupling points.
+Grepping the domain words and the counts they embed (`Gym N`, `gym3`,
+`Field n`, `Club`, "3 a week") found about eight more: a streak rule
+hard-coding 3, a widget fallback, a planner warning keyed on 2 Field
+sessions, a readiness lookup assuming one active template per exercise,
+static Plan-page copy, calendar title matching. Before laying out options for
+renaming or adding a domain concept, grep its names and embedded counts, read
+each consumer, and list which consumers each option breaks. The request
+lists what its author knew about; the vocabulary finds the rest.
+
+**"It won't fit" claims need a census.** Retrieval/RAG is only justified when
+the corpus cannot fit in the context window, so the first step of any
+retrieval-viability question is measuring it: total bytes and row count per
+candidate free-text source, against the model's context and the per-request
+budget. Callahan's entire free-text corpus (session, exercise and activity
+notes) summed to about 4.6 KB across 156 rows, roughly 1200 tokens, which
+fits in one prompt hundreds of times over. "Fits entirely, many times over"
+is a complete answer, and the census also gives the size at which the answer
+flips, which is the trigger condition worth recording.
+
 **Symptoms from a stored note.** A rest-timer session opened with a
 detailed push-subscription hypothesis built off a backlog item written
 weeks earlier. By then the push notification arrived fine — the real
@@ -125,6 +167,16 @@ its steps, verify every repo-state claim in it (open backlog item, missing
 endpoint, absent UI) against the live repo, and report the stale ones before
 planning. The claims it builds its whole structure on are usually the
 cheapest to check.
+
+The same goes for handoffs and cross-references in our own docs. A program-v4
+handoff from a planning thread stated four premises as background: a routine
+row kept "for history" (zero completions), an exercise row "from the Hevy
+import" (seeded by a migration, zero sets), a field that "feeds" the week
+planner (nothing reads it), and a "see session-log 2026-09-06/07" pointer to
+text that does not exist. One query or grep settled each, and each would have
+shaped the options offered. List every "kept for history", "came from Y",
+"X uses this" and "see X" in a handoff and check it before writing options;
+a pointer is a claim that its target says what the pointer says.
 
 ## Phase 2 — while measuring
 
@@ -201,6 +253,21 @@ engine's own backup (`sqlite3 db ".backup 'file'"` / `VACUUM INTO`), and
 open the backup and integrity-check it before relying on it. An unverified
 backup turns a reversible action irreversible while looking like the
 opposite.
+
+The same applies to a read-only evidence copy, where the failure is silent
+staleness, not corruption. A main-file-only pull of prod was 3 days behind
+its 3.5 MB `-wal`: 56 activities to 2026-11-04 against 57 to 2026-11-07, and
+`integrity_check` passes on both. Copy with `.backup` (or include the
+`-wal`), then record a changing table's row count and max date next to any
+number taken from the copy.
+
+**Probes on a live host are scoped to what they created.** Dry-run containers
+were started from the same image as an always-on sync service, and cleanup by
+image name stopped the service for about a minute. Record the IDs of anything
+you start (or label it) and clean up by ID; list what else shares the image
+before any bulk kill. Run a new CLI's range flags on a tiny window first and
+confirm the bound held: a start-date flag silently overrode the days flag, so
+a "one day" probe ran to today.
 
 **"Why does X change the layout of Y" is measured, not read.** A user asked
 why marking a row complete changed the bar's height, with before/after
@@ -348,6 +415,28 @@ window's length and re-run the verification query *after* the deploy lands,
 not before. Any "N corrected, 0 remaining" taken before the fix is live is
 reported with its expiry attached.
 
+**A shipped feature is verified against its inputs, not only its code.** A new
+Routines section renders plans from a program document mounted on the NAS.
+Post-deploy checks covered migrations, foreign keys, row counts and site
+health; prod's copy of the document was still the old version, so the section
+went live showing superseded content. It surfaced only in the docs pass. When
+a change reads anything the deploy doesn't carry (a mounted file, a config, a
+third-party feed), the post-ship check reads prod's copy of it: size, mtime,
+or a string only the new version has. Plan steps that sit outside the code
+path ("publish X", "Lachlan does Y") go to the backlog as their own items when
+the build starts, or they drop out.
+
+**Settle "live impact unknown" before ranking.** A finding written as
+"contradiction confirmed, live impact unknown, check with <command>" is often
+settled by one read-only probe of the running system (a log tail, a row count
+on a read-only copy, a grep of the served bundle). In a code-health audit one
+tail of the NAS sync logs settled two such findings in opposite directions:
+the top-ranked bug had no live impact because the job was never set up that
+way, while a lower-ranked "image may be stale" finding was live. Run the
+probe before ordering findings by severity, and record which way it moved the
+verdict. A log line the *current* code cannot emit is direct evidence the
+deployed artefact is stale: grep the current source for the exact string.
+
 **Classify each claim in the finding by how it was established.** A
 root-cause finding usually bundles claims of very different strength — one
 read straight from the code (a dep array re-firing a call), one inferred
@@ -450,5 +539,7 @@ Re-read this file and confirm:
     provenance — our own prior conclusions don't corroborate.
 12. Any data-repair verification was taken *after* the preventing fix went
     live, or is reported with the re-corruption window stated.
+13. A shipped change's out-of-repo inputs were read on prod, and any
+    non-code plan step is a backlog item, not a sentence in the plan.
 
 If one is unmet, fix it before delivering, and say what was missed.

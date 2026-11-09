@@ -86,12 +86,39 @@ amend the source comment that implied the epsilon was load-bearing.
 A surviving mutant marks the boundary where two pieces of logic disagree with
 nobody watching — and **the code is as likely to be the party in the wrong.**
 
+**The fixture can also be what's wrong: a guard is only tested where removing
+it changes the outcome.** A program-section finder used a heading regex that
+required a dash, to skip a stub heading. Loosening the regex left every test
+green: the fixture put the real section before the stub and the finder takes
+the first match, so the guard never decided anything. A second test with the
+stub *first* killed the mutant. When a guard exists to reject a decoy, put
+the decoy where it would win without the guard (first in order, winning the
+tie, matching the default). If such a mutant survives, fix the fixture before
+deriving a divergence set.
+
 ## Step 3 — check the test names describe what they assert
 
 The renamed test above had been passing and misleading simultaneously. After
 mutation-checking, re-read each test's name against what the mutations proved
 it actually catches. A name that overstates coverage is worse than no test,
 because it stops the next person looking.
+
+## Step 4 — when you make a suite deterministic, re-prove the gate
+
+Removing a noise source (pinning the backend clock, seed, browser clock and
+timezone) expires every tolerance that was set to absorb it. Seen here: the
+visual suite passed 22/22 after a change that added a Back button to one
+screen, because a 100 px absolute tolerance (set months earlier for a drifting
+suite) hid the ~80 px difference. A zero-tolerance run also found a stale
+baseline whose streak digit differed by 4 px: `--update-snapshots` only
+rewrites snapshots that *fail*, and that one was passing on tolerance.
+
+1. Mutation-check the gate itself: make a small deliberate visual change and
+   confirm the suite fails.
+2. Re-measure the noise floor at zero tolerance over 2+ runs and set the
+   tolerance from that measurement, not from history (here it was exactly 0 px).
+3. Regenerate baselines with `--update-snapshots=all` so no pre-fix baseline
+   survives on tolerance.
 
 ## Pre-flight
 
@@ -104,6 +131,10 @@ because it stops the next person looking.
 - [ ] The divergence set came from an actual input sweep, not from reasoning
       about whether the branch "should" be hit. Near-duplicate guards were
       checked for the one sentinel they split on (null/NaN, zero/absent).
+- [ ] Every decoy-rejecting guard has a fixture where the decoy would win
+      without it (order, ties, defaults).
 - [ ] Test names re-read against what they demonstrably catch.
+- [ ] If a noise source was removed, the gate was shown to fail on a small
+      deliberate change, and tolerance was re-measured at zero.
 - [ ] All mutations reverted; `npm test` green; `git diff` on source files is
       empty except for intended changes.

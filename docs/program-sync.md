@@ -99,7 +99,13 @@ Same pattern used for every direct-DB change so far (the Hevy import,
 exercise merges, tempo backfill, notes backfill):
 
 1. Pull a fresh copy of the live DB down locally over SSH
-   (`ssh <nas> "sudo cat <data-dir>/callahan.db" > copy.db`).
+   (`ssh <nas> "sudo cat <data-dir>/callahan.db" > copy.db`, then the same
+   for `callahan.db-wal` into `copy.db-wal`). The live DB runs in WAL mode,
+   so recent writes sit in the `-wal` until a checkpoint: a main-file-only
+   copy was 3 days stale on 2026-11-09 and still passed `integrity_check`.
+   Open the copy once locally so SQLite folds the WAL in, then note the row
+   count and max date of a table that changes daily (`Activities`) so it's
+   clear how fresh any number taken from it is.
 2. Write the SQL, run it against the **local copy** first.
 3. `PRAGMA foreign_key_check` on the copy, plus a spot-check query
    (`SELECT` the changed rows back out, read them, confirm they say what

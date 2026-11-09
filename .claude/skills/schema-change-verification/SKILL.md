@@ -143,7 +143,14 @@ break. Seen here only because a mistyped connection-string key accidentally
 pointed the run at the seeded dev DB.
 
 - Run any row-inserting data migration against **both** a production copy and an
-  empty database freshly migrated from the seed block. Both must pass.
+  empty database freshly migrated from the seed block. Both must pass. This
+  rule was in place and still skipped once: the Gym A/B slot migration passed
+  on a prod backup and broke a foreign key on the empty path (exercise 92
+  exists only via the Hevy import). The empty run is a command, not a
+  judgement: `dotnet ef database update` against a new empty file, then
+  `PRAGMA foreign_key_check`. `tests/Callahan.Api.Tests/AuthPipelineTests.cs`
+  also builds the app from migrations on an empty DB, so it fails on the same
+  break. Run it before calling a data migration verified.
 - Where a referenced row might be absent, make the insert idempotent —
   `INSERT OR IGNORE`, or a guarded `INSERT ... WHERE NOT EXISTS` — so the
   migration is a no-op where the row exists and a backfill where it doesn't.
@@ -164,7 +171,9 @@ pointed the run at the seeded dev DB.
       production `MAX(Id)` was queried and new IDs chosen above it; each
       drifted column classified seed-owned / runtime-owned / unmanaged.
 - [ ] A row-inserting data migration was run against both a production copy
-      **and** an empty seed-built database; inserts referencing existing rows
-      are idempotent; the resolved connection target was echoed before trust.
+      **and** an empty seed-built database (`dotnet ef database update` on a
+      new file + `foreign_key_check`, and `AuthPipelineTests` green); inserts
+      referencing existing rows are idempotent; the resolved connection target
+      was echoed before trust.
 - [ ] Migration applied against a scratch copy of the DB and the table/column
       confirmed to exist — never first applied on the NAS.
