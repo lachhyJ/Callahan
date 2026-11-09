@@ -1082,6 +1082,9 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("ActivitySessionTypeId")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Block")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("DefaultDayOfWeek")
                         .HasColumnType("INTEGER");
 

@@ -56,7 +56,11 @@ public static class PlanWeekLoader
         return new Loaded(week, ankle);
     }
 
-    private static Task<List<WeekPlanBuilder.SlotInput>> SlotsAsync(AppDbContext db) => db.PlanSlots
+    private static async Task<List<WeekPlanBuilder.SlotInput>> SlotsAsync(AppDbContext db)
+    {
+        var mode = await TrainingModeStore.GetAsync(db);
+        return await db.PlanSlots
+        .Where(s => s.Block == TemplateBlock.Any || s.Block == mode)
         .Include(s => s.WorkoutTemplate)
         .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
         .Select(s => new WeekPlanBuilder.SlotInput(
@@ -64,6 +68,7 @@ public static class PlanWeekLoader
             s.WorkoutTemplateId, s.ActivitySessionTypeId, s.RoutineId,
             s.WorkoutTemplate != null ? s.WorkoutTemplate.LowerBodyLoad : null))
         .ToListAsync();
+    }
 
     public record CalendarLoaded(
         WeekPlanBuilder.CalendarWeekResult Week, List<CalendarEvent> OtherEvents, List<DateOnly> AnkleCompletedDates);

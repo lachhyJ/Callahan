@@ -96,7 +96,7 @@ public static class WeekPlanBuilder
             days.Add(new DayResult(d, date, slotResults));
         }
 
-        return new WeekResult(weekStart, days, BuildWarnings(placed.Select(p => (p.Slot, p.Day)).ToList()));
+        return new WeekResult(weekStart, days, BuildWarnings(placed.Select(p => (p.Slot, p.Day)).ToList(), slots));
     }
 
     // Where the calendar put a session, and the event that says so.
@@ -162,7 +162,7 @@ public static class WeekPlanBuilder
             .Select(s => (Slot: s, Day: placements[s.SlotId].Day.DayNumber - weekStart.DayNumber))
             .ToList();
 
-        return new CalendarWeekResult(weekStart, days, unplaced, placed.Count == 0 ? [] : BuildWarnings(placed));
+        return new CalendarWeekResult(weekStart, days, unplaced, placed.Count == 0 ? [] : BuildWarnings(placed, slots));
     }
 
     private static SlotState ResolveState(
@@ -196,7 +196,10 @@ public static class WeekPlanBuilder
         _ => false
     };
 
-    private static List<string> BuildWarnings(List<(SlotInput Slot, int Day)> placed)
+    // `allSlots` is the whole week's program (placed or not): how many field sessions the
+    // program asks for is a property of the block - one in-season, two with no club - not
+    // of how many happen to be placed.
+    private static List<string> BuildWarnings(List<(SlotInput Slot, int Day)> placed, IReadOnlyCollection<SlotInput> allSlots)
     {
         var warnings = new List<string>();
 
@@ -205,10 +208,13 @@ public static class WeekPlanBuilder
             .Select(p => (p.Day, p.Slot.Label))
             .ToList();
 
+        // Optional field slots (the Saturday pod) are neither a session the program asks for nor
+        // one it protects legs for: Gym B the day before an optional pod is the program's own week.
         var fieldDays = placed
-            .Where(p => p.Slot.Kind == PlanSlotKind.Field)
+            .Where(p => p.Slot.Kind == PlanSlotKind.Field && !p.Slot.IsOptional)
             .Select(p => (p.Day, p.Slot.Label))
             .ToList();
+        var expectedFieldSessions = allSlots.Count(s => s.Kind == PlanSlotKind.Field && !s.IsOptional);
 
         foreach (var heavy in heavyDays)
         {
@@ -228,11 +234,11 @@ public static class WeekPlanBuilder
             }
         }
 
-        if (fieldDays.Count < 2)
+        if (fieldDays.Count < expectedFieldSessions)
         {
             warnings.Add(
                 $"This week has {fieldDays.Count} field session{(fieldDays.Count == 1 ? "" : "s")}. "
-                + "The program asks for two - Field 1 is the protected one.");
+                + $"The program asks for {expectedFieldSessions} - Field 1 is the protected one.");
         }
 
         return warnings;

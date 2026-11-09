@@ -14,9 +14,10 @@ public static class WeekSoFarLoader
         var weekStart = CalendarDates.MondayOf(trainingDay);
         var weekEnd = weekStart.AddDays(WeekPlanBuilder.DaysInWeek - 1);
 
-        // Non-optional Gym and Field slots only, in program order.
+        // Non-optional Gym and Field slots of the current block only, in program order.
+        var mode = await TrainingModeStore.GetAsync(db);
         var slots = await db.PlanSlots
-            .Where(s => !s.IsOptional && (s.Kind == PlanSlotKind.Gym || s.Kind == PlanSlotKind.Field))
+            .Where(s => (s.Block == TemplateBlock.Any || s.Block == mode) && !s.IsOptional && (s.Kind == PlanSlotKind.Gym || s.Kind == PlanSlotKind.Field))
             .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
             .Select(s => new WeekSoFarBuilder.SlotInput(s.Kind, s.Label, s.WorkoutTemplateId, s.ActivitySessionTypeId))
             .ToListAsync();

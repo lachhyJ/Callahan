@@ -85,6 +85,28 @@ public class TrainingModeTests : IDisposable
         Assert.Equal(["Gym A", "Custom"], Ok(await controller.GetAll()).Select(t => t.Name));
     }
 
+    // ---- the planner's slots --------------------------------------------------
+
+    [Fact]
+    public async Task TheWidgetTalliesOnlyTheCurrentBlocksSlots()
+    {
+        AddTemplate(1, "Gym 1", TemplateBlock.NoClub, 1);
+        AddTemplate(2, "Gym A", TemplateBlock.InSeason, 1);
+        _db.SaveChanges();
+        _db.PlanSlots.AddRange(
+            new PlanSlot { DefaultDayOfWeek = 1, SlotOrder = 1, Kind = PlanSlotKind.Gym, Label = "Gym 1", WorkoutTemplateId = 1, Block = TemplateBlock.NoClub },
+            new PlanSlot { DefaultDayOfWeek = 0, SlotOrder = 1, Kind = PlanSlotKind.Gym, Label = "Gym A", WorkoutTemplateId = 2, Block = TemplateBlock.InSeason });
+        _db.SaveChanges();
+        var monday = new DateOnly(2026, 11, 9);
+
+        var noClub = await WeekSoFarLoader.LoadAsync(_db, monday);
+        Assert.Equal(["Gym 1"], noClub.Left);
+
+        await TrainingModeStore.SetAsync(_db, TemplateBlock.InSeason);
+        var inSeason = await WeekSoFarLoader.LoadAsync(_db, monday);
+        Assert.Equal(["Gym A"], inSeason.Left);
+    }
+
     // ---- prefill ------------------------------------------------------------
 
     private Exercise AddExercise(int id) =>

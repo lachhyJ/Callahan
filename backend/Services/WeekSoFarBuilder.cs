@@ -19,6 +19,12 @@ public static partial class WeekSoFarBuilder
     // AppDbContext). Club Training, Game and Throws are shown but do not count.
     public static readonly IReadOnlySet<int> CountsAsField = new HashSet<int> { 4, 6 };
 
+    // Field 1 (seed id in AppDbContext) is the protected session: only a logged Field 1
+    // fills it. A pod or solo session can stand in for the Field 2 that was not logged
+    // (no-club weeks), but never for Field 1 - hiding a missing Field 1 is exactly what the
+    // mid-December review is meant to see.
+    public const int Field1SessionTypeId = 9;
+
     // The program's sessions for the week, in program order. The loader passes only
     // non-optional Gym and Field slots; routines (Jump Block, the ankle circuit),
     // rest markers and the optional aerobic slot are deliberately not in the tally.
@@ -113,9 +119,9 @@ public static partial class WeekSoFarBuilder
         }
 
         // Field, in two passes. First each slot takes an exact match on its own
-        // session type (Field 1, Field 2); then any slot still open takes the
-        // earliest unused session that counts as field (Pod, Solo, or another Field
-        // type), so a Pod session stands in for a Field 2 that was not logged.
+        // session type (Field 1, Field 2); then any slot still open - except Field 1 -
+        // takes the earliest unused session that counts as field (Pod, Solo, or another
+        // Field type), so a Pod session stands in for a Field 2 that was not logged.
         var fieldFilled = new bool[fieldSlots.Count];
         for (var i = 0; i < fieldSlots.Count; i++)
         {
@@ -127,7 +133,7 @@ public static partial class WeekSoFarBuilder
         }
         for (var i = 0; i < fieldSlots.Count; i++)
         {
-            if (fieldFilled[i]) continue;
+            if (fieldFilled[i] || fieldSlots[i].ActivitySessionTypeId == Field1SessionTypeId) continue;
             var at = EarliestUnused(activityLogs, activityUsed, CountsTowardField);
             if (at < 0) break;
             activityUsed[at] = true;

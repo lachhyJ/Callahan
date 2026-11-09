@@ -19,6 +19,11 @@ public class PlanSlot
     // sits before Gym 1 and Gym 3 - it is done before you leave the house).
     public int SlotOrder { get; set; }
 
+    // Which block of the program the slot belongs to: the in-season week and the no-club
+    // week are different weeks. Both loaders offer only the current mode's slots, plus any
+    // tagged Any. See TemplateBlock and TrainingModeStore.
+    public TemplateBlock Block { get; set; }
+
     public PlanSlotKind Kind { get; set; }
     public required string Label { get; set; }
 

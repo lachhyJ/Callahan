@@ -55,6 +55,35 @@ public class WeekSoFarBuilderTests
     }
 
     [Fact]
+    public void AStandInPodFillsFieldTwoButNeverFieldOne()
+    {
+        // No club, a Pod logged and no Field 1 or Field 2: the Pod covers Field 2 (the program
+        // lets it) and Field 1 stays open - Field 1 is the protected session.
+        var w = Build(activities: [Field(5, Pod, "Pod", SessionTypeFamily.Ultimate)]);
+
+        Assert.Equal(new WidgetTallyDto(1, 2), w.Field);
+        Assert.Contains("Field 1", w.Left);
+        Assert.DoesNotContain("Field 2", w.Left);
+    }
+
+    [Fact]
+    public void WithOnlyFieldOneInTheWeekAPodDoesNotCountAsIt()
+    {
+        // In-season: one field slot. A Pod alone must not tick it off.
+        var inSeason = new SlotInput[]
+        {
+            new(PlanSlotKind.Gym, "Gym A", 7, null),
+            new(PlanSlotKind.Field, "Field 1 - Defence & Acceleration", null, 9),
+            new(PlanSlotKind.Gym, "Gym B", 8, null),
+        };
+
+        var w = WeekSoFarBuilder.Build(Monday, Sunday, inSeason, [], [Field(5, Pod, "Pod", SessionTypeFamily.Ultimate)]);
+
+        Assert.Equal(new WidgetTallyDto(0, 1), w.Field);
+        Assert.Equal(["Gym A", "Field 1", "Gym B"], w.Left);
+    }
+
+    [Fact]
     public void GymAAndGymBGetTheirOwnLettersAndACustomWorkoutIsJustGym()
     {
         // Program v4's in-season templates are lettered, not numbered.

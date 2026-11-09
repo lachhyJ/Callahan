@@ -323,6 +323,18 @@ public class WeekPlanBuilderCalendarTests
     }
 
     [Fact]
+    public void AMissingFieldSessionWarnsAgainstWhatTheBlockAsksFor()
+    {
+        // No-club asks for two: only Field 1 is on the calendar, so the shortfall names two.
+        var r = Build(Monday, [Gym1, Field1, Field2], new() { [1] = At(1), [2] = At(3) });
+        Assert.Contains(r.Warnings, w => w.Contains("1 field session") && w.Contains("asks for 2"));
+
+        // In-season asks for one, and one is placed: nothing to say.
+        Assert.DoesNotContain(Build(Monday, [Gym1, Field1], new() { [1] = At(0), [2] = At(3) }).Warnings,
+            w => w.Contains("field session"));
+    }
+
+    [Fact]
     public void ABlankWeekHasNoWarnings()
     {
         // Nothing planned yet is not a week breaking the rules.
