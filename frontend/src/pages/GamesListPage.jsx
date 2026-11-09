@@ -175,6 +175,42 @@ export default function GamesListPage() {
     ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
   ].sort((a, b) => (a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0))
 
+  const tournamentForm = (
+      <form onSubmit={handleSubmit} className="section-gap">
+        <label>
+          Name
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
+        </label>
+        <label>
+          Start date
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
+        </label>
+        <label>
+          End date
+          <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
+        </label>
+        <label>
+          Taper length (days)
+          <input
+            type="number"
+            min="1"
+            max="30"
+            value={taperDays}
+            onChange={(e) => setTaperDays(e.target.value)}
+            placeholder="leave blank for no taper"
+          />
+        </label>
+        <p className="trend-chart-caption">
+          Set a taper length to have this tournament drive the Taper page. Past tournaments
+          you're only recording games for should leave it blank.
+        </p>
+        {formError && <p className="error">{formError}</p>}
+        <button type="submit" disabled={saving}>
+          {saving ? 'Saving…' : editingId == null ? 'Create + attach games' : 'Save changes'}
+        </button>
+      </form>
+  )
+
   return (
     <main className="page">
       <div className="history-week-header">
@@ -193,41 +229,7 @@ export default function GamesListPage() {
 
       <SeasonsSection tournaments={tournaments} />
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className="section-gap">
-          <label>
-            Name
-            <input type="text" value={name} onChange={(e) => setName(e.target.value)} required />
-          </label>
-          <label>
-            Start date
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
-          </label>
-          <label>
-            End date
-            <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
-          </label>
-          <label>
-            Taper length (days)
-            <input
-              type="number"
-              min="1"
-              max="30"
-              value={taperDays}
-              onChange={(e) => setTaperDays(e.target.value)}
-              placeholder="leave blank for no taper"
-            />
-          </label>
-          <p className="trend-chart-caption">
-            Set a taper length to have this tournament drive the Taper page. Past tournaments
-            you're only recording games for should leave it blank.
-          </p>
-          {formError && <p className="error">{formError}</p>}
-          <button type="submit" disabled={saving}>
-            {saving ? 'Saving…' : editingId == null ? 'Create + attach games' : 'Save changes'}
-          </button>
-        </form>
-      )}
+      {showForm && editingId == null && tournamentForm}
 
       {lastAttached && (
         <p className="save-confirm section-gap">
@@ -252,6 +254,13 @@ export default function GamesListPage() {
           }
           const { tournament, games: gs } = entry
           const summaryLine = tournamentSummaryLine(gs)
+          if (showForm && editingId === tournament.id) {
+            return (
+              <div key={`t-${tournament.id}`} className="history-week">
+                {tournamentForm}
+              </div>
+            )
+          }
           return (
             <div key={`t-${tournament.id}`} className="history-week">
               <Link to={`/tournaments/${tournament.id}`} className="tournament-section-link">
