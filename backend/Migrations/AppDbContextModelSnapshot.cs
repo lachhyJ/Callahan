@@ -1593,6 +1593,9 @@ namespace Callahan.Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<int>("Block")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("IsRetired")
                         .HasColumnType("INTEGER");
 
@@ -1621,6 +1624,7 @@ namespace Callahan.Api.Migrations
                         new
                         {
                             Id = 1,
+                            Block = 0,
                             IsRetired = false,
                             LowerBodyLoad = 0,
                             Name = "Day A",
@@ -1631,6 +1635,7 @@ namespace Callahan.Api.Migrations
                         new
                         {
                             Id = 2,
+                            Block = 0,
                             IsRetired = false,
                             LowerBodyLoad = 0,
                             Name = "Day B",
@@ -1641,6 +1646,7 @@ namespace Callahan.Api.Migrations
                         new
                         {
                             Id = 3,
+                            Block = 0,
                             IsRetired = false,
                             LowerBodyLoad = 0,
                             Name = "Day C",

@@ -161,7 +161,8 @@ public static partial class WeekSoFarBuilder
     // "Field 2 - Repeat Effort & COD" -> "Field 2"; "Gym 2" stays.
     public static string ShortLabel(string label) => label.Split(" - ")[0];
 
-    // "Gym 1" -> "G1". A custom workout (no template, or one that is not Gym n) is "Gym".
+    // "Gym 1" -> "G1", "Gym A" -> "GA". A custom workout (no template, or one that is not
+    // Gym n / Gym A) is "Gym".
     private static string GymChip(string? templateName)
     {
         var m = templateName is null ? null : GymNumber().Match(templateName);
@@ -181,7 +182,7 @@ public static partial class WeekSoFarBuilder
         return word.Length <= 5 ? word : word[..5];
     }
 
-    [GeneratedRegex(@"^Gym (\d+)")]
+    [GeneratedRegex(@"^Gym (\d+|[A-Z])\b")]
     private static partial Regex GymNumber();
 
     [GeneratedRegex(@"^Field (\d+)")]

@@ -1,5 +1,6 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Models;
 using Callahan.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -25,11 +26,16 @@ public class WorkoutTemplatesController : ControllerBase
         // Retired templates are hidden here and nowhere else - Start() below
         // still serves them, so an old session's template can always be
         // reopened by Id.
-        var templates = await _db.WorkoutTemplates
-            .Where(t => !t.IsRetired)
+        // The other block's templates are hidden the same way: they stay in the database
+        // and Start() still serves them, they just are not offered in this mode.
+        var mode = await TrainingModeStore.GetAsync(_db);
+        var templates = (await _db.WorkoutTemplates
+            .Where(t => !t.IsRetired && (t.Block == TemplateBlock.Any || t.Block == mode))
             .OrderBy(t => t.SortOrder)
-            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle))
-            .ToListAsync();
+            .Select(t => new { t.Id, t.Name, t.Subtitle, t.Block })
+            .ToListAsync())
+            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle, t.Block.ToString()))
+            .ToList();
 
         return Ok(templates);
     }
@@ -59,11 +65,38 @@ public class WorkoutTemplatesController : ControllerBase
             })
             .ToListAsync();
 
+        // An exercise this template has never logged (a new template, or one moved between
+        // templates, as with Gym A/B in program v4) falls back to the latest session of
+        // ANY template that logged it, rather than starting blank. Prefill is derived from
+        // logged sets, so this is the only way to "seed" it.
+        var uncovered = exerciseIds
+            .Where(eid => !recentSessions.Any(s => s.Sets.Any(x => x.ExerciseId == eid)))
+            .ToList();
+        var fallbackSessions = uncovered.Count == 0
+            ? []
+            : (await _db.WorkoutSessions
+                .Where(s => s.WorkoutTemplateId != id && s.Sets.Any(x => uncovered.Contains(x.ExerciseId)))
+                .OrderByDescending(s => s.Date)
+                .ThenByDescending(s => s.Id)
+                .Select(s => new
+                {
+                    s.Date,
+                    Sets = s.Sets.Where(x => uncovered.Contains(x.ExerciseId)).ToList()
+                })
+                .ToListAsync())
+                .Select(s => (s.Date, s.Sets))
+                .ToList();
+
         var exercises = template.Exercises
             .OrderBy(te => te.ExerciseOrder)
             .Select(te =>
             {
-                var source = recentSessions.FirstOrDefault(s => s.Sets.Any(x => x.ExerciseId == te.ExerciseId));
+                var source = recentSessions
+                    .Select(s => (s.Date, s.Sets))
+                    .Concat(fallbackSessions)
+                    .Where(s => s.Sets.Any(x => x.ExerciseId == te.ExerciseId))
+                    .Select(s => ((DateOnly Date, List<ExerciseSet> Sets)?)(s.Date, s.Sets))
+                    .FirstOrDefault();
                 var lastSets = source?.Sets
                     .Where(s => s.ExerciseId == te.ExerciseId)
                     .OrderBy(s => s.SetOrder)

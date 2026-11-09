@@ -55,6 +55,17 @@ public class WeekSoFarBuilderTests
     }
 
     [Fact]
+    public void GymAAndGymBGetTheirOwnLettersAndACustomWorkoutIsJustGym()
+    {
+        // Program v4's in-season templates are lettered, not numbered.
+        var w = Build(gym: [Gym(0, 4, "Gym A"), Gym(4, 4, "Gym B"), Gym(2, 4, "Gymnastics")]);
+
+        Assert.Equal(["GA"], w.Days[0].Chips.Select(c => c.Short));
+        Assert.Equal(["GB"], w.Days[4].Chips.Select(c => c.Short));
+        Assert.Equal(["Gym"], w.Days[2].Chips.Select(c => c.Short));
+    }
+
+    [Fact]
     public void AGymSessionCountsOnAnyDayOfTheWeek()
     {
         // Gym 1 on a Monday although the program puts it on a Tuesday.

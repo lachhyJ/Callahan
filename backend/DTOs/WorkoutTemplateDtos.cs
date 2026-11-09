@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle);
+public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle, string Block = "Any");
 
 public record PreviousSetDto(int SetOrder, int Reps, decimal WeightKg, string SetType, int? DurationSeconds = null);
 

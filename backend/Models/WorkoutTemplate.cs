@@ -26,5 +26,9 @@ public class WorkoutTemplate
     // deliberately not its week order.
     public int PriorityOrder { get; set; }
 
+    // Which block of the program the template belongs to; the picker shows the current
+    // mode's templates plus any tagged Any. See TemplateBlock.
+    public TemplateBlock Block { get; set; }
+
     public ICollection<WorkoutTemplateExercise> Exercises { get; set; } = [];
 }

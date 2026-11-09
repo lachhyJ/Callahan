@@ -255,24 +255,39 @@ public class ExercisesController : ControllerBase
         return Ok(new ExerciseStatsDto(exercise.Name, primaryMuscle, exercise.IsAssisted, exercise.IsTimeBased, exercise.IsPerSide, exercise.PerSideDelaySeconds, exercise.IsBodyweight, heaviestWeight, bestEstimated1Rm, bestSetVolume, bestSessionVolume, chart, progressionReadiness, basis.ToString(), exercise.ShortName));
     }
 
-    // Known edge case, not solved here: assumes the exercise sits in exactly
-    // one active (non-retired) template slot, true of the program today. If
-    // that ever changes, this needs to pick which slot's criteria to surface.
+    // An exercise can sit in more than one active template (Gym 1 and Gym A both hold the
+    // trap bar deadlift, the other block's template is just hidden from the picker). The
+    // slot whose criteria are surfaced is the one in the current block's template, or one
+    // not tied to a block; only if there is none does it fall back to any active slot.
     private async Task<ProgressionReadinessDto?> GetProgressionReadiness(int exerciseId)
     {
-        var slot = await _db.WorkoutTemplateExercises
+        var mode = await TrainingModeStore.GetAsync(_db);
+        var slots = await _db.WorkoutTemplateExercises
             .Include(te => te.WorkoutTemplate)
             .Where(te => te.ExerciseId == exerciseId && !te.WorkoutTemplate.IsRetired)
-            .FirstOrDefaultAsync();
+            .ToListAsync();
+
+        var slot = slots
+            .OrderBy(te => te.WorkoutTemplate.Block == TemplateBlock.Any || te.WorkoutTemplate.Block == mode ? 0 : 1)
+            .ThenBy(te => te.WorkoutTemplate.SortOrder)
+            .FirstOrDefault();
 
         if (slot is null) return null;
 
+        // Latest session of this slot's template that logged the exercise; if the template
+        // has none yet (Gym A/B straight after the switch), the latest of any template.
         var lastSession = await _db.WorkoutSessions
-            .Where(s => s.WorkoutTemplateId == slot.WorkoutTemplateId)
+            .Where(s => s.WorkoutTemplateId == slot.WorkoutTemplateId && s.Sets.Any(x => x.ExerciseId == exerciseId))
             .Include(s => s.Sets)
             .OrderByDescending(s => s.Date)
             .ThenByDescending(s => s.Id)
-            .FirstOrDefaultAsync();
+            .FirstOrDefaultAsync()
+            ?? await _db.WorkoutSessions
+                .Where(s => s.Sets.Any(x => x.ExerciseId == exerciseId))
+                .Include(s => s.Sets)
+                .OrderByDescending(s => s.Date)
+                .ThenByDescending(s => s.Id)
+                .FirstOrDefaultAsync();
 
         var readiness = ProgressionReadinessChecker.Evaluate(
             new ProgressionReadinessChecker.SlotInput(slot.TargetSets, slot.TargetRepsMax),
