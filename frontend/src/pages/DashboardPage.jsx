@@ -10,6 +10,7 @@ import DayDetailSheet from '../components/DayDetailSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 import BuildFooter from '../components/BuildFooter'
 import TimeZoneSetting from '../components/TimeZoneSetting'
+import TrainingModeSetting from '../components/TrainingModeSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
 import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
@@ -435,6 +436,7 @@ export default function DashboardPage() {
 
       <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
 
+      <TrainingModeSetting />
       <TimeZoneSetting />
       <Link to="/quotes" className="footer-link section-gap">Lock screen quotes</Link>
       <BuildFooter />

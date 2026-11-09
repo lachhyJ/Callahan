@@ -639,6 +639,16 @@ export function setTimeZone(zone) {
   return apiFetch('/api/timezone', { method: 'PUT', body: JSON.stringify({ zone }) })
 }
 
+// The block of the program the athlete is in: "InSeason" (Gym A/B) or "NoClub" (Gym 1/2/3).
+// Decides which gym templates the picker offers.
+export function getTrainingMode() {
+  return apiFetch('/api/training-mode')
+}
+
+export function setTrainingMode(mode) {
+  return apiFetch('/api/training-mode', { method: 'PUT', body: JSON.stringify({ mode }) })
+}
+
 // The list behind the lock-screen quotes widget. Every write reloads the widgets so
 // a change is eligible at once (the widget's own refresh is only the backstop).
 export function getQuotes() {

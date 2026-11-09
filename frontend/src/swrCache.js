@@ -48,6 +48,17 @@ export function clearAllCache() {
   }
 }
 
+// Drops one cached response, for a write that changes what its GET returns (flipping the
+// training block changes which templates the picker lists), so the old list is not painted
+// for a moment before the fresh one lands.
+export function clearCacheKey(key) {
+  try {
+    localStorage.removeItem(PREFIX + key)
+  } catch {
+    // storage unavailable - nothing to clear
+  }
+}
+
 // Calls onData synchronously with the last cached value (if any) so the page
 // can paint before the network round-trip even starts, then always runs
 // `fetcher` and calls onData again with the live result once it resolves.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { getWorkoutTemplates } from '../api/client'
 import { loadActiveWorkout } from '../activeWorkout'
@@ -6,16 +6,22 @@ import { unlockAudio } from '../audio'
 import { trackAction } from '../usage'
 import { staleWhileRevalidate } from '../swrCache'
 import { RunIcon } from '../icons'
+import TrainingModeSetting from '../components/TrainingModeSetting'
 
 export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState(null)
   const [error, setError] = useState(null)
   const [activeWorkout] = useState(() => loadActiveWorkout())
 
+  const loadTemplates = useCallback(
+    () => staleWhileRevalidate('workouttemplates', getWorkoutTemplates, setTemplates).catch((err) => setError(err.message)),
+    [],
+  )
+
   useEffect(() => {
     if (activeWorkout) return
-    staleWhileRevalidate('workouttemplates', getWorkoutTemplates, setTemplates).catch((err) => setError(err.message))
-  }, [activeWorkout])
+    loadTemplates()
+  }, [activeWorkout, loadTemplates])
 
   if (activeWorkout) {
     return <Navigate to={`/workout/${activeWorkout.templateId}`} replace />
@@ -24,6 +30,7 @@ export default function WorkoutTemplatesPage() {
   return (
     <main className="page">
       <h1>Start a workout</h1>
+      <TrainingModeSetting onChange={() => { setTemplates(null); loadTemplates() }} />
       {error && <p className="error">{error}</p>}
       {templates === null && !error && <p>Loading workouts…</p>}
       <div className="template-list">

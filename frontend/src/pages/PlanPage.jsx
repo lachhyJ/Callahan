@@ -10,11 +10,11 @@ const DAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 // doesn't know Lachlan's shifts, so it can't tell him which session to drop —
 // but it can make sure he isn't deciding from memory.
 const RULES = [
-  'Gym 1 → 2 → 3 is week order, not priority. The spacing is what keeps a heavy leg day off the front of a field session.',
-  'Priority order is Gym 1 → Gym 3 → Gym 2. In a short week, drop Gym 2 first.',
-  'Never heavy legs before a speed session — same day or the day before.',
+  'In-season, Gym A is Monday and Gym B is Friday, both heavy legs. With no club, Gym 1 → 2 → 3 is week order. Either way the spacing is what keeps a heavy leg day off the front of a field session.',
+  'Missed a gym session? The next gym session is the one you missed, not the scheduled one. One-gym weeks happen: do the template that is due.',
+  'Never heavy legs before a speed session or club — same day or the day before. In-season that means never Wednesday or Saturday.',
   'Speed and jump work goes first in the day, always.',
-  'Field 1 is protected. Speed is use-it-or-lose-it.',
+  'Field 1 is protected. Speed is use-it-or-lose-it. A pod never replaces it.',
   'Doubling up needs 6 hours between sessions, and two full rest days in the week.',
 ]
 
