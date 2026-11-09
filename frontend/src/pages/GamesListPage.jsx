@@ -32,6 +32,7 @@ export default function GamesListPage() {
   const [showForm, setShowForm] = useState(false)
   // null while creating, a tournament id while editing that one.
   const [editingId, setEditingId] = useState(null)
+  const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header sync icon
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(isoDate(new Date()))
   const [endDate, setEndDate] = useState(isoDate(new Date()))
@@ -55,6 +56,12 @@ export default function GamesListPage() {
   }
 
   useEffect(load, [])
+
+  useEffect(() => {
+    if (!syncResult) return
+    const timeout = setTimeout(() => setSyncResult(null), 6000)
+    return () => clearTimeout(timeout)
+  }, [syncResult])
 
   function startCreate() {
     setEditingId(null)
@@ -216,7 +223,7 @@ export default function GamesListPage() {
       <div className="history-week-header">
         <h1>Ultimate</h1>
         <div className="games-header-actions">
-          <SyncGarminButton onSynced={load} />
+          <SyncGarminButton variant="icon" onSynced={load} onResult={setSyncResult} />
           <button
             type="button"
             className="secondary-btn"
@@ -226,6 +233,12 @@ export default function GamesListPage() {
           </button>
         </div>
       </div>
+
+      {syncResult && (
+        <p className={syncResult.isError ? 'save-confirmation error' : 'save-confirmation'}>
+          {syncResult.text}
+        </p>
+      )}
 
       <SeasonsSection tournaments={tournaments} />
 

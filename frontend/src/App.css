@@ -486,6 +486,15 @@ td {
   align-items: flex-start;
   gap: var(--space-xs);
   flex-wrap: wrap;
+
+  /* The sync icon is the only icon-link here; give it a 44px tap target. */
+  & .icon-link {
+    min-width: 44px;
+    min-height: 44px;
+    justify-content: center;
+    touch-action: manipulation;
+    user-select: none;
+  }
 }
 
 .history-week-count {
