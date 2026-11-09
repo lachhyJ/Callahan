@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getRoutines, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { peekCache, staleWhileRevalidate } from '../swrCache'
 import { wellnessRange } from '../wellnessMetrics'
 import { STATUS_BAND_DAYS, STATUS_LOOKBACK_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
@@ -12,6 +12,7 @@ import BuildFooter from '../components/BuildFooter'
 import TimeZoneSetting from '../components/TimeZoneSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
+import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
 import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
 
@@ -110,6 +111,7 @@ export default function DashboardPage() {
   // render; the idle-deferred revalidate below only swaps in fresh data. Without
   // this the card waited on the idle callback and then popped in above the grid.
   const [wellness, setWellness] = useState(() => peekCache('wellness-latest'))
+  const [routines, setRoutines] = useState(() => peekCache('routines'))
   const [wellnessInsight, setWellnessInsight] = useState(() => peekCache('wellness-insight'))
   const [wellnessRows, setWellnessRows] = useState(() => peekCache(WELLNESS_ROWS_CACHE_KEY))
   const [savedMessage, setSavedMessage] = useState(location.state?.savedMessage ?? null)
@@ -132,6 +134,7 @@ export default function DashboardPage() {
     const handle = runIdle(() => {
       staleWhileRevalidate('wellness-latest', getLatestWellness, setWellness).catch(() => {})
       staleWhileRevalidate('wellness-insight', getWellnessInsight, setWellnessInsight).catch(() => {})
+      staleWhileRevalidate('routines', getRoutines, setRoutines).catch(() => {})
       const { start, end } = wellnessRange(STATUS_BAND_DAYS + STATUS_LOOKBACK_DAYS)
       staleWhileRevalidate(
         WELLNESS_ROWS_CACHE_KEY,
@@ -401,12 +404,24 @@ export default function DashboardPage() {
       )}
 
       <div className="quick-links-grid section-gap">
-        {QUICK_LINKS.map(({ to, label, Icon }) => (
-          <Link key={to} to={to} className="quick-link-tile" onClick={() => trackAction('quick-link', to)}>
-            <Icon />
-            <span>{label}</span>
-          </Link>
-        ))}
+        {QUICK_LINKS.map(({ to, label, Icon }) => {
+          // The Routines tile carries the ankle circuit's count for the week: the doc asks for
+          // at least 3, and the tile is the one-tap way in to tick it.
+          const ankleDays = to === '/routines' && routines
+            ? routineDaysThisWeek(routines.find((r) => r.id === ANKLE_ROUTINE_ID), todayIso)
+            : null
+          return (
+            <Link key={to} to={to} className="quick-link-tile" onClick={() => trackAction('quick-link', to)}>
+              <Icon />
+              <span>{label}</span>
+              {ankleDays !== null && (
+                <small className={`quick-link-count${ankleDays >= ANKLE_WEEKLY_TARGET ? ' quick-link-count-met' : ''}`}>
+                  Ankle {ankleDays}/{ANKLE_WEEKLY_TARGET}
+                </small>
+              )}
+            </Link>
+          )
+        })}
       </div>
 
       {unviewedReport && (
