@@ -94,7 +94,7 @@ export default defineConfig({
       // that only accepts 200-403 as "ready" — an unauthenticated GET to any
       // [Authorize]'d route (401, in range) proves the server is up without a
       // dedicated health endpoint.
-      url: 'http://localhost:8099/api/streaks',
+      url: 'http://localhost:8099/api/routines',
       reuseExistingServer: true,
       timeout: 60_000,
     },
