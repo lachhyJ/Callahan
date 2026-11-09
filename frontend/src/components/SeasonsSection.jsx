@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   attachSeasonTournaments,
   createSeason,
@@ -16,10 +17,18 @@ const BLANK = () => ({
   targetTournamentId: '',
 })
 
+// Same rule the backend uses to link tournaments to a season: the tournament's
+// whole date range sits inside the season's. ISO date strings compare correctly.
+function inSeasonRange(t, { startDate, endDate }) {
+  return t.startDate >= startDate && t.endDate <= endDate
+}
+
 // Season admin: create / edit / delete a season and pick its target
 // ("Nationals") tournament. Lives on the Ultimate page above the tournament
 // list. `tournaments` is passed in for the target picker.
-export default function SeasonsSection({ tournaments }) {
+// actionSlot: optional DOM node (in the page header) the create/cancel button is
+// portalled into, so it sits on one line with the page's other header actions.
+export default function SeasonsSection({ tournaments, actionSlot = null }) {
   const [seasons, setSeasons] = useState(null)
   const [error, setError] = useState(null)
 
@@ -102,14 +111,21 @@ export default function SeasonsSection({ tournaments }) {
   if (error) return <p className="error section-gap">{error}</p>
   if (!seasons) return null
 
+  const creating = open && editingId == null
+  const seasonButton = (
+    <button type="button" className="secondary-btn btn-compact" onClick={creating ? () => setOpen(false) : startCreate}>
+      {creating ? 'Cancel' : '+ Season'}
+    </button>
+  )
+
   return (
     <section className="section-gap">
-      <div className="history-week-header">
-        <h2 className="trend-chart-title">Seasons</h2>
-        <button type="button" className="secondary-btn" onClick={open && editingId == null ? () => setOpen(false) : startCreate}>
-          {open && editingId == null ? 'Cancel' : '+ New season'}
-        </button>
-      </div>
+      {actionSlot ? createPortal(seasonButton, actionSlot) : (
+        <div className="history-week-header">
+          <h2 className="trend-chart-title">Seasons</h2>
+          {seasonButton}
+        </div>
+      )}
 
       {open && (
         <form onSubmit={handleSubmit} className="section-gap">
@@ -148,9 +164,11 @@ export default function SeasonsSection({ tournaments }) {
               onChange={(e) => setForm((f) => ({ ...f, targetTournamentId: e.target.value }))}
             >
               <option value="">— none yet —</option>
-              {tournaments.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
+              {tournaments
+                .filter((t) => inSeasonRange(t, form) || String(t.id) === String(form.targetTournamentId))
+                .map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
             </select>
           </label>
           {formError && <p className="error">{formError}</p>}

@@ -32,6 +32,7 @@ export default function GamesListPage() {
   const [showForm, setShowForm] = useState(false)
   // null while creating, a tournament id while editing that one.
   const [editingId, setEditingId] = useState(null)
+  const [seasonSlot, setSeasonSlot] = useState(null) // header node the seasons button portals into
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header sync icon
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(isoDate(new Date()))
@@ -226,11 +227,12 @@ export default function GamesListPage() {
           <SyncGarminButton variant="icon" onSynced={load} onResult={setSyncResult} />
           <button
             type="button"
-            className="secondary-btn"
+            className="secondary-btn btn-compact"
             onClick={showForm ? () => { setShowForm(false); setEditingId(null) } : startCreate}
           >
-            {showForm ? 'Cancel' : '+ New tournament'}
+            {showForm ? 'Cancel' : '+ Tournament'}
           </button>
+          <span ref={setSeasonSlot} className="games-header-slot" />
         </div>
       </div>
 
@@ -240,7 +242,7 @@ export default function GamesListPage() {
         </p>
       )}
 
-      <SeasonsSection tournaments={tournaments} />
+      <SeasonsSection tournaments={tournaments} actionSlot={seasonSlot} />
 
       {showForm && editingId == null && tournamentForm}
 
