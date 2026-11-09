@@ -15,8 +15,8 @@ const RUN_SHAPE_BY_NAME = {
   'Easy Aerobic Run': 'calendar-dot--disc',
 }
 const FIELD_SHAPE_BY_NAME = {
-  'Field 1 - Acceleration & Jump Quality': 'calendar-dot--triangle',
-  'Field 2 - Repeat Effort & COD': 'calendar-dot--diamond',
+  'Field 1': 'calendar-dot--triangle',
+  'Field 2': 'calendar-dot--diamond',
 }
 const ULTIMATE_SHAPE_BY_NAME = {
   Solo: 'calendar-dot--disc',

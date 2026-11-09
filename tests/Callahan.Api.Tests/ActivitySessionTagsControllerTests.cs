@@ -154,13 +154,13 @@ public class ActivitySessionTagsControllerTests
         var asPrimary = Ok(await controller.UpdateSessionTypes(id,
             new UpdateActivitySessionTagsRequest(Field1, null)));
         Assert.Equal(Field1, asPrimary.ActivitySessionTypeId);
-        Assert.Equal("Field 1 - Acceleration & Jump Quality", asPrimary.ActivitySessionTypeName);
+        Assert.Equal("Field 1", asPrimary.ActivitySessionTypeName);
         Assert.Equal("Field", asPrimary.SessionTypes!.Single().Family);
 
         // And as an extra alongside a real Ultimate primary.
         var withExtra = Ok(await controller.UpdateSessionTypes(id,
             new UpdateActivitySessionTagsRequest(ClubTraining, new List<int> { Field2 })));
-        Assert.Equal(new[] { "Club Training", "Field 2 - Repeat Effort & COD" }, withExtra.SessionTypes!.Select(t => t.Name));
+        Assert.Equal(new[] { "Club Training", "Field 2" }, withExtra.SessionTypes!.Select(t => t.Name));
     }
 
     [Fact]

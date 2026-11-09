@@ -20,7 +20,7 @@ describe('activityDots', () => {
       {
         type: 'Ultimate',
         sessionTypes: [
-          { name: 'Field 1 - Acceleration & Jump Quality', family: 'Field' },
+          { name: 'Field 1', family: 'Field' },
           { name: 'Throws', family: 'Ultimate' },
         ],
       },
@@ -43,7 +43,7 @@ describe('activityDots', () => {
 
   it('a field session recorded as a run still lands in the blue lane', () => {
     expect(cls(activityDots([
-      { type: 'Running', sessionTypes: [{ name: 'Field 2 - Repeat Effort & COD', family: 'Field' }] },
+      { type: 'Running', sessionTypes: [{ name: 'Field 2', family: 'Field' }] },
     ]))).toEqual(['calendar-dot calendar-dot-run calendar-dot--diamond'])
   })
 

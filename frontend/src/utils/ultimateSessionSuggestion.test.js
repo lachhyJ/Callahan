@@ -6,14 +6,14 @@ const TYPES = [
   { id: 5, name: 'Throws' },
   { id: 6, name: 'Pod' },
   { id: 7, name: 'Club Training' },
-  { id: 9, name: 'Field 1 - Acceleration & Jump Quality' },
-  { id: 10, name: 'Field 2 - Repeat Effort & COD' },
+  { id: 9, name: 'Field 1' },
+  { id: 10, name: 'Field 2' },
 ]
 
 const suggest = (notes, extra = {}) => suggestUltimateSessionType({ notes, ...extra }, TYPES)?.id ?? null
 
 describe('suggestUltimateSessionType', () => {
-  it('reads a titled field session as Field 1 or Field 2, matching on the name prefix', () => {
+  it('reads a titled field session as Field 1 or Field 2', () => {
     expect(suggest('Field 1')).toBe(9)
     expect(suggest('Melbourne Ultimate — field 2 session')).toBe(10)
   })

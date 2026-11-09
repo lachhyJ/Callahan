@@ -316,8 +316,8 @@ public class AppDbContext : DbContext
             // slot resolve through it); Family = Field is what makes them
             // selectable on an Ultimate activity too - which is how they're
             // mostly recorded now.
-            new ActivitySessionType { Id = 9, Name = "Field 1 - Acceleration & Jump Quality", ActivityType = ActivityType.Running, SortOrder = 4, Family = SessionTypeFamily.Field },
-            new ActivitySessionType { Id = 10, Name = "Field 2 - Repeat Effort & COD", ActivityType = ActivityType.Running, SortOrder = 5, Family = SessionTypeFamily.Field }
+            new ActivitySessionType { Id = 9, Name = "Field 1", ActivityType = ActivityType.Running, SortOrder = 4, Family = SessionTypeFamily.Field },
+            new ActivitySessionType { Id = 10, Name = "Field 2", ActivityType = ActivityType.Running, SortOrder = 5, Family = SessionTypeFamily.Field }
         );
 
         // One completion per routine per day. The API upserts against this

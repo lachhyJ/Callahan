@@ -287,7 +287,7 @@ namespace Callahan.Api.Migrations
                             Id = 9,
                             ActivityType = 0,
                             Family = 1,
-                            Name = "Field 1 - Acceleration & Jump Quality",
+                            Name = "Field 1",
                             SortOrder = 4
                         },
                         new
@@ -295,7 +295,7 @@ namespace Callahan.Api.Migrations
                             Id = 10,
                             ActivityType = 0,
                             Family = 1,
-                            Name = "Field 2 - Repeat Effort & COD",
+                            Name = "Field 2",
                             SortOrder = 5
                         });
                 });

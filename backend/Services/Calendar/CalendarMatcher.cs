@@ -14,8 +14,8 @@ public static partial class CalendarMatcher
     public record Result(Dictionary<int, CalendarEvent> BySlot, List<CalendarEvent> Other, HashSet<int> Linked);
 
     // The titles that mean this slot. Gym and Field slots answer to the short name the
-    // program gives them ("Gym 1", "Field 2" - the seeded Field labels carry a subtitle,
-    // "Field 1 - Acceleration & Jumps", which nobody types into a calendar); the Aerobic slot is seeded as "Aerobic
+    // program gives them ("Gym 1", "Field 2"; a label with a subtitle, "Field 1 - Defence",
+    // answers to the part before " - "); the Aerobic slot is seeded as "Aerobic
     // - easy ride, or rest" but is written in the calendar as "aerobic run", so it
     // answers to "aerobic" and "run". Routines and rest never get an event.
     public static IReadOnlyList<string> MatchKeys(PlanSlotKind kind, string label) => kind switch
