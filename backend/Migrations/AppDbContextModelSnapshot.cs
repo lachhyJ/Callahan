@@ -345,6 +345,35 @@ namespace Callahan.Api.Migrations
                     b.ToTable("AppSettings");
                 });
 
+            modelBuilder.Entity("Callahan.Api.Models.BodyWeight", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Source")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<double>("WeightKg")
+                        .HasColumnType("REAL");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .IsUnique();
+
+                    b.ToTable("BodyWeights");
+                });
+
             modelBuilder.Entity("Callahan.Api.Models.DailyWellness", b =>
                 {
                     b.Property<int>("Id")

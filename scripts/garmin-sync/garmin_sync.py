@@ -16,6 +16,10 @@ Run modes:
   --wellness        Fetch + map + PUT daily sleep/HRV/readiness/etc for a
                     date range (see --wellness-days / --wellness-start)
                     instead of syncing activities.
+                    Body weight rides along: every --wellness run also pulls
+                    Garmin weigh-ins in ONE range call (at least the last 30
+                    days, wider for a --wellness-start backfill) and PUTs
+                    them to /api/body-weights. --weights-only does just that.
   --dump-laps       Print raw lap/split data for one activity (run or
                     Ultimate) and exit. No Callahan calls, nothing is synced.
                     Use this to confirm the activity has real per-lap
@@ -205,6 +209,10 @@ def post_strength(api_base, token, payload):
 
 def put_wellness(api_base, token, payload):
     return callahan_request("PUT", api_base, "/api/wellness", token, payload)
+
+
+def put_body_weights(api_base, token, entries):
+    return callahan_request("PUT", api_base, "/api/body-weights", token, {"entries": entries})
 
 
 def patch_training_status(api_base, token, payload):
@@ -731,6 +739,57 @@ def cmd_sync_wellness(client, days, start, dry_run, api_base):
     log(f"Wellness done: {synced} synced, {skipped} skipped."
         + (f" Resume a backfill with --wellness-start {resume_from}." if start and resume_from else ""))
 
+    cmd_sync_weights(client, days, start, dry_run, api_base)
+
+
+# Weigh-ins change rarely and can be entered late, so the weight call looks back
+# further than the wellness window (3 days) - it is one request either way.
+WEIGHT_MIN_DAYS = 30
+
+
+def parse_weigh_ins(result):
+    """get_weigh_ins -> [{date, weightKg, source}], one per calendar day.
+
+    Garmin reports grams (78699.0 is 78.699 kg) and, per day, a latestWeight plus
+    every reading in allWeightMetrics. The latest is the one kept. Verified against
+    a real get_weigh_ins response on 2026-11-09 (manual entries; body-composition
+    fields all null)."""
+    entries = []
+    for day in (result or {}).get("dailyWeightSummaries") or []:
+        latest = day.get("latestWeight") or {}
+        grams = latest.get("weight")
+        cdate = latest.get("calendarDate") or day.get("summaryDate")
+        if not grams or not cdate:
+            continue
+        entries.append({"date": cdate, "weightKg": round(float(grams) / 1000.0, 3),
+                        "source": latest.get("sourceType")})
+    return entries
+
+
+def cmd_sync_weights(client, days, start, dry_run, api_base):
+    """One range call for the whole window. Never raises: a weight failure must not
+    take the wellness run (or the app's Sync button) down with it."""
+    end_d = date.today()
+    start_d = date.fromisoformat(start) if start else end_d - timedelta(days=max(days, WEIGHT_MIN_DAYS) - 1)
+    try:
+        entries = parse_weigh_ins(client.get_weigh_ins(start_d.isoformat(), end_d.isoformat()))
+    except Exception as e:
+        log(f"Weigh-in fetch failed ({type(e).__name__}: {e}); skipping weights this run.")
+        return
+
+    if dry_run:
+        print(json.dumps(entries, indent=2))
+        return
+    if not entries:
+        log(f"Weights: none between {start_d} and {end_d}.")
+        return
+    try:
+        token = callahan_token(api_base)
+        result, _ = put_body_weights(api_base, token, entries)
+        log(f"Weights: {len(entries)} weigh-ins in {start_d}..{end_d} -> {result}")
+    except Exception as e:
+        log(f"Failed to store weigh-ins ({type(e).__name__}: {e}).")
+
 
 def cmd_sync_training_status(client, days, start, dry_run, api_base):
     """Backfill only the Training Status and Load Balance columns: one Garmin call per day (vs five
@@ -955,12 +1014,18 @@ def main():
                          help=f"Re-fetch the GPS track for every in-window Ultimate activity, not just ones "
                               f"without one. For after a track-projection change. Requires "
                               f"--days <= {FORCE_LAPS_MAX_DAYS}.")
+    parser.add_argument("--weights-only", action="store_true",
+                         help="With --wellness: sync only body weight (one Garmin call, whole window). "
+                              "Normal --wellness runs already include weights; use this with --wellness-start "
+                              "to backfill history without re-fetching every day's wellness.")
     parser.add_argument("--dry-run", action="store_true",
                          help="Build payloads but don't POST/PUT them (applies to --wellness too).")
     args = parser.parse_args()
     if args.wellness_status_only and not args.wellness:
         # Otherwise it would silently fall through to the default activity sync.
         parser.error("--wellness-status-only requires --wellness")
+    if args.weights_only and not args.wellness:
+        parser.error("--weights-only requires --wellness")
 
     api_base = os.environ.get("CALLAHAN_API_BASE", "http://localhost:8080")
 
@@ -974,6 +1039,8 @@ def main():
     elif args.dump_wellness:
         cdate = args.wellness_date or (date.today() - timedelta(days=1)).isoformat()
         cmd_dump_wellness(client, cdate)
+    elif args.wellness and args.weights_only:
+        cmd_sync_weights(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.wellness and args.wellness_status_only:
         cmd_sync_training_status(client, args.wellness_days, args.wellness_start, args.dry_run, api_base)
     elif args.wellness:

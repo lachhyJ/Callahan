@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<TaperReminderLog> TaperReminderLogs => Set<TaperReminderLog>();
     public DbSet<MonthlyReport> MonthlyReports => Set<MonthlyReport>();
     public DbSet<DailyWellness> DailyWellness => Set<DailyWellness>();
+    public DbSet<BodyWeight> BodyWeights => Set<BodyWeight>();
     public DbSet<ActivityLap> ActivityLaps => Set<ActivityLap>();
     public DbSet<ActivityTrack> ActivityTracks => Set<ActivityTrack>();
     public DbSet<Tournament> Tournaments => Set<Tournament>();
@@ -134,6 +135,10 @@ public class AppDbContext : DbContext
             .IsUnique();
 
         modelBuilder.Entity<DailyWellness>()
+            .HasIndex(w => w.Date)
+            .IsUnique();
+
+        modelBuilder.Entity<BodyWeight>()
             .HasIndex(w => w.Date)
             .IsUnique();
 
