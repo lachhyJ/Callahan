@@ -1,6 +1,7 @@
 using Callahan.Api.Controllers;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
+using Callahan.Api.Models;
 using Callahan.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -51,6 +52,10 @@ public class RoutineCompletionTests
     {
         using var conn = new SqliteConnection("DataSource=:memory:");
         using var db = NewDb(conn);
+        // Only the ankle circuit is seeded since the Jump Block was retired, so a second
+        // routine is added here to have something to tick alongside it.
+        db.Routines.Add(new Routine { Id = 2, Name = "Second", Purpose = "p", Cadence = "c", Notes = "n", SortOrder = 2 });
+        await db.SaveChangesAsync();
         var controller = new RoutinesController(db);
 
         await controller.MarkDone(1, new MarkRoutineDoneRequest(Day, null));
@@ -95,12 +100,20 @@ public class RoutineCompletionTests
         var result = await new RoutinesController(db).GetAll();
         var routines = Assert.IsType<List<RoutineDto>>(Assert.IsType<OkObjectResult>(result.Result).Value);
 
-        Assert.Equal(["Daily Ankle Circuit", "Jump Block"], routines.Select(r => r.Name));
-        var jump = routines.Single(r => r.Name == "Jump Block");
+        // Program v4: one routine. The Jump Block is retired (its jumps open Field 1 / Field 2).
+        var ankle = Assert.Single(routines);
+        Assert.Equal("Ankle Circuit", ankle.Name);
         Assert.Equal(
-            ["Ankle circuit (abbreviated)", "Pogo hops", "Countermovement jump to target", "Depth drop to stick landing"],
-            jump.Items.Select(i => i.Name));
-        Assert.Null(jump.Today);
+            [
+                "Single-leg balance, eyes open",
+                "Single-leg balance, eyes closed",
+                "Single-leg balance + head turns",
+                "Single-leg balance + reach (Y-pattern)",
+                "Banded ankle eversion",
+                "Tibialis raises",
+            ],
+            ankle.Items.Select(i => i.Name));
+        Assert.Null(ankle.Today);
     }
 
     [Fact]

@@ -4831,6 +4831,41 @@ td {
   border-radius: var(--radius-md);
 }
 
+.field-sessions-title {
+  margin: var(--space-xl) 0 var(--space-sm);
+  font-size: var(--text-base);
+  color: var(--text-primary);
+}
+
+.field-session {
+  margin-bottom: var(--space-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+
+/* The whole summary row is the tap target (44px), not just the title text. */
+.field-session > summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: var(--space-xs) var(--space-md);
+  font-weight: 600;
+  color: var(--text-primary);
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.field-session[open] > summary {
+  border-bottom: 1px solid var(--border);
+}
+
+.field-session > .program-doc,
+.field-session > .error {
+  padding: 0 var(--space-md) var(--space-md);
+}
+
 .routine-toggle {
   margin-top: var(--space-md);
   padding: var(--space-2xs) 0;

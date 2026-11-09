@@ -91,7 +91,7 @@ public class PlanControllerTests
         var field = new PlanSlot { DefaultDayOfWeek = 2, SlotOrder = 1, Kind = PlanSlotKind.Field, Label = "Field 1 - Acceleration & Jumps", ActivitySessionTypeId = 9 };
         var aerobic = new PlanSlot { DefaultDayOfWeek = 6, SlotOrder = 1, Kind = PlanSlotKind.Aerobic, Label = "Aerobic - easy ride, or rest", IsOptional = true };
         db.PlanSlots.AddRange(gym, field, aerobic,
-            new PlanSlot { DefaultDayOfWeek = 1, SlotOrder = 1, Kind = PlanSlotKind.Routine, Label = "Jump Block", RoutineId = 2 },
+            new PlanSlot { DefaultDayOfWeek = 1, SlotOrder = 1, Kind = PlanSlotKind.Routine, Label = "Ankle circuit", RoutineId = 1 },
             new PlanSlot { DefaultDayOfWeek = 3, SlotOrder = 1, Kind = PlanSlotKind.Rest, Label = "Rest", IsOptional = true });
         db.SaveChanges();
         return (gym.Id, field.Id, aerobic.Id, template);

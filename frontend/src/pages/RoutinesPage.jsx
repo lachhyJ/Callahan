@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
-import { getRoutines, markRoutineDone, undoRoutineDone } from '../api/client'
+import { useEffect, useMemo, useState } from 'react'
+import DOMPurify from 'dompurify'
+import { getFieldSessions, getRoutines, markRoutineDone, undoRoutineDone } from '../api/client'
 import { trainingDayIso, formatDateMedium } from '../dateUtils'
 
 // The routines' Notes field is plain text with blank-line paragraphs and "- "
@@ -147,8 +148,33 @@ function RoutineCard({ routine, onChange }) {
   )
 }
 
+// Field 1 and Field 2 as the program doc writes them, collapsed so the ankle circuit
+// stays at the top of the page. Read-only on purpose: a field session is recorded on
+// the watch as its own activity, so there is nothing to tick here.
+function FieldSessions({ sessions }) {
+  const clean = useMemo(
+    () => sessions.map((s) => ({ ...s, safe: s.html ? DOMPurify.sanitize(s.html) : null })),
+    [sessions],
+  )
+
+  return (
+    <section className="field-sessions" aria-label="Field sessions">
+      <h2 className="field-sessions-title">Field sessions</h2>
+      {clean.map((s) => (
+        <details key={s.key} className="field-session">
+          <summary>{s.title ?? (s.key === 'field-1' ? 'Field 1' : 'Field 2')}</summary>
+          {s.safe
+            ? <div className="program-doc" dangerouslySetInnerHTML={{ __html: s.safe }} />
+            : <p className="error">Couldn&apos;t find this section in the program document. It may have been retitled.</p>}
+        </details>
+      ))}
+    </section>
+  )
+}
+
 export default function RoutinesPage() {
   const [routines, setRoutines] = useState(null)
+  const [fieldSessions, setFieldSessions] = useState(null)
   const [error, setError] = useState(null)
 
   async function load() {
@@ -161,12 +187,18 @@ export default function RoutinesPage() {
 
   useEffect(() => { load() }, [])
 
+  // Separate from the routines: no program doc configured (or a down request) must not
+  // take the ankle circuit away. Failure just means no field section.
+  useEffect(() => {
+    getFieldSessions().then((res) => setFieldSessions(res.sessions)).catch(() => setFieldSessions([]))
+  }, [])
+
   return (
     <main className="page">
       <h1>Routines</h1>
       <p className="page-lead">
-        The parts of the program that aren&apos;t gym sessions. No sets or reps — just what to
-        do, and whether you did it.
+        The parts of the program that aren&apos;t gym sessions: what to do, and for the ankle
+        circuit whether you did it. The field plans are below.
       </p>
 
       {error && <p className="error">{error}</p>}
@@ -175,6 +207,8 @@ export default function RoutinesPage() {
       {routines?.map((r) => (
         <RoutineCard key={r.id} routine={r} onChange={load} />
       ))}
+
+      {fieldSessions && fieldSessions.length > 0 && <FieldSessions sessions={fieldSessions} />}
     </main>
   )
 }

@@ -271,6 +271,13 @@ export function getProgramWarmup() {
   return apiFetch('/api/program/warmup')
 }
 
+// The Routines page's field-session plans: sections of the program doc, looked up by
+// heading. Each session's html is null when its section can't be found (the doc was
+// retitled), which the page says out loud rather than showing less.
+export function getFieldSessions() {
+  return apiFetch('/api/program/field-sessions')
+}
+
 export function getWorkoutSession(id) {
   return apiFetch(`/api/workoutsessions/${id}`)
 }
