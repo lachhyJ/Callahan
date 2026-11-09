@@ -10,7 +10,7 @@ namespace Callahan.Api.Tests;
 
 // The program v3 rebuild replaced Day A/B/C with Gym 1/2/3. The old templates
 // are retired rather than deleted, because 36 logged sessions reference them by
-// WorkoutTemplateId and History, Streaks and the monthly reports all read their
+// WorkoutTemplateId and History and the monthly reports all read their
 // names through it.
 //
 // That makes two behaviours load-bearing and easy to break in opposite

@@ -25,7 +25,6 @@ import WorkoutSessionDetailPage from './pages/WorkoutSessionDetailPage'
 import UltimateGameDetailPage from './pages/UltimateGameDetailPage'
 import GamesListPage from './pages/GamesListPage'
 import TournamentDetailPage from './pages/TournamentDetailPage'
-import StreakDetailPage from './pages/StreakDetailPage'
 import TrendsPage from './pages/TrendsPage'
 import ProgramPage from './pages/ProgramPage'
 import RoutinesPage from './pages/RoutinesPage'
@@ -51,7 +50,6 @@ function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
     || pathname.startsWith('/exercises/')
     || pathname.startsWith('/sessions/')
-    || pathname.startsWith('/streaks/')
     || pathname.startsWith('/reports/')
     || pathname.startsWith('/activities/')
     || pathname.startsWith('/tournaments/')
@@ -296,8 +294,6 @@ function AppRoutes() {
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
-          <Route path="/streaks" element={<Navigate to="/trends" replace />} />
-          <Route path="/streaks/:type" element={<ProtectedRoute><StreakDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
           <Route path="/routines" element={<ProtectedRoute><RoutinesPage /></ProtectedRoute>} />

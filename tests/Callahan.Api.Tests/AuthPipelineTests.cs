@@ -56,7 +56,7 @@ public class AuthPipelineTests : IDisposable
     [Fact]
     public async Task ADataEndpointWithoutATokenIs401()
     {
-        var response = await Client("Production").GetAsync("/api/streaks");
+        var response = await Client("Production").GetAsync("/api/routines");
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
@@ -86,7 +86,7 @@ public class AuthPipelineTests : IDisposable
         Assert.True(widget.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent,
             $"widget route returned {widget.StatusCode}");
 
-        var other = await client.GetAsync("/api/streaks");
+        var other = await client.GetAsync("/api/routines");
         Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
     }
 

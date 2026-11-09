@@ -6,7 +6,7 @@ import { workoutLabel } from '../utils/workoutLabel'
 
 // Compact preview, deliberately lighter than History's full log entries —
 // used anywhere someone's just checking "what did I do that day/week"
-// (the day-detail sheet, a streak's week-by-week breakdown). Runs and
+// (the day-detail sheet). Runs and
 // Ultimate activities are classifiable here too, via the same picker as
 // History, so this doesn't become a second, weaker place to see an activity
 // that can't actually be tagged.

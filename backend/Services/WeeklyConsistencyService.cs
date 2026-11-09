@@ -3,18 +3,15 @@ namespace Callahan.Api.Services;
 
 public record WeeklyConsistencyDefinition(string Type, string Label, Func<int, int, bool> Qualifies);
 
-// Single source of truth for the "weekly consistency" rules — a missed
-// single day shouldn't reset a streak that's about training consistency,
-// not attendance-taking. Originally lived only in StreaksController;
-// extracted so MonthlyReportBuilder can reuse the exact same definitions
-// and Monday-start week bucketing without risking drift between the two.
+// The "weekly consistency" rules behind the monthly report's weekly targets. There used
+// to be a streaks page on the same rules; it went in program v4 (nobody opened it, and
+// the 3+ gym definitions cannot be hit in-season, when the program is two gym sessions a
+// week), so only the two definitions that fit both blocks remain.
 public static class WeeklyConsistencyService
 {
     public static readonly WeeklyConsistencyDefinition[] Definitions =
     [
         new("gym2", "2+ gym sessions", (gym, run) => gym >= 2),
-        new("gym3", "3+ gym sessions", (gym, run) => gym >= 3),
-        new("gym3run1", "3 gym + a run", (gym, run) => gym >= 3 && run >= 1),
         new("run1", "1+ run", (gym, run) => run >= 1),
     ];
 
@@ -37,29 +34,5 @@ public static class WeeklyConsistencyService
             buckets[wk] = (existing.Item1, existing.Item2 + 1);
         }
         return buckets;
-    }
-
-    // Current and best run of qualifying weeks, oldest week first. The current
-    // (in-progress) week hasn't finished, so it can't yet break a streak: when
-    // it hasn't qualified (yet), the current streak is counted back from last
-    // week instead of being treated as a miss.
-    public static (int Current, int Best) Streak(bool[] qualifiesByWeek)
-    {
-        var best = 0;
-        var run = 0;
-        foreach (var q in qualifiesByWeek)
-        {
-            run = q ? run + 1 : 0;
-            best = Math.Max(best, run);
-        }
-
-        var lastIndex = qualifiesByWeek.Length - 1;
-        var startIndex = lastIndex >= 0 && qualifiesByWeek[lastIndex] ? lastIndex
-            : lastIndex - 1 >= 0 && qualifiesByWeek[lastIndex - 1] ? lastIndex - 1
-            : -1;
-
-        var current = 0;
-        for (var idx = startIndex; idx >= 0 && qualifiesByWeek[idx]; idx--) current++;
-        return (current, best);
     }
 }

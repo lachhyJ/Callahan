@@ -11,7 +11,6 @@ const ROUTE_PATTERNS = [
   [/^\/sessions\/[^/]+$/, '/sessions/:sessionId'],
   [/^\/activities\/[^/]+$/, '/activities/:activityId'],
   [/^\/tournaments\/[^/]+$/, '/tournaments/:tournamentId'],
-  [/^\/streaks\/[^/]+$/, '/streaks/:type'],
   [/^\/reports\/[^/]+\/[^/]+$/, '/reports/:year/:month'],
 ]
 

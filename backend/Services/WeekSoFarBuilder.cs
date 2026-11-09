@@ -10,7 +10,7 @@ namespace Callahan.Api.Services;
 // The planner matches a log to a slot only on the slot's own day, so a week that
 // shifts (shift work, a moved session) reads as a row of misses. This asks a
 // different question - "has the program's Gym 2 been logged anywhere this week?" -
-// which is also how the weekly streaks already count. Pure, like WeekPlanBuilder:
+// which is also how the monthly report's weekly targets count. Pure, like WeekPlanBuilder:
 // the week and the logs come in, so every rule here is testable without a database.
 public static partial class WeekSoFarBuilder
 {

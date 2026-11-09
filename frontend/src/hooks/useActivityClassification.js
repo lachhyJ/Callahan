@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { getActivitySessionTypes, updateActivitySessionTags, updateConeDistance } from '../api/client'
 
 // The session-type list is a small, seed-managed catalog, fetched once per app
-// load and shared. Each hook instance fetching its own made the streak detail
-// page (one SessionList per week) send the same request once per week row.
+// load and shared. Each hook instance fetching its own made a list with one
+// SessionList per row send the same request once per row.
 let sessionTypesPromise = null
 
 function loadSessionTypes() {

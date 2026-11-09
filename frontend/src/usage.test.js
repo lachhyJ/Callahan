@@ -23,11 +23,6 @@ describe('normalisePath', () => {
     expect(normalisePath('/workout/2')).toBe('/workout/:templateId')
   })
 
-  it('handles the non-numeric streak param', () => {
-    expect(normalisePath('/streaks/gym')).toBe('/streaks/:type')
-    expect(normalisePath('/streaks')).toBe('/streaks')
-  })
-
   it('handles the two-segment report route', () => {
     expect(normalisePath('/reports/2026/8')).toBe('/reports/:year/:month')
     expect(normalisePath('/reports')).toBe('/reports')

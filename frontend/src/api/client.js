@@ -183,14 +183,6 @@ export function getWellnessInsight() {
   return apiFetch('/api/wellness/insight')
 }
 
-export function getStreaks() {
-  return apiFetch('/api/streaks')
-}
-
-export function getStreakDetail(type) {
-  return apiFetch(`/api/streaks/${type}`)
-}
-
 export function getTrends(months = 6) {
   return apiFetch(`/api/trends?months=${months}`)
 }

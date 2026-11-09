@@ -630,8 +630,7 @@ public class ActivitiesController : ControllerBase
 
     // An ActivityDto built in SQL, for list reads: no entity is materialised,
     // so neither the track blob nor RawJson is ever loaded. The session-type
-    // list is filled in separately (see GetAll). Shared with the streak detail
-    // page, whose own copy of this had already fallen behind.
+    // list is filled in separately (see GetAll).
     internal static readonly Expression<Func<Activity, ActivityDto>> ListProjection = a => new ActivityDto(
         a.Id, a.Date, a.Type.ToString(), a.Source.ToString(), a.DurationSeconds, a.DistanceKm, a.Calories, a.AvgHeartRate, a.Notes,
         a.ActivitySessionTypeId, a.ActivitySessionType == null ? null : a.ActivitySessionType.Name,

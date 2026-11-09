@@ -2,22 +2,6 @@ using Callahan.Api.Services;
 
 namespace Callahan.Api.Tests;
 
-public class StreakTests
-{
-    private static bool[] W(string weeks) => weeks.Select(c => c == 'x').ToArray();
-
-    [Theory]
-    [InlineData("xxx", 3, 3)]      // qualifying right up to this week
-    [InlineData("xx.", 2, 2)]      // this week not yet qualified: counts from last week
-    [InlineData("x..", 0, 1)]      // last week missed too: streak is broken
-    [InlineData("xx.xxx", 3, 3)]   // a gap resets the current run
-    [InlineData("xxxx.x", 1, 4)]   // best can exceed current
-    [InlineData(".", 0, 0)]
-    [InlineData("x", 1, 1)]
-    public void CurrentAndBest(string weeks, int current, int best) =>
-        Assert.Equal((current, best), WeeklyConsistencyService.Streak(W(weeks)));
-}
-
 // The step-taper phase boundaries (decisions: "prescriptive step-taper
 // percentages against your own baseline").
 public class TaperPhaseCalculatorTests
