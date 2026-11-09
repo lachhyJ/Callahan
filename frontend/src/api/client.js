@@ -641,6 +641,11 @@ export function setTimeZone(zone) {
 
 // The block of the program the athlete is in: "InSeason" (Gym A/B) or "NoClub" (Gym 1/2/3).
 // Decides which gym templates the picker offers.
+// The next program review or test day from the Training calendar, or null.
+export function getNextMilestone() {
+  return apiFetch('/api/milestones/next')
+}
+
 export function getTrainingMode() {
   return apiFetch('/api/training-mode')
 }

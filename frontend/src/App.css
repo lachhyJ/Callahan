@@ -3524,6 +3524,13 @@ td {
   color: var(--accent);
 }
 
+/* The next program review or test day, from the Training calendar. */
+.dashboard-milestone {
+  margin: var(--space-md) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+}
+
 .sheet-backdrop {
   position: fixed;
   inset: 0;

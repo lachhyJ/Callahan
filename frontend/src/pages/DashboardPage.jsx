@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getRoutines, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getNextMilestone, getRoutines, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { peekCache, staleWhileRevalidate } from '../swrCache'
 import { wellnessRange } from '../wellnessMetrics'
 import { STATUS_BAND_DAYS, STATUS_LOOKBACK_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
@@ -13,6 +13,7 @@ import TimeZoneSetting from '../components/TimeZoneSetting'
 import TrainingModeSetting from '../components/TrainingModeSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
+import { milestoneLine } from '../utils/milestone'
 import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
 import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
@@ -119,6 +120,7 @@ export default function DashboardPage() {
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
   const [pendingGarminCount, setPendingGarminCount] = useState(0)
+  const [nextMilestone, setNextMilestone] = useState(null)
 
   useEffect(() => {
     // Deliberately deferred behind the critical workouts/activities fetch
@@ -143,6 +145,8 @@ export default function DashboardPage() {
         setWellnessRows,
       ).catch(() => {})
       getPendingGarminStrength().then((items) => setPendingGarminCount(items.length)).catch(() => {})
+      // A CalDAV read on the server, so it's cached and never holds up first paint.
+      staleWhileRevalidate('next-milestone', getNextMilestone, setNextMilestone).catch(() => {})
     })
     return () => cancelIdle(handle)
   }, [])
@@ -238,6 +242,7 @@ export default function DashboardPage() {
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(undefined, MONTH_FORMAT)
   const isViewingCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth()
   const selectedEntry = selectedDate ? byDate.get(selectedDate) : null
+  const milestoneText = milestoneLine(nextMilestone, todayIso)
 
   function changeMonth(delta) {
     setSelectedDate(null)
@@ -397,6 +402,8 @@ export default function DashboardPage() {
           return divider ? [divider, gutter, ...dayCells] : [gutter, ...dayCells]
         })}
       </div>
+
+      {milestoneText && <p className="dashboard-milestone">Next: {milestoneText}</p>}
 
       {wellness && (
         <div className="section-gap">
