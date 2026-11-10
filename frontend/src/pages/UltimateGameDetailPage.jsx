@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityScore, updateActivityTournament } from '../api/client'
+import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityScore, updateActivityTournament, updateWarmupRecorded } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { formatClock } from '../utils/format'
 import { formatDateLong } from '../dateUtils'
@@ -124,6 +124,10 @@ export default function UltimateGameDetailPage() {
       )}
 
       {activity.type === 'Ultimate' && <ScoreLine activity={activity} onSaved={setActivity} />}
+
+      {activity.activitySessionTypeName === 'Game' && (
+        <WarmupSetting activity={activity} onSaved={setActivity} />
+      )}
 
       {!hasFieldData && (
         <p className="notes">
@@ -273,6 +277,60 @@ function ScoreLine({ activity, onSaved }) {
       ) : (
         <button type="button" className="activity-classify-btn" onClick={open}>Add final score</button>
       )}
+    </div>
+  )
+}
+
+// "Was a warmup recorded?" — when known, it fixes where gameplay starts
+// instead of the detector guessing from line-ups. Saving reclassifies the
+// game, so the stats and timeline above/below refresh from the response.
+const WARMUP_OPTIONS = [
+  { value: true, label: 'Yes' },
+  { value: false, label: 'No' },
+  { value: null, label: 'Don’t know' },
+]
+
+function WarmupSetting({ activity, onSaved }) {
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+  const current = activity.warmupRecorded ?? null
+
+  async function choose(value) {
+    if (value === current || saving) return
+    setErr(null)
+    setSaving(true)
+    try {
+      onSaved(await updateWarmupRecorded(activity.id, value))
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="mode-setting warmup-setting">
+      <span className="mode-setting-label" id="warmup-label">Warmup recorded?</span>
+      <div className="mode-toggle mode-toggle-3" role="group" aria-labelledby="warmup-label">
+        {WARMUP_OPTIONS.map((o) => (
+          <button
+            key={String(o.value)}
+            type="button"
+            className={`mode-toggle-btn mode-toggle-btn-compact${o.value === current ? ' mode-toggle-btn-on' : ''}`}
+            aria-pressed={o.value === current}
+            disabled={saving}
+            onClick={() => choose(o.value)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p className="game-method-note warmup-hint">
+        {current === false && 'Gameplay counted from the start of the recording.'}
+        {current === true && 'Gameplay starts after the warmup lap, or is detected from line-ups if you didn’t press one.'}
+        {current === null && 'Gameplay start is detected from line-ups.'}
+      </p>
+      {err && <p className="error">{err}</p>}
     </div>
   )
 }

@@ -508,6 +508,15 @@ export function updateActivityScore(id, { finalScoreFor, finalScoreAgainst } = {
   })
 }
 
+// "Was a warmup recorded?" for an Ultimate game: true, false, or null (don't
+// know). The server reclassifies the game and returns the updated activity.
+export function updateWarmupRecorded(id, warmupRecorded) {
+  return apiFetch(`/api/activities/${id}/warmup`, {
+    method: 'PUT',
+    body: JSON.stringify({ warmupRecorded }),
+  })
+}
+
 // Returns null (204) for anything that isn't a classified Ultimate Game with
 // a decodable GPS track — never throws for that case, only for a real
 // network/auth failure.

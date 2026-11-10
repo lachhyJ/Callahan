@@ -72,6 +72,12 @@ public class Activity
     // re-running anything.
     public string? LapClassifierMethod { get; set; }
     public int? LapClassifierVersion { get; set; }
+    // Lachlan's answer to "was a warmup recorded?" for an Ultimate game: true
+    // = yes, false = no (he went straight in), null = don't know. When known it
+    // fixes FieldGeometry's gameplay start instead of inferring it from
+    // line-ups (see LapFieldClassifier.KnownGameplayStart). Never inferred from
+    // lap position - he sometimes starts recording on the sideline.
+    public bool? WarmupRecorded { get; set; }
 
     // The full Garmin activity summary as received, stored verbatim and never
     // queried - a hedge so a field not modelled above (training effect,

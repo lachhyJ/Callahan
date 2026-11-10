@@ -9,9 +9,11 @@ reads. Steps:
 1. Fit set: fast samples (>= FAST m/s) in the area with the most fast running
    (main_cluster). Lap-pressed sessions also drop warmup / rest / ambiguous
    laps from the fit (fit_exclusion).
-2. Gameplay start: the first line-up of a run of line-ups (end dwell followed
-   by a burst) that alternates ends like games, not drills. 0 when none found.
-   Never keyed on lap position.
+2. Gameplay start: known when Lachlan has said whether a warmup was recorded
+   (known_start: "no" = sample 0, "yes" plus a pressed warmup lap = that lap's
+   end). Otherwise inferred: the first line-up of a run of line-ups (end dwell
+   followed by a burst) that alternates ends like games, not drills. 0 when
+   none found. Never keyed on lap position.
 3. Geometry from fast play after the start: angle = PCA; endzone lines = the
    median of line-up dwell |along| per end, re-centred symmetric; width = the
    3rd-97th percentile span of fast cross, centred between them.
@@ -278,7 +280,33 @@ def fit_exclusion(t, laps):
     return ex
 
 
-def analyse(t, lat, lon, spd, exclude=None):
+def warmup_lap_end(laps):
+    """End (seconds from track start) of the pressed warmup lap, or None. A warmup
+    lap is one longer than WarmupLapMinSec - labelled by its duration, never by its
+    position, since lap 1 is sometimes sideline time or already gameplay. The
+    earliest such lap wins, and only if another lap starts after it: a single lap
+    spanning the session is Garmin's default lap, not a press."""
+    ls = sorted((l for l in laps if l[1] > 0), key=lambda l: l[0])
+    for k, (start, dur, _avg, _mx) in enumerate(ls):
+        if dur > LAP["WarmupLapMinSec"]:
+            return start + dur if k + 1 < len(ls) else None
+    return None
+
+
+def known_start(laps, warmup_recorded):
+    """Gameplay start fixed by the per-activity "warmup recorded?" flag, or None to
+    infer it. False -> 0. True -> the warmup lap's end, or None with no warmup lap.
+    None (don't know) -> None."""
+    if warmup_recorded is False:
+        return 0.0
+    if warmup_recorded is True:
+        return warmup_lap_end(laps)
+    return None
+
+
+def analyse(t, lat, lon, spd, exclude=None, start=None):
+    """start: known gameplay start (seconds from track start, see known_start);
+    None infers it from line-ups."""
     t = [float(x) for x in t]
     spd = [float(x or 0) for x in spd]
     n = len(t)
@@ -294,7 +322,9 @@ def analyse(t, lat, lon, spd, exclude=None):
     # fit -> gameplay start -> refit on post-start fast play, until the start settles
     fit = fast
     g0 = None
-    for _ in range(4):
+    if start is not None:   # known: the first sample at or after it
+        g0 = next((i for i in range(n) if t[i] >= start), n - 1)
+    for _ in range(0 if start is not None else 4):
         ox, oy, th0 = pca(pts, fit)
         A = [a for a, _ in frame(pts, ox, oy, th0)]
         rh = rough_half_length(A, fit)
@@ -380,9 +410,9 @@ def analyse(t, lat, lon, spd, exclude=None):
                 onsec=on_s, offsec=dur - on_s, ondist=on_d, livesec=live_s, livedist=live_d, dur=dur)
 
 
-def baseline(t, lat, lon, spd, exclude=None):
+def baseline(t, lat, lon, spd, exclude=None, start=None):
     """The baselines.json numbers FieldGeometryTests compares against."""
-    r = analyse(t, lat, lon, spd, exclude)
+    r = analyse(t, lat, lon, spd, exclude, start)
     return {"onFieldSeconds": round(r["onsec"]), "durationSeconds": round(r["dur"]),
             "onFieldFraction": round(r["onsec"] / r["dur"], 4), "pointsPlayed": r["played"],
             "restPeriods": r["rests"], "gameplayStartSeconds": round(t[r["g0"]] - t[0]),

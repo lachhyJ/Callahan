@@ -221,10 +221,51 @@ public static class LapFieldClassifier
     // field fit. Laps are labelled by their own speeds, never by position:
     // lap 1 isn't reliably a warmup. A lap with no speeds excludes nothing.
     // Shared by every caller so the stored numbers and the timeline agree.
+    // warmupRecorded is Activity.WarmupRecorded: when known, it fixes the
+    // gameplay start instead of inferring it (KnownGameplayStart).
     public static GeometryResult AnalyseWithLaps(
         IReadOnlyList<ActivityLap> laps, IReadOnlyList<TrackSample> samples,
-        long trackStartEpochMs, LapClassifierOptions? options = null)
-        => FieldGeometry.Analyse(samples, excludeFromFit: FitExclusion(laps, samples, trackStartEpochMs, options));
+        long trackStartEpochMs, LapClassifierOptions? options = null, bool? warmupRecorded = null)
+        => FieldGeometry.Analyse(samples,
+            excludeFromFit: FitExclusion(laps, samples, trackStartEpochMs, options),
+            knownStartT: KnownGameplayStart(laps, trackStartEpochMs, warmupRecorded, options));
+
+    // The gameplay start fixed by the per-activity "warmup recorded?" flag, in
+    // seconds from track start, or null to let FieldGeometry infer it.
+    // false -> 0 (he went straight in). true -> the pressed warmup lap's end,
+    // or null if there isn't one. null (don't know) -> null.
+    // Mirrors fieldgeometry_v2.py:known_start.
+    public static double? KnownGameplayStart(
+        IReadOnlyList<ActivityLap> laps, long trackStartEpochMs, bool? warmupRecorded,
+        LapClassifierOptions? options = null)
+        => warmupRecorded switch
+        {
+            false => 0.0,
+            true => WarmupLapEnd(laps, trackStartEpochMs, options),
+            null => null,
+        };
+
+    // End of the pressed warmup lap (seconds from track start), or null. A
+    // warmup lap is one longer than WarmupLapMinSec - labelled by duration,
+    // never by position, since lap 1 is sometimes sideline time or already
+    // gameplay. The earliest wins, and only if another lap starts after it: a
+    // single lap over the whole session is Garmin's default lap, not a press.
+    // Mirrors fieldgeometry_v2.py:warmup_lap_end.
+    public static double? WarmupLapEnd(
+        IReadOnlyList<ActivityLap> laps, long trackStartEpochMs, LapClassifierOptions? options = null)
+    {
+        var opts = options ?? LapClassifierOptions.Default;
+        var epoch = DateTimeOffset.FromUnixTimeMilliseconds(trackStartEpochMs).UtcDateTime;
+        var windowed = laps
+            .Where(l => l.StartTimeGmt is not null && (l.DurationSeconds ?? 0m) > 0m)
+            .Select(l => (Start: (l.StartTimeGmt!.Value - epoch).TotalSeconds, Dur: (double)l.DurationSeconds!.Value))
+            .OrderBy(l => l.Start)
+            .ToList();
+        for (int k = 0; k < windowed.Count; k++)
+            if (windowed[k].Dur > opts.WarmupLapMinSec)
+                return k + 1 < windowed.Count ? windowed[k].Start + windowed[k].Dur : null;
+        return null;
+    }
 
     public static bool[]? FitExclusion(
         IReadOnlyList<ActivityLap> laps, IReadOnlyList<TrackSample> samples,

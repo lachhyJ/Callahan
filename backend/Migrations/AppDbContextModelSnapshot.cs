@@ -119,6 +119,9 @@ namespace Callahan.Api.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool?>("WarmupRecorded")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ActivitySessionTypeId");

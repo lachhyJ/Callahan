@@ -34,8 +34,9 @@ public sealed record GeometryResult(
     double LivePlayDistanceM,
     // Off-field gaps of at least RestMinSec between stints.
     int RestPeriods = 0,
-    // Inferred start of gameplay (seconds from track start); 0 when no
-    // game-like run of line-ups was found. Everything before it is off-field.
+    // Start of gameplay (seconds from track start): known from the warmup
+    // flag, else inferred; 0 when no game-like run of line-ups was found.
+    // Everything before it is off-field.
     double GameplayStartT = 0);
 
 // Every tunable in scripts/ultimate-stream-explore/fieldgeometry_v2.py (P),
@@ -96,9 +97,12 @@ public static class FieldGeometry
     // excludeFromFit: per-sample mask (parallel to samples) of time that must
     // never shape the field fit - warmup / rest / ambiguous laps when the
     // session was lap-pressed. It only affects the fit, not on/off labelling.
+    // knownStartT: gameplay start (seconds from track start) when the
+    // per-activity "warmup recorded?" flag fixes it (see
+    // LapFieldClassifier.KnownGameplayStart); null infers it from line-ups.
     public static GeometryResult Analyse(
         IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null,
-        IReadOnlyList<bool>? excludeFromFit = null)
+        IReadOnlyList<bool>? excludeFromFit = null, double? knownStartT = null)
     {
         var o = options ?? FieldGeometryOptions.Default;
         int n = samples.Count;
@@ -126,7 +130,12 @@ public static class FieldGeometry
         // 2. Gameplay start: fit -> start -> refit on post-start play, until it settles.
         var fit = fast;
         int? g0n = null;
-        for (int iter = 0; iter < 4; iter++)
+        if (knownStartT is double ks)   // known: the first sample at or after it
+        {
+            g0n = n - 1;
+            for (int i = 0; i < n; i++) if (t[i] >= ks) { g0n = i; break; }
+        }
+        for (int iter = 0; iter < (knownStartT is null ? 4 : 0); iter++)
         {
             var (ox0, oy0, th0) = Pca(x, y, fit);
             var (a0, _) = Frame(x, y, ox0, oy0, th0);

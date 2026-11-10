@@ -49,7 +49,13 @@ public record ActivityDto(
     // SortOrder. Contains just the primary for call sites that don't load the
     // tag set; null only on the pre-classification default. ActivitySessionTypeId
     // / ...Name above stay as the primary's id/name for existing consumers.
-    IReadOnlyList<ActivitySessionTypeDto>? SessionTypes = null);
+    IReadOnlyList<ActivitySessionTypeDto>? SessionTypes = null,
+    // "Was a warmup recorded?" for an Ultimate game: true / false / null
+    // (don't know). See Activity.WarmupRecorded.
+    bool? WarmupRecorded = null);
+
+// PUT /api/activities/{id}/warmup body. null = don't know.
+public record UpdateWarmupRecordedRequest(bool? WarmupRecorded);
 
 // PUT /api/activities/{id}/score body. Both values or neither.
 public record UpdateActivityScoreRequest(int? FinalScoreFor, int? FinalScoreAgainst);

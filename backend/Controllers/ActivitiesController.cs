@@ -151,7 +151,8 @@ public class ActivitiesController : ControllerBase
         if (samples is null || samples.Count == 0) return NoContent();
 
         var laps = await _db.ActivityLaps.AsNoTracking().Where(l => l.ActivityId == id).ToListAsync();
-        var geometry = LapFieldClassifier.AnalyseWithLaps(laps, samples, track.StartEpochMs);
+        var geometry = LapFieldClassifier.AnalyseWithLaps(
+            laps, samples, track.StartEpochMs, warmupRecorded: activity.WarmupRecorded);
         var totalSeconds = (int)Math.Round(samples[^1].T);
         var segments = geometry.Segments
             .Select(s => new FieldSegmentDto(s.OnField, (int)Math.Round(s.StartT), (int)Math.Round(s.EndT)))
@@ -484,6 +485,30 @@ public class ActivitiesController : ControllerBase
         return Ok(await ToDtoAsync(activity));
     }
 
+    // "Was a warmup recorded?" for an Ultimate game (true / false / null =
+    // don't know). It fixes the gameplay start the field detector would
+    // otherwise infer, so this activity is reclassified straight away - no
+    // version bump or bulk reclassify, since every other activity is unchanged.
+    [HttpPut("{id}/warmup")]
+    public async Task<ActionResult<ActivityDto>> UpdateWarmupRecorded(int id, UpdateWarmupRecordedRequest request)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Tournament)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+        if (activity.Type != ActivityType.Ultimate)
+            return BadRequest(new { error = "The warmup flag is only stored for Ultimate games." });
+
+        activity.WarmupRecorded = request.WarmupRecorded;
+        var track = await _db.ActivityTracks.AsNoTracking().FirstOrDefaultAsync(t => t.ActivityId == id);
+        ApplyLapDerivedAggregates(activity, activity.Laps.ToList(), track);
+        await _db.SaveChangesAsync();
+
+        return Ok(ToDto(activity, track?.SampleCount ?? 0));
+    }
+
     // Manual final score for an Ultimate game - Garmin has no team score, so
     // this is the only way "points played" gets a real denominator. Entered
     // as a pair; pass both null to clear.
@@ -569,7 +594,8 @@ public class ActivitiesController : ControllerBase
         {
             var samples = track is null ? null : TryDecodeTrack(track.SamplesJson);
             var geometry = samples is null ? null
-                : LapFieldClassifier.AnalyseWithLaps(laps, samples, track!.StartEpochMs);
+                : LapFieldClassifier.AnalyseWithLaps(
+                    laps, samples, track!.StartEpochMs, warmupRecorded: activity.WarmupRecorded);
             var summary = LapFieldClassifier.Classify(
                 laps, geometry, samples, track?.StartEpochMs ?? 0);
 
@@ -649,7 +675,7 @@ public class ActivitiesController : ControllerBase
         a.Track == null ? 0 : a.Track.SampleCount,
         a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
-        null);
+        null, a.WarmupRecorded);
 
     // The DTO's track sample count, without loading the track: the blob is
     // 65-100 KB and only SampleCount (a real column) is needed here. Uses the
@@ -676,7 +702,7 @@ public class ActivitiesController : ControllerBase
         trackSampleCount,
         a.TournamentId, a.Tournament?.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
-        BuildSessionTypeList(a));
+        BuildSessionTypeList(a), a.WarmupRecorded);
 
     // Primary first, then by SortOrder. Uses the loaded SessionTags when the
     // caller included them; otherwise falls back to the primary nav alone, so
