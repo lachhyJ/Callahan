@@ -209,6 +209,8 @@ public static class DevSeed
                 OffFieldSeconds = 1800,
                 LivePlaySeconds = 1500,
                 PointsPlayed = 12 + gameRng.Next(0, 4),
+                // Not drawn from gameRng: an extra draw would shift every later value.
+                RestPeriods = 8 + g,
             };
             ApplyFakeGarminMetrics(game, 0.7 + gameRng.NextDouble() * 0.25, gameRng);
             db.Activities.Add(game);

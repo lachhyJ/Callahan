@@ -585,6 +585,7 @@ public class ActivitiesController : ControllerBase
             activity.OnFieldDistanceM = summary.OnFieldDistanceM;
             activity.LivePlaySeconds = summary.LivePlaySeconds;
             activity.LivePlayDistanceM = summary.LivePlayDistanceM;
+            activity.RestPeriods = summary.RestPeriods;
             activity.AlternationViolations = summary.AlternationViolations;
             activity.LapClassifierMethod = summary.Method;
             activity.LapClassifierVersion = LapFieldClassifier.Version;
@@ -602,6 +603,7 @@ public class ActivitiesController : ControllerBase
         activity.OnFieldDistanceM = null;
         activity.LivePlaySeconds = null;
         activity.LivePlayDistanceM = null;
+        activity.RestPeriods = null;
         activity.AlternationViolations = null;
         activity.LapClassifierMethod = null;
         activity.LapClassifierVersion = null;
@@ -642,6 +644,7 @@ public class ActivitiesController : ControllerBase
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.LivePlaySeconds,
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
+        a.RestPeriods,
         a.AlternationViolations, a.LapClassifierMethod, a.LapClassifierVersion,
         a.Track == null ? 0 : a.Track.SampleCount,
         a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
@@ -668,6 +671,7 @@ public class ActivitiesController : ControllerBase
         a.OnFieldDistanceM == null ? null : a.OnFieldDistanceM / 1000,
         a.LivePlaySeconds,
         a.LivePlayDistanceM == null ? null : a.LivePlayDistanceM / 1000,
+        a.RestPeriods,
         a.AlternationViolations, a.LapClassifierMethod, a.LapClassifierVersion,
         trackSampleCount,
         a.TournamentId, a.Tournament?.Name,

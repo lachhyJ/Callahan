@@ -104,6 +104,9 @@ namespace Callahan.Api.Migrations
                     b.Property<string>("RawJson")
                         .HasColumnType("TEXT");
 
+                    b.Property<int?>("RestPeriods")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("Source")
                         .HasColumnType("INTEGER");
 

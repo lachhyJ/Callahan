@@ -79,7 +79,9 @@ public sealed record LapFieldSummary(
     // GeometryResult.LivePlayDistanceM). 0 in the same cases as LivePlaySeconds.
     decimal LivePlayDistanceM = 0m,
     // Off-field gaps between on-field stints (see GeometryResult.RestPeriods).
-    int RestPeriods = 0);
+    // Null when there's no geometry (NoTrack) or it doesn't apply
+    // (LabelledFromGarmin).
+    int? RestPeriods = null);
 
 // Pure. No DbContext, no I/O. Callable on any (laps, geometry) pair so it can
 // be unit-tested in isolation and reused from lap-sync, track-sync,
@@ -97,7 +99,8 @@ public static class LapFieldClassifier
     // v7 = LivePlayDistanceM threaded through from FieldGeometry v4. Additive.
     // v8 = FieldGeometry v5 (rewrite); lap-pressed sessions keep warmup / rest /
     // ambiguous laps out of the field fit (FitExclusion). RestPeriods added.
-    public const int Version = 8;
+    // v9 = RestPeriods persisted (Activity.RestPeriods). Additive.
+    public const int Version = 9;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };
@@ -254,7 +257,7 @@ public static class LapFieldClassifier
     private static LapFieldSummary Summarise(
         List<Lap> all, string method, int alternationViolations,
         int? pointsOverride, bool distanceFromLaps, int livePlaySeconds = 0,
-        decimal livePlayDistanceM = 0m, int restPeriods = 0)
+        decimal livePlayDistanceM = 0m, int? restPeriods = null)
     {
         int onSec = 0, offSec = 0, mixSec = 0, onLapCount = 0, unknown = 0;
         decimal onDist = 0m;

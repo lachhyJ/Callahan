@@ -59,6 +59,11 @@ public class Activity
     // GPS distance (metres) covered inside detected points - the live-play
     // counterpart to OnFieldDistanceM. Always <= OnFieldDistanceM.
     public decimal? LivePlayDistanceM { get; set; }
+    // Off-field gaps of at least 60 s between on-field stints - the rests that
+    // go with PointsPlayed (back-to-back points or rests make either count
+    // ambiguous alone). Null when there's no geometry (NoTrack) or Garmin's
+    // own labels were used (LabelledFromGarmin). See GeometryResult.RestPeriods.
+    public int? RestPeriods { get; set; }
     // Count of adjacent lap pairs that shared an on/off state - i.e. missed
     // lap presses. 0 means a clean capture. Doubles as feedback on lapping.
     public int? AlternationViolations { get; set; }

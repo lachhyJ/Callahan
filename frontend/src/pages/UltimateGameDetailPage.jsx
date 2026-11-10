@@ -152,6 +152,12 @@ export default function UltimateGameDetailPage() {
                 </span>
               </div>
             )}
+            {activity.restPeriods != null && (
+              <div className="stat-card">
+                <span className="stat-label">Rest periods</span>
+                <span className="stat-value">{activity.restPeriods}</span>
+              </div>
+            )}
             {livePerPoint != null && (
               <div className="stat-card">
                 <span className="stat-label">Live min / point</span>

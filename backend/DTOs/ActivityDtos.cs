@@ -30,6 +30,8 @@ public record ActivityDto(
     int? LivePlaySeconds = null,
     // Distance (km) covered inside detected points, <= OnFieldDistanceKm.
     decimal? LivePlayDistanceKm = null,
+    // Off-field rests of >= 60 s between on-field stints; pairs with PointsPlayed.
+    int? RestPeriods = null,
     int? AlternationViolations = null,
     string? LapClassifierMethod = null,
     int? LapClassifierVersion = null,

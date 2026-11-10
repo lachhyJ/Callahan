@@ -62,6 +62,7 @@ public class LapFieldClassifierTests
         Assert.Equal(LapFieldState.OnField, r.StateByLapIndex[2]);   // ACTIVE
         Assert.Equal(LapFieldState.OffField, r.StateByLapIndex[3]);  // RECOVERY
         Assert.Equal(LapFieldState.OffField, r.StateByLapIndex[5]);  // COOLDOWN
+        Assert.Null(r.RestPeriods);   // Garmin's labels, no geometry rests
         AssertSecondsAccounted(r, laps);
     }
 
@@ -77,6 +78,7 @@ public class LapFieldClassifierTests
         Assert.Equal(0, r.OnFieldSeconds);
         Assert.Equal(0, r.OffFieldSeconds);
         Assert.Equal(0, r.PointsPlayed);
+        Assert.Null(r.RestPeriods);
         Assert.Equal(10, r.UnknownLapCount);
         Assert.Empty(r.StateByLapIndex);
     }
@@ -94,6 +96,7 @@ public class LapFieldClassifierTests
         Assert.Equal(geo.OnFieldSeconds, r.OnFieldSeconds);
         Assert.Equal(geo.OffFieldSeconds, r.OffFieldSeconds);
         Assert.Equal(geo.PointsPlayed, r.PointsPlayed);
+        Assert.Equal(geo.RestPeriods, r.RestPeriods);
         Assert.True(r.OnFieldDistanceM > 0);
         Assert.Empty(r.StateByLapIndex);
     }
@@ -139,8 +142,9 @@ public class LapFieldClassifierTests
             if (got != LapFieldState.Unknown)   // very short segments have too few samples
                 Assert.Equal(expected, got);
         }
-        // points come from the geometry, not the lap count
+        // points and rests come from the geometry, not the lap count
         Assert.Equal(geo.PointsPlayed, r.PointsPlayed);
+        Assert.Equal(geo.RestPeriods, r.RestPeriods);
         AssertSecondsAccounted(r, laps);
     }
 

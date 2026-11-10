@@ -43,7 +43,48 @@ public class TrackDecodeTests
 
         Assert.Equal(LapClassifierMethod.GeometryNoLaps, saved.LapClassifierMethod);
         Assert.InRange(saved.PointsPlayed!.Value, baseline.PointsPlayed - 1, baseline.PointsPlayed + 1);
+        Assert.InRange(saved.RestPeriods!.Value, baseline.RestPeriods - 1, baseline.RestPeriods + 1);
         var frac = (double)saved.OnFieldSeconds!.Value / (saved.OnFieldSeconds.Value + saved.OffFieldSeconds!.Value);
         Assert.InRange(frac, baseline.OnFieldFraction - 0.03, baseline.OnFieldFraction + 0.03);
+    }
+    // A game classified before RestPeriods was persisted (v8, column null) is
+    // picked up by a non-forced reclassify, which fills the column, and the
+    // DTO carries it to the game page.
+    [Fact]
+    public async Task ANonForcedReclassifyBackfillsRestPeriodsOnAnOlderVersion()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        conn.Open();
+        using var db = new AppDbContext(new DbContextOptionsBuilder<AppDbContext>().UseSqlite(conn).Options);
+        db.Database.EnsureCreated();
+        var game = new Activity
+        {
+            Date = new DateOnly(2026, 4, 11), Type = ActivityType.Ultimate, Source = ActivitySource.Garmin,
+            DurationSeconds = 3600, ActivitySessionTypeId = 8, // "Game"
+        };
+        db.Activities.Add(game);
+        db.SaveChanges();
+        var request = JsonSerializer.Deserialize<UpsertTrackRequest>(
+            TestFixtures.LoadTrackPayload(3), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+        var controller = new ActivitiesController(db);
+        await controller.ReplaceTrack(game.Id, request);
+
+        var stale = db.Activities.Single(a => a.Id == game.Id);
+        stale.RestPeriods = null;
+        stale.LapClassifierVersion = LapFieldClassifier.Version - 1;
+        db.SaveChanges();
+        db.ChangeTracker.Clear();
+
+        var result = await controller.ReclassifyLaps();
+        var body = Assert.IsType<ReclassifyResponse>(Assert.IsType<OkObjectResult>(result.Result).Value);
+        Assert.Equal(1, body.Reclassified);
+
+        db.ChangeTracker.Clear();
+        var dto = Assert.IsType<ActivityDto>(
+            Assert.IsType<OkObjectResult>((await controller.GetById(game.Id)).Result).Value);
+        var baseline = TestFixtures.LoadBaselines().Games.Single(b => b.Game == 3);
+        Assert.NotNull(dto.RestPeriods);
+        Assert.InRange(dto.RestPeriods!.Value, baseline.RestPeriods - 1, baseline.RestPeriods + 1);
+        Assert.Equal(LapFieldClassifier.Version, dto.LapClassifierVersion);
     }
 }
