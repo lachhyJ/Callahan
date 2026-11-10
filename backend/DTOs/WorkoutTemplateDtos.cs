@@ -1,6 +1,8 @@
 namespace Callahan.Api.DTOs;
 
-public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle, string Block = "Any");
+// Due: the template's Gym slot was planned for an earlier day this week and has not been
+// logged (see WeekSoFarBuilder.DueTemplateIds).
+public record WorkoutTemplateSummaryDto(int Id, string Name, string Subtitle, string Block = "Any", bool Due = false);
 
 public record PreviousSetDto(int SetOrder, int Reps, decimal WeightKg, string SetType, int? DurationSeconds = null);
 

@@ -941,6 +941,7 @@ td {
 }
 
 .template-card {
+  position: relative;
   display: block;
   padding: var(--space-md);
   border-radius: var(--radius-lg);
@@ -954,6 +955,21 @@ td {
   &:focus-visible {
     border-color: var(--accent);
   }
+}
+
+.template-card-due {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  padding: 0 var(--space-sm);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent-border);
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  line-height: 1.5;
+  pointer-events: none;
 }
 
 .template-card-subtitle {

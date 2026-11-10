@@ -14,10 +14,12 @@ namespace Callahan.Api.Controllers;
 public class WorkoutTemplatesController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly TimeProvider _time;
 
-    public WorkoutTemplatesController(AppDbContext db)
+    public WorkoutTemplatesController(AppDbContext db, TimeProvider? time = null)
     {
         _db = db;
+        _time = time ?? TimeProvider.System;
     }
 
     [HttpGet]
@@ -29,12 +31,13 @@ public class WorkoutTemplatesController : ControllerBase
         // The other block's templates are hidden the same way: they stay in the database
         // and Start() still serves them, they just are not offered in this mode.
         var mode = await TrainingModeStore.GetAsync(_db);
+        var due = await WeekSoFarLoader.LoadDueTemplateIdsAsync(_db, mode, CalendarDates.TrainingDay(_time.LocalNow()));
         var templates = (await _db.WorkoutTemplates
             .Where(t => !t.IsRetired && (t.Block == TemplateBlock.Any || t.Block == mode))
             .OrderBy(t => t.SortOrder)
             .Select(t => new { t.Id, t.Name, t.Subtitle, t.Block })
             .ToListAsync())
-            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle, t.Block.ToString()))
+            .Select(t => new WorkoutTemplateSummaryDto(t.Id, t.Name, t.Subtitle, t.Block.ToString(), due.Contains(t.Id)))
             .ToList();
 
         return Ok(templates);

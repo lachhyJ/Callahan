@@ -8,6 +8,19 @@ import { staleWhileRevalidate } from '../swrCache'
 import { RunIcon } from '../icons'
 import TrainingModeSetting from '../components/TrainingModeSetting'
 
+// "Due": this session's slot was planned for an earlier day this week and is not logged yet
+// (the server decides, same rule as the This week widget). The pill is positioned out of
+// flow so showing or clearing it never moves the card or the ones below it.
+export function TemplateCard({ t }) {
+  return (
+    <Link to={`/workout/${t.id}`} className="template-card" onClick={() => { unlockAudio(); trackAction('start-workout', t.name) }}>
+      {t.name}
+      {t.due && <span className="template-card-due">Due</span>}
+      <span className="template-card-subtitle">{t.subtitle}</span>
+    </Link>
+  )
+}
+
 export default function WorkoutTemplatesPage() {
   const [templates, setTemplates] = useState(null)
   const [error, setError] = useState(null)
@@ -35,10 +48,7 @@ export default function WorkoutTemplatesPage() {
       {templates === null && !error && <p>Loading workouts…</p>}
       <div className="template-list">
         {templates?.map((t) => (
-          <Link key={t.id} to={`/workout/${t.id}`} className="template-card" onClick={() => { unlockAudio(); trackAction('start-workout', t.name) }}>
-            {t.name}
-            <span className="template-card-subtitle">{t.subtitle}</span>
-          </Link>
+          <TemplateCard key={t.id} t={t} />
         ))}
       </div>
       <Link to="/workout/custom" className="custom-workout-link" onClick={() => { unlockAudio(); trackAction('start-workout', 'custom') }}>

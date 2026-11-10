@@ -27,6 +27,27 @@ public static class WeekSoFarLoader
         return WeekSoFarBuilder.Build(weekStart, trainingDay, slots, gym, activities);
     }
 
+    // The due-badge inputs: the current block's non-optional Gym slots with their planned
+    // day, then the week's gym logs. Kept apart from LoadAsync, which has no use for the day.
+    public static async Task<IReadOnlySet<int>> LoadDueTemplateIdsAsync(AppDbContext db, TemplateBlock mode, DateOnly trainingDay)
+    {
+        var weekStart = CalendarDates.MondayOf(trainingDay);
+        var slots = await db.PlanSlots
+            .Where(s => (s.Block == TemplateBlock.Any || s.Block == mode) && !s.IsOptional && s.Kind == PlanSlotKind.Gym)
+            .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
+            .Select(s => new WeekSoFarBuilder.DatedGymSlot(s.WorkoutTemplateId, s.DefaultDayOfWeek))
+            .ToListAsync();
+        if (slots.Count == 0) return new HashSet<int>();
+
+        var gym = await db.WorkoutSessions
+            .Where(s => s.Date >= weekStart && s.Date <= weekStart.AddDays(WeekPlanBuilder.DaysInWeek - 1))
+            .Select(s => new WeekSoFarBuilder.GymLog(
+                s.Date, s.WorkoutTemplateId, s.WorkoutTemplate != null ? s.WorkoutTemplate.Name : null))
+            .ToListAsync();
+
+        return WeekSoFarBuilder.DueTemplateIds(slots, gym, weekStart, trainingDay);
+    }
+
     // What was logged in the week, in the shape WeekSoFarBuilder reads. Also the
     // Plan page's source for whether a session was done.
     public static async Task<(List<WeekSoFarBuilder.GymLog> Gym, List<WeekSoFarBuilder.ActivityLog> Activities)> LoadLogsAsync(

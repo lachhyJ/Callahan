@@ -93,6 +93,33 @@ public static partial class WeekSoFarBuilder
             days.Select((d, i) => new WidgetWeekDayDto(i, d.Chips)).ToList());
     }
 
+    // A program Gym slot with the day it is planned for (0 = Monday), for working out
+    // which sessions are overdue. Same slot list the widget uses, in program order.
+    public record DatedGymSlot(int? WorkoutTemplateId, int DayOfWeek);
+
+    // Templates whose Gym slot is overdue: planned for an earlier day this week and not
+    // logged yet. A slot planned for today is not overdue (it is just today's session),
+    // and "logged" is exactly what Fill says, so the picker, the widget and the Plan page
+    // agree. Per week: a miss does not carry over past Monday.
+    public static IReadOnlySet<int> DueTemplateIds(
+        IReadOnlyList<DatedGymSlot> gymSlots,
+        IReadOnlyList<GymLog> gymLogs,
+        DateOnly weekStart,
+        DateOnly trainingDay)
+    {
+        gymLogs = gymLogs.Where(g => g.Date >= weekStart && g.Date <= weekStart.AddDays(6)).ToList();
+        var asSlots = gymSlots.Select(s => new SlotInput(PlanSlotKind.Gym, "", s.WorkoutTemplateId, null)).ToList();
+        var filled = Fill(asSlots, [], gymLogs, []).GymFilled;
+        var today = trainingDay.DayNumber - weekStart.DayNumber;
+
+        var due = new HashSet<int>();
+        for (var i = 0; i < gymSlots.Count; i++)
+        {
+            if (!filled[i] && gymSlots[i].DayOfWeek < today && gymSlots[i].WorkoutTemplateId is int t) due.Add(t);
+        }
+        return due;
+    }
+
     // Which of the program's gym and field slots the week's logs fill, and which
     // logs were used up doing it. Shared with the Plan page (WeekPlanBuilder), so the
     // widget and the page cannot disagree about whether a session was done.
