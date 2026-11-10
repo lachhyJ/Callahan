@@ -166,9 +166,9 @@
       "tournament": "BigC"
     },
     {
-      "onFieldSeconds": 1784,
+      "onFieldSeconds": 1694,
       "durationSeconds": 4825,
-      "onFieldFraction": 0.3697,
+      "onFieldFraction": 0.3511,
       "pointsPlayed": 10,
       "restPeriods": 6,
       "gameplayStartSeconds": 0,
@@ -276,13 +276,13 @@
       "onFieldFraction": 0.3113
     },
     "Nationals": {
-      "onFieldSeconds": 9935,
+      "onFieldSeconds": 9845,
       "durationSeconds": 30977,
       "pointsPlayed": 57,
       "restPeriods": 30,
       "livePlaySeconds": 5316,
       "livePlayDistanceM": 10722,
-      "onFieldFraction": 0.3207
+      "onFieldFraction": 0.3178
     }
   }
 }

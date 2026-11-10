@@ -16,8 +16,9 @@ reads. Steps:
    median of line-up dwell |along| per end, re-centred symmetric; width = the
    3rd-97th percentile span of fast cross, centred between them.
 4. On-field = inside the box on a short rolling median, minus sustained slow
-   stretches (no sample above SLOW_MAX for >= SLOW_S) that aren't a line-up,
-   and never before the gameplay start.
+   stretches (no sample above SlowMaxMps for >= SlowMinSec), and never before
+   the gameplay start. (The prototype also exempted line-ups up to 150 s,
+   inert once SlowMinSec rose to 150; dropped.)
 5. Points played = on-field stints (gaps < STINT_GAP bridged, >= STINT_MIN
    long), each split at internal line-up + burst >= SPLIT_MIN after the last
    split. Rest periods = off gaps >= REST_MIN between stints.
@@ -65,8 +66,6 @@ P = dict(
     WinSec=20.0,             # rolling-median window for the box test
     SlowMaxMps=3.0,          # a sustained slow stretch has no sample above this ...
     SlowMinSec=150.0,        # ... for at least this long => off
-    LineupMaxSec=150.0,      # a slow stretch at an end + burst up to this long is a line-up
-                             # (near-inert vs SlowMinSec=150: only exactly-150 s stretches; see the C#)
     StintGapSec=30.0,        # on-field runs closer than this are one stint
     StintMinSec=45.0,        # stints shorter than this don't count
     SplitMinSec=90.0,        # a stint splits at a line-up at least this long after the last split
@@ -237,7 +236,7 @@ def rough_half_length(A, fit):
     return fa[int(len(fa) * 0.9)]
 
 
-def onfield(t, A, C, spd, halfw, line, rough_halfl, g0):
+def onfield(t, A, C, spd, halfw, line, g0):
     mc = roll(t, [abs(c) for c in C], P["WinSec"], st.median)
     ma = roll(t, A, P["WinSec"], st.median)
     lim = line + P["EndzoneDepthM"]
@@ -249,10 +248,7 @@ def onfield(t, A, C, spd, halfw, line, rough_halfl, g0):
             j = i
             while j + 1 < len(t) and spd[j + 1] < P["SlowMaxMps"]:
                 j += 1
-            dur = t[j] - t[i]
-            lineup = (abs(ma[j]) > rough_halfl * P["DwellFrac"] and dur <= P["LineupMaxSec"]
-                      and burst_after(t, spd, j, include_self=False))
-            if dur >= P["SlowMinSec"] and not lineup:
+            if t[j] - t[i] >= P["SlowMinSec"]:
                 for k in range(i, j + 1):
                     slow[k] = True
             i = j + 1
@@ -331,7 +327,7 @@ def analyse(t, lat, lon, spd, exclude=None):
     C = [c - c0 for c in C]
     halfw = (hi - lo) / 2
 
-    on = onfield(t, A, C, spd, halfw, L, rh, g0)
+    on = onfield(t, A, C, spd, halfw, L, g0)
 
     runs = []
     i = g0

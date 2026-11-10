@@ -65,12 +65,6 @@ public sealed record FieldGeometryOptions(
     double WinSec = 20.0,             // rolling-median window for the box test
     double SlowMaxMps = 3.0,          // a sustained slow stretch has no sample above this ...
     double SlowMinSec = 150.0,        // ... for at least this long => off
-    // A slow stretch at an end + burst up to this long is a line-up, not a
-    // rest. Near-inert at these defaults: it was 150 against SlowMinSec 120
-    // (exempting 120-150 s line-ups); the leave-one-out moved SlowMinSec to
-    // 150, so only a stretch of exactly 150 s is exempt (one in 21 fixtures).
-    // Kept to match the validated prototype; raise it or drop it deliberately.
-    double LineupMaxSec = 150.0,
     double StintGapSec = 30.0,        // on-field runs closer than this are one stint
     double StintMinSec = 45.0,        // stints shorter than this don't count
     double SplitMinSec = 90.0,        // a stint splits at a line-up at least this long after the last split
@@ -93,7 +87,8 @@ public static class FieldGeometry
     // v3/v4 = LivePlaySeconds / LivePlayDistanceM added.
     // v5 = rewrite, fitted on the tryout lap presses: fit from the area with
     // the most fast running after an inferred gameplay start, endzone lines
-    // from line-up dwells, on-field = a box minus sustained slow stretches,
+    // from line-up dwells, on-field = a box minus sustained slow stretches (no
+    // line-up exemption: inert at SlowMinSec 150, dropped),
     // points played from stints, rest periods added. Points roughly halve and
     // rest time stops reading on-field.
     public const int Version = 5;
@@ -180,7 +175,7 @@ public static class FieldGeometry
         double halfW = (hi - lo) / 2;
 
         // 4. On-field.
-        var onField = OnField(t, along, cross, spd, halfW, line, rh, g0, o);
+        var onField = OnField(t, along, cross, spd, halfW, line, g0, o);
 
         // 5. Stints, points played, rest periods.
         var runs = new List<(int A, int B)>();
@@ -427,10 +422,10 @@ public static class FieldGeometry
     }
 
     // --- fieldgeometry_v2.py:onfield --- inside the box on a WinSec rolling
-    // median, minus sustained slow stretches that aren't a line-up, and never
-    // before the gameplay start.
+    // median, minus sustained slow stretches, and never before the gameplay
+    // start. A line-up is far shorter than SlowMinSec, so needs no exemption.
     private static bool[] OnField(double[] t, double[] along, double[] cross, double[] spd,
-        double halfW, double line, double roughHalfL, int g0, FieldGeometryOptions o)
+        double halfW, double line, int g0, FieldGeometryOptions o)
     {
         int n = t.Length;
         var absCross = new double[n];
@@ -447,10 +442,7 @@ public static class FieldGeometry
             if (spd[i] >= o.SlowMaxMps) { i++; continue; }
             int j = i;
             while (j + 1 < n && spd[j + 1] < o.SlowMaxMps) j++;
-            double dur = t[j] - t[i];
-            bool lineup = Math.Abs(ma[j]) > roughHalfL * o.DwellFrac && dur <= o.LineupMaxSec
-                          && BurstAfter(t, spd, j, includeSelf: false, o);
-            if (dur >= o.SlowMinSec && !lineup)
+            if (t[j] - t[i] >= o.SlowMinSec)
                 for (int k = i; k <= j; k++) on[k] = false;
             i = j + 1;
         }
