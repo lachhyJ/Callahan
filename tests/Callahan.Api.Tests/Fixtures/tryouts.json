@@ -1,0 +1,68 @@
+{
+  "tryouts": [
+    {
+      "onFieldSeconds": 2802,
+      "durationSeconds": 6466,
+      "onFieldFraction": 0.4333,
+      "pointsPlayed": 16,
+      "restPeriods": 9,
+      "gameplayStartSeconds": 1326,
+      "fieldWidthM": 24.6,
+      "fieldLengthM": 56.2,
+      "livePlaySeconds": 1847,
+      "livePlayDistanceM": 3551,
+      "lapPoints": 17,
+      "lapRestPeriods": 8,
+      "tryout": 1,
+      "name": "HoS Tryout #2"
+    },
+    {
+      "onFieldSeconds": 2485,
+      "durationSeconds": 8510,
+      "onFieldFraction": 0.292,
+      "pointsPlayed": 14,
+      "restPeriods": 11,
+      "gameplayStartSeconds": 774,
+      "fieldWidthM": 27.5,
+      "fieldLengthM": 55.3,
+      "livePlaySeconds": 1592,
+      "livePlayDistanceM": 2855,
+      "lapPoints": 13,
+      "lapRestPeriods": 9,
+      "tryout": 2,
+      "name": "HoS Tryout #3"
+    },
+    {
+      "onFieldSeconds": 2173,
+      "durationSeconds": 10051,
+      "onFieldFraction": 0.2162,
+      "pointsPlayed": 16,
+      "restPeriods": 14,
+      "gameplayStartSeconds": 0,
+      "fieldWidthM": 23.3,
+      "fieldLengthM": 66.5,
+      "livePlaySeconds": 1416,
+      "livePlayDistanceM": 3306,
+      "lapPoints": 15,
+      "lapRestPeriods": 13,
+      "tryout": 3,
+      "name": "Chilly Tryout #3"
+    },
+    {
+      "onFieldSeconds": 1335,
+      "durationSeconds": 8797,
+      "onFieldFraction": 0.1518,
+      "pointsPlayed": 10,
+      "restPeriods": 8,
+      "gameplayStartSeconds": 1866,
+      "fieldWidthM": 24.9,
+      "fieldLengthM": 59.7,
+      "livePlaySeconds": 920,
+      "livePlayDistanceM": 2377,
+      "lapPoints": 10,
+      "lapRestPeriods": 7,
+      "tryout": 4,
+      "name": "Ellipsis Tryout #2"
+    }
+  ]
+}

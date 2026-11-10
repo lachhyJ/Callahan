@@ -150,7 +150,8 @@ public class ActivitiesController : ControllerBase
         var samples = TryDecodeTrack(track.SamplesJson);
         if (samples is null || samples.Count == 0) return NoContent();
 
-        var geometry = FieldGeometry.Analyse(samples);
+        var laps = await _db.ActivityLaps.AsNoTracking().Where(l => l.ActivityId == id).ToListAsync();
+        var geometry = LapFieldClassifier.AnalyseWithLaps(laps, samples, track.StartEpochMs);
         var totalSeconds = (int)Math.Round(samples[^1].T);
         var segments = geometry.Segments
             .Select(s => new FieldSegmentDto(s.OnField, (int)Math.Round(s.StartT), (int)Math.Round(s.EndT)))
@@ -567,7 +568,8 @@ public class ActivitiesController : ControllerBase
             && activity.ActivitySessionType?.Name == GameSessionTypeName)
         {
             var samples = track is null ? null : TryDecodeTrack(track.SamplesJson);
-            var geometry = samples is null ? null : FieldGeometry.Analyse(samples);
+            var geometry = samples is null ? null
+                : LapFieldClassifier.AnalyseWithLaps(laps, samples, track!.StartEpochMs);
             var summary = LapFieldClassifier.Classify(
                 laps, geometry, samples, track?.StartEpochMs ?? 0);
 

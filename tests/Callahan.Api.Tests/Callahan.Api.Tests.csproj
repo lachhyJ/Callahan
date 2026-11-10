@@ -22,6 +22,7 @@
   <ItemGroup>
     <EmbeddedResource Include="Fixtures\*.json.gz" />
     <EmbeddedResource Include="Fixtures\baselines.json" />
+    <EmbeddedResource Include="Fixtures\tryouts.json" />
   </ItemGroup>
 
   <!-- Repo root, deliberately outside ./backend: docker-compose.prod.yml builds

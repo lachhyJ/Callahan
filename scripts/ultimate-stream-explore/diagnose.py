@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Diagnostic instrumentation for the on/off-field geometry classifier.
+"""Diagnostic instrumentation for the v1 (pre-2026-11) on/off-field classifier.
+
+Superseded in the app by fieldgeometry_v2.py / FieldGeometry v5; kept for
+old-vs-new comparisons.
 
 Loads every committed test fixture directly (gzipped {t,lat,lon,spd} arrays
 — the same shape PUT /api/activities/{id}/track stores) and re-runs the
@@ -22,25 +25,16 @@ import gzip
 import json
 import math
 import os
-import re
 import statistics
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FIXTURES = os.path.normpath(os.path.join(HERE, "..", "..", "tests", "Callahan.Api.Tests", "Fixtures"))
-FIELD_GEOMETRY_CS = os.path.normpath(os.path.join(HERE, "..", "..", "backend", "Services", "FieldGeometry.cs"))
 
-# Mirrors FieldGeometryOptions.Default in backend/Services/FieldGeometry.cs.
-# This mirroring is enforced at import time by _assert_matches_csharp() below
-# (not just claimed in a comment) - see that function for why. Map from
-# FieldGeometryOptions record field name -> this module's constant.
-_CS_FIELD_TO_CONSTANT = {
-    "WinSec": "WIN", "FastMps": "FAST", "MinDwellSec": "MIN_DWELL",
-    "SpreadFactor": "SPREAD_FACTOR", "CentreFactor": "CENTRE_FACTOR",
-    "EndzoneFrac": "EZ_FRAC", "EndzoneMinSec": "EZ_MIN_S",
-    "EndzoneMaxSpd": "EZ_MAX_SPD", "FollowSec": "FOLLOW_S", "FollowFrac": "FOLLOW_FRAC",
-}
-
+# The v1 (spread/centre) classifier's constants, frozen. FieldGeometry.cs moved
+# to the v5 detector in 2026-11 (fieldgeometry_v2.py is its reference and
+# carries the constants-drift check now), so nothing here mirrors the C# any
+# more; this module is kept to compare old against new.
 WIN = 100.0
 FAST = 4.0
 MIN_DWELL = 75.0
@@ -51,55 +45,6 @@ EZ_MIN_S = 25.0
 EZ_MAX_SPD = 2.5
 FOLLOW_S = 60.0
 FOLLOW_FRAC = 0.5
-
-
-def _assert_matches_csharp():
-    """Parse FieldGeometryOptions' defaults out of the C# record and compare
-    against this module's constants. Runs on every import, not just when a
-    test happens to be run - the 2026-08-27/28 drift (FOLLOW_S/FOLLOW_FRAC
-    left at 90.0/0.6 for a day after the C# moved to 60/0.5, so analyse()
-    silently scored the SUPERSEDED classifier) went unnoticed for exactly as
-    long as nobody manually re-diffed the two files, which is not a
-    dependable interval. Raises RuntimeError with every mismatch, or if the
-    C# file has moved/been restructured and this parser can no longer read it
-    - a silent skip on parse failure would recreate the same failure mode one
-    layer up.
-    """
-    with open(FIELD_GEOMETRY_CS) as f:
-        cs = f.read()
-    m = re.search(r"record FieldGeometryOptions\((.*?)\)\s*(?://[^\n]*)?\s*\n\{", cs, re.S)
-    if not m:
-        raise RuntimeError(
-            f"Could not find the FieldGeometryOptions record in {FIELD_GEOMETRY_CS} - "
-            "it may have moved or been restructured. Update _assert_matches_csharp() "
-            "rather than silently skipping this check."
-        )
-    found = dict(re.findall(r"double\s+(\w+)\s*=\s*([\d.]+)", m.group(1)))
-    mismatches = []
-    for cs_field, py_name in _CS_FIELD_TO_CONSTANT.items():
-        if cs_field not in found:
-            mismatches.append(f"  {cs_field}: not found in FieldGeometryOptions")
-            continue
-        cs_val, py_val = float(found[cs_field]), float(globals()[py_name])
-        if cs_val != py_val:
-            mismatches.append(f"  {py_name} = {py_val} but C# {cs_field} = {cs_val}")
-    if mismatches:
-        raise RuntimeError(
-            "diagnose.py's constants have drifted from FieldGeometryOptions.Default "
-            "in backend/Services/FieldGeometry.cs:\n" + "\n".join(mismatches) +
-            "\nUpdate the constants above (or the C# default, if that's what actually "
-            "changed) before trusting anything this module computes."
-        )
-
-
-try:
-    _assert_matches_csharp()
-except FileNotFoundError:
-    # Not running from inside the Callahan repo (e.g. a standalone checkout
-    # of just this directory) - nothing to diff against, so nothing to check.
-    print(f"warning: {FIELD_GEOMETRY_CS} not found, skipping constants-drift check", file=sys.stderr)
-except RuntimeError as e:
-    sys.exit(f"diagnose.py: {e}")
 
 
 def project(t, lat, lon, spd, fast=FAST):

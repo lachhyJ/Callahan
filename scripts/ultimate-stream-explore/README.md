@@ -2,7 +2,7 @@
 
 Started as exploration of one question: can on-field vs sideline be
 recovered from an Ultimate game's GPS stream when the watch was *never
-lap-pressed*? It could, and `segment.py`'s approach now ships as
+lap-pressed*? It could. `segment.py`'s approach shipped first as
 `backend/Services/FieldGeometry.cs`. This directory is where that classifier
 is still tuned and checked.
 
@@ -11,11 +11,12 @@ only ever read.
 
 | File | Role |
 |---|---|
-| `segment.py` | The reference implementation. FieldGeometry.cs cites it line by line; new ideas are tried here first. |
-| `diagnose.py` | Instrumentation and parameter sweep over the committed fixtures. Asserts its constants match `FieldGeometryOptions` in the C# on every import. |
+| `fieldgeometry_v2.py` | The reference implementation of the shipped detector (FieldGeometry v5, 2026-11): fit from fast running after an inferred gameplay start, line-up endzone lines, box minus sustained slow stretches, points played / rest periods. Asserts its constants match `FieldGeometryOptions` on every import; new ideas are tried here first. |
+| `segment.py` | The v1 spread/centre classifier, shipped until 2026-11. Kept for the record and old-vs-new comparisons. |
+| `diagnose.py` | Instrumentation and parameter sweep for the v1 classifier (constants frozen). |
 | `holdout.py` | The frozen tune / held-out split: two games per tournament that the sweep never sees. |
 | `holdout_check.py` | Scores candidate settings on the held-out games (`--rotate TOURNAMENT` holds out a whole tournament instead). |
-| `fixtures_from_db.py` | Regenerates the committed test fixtures and `baselines.json` from a Callahan DB copy. |
+| `fixtures_from_db.py` | Regenerates the committed test fixtures and `baselines.json` from a Callahan DB copy; `--tryouts IDS` writes the lap-pressed tryout fixtures (`tryout-NN.json.gz`, `tryouts.json`); `--rebaseline` recomputes both baselines files from the committed fixtures after a detector change. |
 | `make_fixtures.py` | The same from a raw `--dump-stream`, for a game not in the DB yet. Its `analyse()` produces the baselines. |
 | `explore.py` | The failed speed-threshold approach, kept as a record of why. |
 

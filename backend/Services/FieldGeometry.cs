@@ -5,9 +5,10 @@ namespace Callahan.Api.Services;
 // speed in m/s.
 public sealed record TrackSample(double T, double Lat, double Lon, double Spd);
 
-// The per-game field frame, fitted from the >= FastMps samples (which are
-// unambiguously on-field play). Theta is the long-axis rotation; the rest are
-// metres in the fitted frame.
+// The per-game field frame. ThetaRad is the long-axis rotation (PCA of fast
+// running after the gameplay start); CentreCrossM is the cross-axis offset of
+// the field centre in the PCA frame; HalfWidthM is half the fitted width;
+// HalfLengthM is centre to endzone line (the box extends EndzoneDepthM past it).
 public sealed record FieldFit(double ThetaRad, double CentreCrossM, double HalfWidthM, double HalfLengthM);
 
 // A maximal run of same-state samples. StartT/EndT are the first and last
@@ -20,120 +21,226 @@ public sealed record GeometryResult(
     IReadOnlyList<FieldSegment> Segments,
     int OnFieldSeconds,
     int OffFieldSeconds,
+    // On-field stints, each split at an internal line-up followed by a burst
+    // (back-to-back points without leaving the field).
     int PointsPlayed,
     double OnFieldDistanceM,
-    // On-field seconds that fall inside a detected point - i.e. between the end
-    // of one accepted endzone-reset dwell and the start of the next. This is
+    // On-field seconds inside a points-played stint, minus line-up dwells -
     // "live play" as opposed to OnFieldSeconds, which also counts waiting on
-    // the line between points. Always <= OnFieldSeconds. Inherits the point
-    // detector's softness: a missed point's time lands in the between-points
-    // remainder, so this slightly under-counts.
+    // the line. Always <= OnFieldSeconds.
     int LivePlaySeconds,
-    // Sample-to-sample GPS distance summed over exactly the same live-play
-    // windows as LivePlaySeconds - i.e. metres covered while a point was in
-    // play, as opposed to OnFieldDistanceM which also counts pacing the line
-    // between points. Always <= OnFieldDistanceM, same under-count caveat.
-    double LivePlayDistanceM);
+    // GPS distance over exactly the same samples as LivePlaySeconds. Always
+    // <= OnFieldDistanceM.
+    double LivePlayDistanceM,
+    // Off-field gaps of at least RestMinSec between stints.
+    int RestPeriods = 0,
+    // Inferred start of gameplay (seconds from track start); 0 when no
+    // game-like run of line-ups was found. Everything before it is off-field.
+    double GameplayStartT = 0);
 
-// Every magic number from scripts/ultimate-stream-explore/segment.py, one
-// constant each. Retuning geometry is a change here + a FieldGeometry.Version
-// bump + one POST /api/activities/laps/reclassify.
+// Every tunable in scripts/ultimate-stream-explore/fieldgeometry_v2.py (P),
+// which asserts on import that it mirrors these defaults. Retuning is a change
+// here and there + a FieldGeometry.Version / LapFieldClassifier.Version bump +
+// one POST /api/activities/laps/reclassify.
 public sealed record FieldGeometryOptions(
-    double WinSec = 100.0,          // rolling-window width for the on-field features
-    double FastMps = 4.0,           // "unambiguously playing" - used to fit the frame
-    double MinDwellSec = 75.0,      // segments shorter than this are merged away
-    double SpreadFactor = 0.8,      // on-field if lateral spread > HalfWidth * this ...
-    double CentreFactor = 0.55,     // ... OR median |cross| < HalfWidth * this
-    double HalfWidthPct = 0.90,     // percentile of |cross|/|along| over fast samples
-    double EndzoneFrac = 0.55,      // |along| beyond HalfLength * this = an endzone
-    double EndzoneMinSec = 25.0,    // an endzone dwell must last this long ...
-    double EndzoneMaxSpd = 2.5,     // ... and be this slow on average to be a reset
-    double FollowSec = 60.0,        // after a reset, look this far ahead ...
-    double FollowFrac = 0.5)        // ... and require this much of it to be on-field
+    double FastMps = 4.0,             // "definitely playing"; the fit set
+    int MinFitSamples = 40,           // fewer fast samples than this: fit on everything
+    double ClusterCellM = 10.0,       // main-cluster grid cell
+    int ClusterHalfCells = 3,         // ... neighbourhood scored around each cell
+    double ClusterRadiusM = 60.0,     // ... and kept around the winner
+    double DwellMinSec = 20.0,        // line-up dwell: at least this long ...
+    double DwellMaxMeanMps = 1.5,     // ... this slow on average (samples < 2x this) ...
+    double DwellFrac = 0.55,          // ... beyond this fraction of the rough half-length
+    double BurstSec = 20.0,           // a line-up is followed by a burst within this ...
+    double BurstMps = 5.0,            // ... at least this fast
+    double LineupGapMinSec = 90.0,    // line-ups closer than this are drill reps
+    double LineupGapMaxSec = 480.0,   // a gap longer than this breaks the run
+    int LineupRunMin = 3,             // line-ups needed to call gameplay started ...
+    int LineupSwitches = 2,           // ... switching ends at least this often ...
+    double LineupDensity = 1.2,       // ... with at most this many burst-dwells per run member
+    double LineQuantile = 0.5,        // endzone line = this quantile of an end's dwell |along|
+    double WidthQuantile = 0.03,      // width = the q .. 1-q span of fast cross
+    double EndzoneDepthM = 18.0,      // box extends this far past each line
+    double SidePadM = 3.0,            // sideline slack
+    double WinSec = 20.0,             // rolling-median window for the box test
+    double SlowMaxMps = 3.0,          // a sustained slow stretch has no sample above this ...
+    double SlowMinSec = 150.0,        // ... for at least this long => off
+    // A slow stretch at an end + burst up to this long is a line-up, not a
+    // rest. Near-inert at these defaults: it was 150 against SlowMinSec 120
+    // (exempting 120-150 s line-ups); the leave-one-out moved SlowMinSec to
+    // 150, so only a stretch of exactly 150 s is exempt (one in 21 fixtures).
+    // Kept to match the validated prototype; raise it or drop it deliberately.
+    double LineupMaxSec = 150.0,
+    double StintGapSec = 30.0,        // on-field runs closer than this are one stint
+    double StintMinSec = 45.0,        // stints shorter than this don't count
+    double SplitMinSec = 90.0,        // a stint splits at a line-up at least this long after the last split
+    double RestMinSec = 60.0)         // an off gap at least this long between stints is a rest period
 {
     public static readonly FieldGeometryOptions Default = new();
 }
 
-// Pure. No DbContext, no I/O. A direct port of segment.py, validated against
-// every real tournament game so far (see tests/Callahan.Api.Tests/Fixtures). The Python file
-// stays as the reference implementation and the place new ideas are tried.
+// Pure. No DbContext, no I/O. A direct port of
+// scripts/ultimate-stream-explore/fieldgeometry_v2.py:analyse, which stays the
+// reference implementation and the place new ideas are tried. Validated
+// against four lap-pressed club tryouts (rest time called on-field 4-15%,
+// points played / rest periods within 2 of the laps) and the tournament games;
+// see tests/Callahan.Api.Tests/Fixtures.
 public static class FieldGeometry
 {
     // Bump when the algorithm or the option defaults change in a way that
     // should trigger a reclassify of stored activities.
-    // v2 = the follow-on filter relaxed (FollowSec 90->60, FollowFrac 0.6->0.5)
-    // so short D points where the opposition scores fast and he subs off stop
-    // being deleted. Held-out validated on the 11 Feb/Mar games. The reclassify
-    // gate keys on LapFieldClassifier.Version, bumped in lockstep.
-    // v3 = GeometryResult also carries LivePlaySeconds (on-field time inside a
-    // detected point). Additive - no change to on/off or point numbers.
-    // v4 = GeometryResult also carries LivePlayDistanceM (GPS distance over the
-    // same live-play windows). Additive - nothing else moves.
-    public const int Version = 4;
+    // v2 = point-counter follow-on filter relaxed (FollowSec 90->60).
+    // v3/v4 = LivePlaySeconds / LivePlayDistanceM added.
+    // v5 = rewrite, fitted on the tryout lap presses: fit from the area with
+    // the most fast running after an inferred gameplay start, endzone lines
+    // from line-up dwells, on-field = a box minus sustained slow stretches,
+    // points played from stints, rest periods added. Points roughly halve and
+    // rest time stops reading on-field.
+    public const int Version = 5;
 
-    public static GeometryResult Analyse(IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null)
+    // excludeFromFit: per-sample mask (parallel to samples) of time that must
+    // never shape the field fit - warmup / rest / ambiguous laps when the
+    // session was lap-pressed. It only affects the fit, not on/off labelling.
+    public static GeometryResult Analyse(
+        IReadOnlyList<TrackSample> samples, FieldGeometryOptions? options = null,
+        IReadOnlyList<bool>? excludeFromFit = null)
     {
         var o = options ?? FieldGeometryOptions.Default;
         int n = samples.Count;
         var t = new double[n];
         var spd = new double[n];
         for (int i = 0; i < n; i++) { t[i] = samples[i].T; spd[i] = samples[i].Spd; }
+        var (x, y) = Project(samples);
 
-        var (along, cross, fit0) = Project(samples, o);
-
-        // Field half-dimensions: the HalfWidthPct percentile of |cross| / |along|
-        // over the fast (definitely-playing) samples. Falls back to fixed
-        // guesses when there aren't enough fast samples to fit on.
-        var fastCross = new List<double>();
-        var fastAlong = new List<double>();
+        // 1. Fit set: fast samples outside the exclusion, in the main cluster.
+        var fast = new List<int>();
         for (int i = 0; i < n; i++)
+            if (spd[i] >= o.FastMps && (excludeFromFit is null || !excludeFromFit[i])) fast.Add(i);
+        if (fast.Count < o.MinFitSamples)
         {
-            if (spd[i] >= o.FastMps)
-            {
-                fastCross.Add(Math.Abs(cross[i]));
-                fastAlong.Add(Math.Abs(along[i]));
-            }
+            fast.Clear();
+            for (int i = 0; i < n; i++) if (spd[i] >= o.FastMps) fast.Add(i);
         }
-        double halfW = fastCross.Count > 20 ? Percentile(fastCross, o.HalfWidthPct) : 18.0;
-        double halfL = fastAlong.Count > 20 ? Percentile(fastAlong, o.HalfWidthPct) : 45.0;
+        if (fast.Count < o.MinFitSamples)
+        {
+            fast.Clear();
+            for (int i = 0; i < n; i++) fast.Add(i);
+        }
+        fast = MainCluster(x, y, fast, o);
 
-        // On-field feature: wide lateral spread in the window OR sitting near
-        // the centre line. Then absorb runs shorter than MinDwellSec.
-        var absCross = new double[n];
-        for (int i = 0; i < n; i++) absCross[i] = Math.Abs(cross[i]);
-        var latSpread = Roll(t, cross, o.WinSec, Spread);
-        var medAbsCross = Roll(t, absCross, o.WinSec, Median);
+        // 2. Gameplay start: fit -> start -> refit on post-start play, until it settles.
+        var fit = fast;
+        int? g0n = null;
+        for (int iter = 0; iter < 4; iter++)
+        {
+            var (ox0, oy0, th0) = Pca(x, y, fit);
+            var (a0, _) = Frame(x, y, ox0, oy0, th0);
+            double rh0 = RoughHalfLength(a0, fit);
+            int ng = GameplayStart(t, Dwells(t, a0, spd, rh0 * o.DwellFrac, o), spd, o);
+            if (ng == g0n) break;
+            g0n = ng;
+            var nf = fit.Where(i => i >= ng).ToList();
+            if (nf.Count < o.MinFitSamples) break;
+            fit = nf;
+        }
+        int g0 = g0n ?? 0;
 
-        var onRaw = new bool[n];
-        for (int i = 0; i < n; i++)
-            onRaw[i] = latSpread[i] > halfW * o.SpreadFactor || medAbsCross[i] < halfW * o.CentreFactor;
-        var onField = MergeShort(t, onRaw, o.MinDwellSec);
+        // 3. Geometry from fast play after the start.
+        var after = fast.Where(i => i >= g0).ToList();
+        fit = after.Count >= o.MinFitSamples ? after : fast;
+        var (ox, oy, th) = Pca(x, y, fit);
+        var (along, cross) = Frame(x, y, ox, oy, th);
+        double rh = RoughHalfLength(along, fit);
+        var dw = Dwells(t, along, spd, rh * o.DwellFrac, o).Where(d => d.I0 >= g0).ToList();
 
-        var (points, liveSec, liveDist) = CountPoints(t, along, spd, onField, samples, halfL, o);
+        // Endzone lines: the LineQuantile of each end's line-up |along|, then
+        // re-centred so the two are symmetric.
+        double LineFor(int side)
+        {
+            var v = new List<double>();
+            foreach (var d in dw)
+                if (d.Side == side)
+                    for (int i = d.I0; i <= d.I1; i++) v.Add(Math.Abs(along[i]));
+            return v.Count > 10 ? Percentile(v, o.LineQuantile) : rh;
+        }
+        double linePos = LineFor(1), lineNeg = LineFor(-1);
+        double shift = (linePos - lineNeg) / 2;
+        for (int i = 0; i < n; i++) along[i] -= shift;
+        double line = (linePos + lineNeg) / 2;
 
-        double onSec = 0, offSec = 0, onDist = 0;
+        // Width: the WidthQuantile .. 1-WidthQuantile span of fast cross,
+        // centred between them (not on the median, which follows the side he
+        // favours).
+        var fc = fit.Select(i => cross[i]).ToList();
+        fc.Sort();
+        double lo = fc[(int)(fc.Count * o.WidthQuantile)];
+        double hi = fc[(int)(fc.Count * (1 - o.WidthQuantile))];
+        double c0 = (lo + hi) / 2;
+        for (int i = 0; i < n; i++) cross[i] -= c0;
+        double halfW = (hi - lo) / 2;
+
+        // 4. On-field.
+        var onField = OnField(t, along, cross, spd, halfW, line, rh, g0, o);
+
+        // 5. Stints, points played, rest periods.
+        var runs = new List<(int A, int B)>();
+        for (int i = g0; i < n;)
+        {
+            if (!onField[i]) { i++; continue; }
+            int j = i;
+            while (j + 1 < n && onField[j + 1]) j++;
+            if (runs.Count > 0 && t[i] - t[runs[^1].B] < o.StintGapSec)
+                runs[^1] = (runs[^1].A, j);
+            else
+                runs.Add((i, j));
+            i = j + 1;
+        }
+        var stints = runs.Where(r => t[r.B] - t[r.A] >= o.StintMinSec).ToList();
+
+        int played = 0;
+        foreach (var (a, b) in stints)
+        {
+            double last = t[a];
+            int k = 1;
+            foreach (var d in dw)
+            {
+                if (d.I0 >= a && d.I0 <= b && t[d.I0] - last >= o.SplitMinSec
+                    && BurstAfter(t, spd, d.I1, includeSelf: true, o))
+                {
+                    k++;
+                    last = t[d.I0];
+                }
+            }
+            played += k;
+        }
+        int rests = 0;
+        for (int k = 1; k < stints.Count; k++)
+            if (t[stints[k].A] - t[stints[k - 1].B] >= o.RestMinSec) rests++;
+
+        // Live play: on-field inside a stint, minus line-up dwells.
+        var live = new bool[n];
+        foreach (var (a, b) in stints) for (int i = a; i <= b; i++) live[i] = true;
+        foreach (var d in dw) for (int i = d.I0; i <= d.I1; i++) live[i] = false;
+
+        double onSec = 0, offSec = 0, onDist = 0, liveSec = 0, liveDist = 0;
         for (int i = 1; i < n; i++)
         {
             double dt = t[i] - t[i - 1];
-            if (onField[i - 1])
-            {
-                onSec += dt;
-                onDist += Haversine(samples[i - 1], samples[i]);
-            }
-            else
-            {
-                offSec += dt;
-            }
+            if (!onField[i - 1]) { offSec += dt; continue; }
+            double dd = Haversine(samples[i - 1], samples[i]);
+            onSec += dt;
+            onDist += dd;
+            if (live[i - 1]) { liveSec += dt; liveDist += dd; }
         }
 
         var segments = new List<FieldSegment>();
         foreach (var (state, i0, i1) in Runs(onField))
             segments.Add(new FieldSegment(state, t[i0], t[i1]));
 
-        var fit = new FieldFit(fit0.ThetaRad, fit0.CentreCrossM, halfW, halfL);
-        return new GeometryResult(fit, onField, segments,
-            (int)Math.Round(onSec), (int)Math.Round(offSec), points, onDist,
-            (int)Math.Round(liveSec), liveDist);
+        var fieldFit = new FieldFit(th, c0, halfW, line);
+        return new GeometryResult(fieldFit, onField, segments,
+            (int)Math.Round(onSec), (int)Math.Round(offSec), played, onDist,
+            (int)Math.Round(liveSec), liveDist, rests, n > 0 ? t[g0] - t[0] : 0);
     }
 
     // Fraction of the time window [t0, t1) that was on-field, weighted by the
@@ -160,131 +267,201 @@ public static class FieldGeometry
         return on / total;
     }
 
-    // --- port of segment.py:project ---
-    private static (double[] Along, double[] Cross, FieldFit Fit) Project(
-        IReadOnlyList<TrackSample> s, FieldGeometryOptions o)
+    // --- fieldgeometry_v2.py:xy ---
+    private static (double[] X, double[] Y) Project(IReadOnlyList<TrackSample> s)
     {
         int n = s.Count;
         double mla = 0, mlo = 0;
         for (int i = 0; i < n; i++) { mla += s[i].Lat; mlo += s[i].Lon; }
         mla /= n; mlo /= n;
-        double mLatM = 111320.0;
-        double mLonM = 111320.0 * Math.Cos(mla * Math.PI / 180.0);
-
+        const double k = 111320.0;
+        double kLon = k * Math.Cos(mla * Math.PI / 180.0);
         var x = new double[n];
         var y = new double[n];
         for (int i = 0; i < n; i++)
         {
-            x[i] = (s[i].Lon - mlo) * mLonM;
-            y[i] = (s[i].Lat - mla) * mLatM;
+            x[i] = (s[i].Lon - mlo) * kLon;
+            y[i] = (s[i].Lat - mla) * k;
         }
+        return (x, y);
+    }
 
-        // Frame centre + rotation from the fast-sample covariance (fall back to
-        // all samples when fewer than 40 are fast).
-        var srcIdx = new List<int>();
-        for (int i = 0; i < n; i++) if (s[i].Spd >= o.FastMps) srcIdx.Add(i);
-        if (srcIdx.Count < 40) { srcIdx.Clear(); for (int i = 0; i < n; i++) srcIdx.Add(i); }
-
-        double mx = 0, my = 0;
-        foreach (int i in srcIdx) { mx += x[i]; my += y[i]; }
-        mx /= srcIdx.Count; my /= srcIdx.Count;
-
-        double cxx = 0, cyy = 0, cxy = 0;
-        foreach (int i in srcIdx)
-        {
-            cxx += (x[i] - mx) * (x[i] - mx);
-            cyy += (y[i] - my) * (y[i] - my);
-            cxy += (x[i] - mx) * (y[i] - my);
-        }
-        cxx /= srcIdx.Count; cyy /= srcIdx.Count; cxy /= srcIdx.Count;
-
-        double th = 0.5 * Math.Atan2(2 * cxy, cxx - cyy);
-        double ct = Math.Cos(th), st = Math.Sin(th);
-
+    private static (double[] Along, double[] Cross) Frame(double[] x, double[] y, double ox, double oy, double th)
+    {
+        double c = Math.Cos(th), s = Math.Sin(th);
+        int n = x.Length;
         var along = new double[n];
         var cross = new double[n];
         for (int i = 0; i < n; i++)
         {
-            double dx = x[i] - mx, dy = y[i] - my;
-            along[i] = dx * ct + dy * st;
-            cross[i] = -dx * st + dy * ct;
+            double dx = x[i] - ox, dy = y[i] - oy;
+            along[i] = dx * c + dy * s;
+            cross[i] = -dx * s + dy * c;
         }
-
-        // Zero the cross axis on the median of the fast samples (fall back to
-        // all when fewer than 40 are fast).
-        var fc = new List<double>();
-        for (int i = 0; i < n; i++) if (s[i].Spd >= o.FastMps) fc.Add(cross[i]);
-        double c0 = fc.Count >= 40 ? Median(fc) : Median(new List<double>(cross));
-        for (int i = 0; i < n; i++) cross[i] -= c0;
-
-        return (along, cross, new FieldFit(th, c0, 0, 0));
+        return (along, cross);
     }
 
-    // --- port of segment.py point counter (non-strict variant) ---
-    // Returns the accepted-dwell count, the on-field seconds that fall in the
-    // live-play windows between consecutive accepted dwells (segment.py's b2 /
-    // "in-point on-field time"), and the GPS distance over those same windows.
-    private static (int Points, double LiveSeconds, double LiveDistanceM) CountPoints(
-        double[] t, double[] along, double[] spd, bool[] onField,
-        IReadOnlyList<TrackSample> samples, double halfL, FieldGeometryOptions o)
+    // --- fieldgeometry_v2.py:pca --- centroid and principal-axis angle.
+    private static (double Ox, double Oy, double Theta) Pca(double[] x, double[] y, List<int> idx)
+    {
+        double ox = 0, oy = 0;
+        foreach (int i in idx) { ox += x[i]; oy += y[i]; }
+        ox /= idx.Count; oy /= idx.Count;
+        double cxx = 0, cyy = 0, cxy = 0;
+        foreach (int i in idx)
+        {
+            cxx += (x[i] - ox) * (x[i] - ox);
+            cyy += (y[i] - oy) * (y[i] - oy);
+            cxy += (x[i] - ox) * (y[i] - oy);
+        }
+        return (ox, oy, 0.5 * Math.Atan2(2 * cxy, cxx - cyy));
+    }
+
+    private static double RoughHalfLength(double[] along, List<int> fit)
+        => Percentile(fit.Select(i => Math.Abs(along[i])).ToList(), 0.9);
+
+    // --- fieldgeometry_v2.py:main_cluster --- members of idx near the place
+    // with the most fast running, so a warmup on another field (far less fast
+    // time than the games) can't drag the fit. Cells are scored in first-seen
+    // order and the first maximum wins, matching Python's max() over a Counter.
+    private static List<int> MainCluster(double[] x, double[] y, List<int> idx, FieldGeometryOptions o)
+    {
+        double cell = o.ClusterCellM;
+        int half = o.ClusterHalfCells;
+        var counts = new Dictionary<(int, int), int>();
+        var order = new List<(int, int)>();
+        foreach (int i in idx)
+        {
+            var key = ((int)Math.Floor(x[i] / cell), (int)Math.Floor(y[i] / cell));
+            if (counts.TryGetValue(key, out int c)) counts[key] = c + 1;
+            else { counts[key] = 1; order.Add(key); }
+        }
+        (int Cx, int Cy) best = order[0];
+        int bestScore = -1;
+        foreach (var (cx, cy) in order)
+        {
+            int score = 0;
+            for (int a = -half; a <= half; a++)
+                for (int b = -half; b <= half; b++)
+                    if (counts.TryGetValue((cx + a, cy + b), out int c)) score += c;
+            if (score > bestScore) { best = (cx, cy); bestScore = score; }
+        }
+        double bx = (best.Cx + 0.5) * cell, by = (best.Cy + 0.5) * cell;
+        var near = idx.Where(i => Hypot(x[i] - bx, y[i] - by) <= o.ClusterRadiusM).ToList();
+        double mx = near.Average(i => x[i]), my = near.Average(i => y[i]);
+        return idx.Where(i => Hypot(x[i] - mx, y[i] - my) <= o.ClusterRadiusM).ToList();
+    }
+
+    // A >= BurstMps sample within BurstSec after sample i1 (optionally counting i1 itself).
+    private static bool BurstAfter(double[] t, double[] spd, int i1, bool includeSelf, FieldGeometryOptions o)
+    {
+        for (int k = includeSelf ? i1 : i1 + 1; k < t.Length && t[k] - t[i1] <= o.BurstSec; k++)
+            if (spd[k] >= o.BurstMps) return true;
+        return false;
+    }
+
+    // --- fieldgeometry_v2.py:dwells --- slow stretches beyond loAbs along the
+    // axis, each kept within one end: (I0, I1, Side).
+    private static List<(int I0, int I1, int Side)> Dwells(
+        double[] t, double[] along, double[] spd, double loAbs, FieldGeometryOptions o)
+    {
+        var outv = new List<(int, int, int)>();
+        int n = t.Length;
+        double cap = o.DwellMaxMeanMps * 2;
+        int i = 0;
+        while (i < n)
+        {
+            if (Math.Abs(along[i]) <= loAbs) { i++; continue; }
+            int side = along[i] > 0 ? 1 : -1;
+            int j = i;
+            while (j + 1 < n && Math.Abs(along[j + 1]) > loAbs && (along[j + 1] > 0) == (side > 0)) j++;
+            int k = i;
+            while (k <= j)
+            {
+                if (spd[k] >= cap) { k++; continue; }
+                int m = k;
+                while (m + 1 <= j && spd[m + 1] < cap) m++;
+                if (t[m] - t[k] >= o.DwellMinSec)
+                {
+                    double mean = 0;
+                    for (int q = k; q <= m; q++) mean += spd[q];
+                    mean /= m - k + 1;
+                    if (mean <= o.DwellMaxMeanMps) outv.Add((k, m, side));
+                }
+                k = m + 1;
+            }
+            i = j + 1;
+        }
+        return outv;
+    }
+
+    // --- fieldgeometry_v2.py:gameplay_start --- index of the first line-up of a
+    // run that looks like games, not drills: each followed by a burst,
+    // consecutive ones LineupGapMin..Max apart (start to start), switching ends
+    // at least LineupSwitches times, and not dense with drill reps in between.
+    // 0 when no run qualifies. Deliberately never keyed on lap position.
+    private static int GameplayStart(double[] t, List<(int I0, int I1, int Side)> dw, double[] spd, FieldGeometryOptions o)
+    {
+        var g = dw.Where(d => BurstAfter(t, spd, d.I1, includeSelf: false, o)).ToList();
+        for (int a = 0; a < g.Count; a++)
+        {
+            var run = new List<(int I0, int I1, int Side)> { g[a] };
+            for (int b = a + 1; b < g.Count; b++)
+            {
+                double gap = t[g[b].I0] - t[run[^1].I0];
+                if (gap < o.LineupGapMinSec) continue;   // drill rep: skip, don't break the run
+                if (gap > o.LineupGapMaxSec) break;
+                run.Add(g[b]);
+                int switches = 0;
+                for (int q = 1; q < run.Count; q++) if (run[q].Side != run[q - 1].Side) switches++;
+                if (run.Count >= o.LineupRunMin && switches >= o.LineupSwitches)
+                {
+                    double from = t[run[0].I0], to = t[run[^1].I0];
+                    int inside = g.Count(d => t[d.I0] >= from && t[d.I0] <= to);
+                    if (inside <= run.Count * o.LineupDensity) return g[a].I0;
+                    break;
+                }
+            }
+        }
+        return 0;
+    }
+
+    // --- fieldgeometry_v2.py:onfield --- inside the box on a WinSec rolling
+    // median, minus sustained slow stretches that aren't a line-up, and never
+    // before the gameplay start.
+    private static bool[] OnField(double[] t, double[] along, double[] cross, double[] spd,
+        double halfW, double line, double roughHalfL, int g0, FieldGeometryOptions o)
     {
         int n = t.Length;
-        var inEz = new bool[n];
-        for (int i = 0; i < n; i++) inEz[i] = Math.Abs(along[i]) > halfL * o.EndzoneFrac;
+        var absCross = new double[n];
+        for (int i = 0; i < n; i++) absCross[i] = Math.Abs(cross[i]);
+        var mc = Roll(t, absCross, o.WinSec, Median);
+        var ma = Roll(t, along, o.WinSec, Median);
+        double lim = line + o.EndzoneDepthM;
 
-        // (i0, i1) of every accepted reset dwell, in order.
-        var accepted = new List<(int I0, int I1)>();
-        foreach (var (state, i0, i1) in Runs(inEz))
+        var on = new bool[n];
+        for (int i = 0; i < n; i++) on[i] = mc[i] < halfW + o.SidePadM && ma[i] > -lim && ma[i] < lim;
+
+        for (int i = 0; i < n;)
         {
-            if (!state) continue;
-            if (t[i1] - t[i0] < o.EndzoneMinSec) continue;
-
-            double meanSpd = 0;
-            for (int i = i0; i <= i1; i++) meanSpd += spd[i];
-            meanSpd /= (i1 - i0 + 1);
-            if (meanSpd > o.EndzoneMaxSpd) continue;
-
-            int onCount = 0;
-            for (int i = i0; i <= i1; i++) if (onField[i]) onCount++;
-            if (onCount < (i1 - i0 + 1) / 2.0) continue;   // dwell happened while benched
-
-            // Did he actually play the point that followed? Require the next
-            // FollowSec to be mostly on-field. Catches points started
-            // stationary (deep zone D, handler on O) that a pull-sprint test
-            // would miss, and rejects sitting on the line for instructions
-            // then returning to the sideline.
-            int j = i1;
-            while (j < n - 1 && t[j] - t[i1] < o.FollowSec) j++;
-            int followLen = j - i1 + 1;
-            int followOn = 0;
-            for (int i = i1; i <= j; i++) if (onField[i]) followOn++;
-            if (followLen == 0 || followOn < followLen * o.FollowFrac) continue;
-
-            accepted.Add((i0, i1));
+            if (spd[i] >= o.SlowMaxMps) { i++; continue; }
+            int j = i;
+            while (j + 1 < n && spd[j + 1] < o.SlowMaxMps) j++;
+            double dur = t[j] - t[i];
+            bool lineup = Math.Abs(ma[j]) > roughHalfL * o.DwellFrac && dur <= o.LineupMaxSec
+                          && BurstAfter(t, spd, j, includeSelf: false, o);
+            if (dur >= o.SlowMinSec && !lineup)
+                for (int k = i; k <= j; k++) on[k] = false;
+            i = j + 1;
         }
-
-        // Live play = on-field time from the end of one accepted dwell to the
-        // start of the next. The tail after the last dwell (handshake, cooldown)
-        // is deliberately excluded.
-        double live = 0, liveDist = 0;
-        for (int k = 0; k < accepted.Count - 1; k++)
-        {
-            int ia = accepted[k].I1, ib = accepted[k + 1].I0;
-            for (int i = ia + 1; i <= ib; i++)
-                if (onField[i - 1])
-                {
-                    live += t[i] - t[i - 1];
-                    liveDist += Haversine(samples[i - 1], samples[i]);
-                }
-        }
-
-        return (accepted.Count, live, liveDist);
+        for (int i = 0; i < g0; i++) on[i] = false;
+        return on;
     }
 
     // --- primitives, ported to match Python semantics exactly ---
 
-    // segment.py:roll - two-pointer window over IRREGULAR timestamps. Do not
-    // replace with a fixed-N window.
+    // Two-pointer window over IRREGULAR timestamps. Do not replace with a
+    // fixed-N window.
     private static double[] Roll(double[] t, double[] vals, double win, Func<List<double>, double> fn)
     {
         int n = t.Length;
@@ -296,28 +473,12 @@ public static class FieldGeometry
             while (t[lo] < t[i] - win / 2) lo++;
             if (hi < lo) hi = lo;
             while (hi < n && t[hi] <= t[i] + win / 2) hi++;
-            if (hi > lo)
-            {
-                buf.Clear();
-                for (int k = lo; k < hi; k++) buf.Add(vals[k]);
-                outv[i] = fn(buf);
-            }
-            else
-            {
-                outv[i] = fn(new List<double> { vals[i] });
-            }
+            buf.Clear();
+            if (hi > lo) for (int k = lo; k < hi; k++) buf.Add(vals[k]);
+            else buf.Add(vals[i]);
+            outv[i] = fn(buf);
         }
         return outv;
-    }
-
-    // segment.py:spread - index-based 10/90 percentile gap (NOT interpolated).
-    private static double Spread(List<double> xs)
-    {
-        if (xs.Count < 4) return 0.0;
-        var s = new List<double>(xs);
-        s.Sort();
-        int n = s.Count;
-        return s[(int)(n * 0.9)] - s[(int)(n * 0.1)];
     }
 
     // Index-based percentile matching Python's `sorted(v)[int(n*p)]`.
@@ -326,30 +487,6 @@ public static class FieldGeometry
         var s = new List<double>(xs);
         s.Sort();
         return s[(int)(s.Count * p)];
-    }
-
-    // segment.py:merge - absorb runs shorter than mind into the preceding run.
-    // The i=0 restart after a merge is an intentional fixpoint iteration; keep
-    // it, do not flatten to a single pass.
-    private static bool[] MergeShort(double[] t, bool[] lab, double mind)
-    {
-        var outv = (bool[])lab.Clone();
-        int i = 0, n = outv.Length;
-        while (i < n)
-        {
-            int j = i;
-            while (j < n && outv[j] == outv[i]) j++;
-            if (j > i && t[j - 1] - t[i] < mind && i > 0)
-            {
-                for (int k = i; k < j; k++) outv[k] = outv[i - 1];
-                i = 0;
-            }
-            else
-            {
-                i = j;
-            }
-        }
-        return outv;
     }
 
     private static IEnumerable<(bool State, int I0, int I1)> Runs(bool[] lab)
@@ -373,6 +510,8 @@ public static class FieldGeometry
         int mid = s.Count / 2;
         return s.Count % 2 == 1 ? s[mid] : (s[mid - 1] + s[mid]) / 2.0;
     }
+
+    private static double Hypot(double a, double b) => Math.Sqrt(a * a + b * b);
 
     private static double Haversine(TrackSample a, TrackSample b)
     {

@@ -48,7 +48,15 @@ public sealed record LapClassifierOptions(
     // player subs off several times over ~20 points). Fewer than this is
     // Garmin's default lap or a stray auto-lap, not a sub log - fall back to
     // GeometryNoLaps, whose segment aggregates are more reliable anyway.
-    int MinLapsForBoundaries = 4)
+    int MinLapsForBoundaries = 4,
+    // Lap labels for the fit exclusion (FitExclusion): a lap is a point lap
+    // when it's no longer than WarmupLapMinSec, averages at least
+    // PointLapMinAvgMps and peaks at least PointLapMinMaxMps. Every other lap
+    // (warmup, rest, ambiguous) is kept out of the field fit. Mirrors LAP in
+    // scripts/ultimate-stream-explore/fieldgeometry_v2.py.
+    double WarmupLapMinSec = 900.0,
+    double PointLapMinAvgMps = 0.95,
+    double PointLapMinMaxMps = 5.0)
 {
     public static readonly LapClassifierOptions Default = new();
 }
@@ -69,7 +77,9 @@ public sealed record LapFieldSummary(
     int LivePlaySeconds = 0,
     // GPS distance (m) covered inside detected points (see
     // GeometryResult.LivePlayDistanceM). 0 in the same cases as LivePlaySeconds.
-    decimal LivePlayDistanceM = 0m);
+    decimal LivePlayDistanceM = 0m,
+    // Off-field gaps between on-field stints (see GeometryResult.RestPeriods).
+    int RestPeriods = 0);
 
 // Pure. No DbContext, no I/O. Callable on any (laps, geometry) pair so it can
 // be unit-tested in isolation and reused from lap-sync, track-sync,
@@ -85,7 +95,9 @@ public static class LapFieldClassifier
     // points aren't deleted. PointsPlayed rises ~4-13% (see FieldGeometry.cs).
     // v6 = LivePlaySeconds threaded through from FieldGeometry v3. Additive.
     // v7 = LivePlayDistanceM threaded through from FieldGeometry v4. Additive.
-    public const int Version = 7;
+    // v8 = FieldGeometry v5 (rewrite); lap-pressed sessions keep warmup / rest /
+    // ambiguous laps out of the field fit (FitExclusion). RestPeriods added.
+    public const int Version = 8;
 
     private static readonly HashSet<string> KnownGarminIntensities =
         new(StringComparer.OrdinalIgnoreCase) { "WARMUP", "ACTIVE", "RECOVERY", "REST", "COOLDOWN" };
@@ -165,7 +177,8 @@ public static class LapFieldClassifier
                 geometry.PointsPlayed, (decimal)geometry.OnFieldDistanceM,
                 UnknownLapCount: all.Count, AlternationViolations: 0,
                 LivePlaySeconds: geometry.LivePlaySeconds,
-                LivePlayDistanceM: (decimal)geometry.LivePlayDistanceM);
+                LivePlayDistanceM: (decimal)geometry.LivePlayDistanceM,
+                RestPeriods: geometry.RestPeriods);
         }
 
         // --- 4. Label each lap by the on-field fraction of its window. ---
@@ -191,13 +204,48 @@ public static class LapFieldClassifier
         for (int k = 1; k < labelled.Count; k++)
             if (labelled[k].State == labelled[k - 1].State) violations++;
 
-        // Points come from the geometry's endzone-dwell count, not the lap
-        // count - he laps on sub on/off, so one on-field lap can span several
-        // points.
+        // Points come from the geometry's stints, not the lap count - he laps
+        // on sub on/off, so one on-field lap can span several points.
         return Summarise(all, LapClassifierMethod.GeometryFromLaps, violations,
             pointsOverride: geometry.PointsPlayed, distanceFromLaps: true,
             livePlaySeconds: geometry.LivePlaySeconds,
-            livePlayDistanceM: (decimal)geometry.LivePlayDistanceM);
+            livePlayDistanceM: (decimal)geometry.LivePlayDistanceM,
+            restPeriods: geometry.RestPeriods);
+    }
+
+    // The geometry for a session, with its lap presses (when it has enough to
+    // be a real sub log) keeping warmup / rest / ambiguous laps out of the
+    // field fit. Laps are labelled by their own speeds, never by position:
+    // lap 1 isn't reliably a warmup. A lap with no speeds excludes nothing.
+    // Shared by every caller so the stored numbers and the timeline agree.
+    public static GeometryResult AnalyseWithLaps(
+        IReadOnlyList<ActivityLap> laps, IReadOnlyList<TrackSample> samples,
+        long trackStartEpochMs, LapClassifierOptions? options = null)
+        => FieldGeometry.Analyse(samples, excludeFromFit: FitExclusion(laps, samples, trackStartEpochMs, options));
+
+    public static bool[]? FitExclusion(
+        IReadOnlyList<ActivityLap> laps, IReadOnlyList<TrackSample> samples,
+        long trackStartEpochMs, LapClassifierOptions? options = null)
+    {
+        var opts = options ?? LapClassifierOptions.Default;
+        var windowed = laps.Where(l => l.StartTimeGmt is not null && (l.DurationSeconds ?? 0m) > 0m).ToList();
+        if (windowed.Count < opts.MinLapsForBoundaries) return null;   // not a sub log: nothing to go on
+
+        var epoch = DateTimeOffset.FromUnixTimeMilliseconds(trackStartEpochMs).UtcDateTime;
+        var ex = new bool[samples.Count];
+        foreach (var l in windowed)
+        {
+            if (l.AvgSpeedMps is null || l.MaxSpeedMps is null) continue;
+            double dur = (double)l.DurationSeconds!.Value;
+            bool point = dur <= opts.WarmupLapMinSec
+                && (double)l.AvgSpeedMps.Value >= opts.PointLapMinAvgMps
+                && (double)l.MaxSpeedMps.Value >= opts.PointLapMinMaxMps;
+            if (point) continue;
+            double start = (l.StartTimeGmt!.Value - epoch).TotalSeconds;
+            for (int i = 0; i < samples.Count; i++)
+                if (samples[i].T >= start && samples[i].T < start + dur) ex[i] = true;
+        }
+        return ex;
     }
 
     private static readonly IReadOnlyDictionary<int, string> EmptyStates =
@@ -206,7 +254,7 @@ public static class LapFieldClassifier
     private static LapFieldSummary Summarise(
         List<Lap> all, string method, int alternationViolations,
         int? pointsOverride, bool distanceFromLaps, int livePlaySeconds = 0,
-        decimal livePlayDistanceM = 0m)
+        decimal livePlayDistanceM = 0m, int restPeriods = 0)
     {
         int onSec = 0, offSec = 0, mixSec = 0, onLapCount = 0, unknown = 0;
         decimal onDist = 0m;
@@ -237,6 +285,6 @@ public static class LapFieldClassifier
             method,
             onSec, offSec, mixSec,
             pointsOverride ?? onLapCount, onDist, unknown, alternationViolations,
-            livePlaySeconds, livePlayDistanceM);
+            livePlaySeconds, livePlayDistanceM, restPeriods);
     }
 }

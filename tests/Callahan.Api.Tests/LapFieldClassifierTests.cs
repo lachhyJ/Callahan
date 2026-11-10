@@ -126,7 +126,11 @@ public class LapFieldClassifierTests
         var r = LapFieldClassifier.Classify(laps, geo, samples, epoch);
 
         Assert.Equal(LapClassifierMethod.GeometryFromLaps, r.Method);
-        Assert.Equal(0, r.AlternationViolations);
+        // v5 has no minimum segment length, so a few-second blip becomes a lap
+        // too short to label (Unknown); its two neighbours then share a state.
+        // That is the only way a violation can arise here.
+        Assert.True(r.AlternationViolations <= r.UnknownLapCount,
+            $"{r.AlternationViolations} violations, {r.UnknownLapCount} unknown laps");
         // labels alternate on/off exactly like the segments they were cut from
         for (int i = 0; i < laps.Count; i++)
         {

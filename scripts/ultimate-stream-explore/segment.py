@@ -28,7 +28,8 @@ FOLLOW_FRAC = 0.5     # ...and require this much of it to be on-field
 # Relaxed from 90 / 0.6 (2026-08-27): the tighter filter structurally deleted
 # short points started on D where the opposition scores fast and he subs off -
 # the following stretch is then mostly off-field. Held-out validated on the 11
-# Feb/Mar games. The C# port (FieldGeometry.cs) carries the same values.
+# Feb/Mar games. FieldGeometry.cs carried these until v5 (2026-11), which replaced
+# this classifier; see fieldgeometry_v2.py.
 # STRICT additionally requires a full-field pull traverse after the dwell. It
 # under-counts badly (5.7 min/point vs a real ~2-4), so it is off by default -
 # kept because it is the conservative floor on points played.

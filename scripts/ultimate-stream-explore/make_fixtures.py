@@ -21,71 +21,21 @@ they describe exactly what is committed.
 """
 import gzip
 import json
-import math
 import os
 import statistics
 import sys
 
 import anonymise as anon
-import diagnose as d  # the classifier primitives + constants, guarded against FieldGeometry.cs
+import fieldgeometry_v2 as v2  # the detector's reference; guarded against FieldGeometry.cs
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.normpath(os.path.join(HERE, "..", "..", "tests", "Callahan.Api.Tests", "Fixtures"))
 
 
-def haversine(lat1, lon1, lat2, lon2):
-    r = 6371000.0
-    p1, p2 = math.radians(lat1), math.radians(lat2)
-    dp = math.radians(lat2 - lat1)
-    dl = math.radians(lon2 - lon1)
-    h = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
-    return 2 * r * math.asin(min(1.0, math.sqrt(h)))
-
-
-def analyse(t, lat, lon, spd):
-    """The baselines.json numbers FieldGeometryTests compares against.
-
-    On-field labelling and the field fit come from diagnose.analyse(); only the
-    dwell list (needed for live play, which diagnose doesn't report) is walked
-    here, with the same acceptance rules as diagnose.points_played()."""
-    r = d.analyse(t, lat, lon, spd)
-    along, onfield, halfw, halfl = r["along"], r["onfield"], r["halfw"], r["halfl"]
-
-    inez = [abs(a) > halfl * d.EZ_FRAC for a in along]
-    dwells = []
-    for state, i0, i1 in d.runs(inez):
-        if not state or t[i1] - t[i0] < d.EZ_MIN_S:
-            continue
-        if statistics.mean(spd[i0:i1 + 1]) > d.EZ_MAX_SPD:
-            continue
-        if sum(onfield[i0:i1 + 1]) < (i1 - i0 + 1) / 2:
-            continue
-        j = i1
-        while j < len(t) - 1 and t[j] - t[i1] < d.FOLLOW_S:
-            j += 1
-        follow = onfield[i1:j + 1]
-        if not follow or sum(follow) < len(follow) * d.FOLLOW_FRAC:
-            continue
-        dwells.append((i0, i1))
-    pts = len(dwells)
-    assert pts == r["pts"], "dwell walk disagrees with diagnose.points_played"
-
-    on = r["on"]
-    # Live play (segment.py b2): time + GPS distance over the on-field windows
-    # between consecutive accepted dwells. Matches GeometryResult.LivePlay*.
-    live = sum(t[i] - t[i - 1]
-               for k in range(len(dwells) - 1)
-               for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
-               if onfield[i - 1])
-    live_dist = sum(haversine(lat[i - 1], lon[i - 1], lat[i], lon[i])
-                    for k in range(len(dwells) - 1)
-                    for i in range(dwells[k][1] + 1, dwells[k + 1][0] + 1)
-                    if onfield[i - 1])
-    dur = t[-1] - t[0]
-    return {"onFieldSeconds": round(on), "durationSeconds": round(dur),
-            "onFieldFraction": round(on / dur, 4), "pointsPlayed": pts,
-            "fieldWidthM": round(2 * halfw, 1), "fieldLengthM": round(2 * halfl, 1),
-            "livePlaySeconds": round(live), "livePlayDistanceM": round(live_dist)}
+def analyse(t, lat, lon, spd, exclude=None):
+    """The baselines.json numbers FieldGeometryTests compares against: the v5
+    detector's reference implementation (fieldgeometry_v2.baseline)."""
+    return v2.baseline(t, lat, lon, spd, exclude)
 
 
 def main():
