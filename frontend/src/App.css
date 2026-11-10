@@ -3118,6 +3118,18 @@ td {
   }
 }
 
+/* The next program review or test day (Training calendar): an amber fill, so it reads as
+   a date to plan around rather than a logged session. Selected and hover still win, being
+   nested under .calendar-cell-active with higher specificity. */
+.calendar-cell-milestone {
+  background: var(--warning-bg);
+
+  & .calendar-day-number {
+    color: var(--warning-text);
+    font-weight: 700;
+  }
+}
+
 /* Today = an accent ring on the cell, not a colour on the day number (which
    used to collide with the old purple gym dot — gym is pink now, so accent
    is free of category meaning on the calendar again). inset box-shadow so it
@@ -3524,11 +3536,12 @@ td {
   color: var(--accent);
 }
 
-/* The next program review or test day, from the Training calendar. */
-.dashboard-milestone {
-  margin: var(--space-md) 0 0;
+/* The next review or test day's name, at the top of the day sheet. */
+.day-detail-milestone {
+  margin: 0 0 var(--space-sm);
   font-size: var(--text-sm);
-  color: var(--text-secondary);
+  font-weight: 600;
+  color: var(--warning-text);
 }
 
 .sheet-backdrop {

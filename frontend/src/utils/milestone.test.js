@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest'
-import { milestoneLine } from './milestone'
+import { upcomingMilestone } from './milestone'
 
-describe('milestoneLine', () => {
+describe('upcomingMilestone', () => {
   const today = '2026-11-10'
 
-  it('names the milestone, its day and how far off it is', () => {
-    expect(milestoneLine({ title: 'T0 testing', day: '2026-11-24' }, today)).toBe('T0 testing · Tue 24 Nov · in 14 days')
+  it('keeps the day and names the milestone with how far off it is', () => {
+    expect(upcomingMilestone({ title: 'T0 testing', day: '2026-11-24' }, today))
+      .toEqual({ day: '2026-11-24', label: 'T0 testing · in 14 days' })
   })
 
   it('says today and tomorrow in words', () => {
-    expect(milestoneLine({ title: 'T0 testing', day: '2026-11-10' }, today)).toMatch(/· today$/)
-    expect(milestoneLine({ title: 'T0 testing', day: '2026-11-11' }, today)).toMatch(/· tomorrow$/)
+    expect(upcomingMilestone({ title: 'T0 testing', day: '2026-11-10' }, today).label).toBe('T0 testing · today')
+    expect(upcomingMilestone({ title: 'T0 testing', day: '2026-11-11' }, today).label).toBe('T0 testing · tomorrow')
   })
 
-  it('shows nothing for no milestone or one already past', () => {
-    expect(milestoneLine(null, today)).toBeNull()
-    expect(milestoneLine({ title: 'T0 testing', day: '2026-11-09' }, today)).toBeNull()
+  it('drops no milestone, an incomplete one, or one already past', () => {
+    expect(upcomingMilestone(null, today)).toBeNull()
+    expect(upcomingMilestone({ title: '', day: '2026-11-24' }, today)).toBeNull()
+    expect(upcomingMilestone({ title: 'T0 testing', day: '2026-11-09' }, today)).toBeNull()
   })
 })

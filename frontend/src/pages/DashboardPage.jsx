@@ -13,7 +13,7 @@ import TimeZoneSetting from '../components/TimeZoneSetting'
 import TrainingModeSetting from '../components/TrainingModeSetting'
 import { MONTH_NAMES } from '../utils/format'
 import { activityDots } from '../utils/calendarGlyphs'
-import { milestoneLine } from '../utils/milestone'
+import { upcomingMilestone } from '../utils/milestone'
 import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
 import { trackAction } from '../usage'
 import { CalendarIcon, ChartIcon, CheckIcon, ChevronRightIcon, DocumentIcon, HistoryIcon, ListIcon, ReportIcon, SyncIcon, TaperIcon, TrashIcon } from '../icons'
@@ -120,7 +120,7 @@ export default function DashboardPage() {
   const [syncResult, setSyncResult] = useState(null) // { text, isError } from the header Sync button
   const [unviewedReport, setUnviewedReport] = useState(null)
   const [pendingGarminCount, setPendingGarminCount] = useState(0)
-  const [nextMilestone, setNextMilestone] = useState(null)
+  const [nextMilestone, setNextMilestone] = useState(() => peekCache('next-milestone'))
 
   useEffect(() => {
     // Deliberately deferred behind the critical workouts/activities fetch
@@ -242,7 +242,7 @@ export default function DashboardPage() {
   const monthLabel = new Date(cursor.year, cursor.month, 1).toLocaleDateString(undefined, MONTH_FORMAT)
   const isViewingCurrentMonth = cursor.year === now.getFullYear() && cursor.month === now.getMonth()
   const selectedEntry = selectedDate ? byDate.get(selectedDate) : null
-  const milestoneText = milestoneLine(nextMilestone, todayIso)
+  const milestone = upcomingMilestone(nextMilestone, todayIso)
 
   function changeMonth(delta) {
     setSelectedDate(null)
@@ -350,12 +350,15 @@ export default function DashboardPage() {
             const hasData = hasWorkout || dots.length > 0
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
+            // The next review or test day is tinted and tappable even with nothing logged,
+            // so the day sheet can say what it is.
+            const isMilestone = milestone?.day === iso
 
             const dayNumber = (
               <span className={isToday ? 'calendar-day-number today' : 'calendar-day-number'}>{date.getDate()}</span>
             )
 
-            if (!hasData) {
+            if (!hasData && !isMilestone) {
               return (
                 <div key={iso} className={`calendar-cell${isToday ? ' calendar-cell-today' : ''}`}>
                   {dayNumber}
@@ -367,7 +370,8 @@ export default function DashboardPage() {
               <button
                 key={iso}
                 type="button"
-                className={`calendar-cell calendar-cell-active${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
+                className={`calendar-cell calendar-cell-active${isMilestone ? ' calendar-cell-milestone' : ''}${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
+                aria-label={isMilestone ? `${date.getDate()}, ${milestone.label}` : undefined}
                 onClick={() => { trackAction('calendar-day', isSelected ? 'deselect' : 'select'); setSelectedDate(isSelected ? null : iso) }}
               >
                 {dayNumber}
@@ -402,8 +406,6 @@ export default function DashboardPage() {
           return divider ? [divider, gutter, ...dayCells] : [gutter, ...dayCells]
         })}
       </div>
-
-      {milestoneText && <p className="dashboard-milestone">Next: {milestoneText}</p>}
 
       {wellness && (
         <div className="section-gap">
@@ -441,7 +443,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <DayDetailSheet date={selectedDate} entry={selectedEntry} onClose={() => setSelectedDate(null)} />
+      <DayDetailSheet
+        date={selectedDate}
+        entry={selectedEntry}
+        milestone={selectedDate && selectedDate === milestone?.day ? milestone.label : null}
+        onClose={() => setSelectedDate(null)}
+      />
 
       <TrainingModeSetting />
       <TimeZoneSetting />
