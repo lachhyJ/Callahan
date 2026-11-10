@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { getTrainingMode, setTrainingMode } from '../api/client'
-import { clearCacheKey } from '../swrCache'
+import { clearCacheKey, peekCache, staleWhileRevalidate, writeCacheKey } from '../swrCache'
+
+const CACHE_KEY = 'training-mode'
 
 const MODES = [
   { value: 'InSeason', label: 'In-season', hint: 'Gym A / B' },
@@ -13,12 +15,14 @@ const MODES = [
 // gym templates "Start a workout" offers; rendered on the Dashboard and on the picker
 // itself, where a wrong list is noticed.
 export default function TrainingModeSetting({ onChange }) {
-  const [mode, setMode] = useState(null)
+  // Seeded from the cache so the toggle is in the first render instead of popping in
+  // above the template list once the fetch lands.
+  const [mode, setMode] = useState(() => peekCache(CACHE_KEY)?.mode ?? null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    getTrainingMode().then((m) => setMode(m.mode)).catch(() => {})
+    staleWhileRevalidate(CACHE_KEY, getTrainingMode, (m) => setMode(m.mode)).catch(() => {})
   }, [])
 
   async function choose(next) {
@@ -28,6 +32,7 @@ export default function TrainingModeSetting({ onChange }) {
     try {
       const res = await setTrainingMode(next)
       setMode(res.mode)
+      writeCacheKey(CACHE_KEY, res)
       clearCacheKey('workouttemplates')
       onChange?.(res.mode)
     } catch (err) {

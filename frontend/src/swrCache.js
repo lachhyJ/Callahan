@@ -59,6 +59,12 @@ export function clearCacheKey(key) {
   }
 }
 
+// Stores a value a write just returned (the training mode after a flip), so the next
+// first-frame peekCache paints the new value rather than the one from before the write.
+export function writeCacheKey(key, data) {
+  writeCache(key, data)
+}
+
 // Calls onData synchronously with the last cached value (if any) so the page
 // can paint before the network round-trip even starts, then always runs
 // `fetcher` and calls onData again with the live result once it resolves.
