@@ -389,6 +389,8 @@ off centre, 30–47 m of range.
 line-for-line port that matches exactly, not merely within a band. `explore.py` in the
 same directory is the *failed* speed approach, kept deliberately because it passes its own
 synthetic self-test — which is exactly how a wrong feature hides.
+**2026-11-10:** the reference is now `scripts/ultimate-stream-explore/fieldgeometry_v2.py`
+(see the field-fit entry below); `segment.py` stays as the frozen v1. Position over speed still holds.
 
 ### "On-field time" measures occupancy, not play — and that gap was the real complaint
 **2026-08-27.** The shipped on-field percentages (67–89% across 17 games) felt far too
@@ -428,7 +430,8 @@ misleads. Plan to remove, not to demote. The underlying stored column is unchang
 still feeds the live-play computation and the timeline.
 
 ### The point counter systematically deleted short points
-**2026-08-27.** Point counts were under-reported by 4–13%, concentrated in short points.
+**2026-08-27.** *(Superseded 2026-11-10: v5 counts on-field stints split at line-ups instead of
+this dwell-plus-follow-on filter. The held-out discipline below still applies.)* Point counts were under-reported by 4–13%, concentrated in short points.
 To count an endzone dwell as a point, the detector required 54 of the following 90 seconds
 to be on-field. That filter exists for a good reason — it removes dwells where the player
 stood on the line for instructions and returned to the sideline — but it structurally
@@ -484,6 +487,37 @@ auto-laps and still produced garbage.
 ever been lap-pressed. Its behaviour is covered only by tests synthesised from real
 segments. The first real lap-pressed game is the moment to check it and likely retune the
 thresholds.
+**2026-11-10:** lap-pressed club tryouts now exist and calibrated v5 (they keep warmup, rest and
+ambiguous laps out of the fit), but they're logged as training, not games, so no lap-pressed
+*game* has gone through this path yet.
+
+### The field is fitted from how I run, never from where I stand
+**2026-11-10.** The on/off classifier depends on a fitted field box, and the first version's
+box was fitted to every fast sample in the session. Lap presses from four club tryouts, where
+I marked every point and rest by hand, gave the first real ground truth. They showed it calling
+47–91% of rest time on-field, because warmups and drills skewed the box and a 100 s rolling
+window smeared rests into play.
+
+The rebuild fits only from play after an inferred gameplay start. The angle comes from fast
+running in the area where most of it happens. The endzone lines are the middle of where I line
+up. The width is the span of fast running with the outer 3% trimmed. Then a box test, minus any
+stretch of two and a half minutes with no running, decides on-field. Several more "obvious"
+sources were tried and rejected on plots of my own sessions:
+- **Sideline standing for the width:** it's venue-dependent. At one venue I rested well back
+  from the line, and the fitted angle followed the bench, not the field.
+- **The axis between the two ends' line-up spots:** it skews when I play mostly from one corner.
+- **The inner edge of my line-up cluster for the endzone line:** it put the endzones too deep.
+
+The result is a box that's slightly narrower than the real field, and that's deliberate. A wider
+box takes in the sideline, and the sideline is exactly where rests happen. Rest time read
+on-field fell to 4–15%, and points played and rest periods land within two of the lap counts.
+Settings were chosen by leave-one-out across the four sessions (tune on three, score the
+fourth), and every fold picked essentially the same values.
+
+**How to apply:** judge a fit change by rest time read on-field and by counts against lap
+presses first, field dimensions second. Don't widen the box to match a remembered field.
+`scripts/ultimate-stream-explore/fieldgeometry_v2.py` is the reference; it fails on import if
+its constants drift from `FieldGeometry.cs`.
 
 ---
 
