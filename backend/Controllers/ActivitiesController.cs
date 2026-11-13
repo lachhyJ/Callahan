@@ -158,7 +158,21 @@ public class ActivitiesController : ControllerBase
             .Select(s => new FieldSegmentDto(s.OnField, (int)Math.Round(s.StartT), (int)Math.Round(s.EndT)))
             .ToList();
 
-        return Ok(new FieldTimelineDto(totalSeconds, segments));
+        var epoch = DateTimeOffset.FromUnixTimeMilliseconds(track.StartEpochMs).UtcDateTime;
+        var lapDtos = LapFieldClassifier.PressedLaps(laps)
+            .Select(l =>
+            {
+                double start = (l.StartTimeGmt!.Value - epoch).TotalSeconds;
+                double end = start + (double)l.DurationSeconds!.Value;
+                return new FieldTimelineLapDto(l.LapIndex,
+                    (int)Math.Round(Math.Clamp(start, 0, totalSeconds)),
+                    (int)Math.Round(Math.Clamp(end, 0, totalSeconds)),
+                    LapFieldClassifier.LapKindOf(l), l.FieldState);
+            })
+            .Where(l => l.EndSec > l.StartSec)
+            .ToList();
+
+        return Ok(new FieldTimelineDto(totalSeconds, segments, lapDtos));
     }
 
     [HttpPost]

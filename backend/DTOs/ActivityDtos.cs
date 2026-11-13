@@ -169,9 +169,16 @@ public record AttachGamesResponse(int Attached);
 // relative to the track's start, not absolute epochs.
 public record FieldSegmentDto(bool OnField, int StartSec, int EndSec);
 
+// One lap press window, same time base as FieldSegmentDto. Kind is from the
+// lap's own speeds (LapKind), FieldState is the classifier's stored label from
+// the geometry - showing both is what makes a disagreement visible.
+public record FieldTimelineLapDto(int LapIndex, int StartSec, int EndSec, string Kind, string? FieldState);
+
 public record FieldTimelineDto(
     int TotalSeconds,
-    List<FieldSegmentDto> Segments);
+    List<FieldSegmentDto> Segments,
+    // Empty when the game wasn't lap-pressed (see LapFieldClassifier.PressedLaps).
+    List<FieldTimelineLapDto> Laps);
 
 public record DeletedActivityDto(
     int Id,

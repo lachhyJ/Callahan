@@ -13,6 +13,15 @@ public static class LapFieldState
     public const string Unknown = "Unknown";
 }
 
+// A lap's kind from its own speeds (LapFieldClassifier.LapKindOf). Display
+// and fit-exclusion only; never persisted.
+public static class LapKind
+{
+    public const string Point = "Point";
+    public const string Warmup = "Warmup";
+    public const string Other = "Other";
+}
+
 // Values written to Activity.LapClassifierMethod - the audit trail for how a
 // given activity's laps / segments were labelled, so a wrong call is
 // diagnosable later without re-running anything.
@@ -280,16 +289,41 @@ public static class LapFieldClassifier
         foreach (var l in windowed)
         {
             if (l.AvgSpeedMps is null || l.MaxSpeedMps is null) continue;
+            if (LapKindOf(l, opts) == LapKind.Point) continue;
             double dur = (double)l.DurationSeconds!.Value;
-            bool point = dur <= opts.WarmupLapMinSec
-                && (double)l.AvgSpeedMps.Value >= opts.PointLapMinAvgMps
-                && (double)l.MaxSpeedMps.Value >= opts.PointLapMinMaxMps;
-            if (point) continue;
             double start = (l.StartTimeGmt!.Value - epoch).TotalSeconds;
             for (int i = 0; i < samples.Count; i++)
                 if (samples[i].T >= start && samples[i].T < start + dur) ex[i] = true;
         }
         return ex;
+    }
+
+    // A lap labelled by its own speeds alone, independent of the geometry: the
+    // same rule FitExclusion uses. Longer than WarmupLapMinSec is a warmup (or
+    // a long sideline stretch); point-paced is a point; anything else (rest, a
+    // lap holding a missed press, no speeds) is Other.
+    public static string LapKindOf(ActivityLap l, LapClassifierOptions? options = null)
+    {
+        var opts = options ?? LapClassifierOptions.Default;
+        if ((double)(l.DurationSeconds ?? 0m) > opts.WarmupLapMinSec) return LapKind.Warmup;
+        if (l.AvgSpeedMps is null || l.MaxSpeedMps is null) return LapKind.Other;
+        return (double)l.AvgSpeedMps.Value >= opts.PointLapMinAvgMps
+            && (double)l.MaxSpeedMps.Value >= opts.PointLapMinMaxMps
+            ? LapKind.Point : LapKind.Other;
+    }
+
+    // Laps with a usable window, in time order, or empty when there are too
+    // few to be a real sub log (Garmin's default lap, stray auto-laps) - the
+    // same gate the classifier uses.
+    public static IReadOnlyList<ActivityLap> PressedLaps(
+        IReadOnlyList<ActivityLap> laps, LapClassifierOptions? options = null)
+    {
+        var opts = options ?? LapClassifierOptions.Default;
+        var windowed = laps
+            .Where(l => l.StartTimeGmt is not null && (l.DurationSeconds ?? 0m) > 0m)
+            .OrderBy(l => l.StartTimeGmt)
+            .ToList();
+        return windowed.Count < opts.MinLapsForBoundaries ? [] : windowed;
     }
 
     private static readonly IReadOnlyDictionary<int, string> EmptyStates =
