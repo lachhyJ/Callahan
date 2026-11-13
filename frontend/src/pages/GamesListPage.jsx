@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   getActivities,
@@ -12,6 +12,9 @@ import { formatDateRange, isoDate } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/format'
 import { summariseGames, unclassifiedTournamentActivities } from '../utils/tournamentStats'
 import GameRow from '../components/GameRow'
+import PendingGameRow from '../components/PendingGameRow'
+import UndoToast from '../components/UndoToast'
+import useMarkAsGame from '../hooks/useMarkAsGame'
 import SeasonsSection from '../components/SeasonsSection'
 import ConfirmSheet from '../components/ConfirmSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
@@ -45,7 +48,7 @@ export default function GamesListPage() {
   const [lastAttached, setLastAttached] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null)
 
-  function load() {
+  const load = useCallback(() => {
     Promise.all([
       getActivities({ type: 'Ultimate', sessionType: 'Game' }),
       getTournaments(),
@@ -57,9 +60,11 @@ export default function GamesListPage() {
         setTournaments(t)
       })
       .catch((err) => setError(err.message))
-  }
+  }, [])
 
-  useEffect(load, [])
+  useEffect(load, [load])
+
+  const { markAsGame, busy, error: markError, toast, dismiss } = useMarkAsGame(load)
 
   useEffect(() => {
     if (!syncResult) return
@@ -178,6 +183,7 @@ export default function GamesListPage() {
     if (!byTournament.has(game.tournamentId)) byTournament.set(game.tournamentId, [])
     byTournament.get(game.tournamentId).push(game)
   }
+  const today = isoDate(new Date())
   const entries = [
     ...tournaments.map((t) => {
       const gs = byTournament.get(t.id) ?? []
@@ -185,7 +191,22 @@ export default function GamesListPage() {
       return { kind: 'tournament', tournament: t, games: gs, pending, sortDate: gs[0]?.date ?? pending[0]?.date ?? t.startDate }
     }),
     ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
-  ].sort((a, b) => (a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0))
+  ].sort((a, b) => {
+    // Live tournaments first, then upcoming (soonest first), then everything
+    // else newest first - so a stack of pre-entered future tournaments can't
+    // push the one happening now down the page.
+    const rank = (e) => {
+      if (e.kind !== 'tournament') return 2
+      const t = e.tournament
+      if (t.startDate <= today && today <= t.endDate) return 0
+      return t.startDate > today ? 1 : 2
+    }
+    const ra = rank(a)
+    const rb = rank(b)
+    if (ra !== rb) return ra - rb
+    if (ra === 1) return a.tournament.startDate < b.tournament.startDate ? -1 : 1
+    return a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0
+  })
 
   const tournamentForm = (
       <form onSubmit={handleSubmit} className="section-gap">
@@ -256,6 +277,8 @@ export default function GamesListPage() {
         </p>
       )}
 
+      {markError && <p className="error section-gap">{markError}</p>}
+
       {games.length === 0 && (
         <div className="empty-state section-gap">
           <p>No games classified as "Game" yet — classify an Ultimate activity from History to see it here.</p>
@@ -302,7 +325,7 @@ export default function GamesListPage() {
                 </p>
               )}
               {gs.map((g) => <GameRow key={g.id} game={g} />)}
-              {pending.map((a) => <GameRow key={a.id} game={a} unclassified />)}
+              {pending.map((a) => <PendingGameRow key={a.id} activity={a} onMarkGame={markAsGame} disabled={busy} />)}
               <div className="games-header-actions">
                 <button type="button" className="secondary-btn" onClick={() => startEdit(tournament)}>Edit</button>
                 <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(tournament)}>Delete</button>
@@ -311,6 +334,7 @@ export default function GamesListPage() {
           )
         })}
       </div>
+      {toast && <UndoToast message={toast.message} onUndo={toast.undo} onDismiss={dismiss} />}
       <ConfirmSheet
         open={confirmingDelete != null}
         variant="danger"

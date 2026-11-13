@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { getActivities, getTournaments } from '../api/client'
 import { formatDateRange, formatDateMedium } from '../dateUtils'
@@ -7,6 +7,9 @@ import { summariseGames, groupByDay, unclassifiedTournamentActivities } from '..
 import FieldSplitBar from '../components/FieldSplitBar'
 import TournamentGameChart from '../components/TournamentGameChart'
 import GameRow from '../components/GameRow'
+import PendingGameRow from '../components/PendingGameRow'
+import UndoToast from '../components/UndoToast'
+import useMarkAsGame from '../hooks/useMarkAsGame'
 
 // Roll-up for one tournament weekend. Ordering is deliberate: weekend totals
 // first, per-day load second, game-by-game last — the individual-performance
@@ -20,11 +23,7 @@ export default function TournamentDetailPage() {
   const [error, setError] = useState(null)
   const [chartMode, setChartMode] = useState('totals')
 
-  useEffect(() => {
-    setGames(null)
-    setUnclassified([])
-    setTournament(null)
-    setError(null)
+  const load = useCallback(() => {
     Promise.all([
       getActivities({ type: 'Ultimate', sessionType: 'Game' }),
       getTournaments(),
@@ -46,6 +45,16 @@ export default function TournamentDetailPage() {
       })
       .catch((err) => setError(err.message))
   }, [id])
+
+  useEffect(() => {
+    setGames(null)
+    setUnclassified([])
+    setTournament(null)
+    setError(null)
+    load()
+  }, [load])
+
+  const { markAsGame, busy, error: markError, toast, dismiss } = useMarkAsGame(load)
 
   if (error) {
     return (
@@ -183,12 +192,13 @@ export default function TournamentDetailPage() {
           <p className="game-method-note">
             {unclassified.length === 1 ? 'This activity is' : 'These activities are'} attached to
             the tournament but not tagged "Game", so {unclassified.length === 1 ? "it's" : "they're"} left
-            out of the numbers above. Tag {unclassified.length === 1 ? 'it' : 'them'} as Game to count.
+            out of the numbers above.
           </p>
+          {markError && <p className="error">{markError}</p>}
           <div className="history-week-list">
             <div className="history-week">
               {unclassified.map((a) => (
-                <GameRow key={a.id} game={a} unclassified />
+                <PendingGameRow key={a.id} activity={a} onMarkGame={markAsGame} disabled={busy} />
               ))}
             </div>
           </div>
@@ -228,6 +238,7 @@ export default function TournamentDetailPage() {
         </div>
       </section>
       )}
+      {toast && <UndoToast message={toast.message} onUndo={toast.undo} onDismiss={dismiss} />}
     </main>
   )
 }

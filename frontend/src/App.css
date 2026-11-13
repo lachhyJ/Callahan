@@ -3246,15 +3246,55 @@ td {
   color: var(--text-tertiary);
 }
 
-/* The last row in a group loses its bottom padding (.history-week rule above),
-   which leaves a pending row ~35px tall - under the 44px touch minimum. */
-.history-week .history-item.game-row-pending:last-child {
-  padding-bottom: var(--space-sm);
+/* An attached Ultimate activity not yet tagged "Game": the row links to the
+   activity, with a separate one-tap button to tag it. */
+.pending-game-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
 }
 
-.game-row-needs-class {
-  color: var(--accent, var(--text-secondary));
+.pending-game-row .games-list-row {
+  flex: 1;
+  min-width: 0;
+  border-bottom: none;
+}
+
+.pending-game-btn {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  font-size: var(--text-sm);
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.undo-toast {
+  position: fixed;
+  left: var(--space-md);
+  right: var(--space-md);
+  bottom: calc(var(--bottom-nav-height) + var(--space-sm));
+  z-index: var(--z-toast);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-2xs) var(--space-2xs) var(--space-2xs) var(--space-sm);
+  background: var(--text-h);
+  color: var(--bg, #fff);
+  border-radius: var(--radius-md);
+  font-size: var(--text-sm);
+}
+
+.undo-toast button {
+  min-height: 44px;
+  padding: 0 var(--space-sm);
+  background: transparent;
+  border: none;
+  color: inherit;
   font-weight: 600;
+  text-decoration: underline;
+  touch-action: manipulation;
 }
 
 /* Deliberately a separate button from the activity's label text — the label
