@@ -140,7 +140,7 @@ export default function TournamentDetailPage() {
         </p>
       )}
 
-      {!hasMetrics && (
+      {!hasMetrics && games.length > 0 && (
         <p className="notes">
           No on/off-field data for this tournament yet — its games need a synced GPS track.
         </p>
@@ -195,6 +195,7 @@ export default function TournamentDetailPage() {
         </section>
       )}
 
+      {(games.length > 0 || unclassified.length === 0) && (
       <section className="section-gap">
         <h2 className="trend-chart-title">Game by game</h2>
         {chartPoints.length >= 2 && (
@@ -226,6 +227,7 @@ export default function TournamentDetailPage() {
           </div>
         </div>
       </section>
+      )}
     </main>
   )
 }

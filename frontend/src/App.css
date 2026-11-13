@@ -3246,6 +3246,12 @@ td {
   color: var(--text-tertiary);
 }
 
+/* The last row in a group loses its bottom padding (.history-week rule above),
+   which leaves a pending row ~35px tall - under the 44px touch minimum. */
+.history-week .history-item.game-row-pending:last-child {
+  padding-bottom: var(--space-sm);
+}
+
 .game-row-needs-class {
   color: var(--accent, var(--text-secondary));
   font-weight: 600;

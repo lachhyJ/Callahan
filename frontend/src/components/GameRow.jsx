@@ -9,7 +9,7 @@ import { formatDateMedium } from '../dateUtils'
 export default function GameRow({ game, unclassified = false }) {
   const teaser = livePlayTeaser(game)
   return (
-    <Link to={`/activities/${game.id}`} className="history-item games-list-row">
+    <Link to={`/activities/${game.id}`} className={`history-item games-list-row${unclassified ? ' game-row-pending' : ''}`}>
       <div className="history-item-row">
         <span className="history-item-main">
           {formatDateMedium(game.date)} · {activityLabel(game)}
