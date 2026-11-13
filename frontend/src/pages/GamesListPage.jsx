@@ -10,7 +10,7 @@ import {
 } from '../api/client'
 import { formatDateRange, isoDate } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/format'
-import { summariseGames } from '../utils/tournamentStats'
+import { summariseGames, unclassifiedTournamentActivities } from '../utils/tournamentStats'
 import GameRow from '../components/GameRow'
 import SeasonsSection from '../components/SeasonsSection'
 import ConfirmSheet from '../components/ConfirmSheet'
@@ -26,6 +26,7 @@ function tournamentSummaryLine(games) {
 
 export default function GamesListPage() {
   const [games, setGames] = useState(null)
+  const [unclassified, setUnclassified] = useState([])
   const [tournaments, setTournaments] = useState(null)
   const [error, setError] = useState(null)
 
@@ -48,9 +49,11 @@ export default function GamesListPage() {
     Promise.all([
       getActivities({ type: 'Ultimate', sessionType: 'Game' }),
       getTournaments(),
+      getActivities({ type: 'Ultimate' }),
     ])
-      .then(([g, t]) => {
+      .then(([g, t, all]) => {
         setGames(g)
+        setUnclassified(unclassifiedTournamentActivities(all, g))
         setTournaments(t)
       })
       .catch((err) => setError(err.message))
@@ -178,7 +181,8 @@ export default function GamesListPage() {
   const entries = [
     ...tournaments.map((t) => {
       const gs = byTournament.get(t.id) ?? []
-      return { kind: 'tournament', tournament: t, games: gs, sortDate: gs[0]?.date ?? t.startDate }
+      const pending = unclassified.filter((a) => a.tournamentId === t.id)
+      return { kind: 'tournament', tournament: t, games: gs, pending, sortDate: gs[0]?.date ?? pending[0]?.date ?? t.startDate }
     }),
     ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
   ].sort((a, b) => (a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0))
@@ -267,7 +271,7 @@ export default function GamesListPage() {
               </div>
             )
           }
-          const { tournament, games: gs } = entry
+          const { tournament, games: gs, pending } = entry
           const summaryLine = tournamentSummaryLine(gs)
           if (showForm && editingId === tournament.id) {
             return (
@@ -282,7 +286,12 @@ export default function GamesListPage() {
                 <div className="history-week-header">
                   <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
                   <span className="history-week-count">
-                    {gs.length === 0 ? 'no games yet' : `${gs.length} game${gs.length === 1 ? '' : 's'}`}
+                    {gs.length === 0 && pending.length === 0
+                      ? 'no games yet'
+                      : [
+                          gs.length > 0 && `${gs.length} game${gs.length === 1 ? '' : 's'}`,
+                          pending.length > 0 && `${pending.length} to classify`,
+                        ].filter(Boolean).join(' · ')}
                   </span>
                 </div>
                 {summaryLine && <p className="tournament-section-summary">{summaryLine}</p>}
@@ -293,6 +302,7 @@ export default function GamesListPage() {
                 </p>
               )}
               {gs.map((g) => <GameRow key={g.id} game={g} />)}
+              {pending.map((a) => <GameRow key={a.id} game={a} unclassified />)}
               <div className="games-header-actions">
                 <button type="button" className="secondary-btn" onClick={() => startEdit(tournament)}>Edit</button>
                 <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(tournament)}>Delete</button>

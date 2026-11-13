@@ -3246,6 +3246,11 @@ td {
   color: var(--text-tertiary);
 }
 
+.game-row-needs-class {
+  color: var(--accent, var(--text-secondary));
+  font-weight: 600;
+}
+
 /* Deliberately a separate button from the activity's label text — the label
    is just for reading, so glancing at or tapping the row can't accidentally
    open the picker. */

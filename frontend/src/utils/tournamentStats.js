@@ -59,3 +59,16 @@ export function groupByDay(games) {
     .sort(([a], [b]) => (a < b ? -1 : 1))
     .map(([date, gs]) => ({ date, games: gs, summary: summariseGames(gs) }))
 }
+
+// Ultimate activities attached to a tournament but not tagged "Game". The
+// games views only load Game-classified activities, so these are in the
+// tournament (auto-attach keys on type + date) yet invisible there until
+// classified. `allUltimate` is every Ultimate activity; `games` the Game ones.
+// Kept separate from the games list so they never reach summariseGames: an
+// unclassified activity could be a pod or a warmup, not a game.
+export function unclassifiedTournamentActivities(allUltimate, games) {
+  const gameIds = new Set(games.map((g) => g.id))
+  return allUltimate
+    .filter((a) => a.tournamentId != null && !gameIds.has(a.id))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id))
+}

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getActivities, getTournaments } from '../api/client'
 import { formatDateRange, formatDateMedium } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/format'
-import { summariseGames, groupByDay } from '../utils/tournamentStats'
+import { summariseGames, groupByDay, unclassifiedTournamentActivities } from '../utils/tournamentStats'
 import FieldSplitBar from '../components/FieldSplitBar'
 import TournamentGameChart from '../components/TournamentGameChart'
 import GameRow from '../components/GameRow'
@@ -15,25 +15,29 @@ export default function TournamentDetailPage() {
   const { tournamentId } = useParams()
   const id = Number(tournamentId)
   const [games, setGames] = useState(null)
+  const [unclassified, setUnclassified] = useState([])
   const [tournament, setTournament] = useState(null)
   const [error, setError] = useState(null)
   const [chartMode, setChartMode] = useState('totals')
 
   useEffect(() => {
     setGames(null)
+    setUnclassified([])
     setTournament(null)
     setError(null)
     Promise.all([
       getActivities({ type: 'Ultimate', sessionType: 'Game' }),
       getTournaments(),
+      getActivities({ type: 'Ultimate' }),
     ])
-      .then(([allGames, tournaments]) => {
+      .then(([allGames, tournaments, allUltimate]) => {
         const t = tournaments.find((x) => x.id === id)
         if (!t) {
           setError('Tournament not found.')
           return
         }
         setTournament(t)
+        setUnclassified(unclassifiedTournamentActivities(allUltimate, allGames).filter((a) => a.tournamentId === id))
         setGames(
           allGames
             .filter((g) => g.tournamentId === id)
@@ -169,6 +173,24 @@ export default function TournamentDetailPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+      )}
+
+      {unclassified.length > 0 && (
+        <section className="section-gap">
+          <h2 className="trend-chart-title">Needs classifying</h2>
+          <p className="game-method-note">
+            {unclassified.length === 1 ? 'This activity is' : 'These activities are'} attached to
+            the tournament but not tagged "Game", so {unclassified.length === 1 ? "it's" : "they're"} left
+            out of the numbers above. Tag {unclassified.length === 1 ? 'it' : 'them'} as Game to count.
+          </p>
+          <div className="history-week-list">
+            <div className="history-week">
+              {unclassified.map((a) => (
+                <GameRow key={a.id} game={a} unclassified />
+              ))}
+            </div>
           </div>
         </section>
       )}
