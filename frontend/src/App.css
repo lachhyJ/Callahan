@@ -4411,7 +4411,32 @@ td {
 .game-title {
   color: var(--text-h);
   font-size: var(--text-2xl);
-  margin: var(--space-2xs) 0 var(--space-md);
+  /* The global h1 runs -1.68px tracking and no line-height of its own, which
+     packs a wrapped opponent name's two lines together. */
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin: var(--space-2xs) 0 var(--space-xs);
+}
+
+/* Tournament and score on one line straight under the title. */
+.game-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: var(--space-md);
+  row-gap: var(--space-xs);
+  margin-bottom: var(--space-lg);
+  font-size: var(--text-sm);
+
+  .game-score-row {
+    margin-top: 0;
+  }
+}
+
+.warmup-summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 
 .field-split-bar {
@@ -4736,6 +4761,10 @@ td {
 
 .warmup-hint {
   margin-top: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2xs);
 }
 
 /* The "/ 27" total-points suffix on the Points played stat. */

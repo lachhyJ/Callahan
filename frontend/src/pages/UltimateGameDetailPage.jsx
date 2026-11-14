@@ -17,6 +17,20 @@ const METHOD_LABELS = {
   NoTrack: 'no GPS track synced yet',
 }
 
+// The game's own name as the heading, with category and duration moved up
+// into the date line so a long opponent name wraps on its own. Garmin's
+// "<City> Ultimate Disc" auto-title isn't a name, so it falls back.
+function gameTitle(activity) {
+  const duration = formatClock(activity.durationSeconds)
+  if (activity.type !== 'Ultimate') return { heading: activityLabel(activity), meta: [] }
+  let name = activity.notes?.trim() || null
+  if (name && /ultimate disc$/i.test(name)) name = null
+  const category = activity.activitySessionTypeName
+  if (!name) return { heading: category ?? 'Ultimate', meta: [duration] }
+  const showCategory = category && category.toLowerCase() !== name.toLowerCase()
+  return { heading: name, meta: showCategory ? [category, duration] : [duration] }
+}
+
 export default function UltimateGameDetailPage() {
   const { activityId } = useParams()
   const [activity, setActivity] = useState(null)
@@ -85,13 +99,17 @@ export default function UltimateGameDetailPage() {
   // the point counter over-counted this game.
   const pointsOverFinalScore = totalGamePoints != null && activity.pointsPlayed != null
     && activity.pointsPlayed > totalGamePoints
+  const title = gameTitle(activity)
 
   return (
     <main className="page">
-      <p className="session-date">{formatDateLong(activity.date)}</p>
-      <h1 className="game-title">{activityLabel(activity)}</h1>
+      <p className="session-date">
+        {[formatDateLong(activity.date), ...title.meta].join(' · ')}
+      </p>
+      <h1 className="game-title">{title.heading}</h1>
 
       {activity.type === 'Ultimate' && (
+        <div className="game-meta-row">
         <span className="activity-classify">
           {activity.tournamentId ? (
             <Link to={`/tournaments/${activity.tournamentId}`} className="activity-classify-link">{activity.tournamentName}</Link>
@@ -121,12 +139,8 @@ export default function UltimateGameDetailPage() {
             </>
           )}
         </span>
-      )}
-
-      {activity.type === 'Ultimate' && <ScoreLine activity={activity} onSaved={setActivity} />}
-
-      {activity.activitySessionTypeName === 'Game' && (
-        <WarmupSetting activity={activity} onSaved={setActivity} />
+        <ScoreLine activity={activity} onSaved={setActivity} />
+        </div>
       )}
 
       {!hasFieldData && (
@@ -145,6 +159,8 @@ export default function UltimateGameDetailPage() {
             offFieldSeconds={activity.offFieldSeconds}
             mixedSeconds={activity.mixedSeconds ?? 0}
           />
+
+          <FieldTimeline timeline={timeline} />
 
           <div className="game-stat-row">
             {activity.pointsPlayed != null && (
@@ -188,8 +204,6 @@ export default function UltimateGameDetailPage() {
             </p>
           )}
 
-          <FieldTimeline timeline={timeline} />
-
           {activity.lapClassifierMethod && (
             <p className="game-method-note">
               Computed {METHOD_LABELS[activity.lapClassifierMethod] ?? activity.lapClassifierMethod}
@@ -198,6 +212,10 @@ export default function UltimateGameDetailPage() {
             </p>
           )}
         </>
+      )}
+
+      {activity.activitySessionTypeName === 'Game' && (
+        <WarmupSetting activity={activity} onSaved={setActivity} />
       )}
 
       {activity.type === 'Ultimate' && <Reflections activity={activity} onSaved={setActivity} />}
@@ -359,10 +377,23 @@ const WARMUP_OPTIONS = [
   { value: null, label: 'Don’t know' },
 ]
 
+// Collapsed to one quiet line by default: it's a correction for the detector,
+// set once per game at most, not something to read every visit.
 function WarmupSetting({ activity, onSaved }) {
+  const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState(null)
   const current = activity.warmupRecorded ?? null
+
+  if (!open) {
+    const label = WARMUP_OPTIONS.find((o) => o.value === current).label
+    return (
+      <p className="game-method-note warmup-summary">
+        Warmup recorded: {label}
+        <button type="button" className="activity-classify-btn" onClick={() => setOpen(true)}>Change</button>
+      </p>
+    )
+  }
 
   async function choose(value) {
     if (value === current || saving) return
@@ -398,6 +429,7 @@ function WarmupSetting({ activity, onSaved }) {
         {current === false && 'Gameplay counted from the start of the recording.'}
         {current === true && 'Gameplay starts after the warmup lap, or is detected from line-ups if you didn’t press one.'}
         {current === null && 'Gameplay start is detected from line-ups.'}
+        <button type="button" className="activity-classify-btn" onClick={() => setOpen(false)}>Done</button>
       </p>
       {err && <p className="error">{err}</p>}
     </div>
