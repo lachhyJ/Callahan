@@ -47,6 +47,16 @@ export function summariseGames(games) {
   }
 }
 
+// Play order, oldest first: date, then Garmin's start time (untimed manual
+// entries first within a day, so they land last when reversed), then id.
+export function compareByPlayOrder(a, b) {
+  if (a.date !== b.date) return a.date < b.date ? -1 : 1
+  const ta = a.startTimeLocal ?? ''
+  const tb = b.startTimeLocal ?? ''
+  if (ta !== tb) return ta < tb ? -1 : 1
+  return a.id - b.id
+}
+
 // Chronological (ascending) list of { date, games, summary } — one entry per
 // distinct game date. Callers pass games in any order.
 export function groupByDay(games) {

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { getActivities, getTournaments } from '../api/client'
 import { formatDateRange, formatDateMedium } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/format'
-import { summariseGames, groupByDay, unclassifiedTournamentActivities } from '../utils/tournamentStats'
+import { summariseGames, groupByDay, unclassifiedTournamentActivities, compareByPlayOrder } from '../utils/tournamentStats'
 import FieldSplitBar from '../components/FieldSplitBar'
 import TournamentGameChart from '../components/TournamentGameChart'
 import GameRow from '../components/GameRow'
@@ -40,7 +40,9 @@ export default function TournamentDetailPage() {
         setGames(
           allGames
             .filter((g) => g.tournamentId === id)
-            .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : a.id - b.id)),
+            // Oldest first: the game-by-game chart reads left to right. The
+            // day and game lists below render reversed, newest on top.
+            .sort(compareByPlayOrder),
         )
       })
       .catch((err) => setError(err.message))
@@ -159,7 +161,7 @@ export default function TournamentDetailPage() {
         <section className="section-gap">
           <h2 className="trend-chart-title">By day</h2>
           <div className="history-week-list">
-            {days.map((d) => (
+            {[...days].reverse().map((d) => (
               <div key={d.date} className="history-week">
                 <div className="history-week-header">
                   <span>{formatDateMedium(d.date)}</span>
@@ -231,7 +233,7 @@ export default function TournamentDetailPage() {
         )}
         <div className="history-week-list section-gap">
           <div className="history-week">
-            {games.map((g) => (
+            {[...games].reverse().map((g) => (
               <GameRow key={g.id} game={g} />
             ))}
           </div>

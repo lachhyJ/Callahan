@@ -14,7 +14,8 @@ public static class GarminActivityMetrics
         decimal? TrainingLoad,
         decimal? AerobicTrainingEffect,
         decimal? AnaerobicTrainingEffect,
-        string? TrainingEffectLabel);
+        string? TrainingEffectLabel,
+        DateTime? StartTimeLocal = null);
 
     public static readonly Parsed Empty = new(null, null, null, null);
 
@@ -44,7 +45,8 @@ public static class GarminActivityMetrics
                 Number(root, "activityTrainingLoad") is decimal load ? Math.Round(load, 0) : null,
                 Number(root, "aerobicTrainingEffect") is decimal aero ? Math.Round(aero, 1) : null,
                 Number(root, "anaerobicTrainingEffect") is decimal anaero ? Math.Round(anaero, 1) : null,
-                NonEmptyString(root, "trainingEffectLabel"));
+                NonEmptyString(root, "trainingEffectLabel"),
+                LocalTime(root, "startTimeLocal"));
         }
     }
 
@@ -55,7 +57,17 @@ public static class GarminActivityMetrics
         activity.AerobicTrainingEffect = p.AerobicTrainingEffect;
         activity.AnaerobicTrainingEffect = p.AnaerobicTrainingEffect;
         activity.TrainingEffectLabel = p.TrainingEffectLabel;
+        activity.StartTimeLocal = p.StartTimeLocal;
     }
+
+    // Garmin's "yyyy-MM-dd HH:mm:ss" wall-clock time, kept unspecified-kind:
+    // it is local to wherever the watch was, not convertible to UTC here.
+    private static DateTime? LocalTime(JsonElement obj, string name) =>
+        NonEmptyString(obj, name) is string s
+        && DateTime.TryParseExact(s, "yyyy-MM-dd HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var v)
+            ? v
+            : null;
 
     private static decimal? Number(JsonElement obj, string name) =>
         obj.TryGetProperty(name, out var el) && el.ValueKind == JsonValueKind.Number && el.TryGetDecimal(out var v)

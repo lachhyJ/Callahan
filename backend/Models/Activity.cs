@@ -12,6 +12,10 @@ public class Activity
     public int? AvgHeartRate { get; set; }
     public string? Notes { get; set; }
     public string? GarminActivityId { get; set; }
+    // Wall-clock start as Garmin records it (startTimeLocal in RawJson), so
+    // same-day activities sort in the order they happened. Null on manual
+    // entries; set by GarminActivityMetrics.Apply on every sync.
+    public DateTime? StartTimeLocal { get; set; }
 
     // The primary session-type label. Extras live in SessionTags; this one
     // additionally drives activityLabel, the suggestion heuristic and the

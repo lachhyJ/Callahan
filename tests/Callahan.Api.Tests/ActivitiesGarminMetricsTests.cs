@@ -62,4 +62,27 @@ public class ActivitiesGarminMetricsTests
         Assert.Null(saved.ActivityTrainingLoad);
         Assert.Null(saved.TrainingEffectLabel);
     }
+
+    // Same-day games synced out of play order (the 13 Nov tournament day:
+    // Zephyr synced before Hills) come back newest first by start time, not
+    // by Id. A manual entry with no start time sorts after them.
+    [Fact]
+    public async Task GetAll_OrdersSameDayActivitiesByStartTime_NewestFirst()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = NewDb(conn);
+        var controller = new ActivitiesController(db);
+
+        await controller.Create(Req(null, garminId: null) with { Notes = "manual" });
+        await controller.Create(Req("""{"startTimeLocal":"2026-09-06 10:44:33"}""", "1") with { Notes = "second" });
+        await controller.Create(Req("""{"startTimeLocal":"2026-09-06 09:00:34"}""", "2") with { Notes = "first" });
+        await controller.Create(Req("""{"startTimeLocal":"2026-09-06 15:40:59"}""", "3") with { Notes = "third" });
+        db.ChangeTracker.Clear();
+
+        var list = (List<ActivityDto>)((OkObjectResult)(await controller.GetAll()).Result!).Value!;
+
+        Assert.Equal(new[] { "third", "second", "first", "manual" }, list.Select(a => a.Notes));
+        Assert.Equal(new DateTime(2026, 9, 6, 15, 40, 59), list[0].StartTimeLocal);
+        Assert.Null(list[3].StartTimeLocal);
+    }
 }

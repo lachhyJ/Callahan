@@ -110,6 +110,9 @@ namespace Callahan.Api.Migrations
                     b.Property<int>("Source")
                         .HasColumnType("INTEGER");
 
+                    b.Property<DateTime?>("StartTimeLocal")
+                        .HasColumnType("TEXT");
+
                     b.Property<int?>("TournamentId")
                         .HasColumnType("INTEGER");
 

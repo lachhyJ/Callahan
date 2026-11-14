@@ -52,7 +52,10 @@ public record ActivityDto(
     IReadOnlyList<ActivitySessionTypeDto>? SessionTypes = null,
     // "Was a warmup recorded?" for an Ultimate game: true / false / null
     // (don't know). See Activity.WarmupRecorded.
-    bool? WarmupRecorded = null);
+    bool? WarmupRecorded = null,
+    // Garmin's wall-clock start, for ordering same-day activities. Null on
+    // manual entries. See Activity.StartTimeLocal.
+    DateTime? StartTimeLocal = null);
 
 // PUT /api/activities/{id}/warmup body. null = don't know.
 public record UpdateWarmupRecordedRequest(bool? WarmupRecorded);

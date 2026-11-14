@@ -74,7 +74,12 @@ public class ActivitiesController : ControllerBase
         var activities = await query
             .Include(a => a.ActivitySessionType)
             .Include(a => a.Tournament)
+            // Newest first, including within a day: Id order is sync order,
+            // not play order (a re-sync or a late upload lands out of turn).
+            // Activities with no start time sort after timed ones that day.
             .OrderByDescending(a => a.Date)
+            .ThenByDescending(a => a.StartTimeLocal)
+            .ThenByDescending(a => a.Id)
             .Select(ListProjection)
             .ToListAsync();
 
@@ -689,7 +694,7 @@ public class ActivitiesController : ControllerBase
         a.Track == null ? 0 : a.Track.SampleCount,
         a.TournamentId, a.Tournament == null ? null : a.Tournament.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
-        null, a.WarmupRecorded);
+        null, a.WarmupRecorded, a.StartTimeLocal);
 
     // The DTO's track sample count, without loading the track: the blob is
     // 65-100 KB and only SampleCount (a real column) is needed here. Uses the
@@ -716,7 +721,7 @@ public class ActivitiesController : ControllerBase
         trackSampleCount,
         a.TournamentId, a.Tournament?.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
-        BuildSessionTypeList(a), a.WarmupRecorded);
+        BuildSessionTypeList(a), a.WarmupRecorded, a.StartTimeLocal);
 
     // Primary first, then by SortOrder. Uses the loaded SessionTags when the
     // caller included them; otherwise falls back to the primary nav alone, so
