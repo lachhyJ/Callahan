@@ -4563,6 +4563,44 @@ td {
   transform: translateX(-100%);
 }
 
+/* The strip and lap row together are one tap target (the picked moment is
+   computed from the tap's x), padded so the area clears 44px. */
+.field-timeline-pick {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2xs);
+  padding-block: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.field-timeline-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text-h);
+  pointer-events: none;
+}
+
+.field-timeline-lap.field-timeline-lap-picked {
+  box-shadow: inset 0 0 0 2px var(--text-h);
+  opacity: 1;
+}
+
+.field-timeline-detail {
+  margin: 0;
+  min-height: calc(2 * 1.5em);
+  font-size: var(--text-xs);
+  line-height: 1.5;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
 /* A lap press, drawn across the on-field strip so it lines up with the
    geometry. Text-coloured so it reads on both the orange and the dark bands. */
 .field-timeline-press {
