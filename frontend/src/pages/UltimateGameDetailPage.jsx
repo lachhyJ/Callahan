@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityScore, updateActivityTournament, updateWarmupRecorded } from '../api/client'
+import { getActivity, getActivityFieldTimeline, getTournaments, updateActivityReflection, updateActivityScore, updateActivityTournament, updateWarmupRecorded } from '../api/client'
 import { activityLabel } from '../utils/activityLabel'
 import { formatClock } from '../utils/format'
 import { formatDateLong } from '../dateUtils'
@@ -199,7 +199,76 @@ export default function UltimateGameDetailPage() {
           )}
         </>
       )}
+
+      {activity.type === 'Ultimate' && <Reflections activity={activity} onSaved={setActivity} />}
     </main>
+  )
+}
+
+// Free-text post-game reflections. Stored apart from Notes, which the Garmin
+// sync rewrites from the activity title.
+function Reflections({ activity, onSaved }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState(null)
+  const saved = activity.reflection ?? ''
+
+  function open() {
+    setDraft(saved)
+    setErr(null)
+    setEditing(true)
+  }
+
+  async function save() {
+    setErr(null)
+    setSaving(true)
+    try {
+      onSaved(await updateActivityReflection(activity.id, draft))
+      setEditing(false)
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="game-reflection">
+      <h2 className="trend-chart-title">Reflections</h2>
+      {editing ? (
+        <>
+          <textarea
+            className="game-reflection-input"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            placeholder="How did it go? What worked, what to work on…"
+            aria-label="Reflections"
+            autoFocus
+          />
+          <div className="game-score-row">
+            <button type="button" className="activity-classify-btn" onClick={save} disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button type="button" className="activity-classify-btn" onClick={() => setEditing(false)} disabled={saving}>
+              Cancel
+            </button>
+            {err && <span className="error">{err}</span>}
+          </div>
+        </>
+      ) : saved ? (
+        <>
+          <p className="game-reflection-text">{saved}</p>
+          <div className="game-score-row">
+            <button type="button" className="activity-classify-btn" onClick={open}>Edit</button>
+          </div>
+        </>
+      ) : (
+        <div className="game-score-row">
+          <button type="button" className="activity-classify-btn" onClick={open}>Add reflections</button>
+        </div>
+      )}
+    </section>
   )
 }
 

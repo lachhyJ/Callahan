@@ -116,5 +116,10 @@ public class Activity
     public int? FinalScoreFor { get; set; }
     public int? FinalScoreAgainst { get; set; }
 
+    // Lachlan's own post-game reflections. Separate from Notes, which the
+    // Garmin sync overwrites with the activity title on every re-sync; this
+    // one is only ever written by PUT /reflection.
+    public string? Reflection { get; set; }
+
     public DateTime? DeletedAt { get; set; }
 }

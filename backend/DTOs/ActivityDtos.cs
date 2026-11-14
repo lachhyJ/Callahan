@@ -55,7 +55,13 @@ public record ActivityDto(
     bool? WarmupRecorded = null,
     // Garmin's wall-clock start, for ordering same-day activities. Null on
     // manual entries. See Activity.StartTimeLocal.
-    DateTime? StartTimeLocal = null);
+    DateTime? StartTimeLocal = null,
+    // Free-text post-game reflections. Single-activity reads only; list reads
+    // leave it null so a long note never rides along on every list row.
+    string? Reflection = null);
+
+// PUT /api/activities/{id}/reflection body. Blank or null clears it.
+public record UpdateActivityReflectionRequest(string? Reflection);
 
 // PUT /api/activities/{id}/warmup body. null = don't know.
 public record UpdateWarmupRecordedRequest(bool? WarmupRecorded);

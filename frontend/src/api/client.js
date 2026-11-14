@@ -508,6 +508,14 @@ export function updateActivityScore(id, { finalScoreFor, finalScoreAgainst } = {
   })
 }
 
+// Post-game reflections; blank clears them. Returns the updated activity.
+export function updateActivityReflection(id, reflection) {
+  return apiFetch(`/api/activities/${id}/reflection`, {
+    method: 'PUT',
+    body: JSON.stringify({ reflection: reflection ?? null }),
+  })
+}
+
 // "Was a warmup recorded?" for an Ultimate game: true, false, or null (don't
 // know). The server reclassifies the game and returns the updated activity.
 export function updateWarmupRecorded(id, warmupRecorded) {

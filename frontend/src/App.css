@@ -4674,6 +4674,26 @@ td {
   color: var(--warning-text);
 }
 
+/* Post-game reflections at the foot of the game detail page. */
+.game-reflection {
+  margin-top: var(--space-lg);
+}
+
+.game-reflection-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-h);
+  text-align: left;
+}
+
+.game-reflection-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 9rem;
+}
+
 /* Manual final-score line under the tournament row on the game detail page. */
 .game-score-row {
   display: flex;

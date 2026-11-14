@@ -554,6 +554,29 @@ public class ActivitiesController : ControllerBase
         return Ok(await ToDtoAsync(activity));
     }
 
+    // Post-game reflections, free text. Whitespace-only clears it. Kept apart
+    // from Notes because the Garmin re-sync owns that field.
+    public const int MaxReflectionLength = 20000;
+
+    [HttpPut("{id}/reflection")]
+    public async Task<ActionResult<ActivityDto>> UpdateReflection(int id, UpdateActivityReflectionRequest request)
+    {
+        var activity = await _db.Activities
+            .Include(a => a.ActivitySessionType)
+            .Include(a => a.SessionTags).ThenInclude(t => t.SessionType)
+            .Include(a => a.Laps).Include(a => a.Tournament)
+            .FirstOrDefaultAsync(a => a.Id == id);
+        if (activity is null) return NotFound();
+
+        var text = string.IsNullOrWhiteSpace(request.Reflection) ? null : request.Reflection.Trim();
+        if (text is { Length: > MaxReflectionLength })
+            return BadRequest(new { error = $"Reflections are limited to {MaxReflectionLength} characters." });
+
+        activity.Reflection = text;
+        await _db.SaveChangesAsync();
+        return Ok(await ToDtoAsync(activity));
+    }
+
     // Manual override for the auto-attach sweep - sets or clears (null) which
     // tournament this game belongs to. Not restricted to Ultimate at the DB
     // level (see Activity.TournamentId), so no type check here either; a
@@ -721,7 +744,7 @@ public class ActivitiesController : ControllerBase
         trackSampleCount,
         a.TournamentId, a.Tournament?.Name,
         a.FinalScoreFor, a.FinalScoreAgainst,
-        BuildSessionTypeList(a), a.WarmupRecorded, a.StartTimeLocal);
+        BuildSessionTypeList(a), a.WarmupRecorded, a.StartTimeLocal, a.Reflection);
 
     // Primary first, then by SortOrder. Uses the loaded SessionTags when the
     // caller included them; otherwise falls back to the primary nav alone, so
