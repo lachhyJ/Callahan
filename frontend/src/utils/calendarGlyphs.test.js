@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { activityDots, isTournamentDay } from './calendarGlyphs'
+import { activityDots, isTournamentDay, tournamentsByDay } from './calendarGlyphs'
 
 const cls = (dots) => dots.map((d) => d.className)
 
@@ -94,5 +94,32 @@ describe('isTournamentDay', () => {
   it('is false with no tournament links or no activities', () => {
     expect(isTournamentDay([{ tournamentId: null }, {}])).toBe(false)
     expect(isTournamentDay(undefined)).toBe(false)
+  })
+})
+
+describe('tournamentsByDay', () => {
+  it('covers every day from start to end inclusive', () => {
+    const days = tournamentsByDay([{ id: 7, name: 'Melb Tourney 26', startDate: '2026-12-12', endDate: '2026-12-13' }])
+    expect([...days.keys()]).toEqual(['2026-12-12', '2026-12-13'])
+    expect(days.get('2026-12-13')).toEqual({ id: 7, name: 'Melb Tourney 26' })
+  })
+
+  it('crosses a month end and a DST change without skipping a day', () => {
+    // Melbourne DST starts 4 Oct 2026
+    const days = tournamentsByDay([{ id: 1, name: 'X', startDate: '2026-10-03', endDate: '2026-10-05' }])
+    expect([...days.keys()]).toEqual(['2026-10-03', '2026-10-04', '2026-10-05'])
+    expect([...tournamentsByDay([{ id: 2, name: 'Y', startDate: '2026-11-30', endDate: '2026-12-01' }]).keys()])
+      .toEqual(['2026-11-30', '2026-12-01'])
+  })
+
+  it('treats a missing or backwards end date as a single day, and caps long spans', () => {
+    expect(tournamentsByDay([{ id: 1, name: 'A', startDate: '2026-12-12', endDate: null }]).size).toBe(1)
+    expect(tournamentsByDay([{ id: 1, name: 'A', startDate: '2026-12-12', endDate: '2026-12-01' }]).size).toBe(1)
+    expect(tournamentsByDay([{ id: 1, name: 'A', startDate: '2026-01-01', endDate: '2026-12-31' }]).size).toBe(14)
+  })
+
+  it('is empty for no tournaments', () => {
+    expect(tournamentsByDay(undefined).size).toBe(0)
+    expect(tournamentsByDay(null).size).toBe(0)
   })
 })

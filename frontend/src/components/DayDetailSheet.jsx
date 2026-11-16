@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import SessionList from './SessionList'
 
-export default function DayDetailSheet({ date, entry, milestone, onClose }) {
+export default function DayDetailSheet({ date, entry, milestone, tournament = null, onClose }) {
   const open = date !== null
   const sheetRef = useRef(null)
   const previousFocus = useRef(null)
@@ -48,6 +49,11 @@ export default function DayDetailSheet({ date, entry, milestone, onClose }) {
               <strong>{new Date(`${date}T00:00:00`).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</strong>
               <button type="button" className="sheet-close-btn" onClick={onClose} aria-label="Close">×</button>
             </div>
+            {tournament && (
+              <Link to={`/tournaments/${tournament.id}`} className="day-detail-tournament" onClick={onClose}>
+                {tournament.name}
+              </Link>
+            )}
             {milestone && <p className="day-detail-milestone">{milestone}</p>}
             <SessionList workouts={entry?.workouts ?? []} runs={entry?.runs ?? []} onLinkClick={onClose} />
           </>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { getActivities, getLatestWellness, getNextMilestone, getRoutines, getMonthlyReports, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
+import { getActivities, getLatestWellness, getNextMilestone, getRoutines, getMonthlyReports, getTournaments, getPendingGarminStrength, getWellness, getWellnessInsight, getWorkoutSessions, markMonthlyReportViewed } from '../api/client'
 import { peekCache, staleWhileRevalidate } from '../swrCache'
 import { wellnessRange } from '../wellnessMetrics'
 import { STATUS_BAND_DAYS, STATUS_LOOKBACK_DAYS, WELLNESS_ROWS_CACHE_KEY } from '../trainingStatus'
@@ -12,7 +12,7 @@ import BuildFooter from '../components/BuildFooter'
 import TimeZoneSetting from '../components/TimeZoneSetting'
 import TrainingModeSetting from '../components/TrainingModeSetting'
 import { MONTH_NAMES } from '../utils/format'
-import { activityDots, isTournamentDay } from '../utils/calendarGlyphs'
+import { activityDots, isTournamentDay, tournamentsByDay } from '../utils/calendarGlyphs'
 import { upcomingMilestone } from '../utils/milestone'
 import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
 import { trackAction } from '../usage'
@@ -121,6 +121,7 @@ export default function DashboardPage() {
   const [unviewedReport, setUnviewedReport] = useState(null)
   const [pendingGarminCount, setPendingGarminCount] = useState(0)
   const [nextMilestone, setNextMilestone] = useState(() => peekCache('next-milestone'))
+  const [tournaments, setTournaments] = useState(() => peekCache('dashboard-tournaments'))
 
   useEffect(() => {
     // Deliberately deferred behind the critical workouts/activities fetch
@@ -147,6 +148,8 @@ export default function DashboardPage() {
       getPendingGarminStrength().then((items) => setPendingGarminCount(items.length)).catch(() => {})
       // A CalDAV read on the server, so it's cached and never holds up first paint.
       staleWhileRevalidate('next-milestone', getNextMilestone, setNextMilestone).catch(() => {})
+      // Tournament dates tint the grid ahead of time; not needed for first paint.
+      staleWhileRevalidate('dashboard-tournaments', getTournaments, setTournaments).catch(() => {})
     })
     return () => cancelIdle(handle)
   }, [])
@@ -229,6 +232,8 @@ export default function DashboardPage() {
     }
     return map
   }, [workouts, activities])
+
+  const tournamentDays = useMemo(() => tournamentsByDay(tournaments), [tournaments])
 
   if (error) return <main className="page"><p className="error">{error}</p></main>
   if (workouts === null || activities === null) return <main className="page"><p>Loading dashboard…</p></main>
@@ -348,7 +353,10 @@ export default function DashboardPage() {
             // blue triangle and a teal ring.
             const dots = activityDots(entry?.runs ?? [])
             const hasData = hasWorkout || dots.length > 0
-            const isTournament = isTournamentDay(entry?.runs)
+            // From the tournament's own dates (so upcoming ones show), or from a logged
+            // activity linked to one (covers a game played outside the listed dates).
+            const tournament = tournamentDays.get(iso) ?? null
+            const isTournament = tournament != null || isTournamentDay(entry?.runs)
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
             // The next review or test day is tinted and tappable even with nothing logged,
@@ -359,7 +367,9 @@ export default function DashboardPage() {
               <span className={isToday ? 'calendar-day-number today' : 'calendar-day-number'}>{date.getDate()}</span>
             )
 
-            if (!hasData && !isMilestone) {
+            // Milestone and tournament days are tinted and tappable even with nothing
+            // logged, so the day sheet can say what they are.
+            if (!hasData && !isMilestone && !tournament) {
               return (
                 <div key={iso} className={`calendar-cell${isToday ? ' calendar-cell-today' : ''}`}>
                   {dayNumber}
@@ -372,14 +382,19 @@ export default function DashboardPage() {
                 key={iso}
                 type="button"
                 className={`calendar-cell calendar-cell-active${isTournament ? ' calendar-cell-tournament' : ''}${isMilestone ? ' calendar-cell-milestone' : ''}${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
-                aria-label={isMilestone ? `${date.getDate()}, ${milestone.label}` : undefined}
+                aria-label={isMilestone || tournament
+                  ? [date.getDate(), tournament?.name, isMilestone ? milestone.label : null].filter(Boolean).join(', ')
+                  : undefined}
                 onClick={() => { trackAction('calendar-day', isSelected ? 'deselect' : 'select'); setSelectedDate(isSelected ? null : iso) }}
               >
                 {dayNumber}
-                <span className="calendar-dots">
-                  {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
-                  {dots.map((d) => <span key={d.key} className={d.className} />)}
-                </span>
+                {/* No empty dot row on a tinted-only day, so its number stays level with its neighbours. */}
+                {hasData && (
+                  <span className="calendar-dots">
+                    {hasWorkout && <span className="calendar-dot calendar-dot-workout" />}
+                    {dots.map((d) => <span key={d.key} className={d.className} />)}
+                  </span>
+                )}
               </button>
             )
           })
@@ -448,6 +463,7 @@ export default function DashboardPage() {
         date={selectedDate}
         entry={selectedEntry}
         milestone={selectedDate && selectedDate === milestone?.day ? milestone.label : null}
+        tournament={selectedDate ? tournamentDays.get(selectedDate) ?? null : null}
         onClose={() => setSelectedDate(null)}
       />
 

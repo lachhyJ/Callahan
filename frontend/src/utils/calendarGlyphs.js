@@ -75,3 +75,23 @@ export function activityDots(dayActivities) {
 export function isTournamentDay(dayActivities) {
   return (dayActivities ?? []).some((a) => a?.tournamentId != null)
 }
+
+// Every day a tournament covers, from its start/end dates: iso -> { id, name }.
+// Unlike isTournamentDay this needs nothing logged, so an upcoming tournament
+// is tinted before it's played. Dates are walked in UTC so a DST change can't
+// skip or repeat a day; a span over 14 days is treated as bad data and capped.
+export function tournamentsByDay(tournaments) {
+  const days = new Map()
+  for (const t of tournaments ?? []) {
+    if (!t?.startDate) continue
+    const end = t.endDate && t.endDate >= t.startDate ? t.endDate : t.startDate
+    const d = new Date(`${t.startDate}T00:00:00Z`)
+    for (let i = 0; i < 14; i++) {
+      const iso = d.toISOString().slice(0, 10)
+      if (iso > end) break
+      if (!days.has(iso)) days.set(iso, { id: t.id, name: t.name })
+      d.setUTCDate(d.getUTCDate() + 1)
+    }
+  }
+  return days
+}
