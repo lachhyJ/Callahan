@@ -12,7 +12,7 @@ import BuildFooter from '../components/BuildFooter'
 import TimeZoneSetting from '../components/TimeZoneSetting'
 import TrainingModeSetting from '../components/TrainingModeSetting'
 import { MONTH_NAMES } from '../utils/format'
-import { activityDots } from '../utils/calendarGlyphs'
+import { activityDots, isTournamentDay } from '../utils/calendarGlyphs'
 import { upcomingMilestone } from '../utils/milestone'
 import { ANKLE_ROUTINE_ID, ANKLE_WEEKLY_TARGET, routineDaysThisWeek } from '../utils/routineWeek'
 import { trackAction } from '../usage'
@@ -348,6 +348,7 @@ export default function DashboardPage() {
             // blue triangle and a teal ring.
             const dots = activityDots(entry?.runs ?? [])
             const hasData = hasWorkout || dots.length > 0
+            const isTournament = isTournamentDay(entry?.runs)
             const isToday = iso === todayIso
             const isSelected = iso === selectedDate
             // The next review or test day is tinted and tappable even with nothing logged,
@@ -370,7 +371,7 @@ export default function DashboardPage() {
               <button
                 key={iso}
                 type="button"
-                className={`calendar-cell calendar-cell-active${isMilestone ? ' calendar-cell-milestone' : ''}${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
+                className={`calendar-cell calendar-cell-active${isTournament ? ' calendar-cell-tournament' : ''}${isMilestone ? ' calendar-cell-milestone' : ''}${isToday ? ' calendar-cell-today' : ''}${isSelected ? ' selected' : ''}`}
                 aria-label={isMilestone ? `${date.getDate()}, ${milestone.label}` : undefined}
                 onClick={() => { trackAction('calendar-day', isSelected ? 'deselect' : 'select'); setSelectedDate(isSelected ? null : iso) }}
               >
