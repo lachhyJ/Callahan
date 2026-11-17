@@ -4565,6 +4565,14 @@ td {
   color: var(--accent);
 }
 
+/* Fold for upcoming tournaments past the next one on the Ultimate list: a
+   plain link-row between cards, not a card of its own. */
+.more-upcoming-toggle {
+  align-self: flex-start;
+  width: auto;
+  text-align: left;
+}
+
 .tournament-section-summary {
   margin: 0 0 var(--space-2xs);
   font-size: var(--text-xs);

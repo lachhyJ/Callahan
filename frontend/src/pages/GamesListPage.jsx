@@ -27,6 +27,20 @@ function tournamentSummaryLine(games) {
   return `${s.totalPoints} pts · ${formatHoursMinutes(s.totalLiveSeconds)} live`
 }
 
+// How long a finished tournament keeps the top spot: the week after a
+// weekend is when its games get reviewed, and that shouldn't mean scrolling
+// past every upcoming tournament already entered.
+const RECENT_DAYS = 7
+
+// 0 = on now or finished within RECENT_DAYS, 1 = upcoming, 2 = everything else.
+// recentSince is the ISO date RECENT_DAYS ago.
+function rank(entry, today, recentSince) {
+  if (entry.kind !== 'tournament') return 2
+  const t = entry.tournament
+  if (t.startDate > today) return 1
+  return t.endDate >= recentSince ? 0 : 2
+}
+
 export default function GamesListPage() {
   const [games, setGames] = useState(null)
   const [unclassified, setUnclassified] = useState([])
@@ -47,6 +61,7 @@ export default function GamesListPage() {
   const [formError, setFormError] = useState(null)
   const [lastAttached, setLastAttached] = useState(null)
   const [confirmingDelete, setConfirmingDelete] = useState(null)
+  const [showAllUpcoming, setShowAllUpcoming] = useState(false)
 
   const load = useCallback(() => {
     Promise.all([
@@ -184,7 +199,10 @@ export default function GamesListPage() {
     byTournament.get(game.tournamentId).push(game)
   }
   const today = isoDate(new Date())
-  const entries = [
+  const recentCutoff = new Date()
+  recentCutoff.setDate(recentCutoff.getDate() - RECENT_DAYS)
+  const recentSince = isoDate(recentCutoff)
+  const sorted = [
     ...tournaments.map((t) => {
       const gs = byTournament.get(t.id) ?? []
       const pending = unclassified.filter((a) => a.tournamentId === t.id)
@@ -192,21 +210,23 @@ export default function GamesListPage() {
     }),
     ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
   ].sort((a, b) => {
-    // Live tournaments first, then upcoming (soonest first), then everything
-    // else newest first - so a stack of pre-entered future tournaments can't
-    // push the one happening now down the page.
-    const rank = (e) => {
-      if (e.kind !== 'tournament') return 2
-      const t = e.tournament
-      if (t.startDate <= today && today <= t.endDate) return 0
-      return t.startDate > today ? 1 : 2
-    }
-    const ra = rank(a)
-    const rb = rank(b)
+    const ra = rank(a, today, recentSince)
+    const rb = rank(b, today, recentSince)
     if (ra !== rb) return ra - rb
     if (ra === 1) return a.tournament.startDate < b.tournament.startDate ? -1 : 1
     return a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0
   })
+  // Only the next upcoming tournament shows in full; the rest fold behind one
+  // toggle that takes its place in the list, so pre-entering next season's
+  // calendar doesn't push the past weekend's games off the first screen.
+  const upcoming = sorted.filter((e) => rank(e, today, recentSince) === 1)
+  const laterUpcoming = upcoming.slice(1)
+  const entries = showAllUpcoming || laterUpcoming.length === 0
+    ? sorted
+    : sorted.flatMap((e) => {
+        if (laterUpcoming[0] === e) return [{ kind: 'more-upcoming', count: laterUpcoming.length }]
+        return laterUpcoming.includes(e) ? [] : [e]
+      })
 
   const tournamentForm = (
       <form onSubmit={handleSubmit} className="section-gap">
@@ -287,6 +307,18 @@ export default function GamesListPage() {
 
       <div className="history-week-list section-gap">
         {entries.map((entry) => {
+          if (entry.kind === 'more-upcoming') {
+            return (
+              <button
+                key="more-upcoming"
+                type="button"
+                className="report-more-toggle more-upcoming-toggle"
+                onClick={() => setShowAllUpcoming(true)}
+              >
+                + {entry.count} more upcoming tournament{entry.count === 1 ? '' : 's'}
+              </button>
+            )
+          }
           if (entry.kind === 'game') {
             return (
               <div key={`g-${entry.game.id}`} className="history-week">
