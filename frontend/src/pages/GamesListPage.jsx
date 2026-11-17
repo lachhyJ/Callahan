@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   getActivities,
   getTournaments,
+  getSeasons,
   createTournament,
   updateTournament,
   deleteTournament,
@@ -15,7 +16,8 @@ import GameRow from '../components/GameRow'
 import PendingGameRow from '../components/PendingGameRow'
 import UndoToast from '../components/UndoToast'
 import useMarkAsGame from '../hooks/useMarkAsGame'
-import SeasonsSection from '../components/SeasonsSection'
+import SeasonsSection, { SeasonAdmin } from '../components/SeasonsSection'
+import { RECENT_DAYS, rank, sortEntries, partitionBySeason, groupCounts } from '../utils/ultimateList'
 import ConfirmSheet from '../components/ConfirmSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 
@@ -27,24 +29,12 @@ function tournamentSummaryLine(games) {
   return `${s.totalPoints} pts · ${formatHoursMinutes(s.totalLiveSeconds)} live`
 }
 
-// How long a finished tournament keeps the top spot: the week after a
-// weekend is when its games get reviewed, and that shouldn't mean scrolling
-// past every upcoming tournament already entered.
-const RECENT_DAYS = 7
-
-// 0 = on now or finished within RECENT_DAYS, 1 = upcoming, 2 = everything else.
-// recentSince is the ISO date RECENT_DAYS ago.
-function rank(entry, today, recentSince) {
-  if (entry.kind !== 'tournament') return 2
-  const t = entry.tournament
-  if (t.startDate > today) return 1
-  return t.endDate >= recentSince ? 0 : 2
-}
-
 export default function GamesListPage() {
   const [games, setGames] = useState(null)
   const [unclassified, setUnclassified] = useState([])
   const [tournaments, setTournaments] = useState(null)
+  const [seasons, setSeasons] = useState(null)
+  const [openPast, setOpenPast] = useState(() => new Set()) // past-season group keys expanded
   const [error, setError] = useState(null)
 
   const [showForm, setShowForm] = useState(false)
@@ -68,11 +58,13 @@ export default function GamesListPage() {
       getActivities({ type: 'Ultimate', sessionType: 'Game' }),
       getTournaments(),
       getActivities({ type: 'Ultimate' }),
+      getSeasons(),
     ])
-      .then(([g, t, all]) => {
+      .then(([g, t, all, s]) => {
         setGames(g)
         setUnclassified(unclassifiedTournamentActivities(all, g))
         setTournaments(t)
+        setSeasons(s)
       })
       .catch((err) => setError(err.message))
   }, [])
@@ -171,7 +163,7 @@ export default function GamesListPage() {
     )
   }
 
-  if (!games || !tournaments) {
+  if (!games || !tournaments || !seasons) {
     return (
       <main className="page">
         <p>Loading games…</p>
@@ -202,28 +194,28 @@ export default function GamesListPage() {
   const recentCutoff = new Date()
   recentCutoff.setDate(recentCutoff.getDate() - RECENT_DAYS)
   const recentSince = isoDate(recentCutoff)
-  const sorted = [
+  const sorted = sortEntries([
     ...tournaments.map((t) => {
       const gs = byTournament.get(t.id) ?? []
       const pending = unclassified.filter((a) => a.tournamentId === t.id)
       return { kind: 'tournament', tournament: t, games: gs, pending, sortDate: gs[0]?.date ?? pending[0]?.date ?? t.startDate }
     }),
     ...loose.map((g) => ({ kind: 'game', game: g, sortDate: g.date })),
-  ].sort((a, b) => {
-    const ra = rank(a, today, recentSince)
-    const rb = rank(b, today, recentSince)
-    if (ra !== rb) return ra - rb
-    if (ra === 1) return a.tournament.startDate < b.tournament.startDate ? -1 : 1
-    return a.sortDate < b.sortDate ? 1 : a.sortDate > b.sortDate ? -1 : 0
-  })
+  ], today, recentSince)
+  // Older seasons fold into one row each at the bottom, so the page opens on
+  // this season's games rather than every season's.
+  const { current, main, pastGroups } = partitionBySeason(sorted, seasons, today, recentSince)
+  const pastSeasonIds = new Set(pastGroups.filter((g) => g.season).map((g) => g.season.id))
+  const topSeasons = seasons.filter((s) => !pastSeasonIds.has(s.id))
+
   // Only the next upcoming tournament shows in full; the rest fold behind one
   // toggle that takes its place in the list, so pre-entering next season's
   // calendar doesn't push the past weekend's games off the first screen.
-  const upcoming = sorted.filter((e) => rank(e, today, recentSince) === 1)
+  const upcoming = main.filter((e) => rank(e, today, recentSince) === 1)
   const laterUpcoming = upcoming.slice(1)
   const entries = showAllUpcoming || laterUpcoming.length === 0
-    ? sorted
-    : sorted.flatMap((e) => {
+    ? main
+    : main.flatMap((e) => {
         if (laterUpcoming[0] === e) return [{ kind: 'more-upcoming', count: laterUpcoming.length }]
         return laterUpcoming.includes(e) ? [] : [e]
       })
@@ -264,6 +256,75 @@ export default function GamesListPage() {
       </form>
   )
 
+  function togglePast(key) {
+    setOpenPast((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  function renderEntry(entry) {
+    if (entry.kind === 'more-upcoming') {
+      return (
+        <button
+          key="more-upcoming"
+          type="button"
+          className="report-more-toggle more-upcoming-toggle"
+          onClick={() => setShowAllUpcoming(true)}
+        >
+          + {entry.count} more upcoming tournament{entry.count === 1 ? '' : 's'}
+        </button>
+      )
+    }
+    if (entry.kind === 'game') {
+      return (
+        <div key={`g-${entry.game.id}`} className="history-week">
+          <GameRow game={entry.game} />
+        </div>
+      )
+    }
+    const { tournament, games: gs, pending } = entry
+    const summaryLine = tournamentSummaryLine(gs)
+    if (showForm && editingId === tournament.id) {
+      return (
+        <div key={`t-${tournament.id}`} className="history-week">
+          {tournamentForm}
+        </div>
+      )
+    }
+    return (
+      <div key={`t-${tournament.id}`} className="history-week">
+        <Link to={`/tournaments/${tournament.id}`} className="tournament-section-link">
+          <div className="history-week-header">
+            <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
+            <span className="history-week-count">
+              {gs.length === 0 && pending.length === 0
+                ? 'no games yet'
+                : [
+                    gs.length > 0 && `${gs.length} game${gs.length === 1 ? '' : 's'}`,
+                    pending.length > 0 && `${pending.length} to classify`,
+                  ].filter(Boolean).join(' · ')}
+            </span>
+          </div>
+          {summaryLine && <p className="tournament-section-summary">{summaryLine}</p>}
+        </Link>
+        {tournament.taperDays != null && (
+          <p className="tournament-section-summary">
+            Tapering {tournament.taperDays} days into this one.
+          </p>
+        )}
+        {gs.map((g) => <GameRow key={g.id} game={g} />)}
+        {pending.map((a) => <PendingGameRow key={a.id} activity={a} onMarkGame={markAsGame} disabled={busy} />)}
+        <div className="games-header-actions">
+          <button type="button" className="secondary-btn" onClick={() => startEdit(tournament)}>Edit</button>
+          <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(tournament)}>Delete</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <main className="page">
       <div className="history-week-header">
@@ -287,7 +348,14 @@ export default function GamesListPage() {
         </p>
       )}
 
-      <SeasonsSection tournaments={tournaments} actionSlot={seasonSlot} />
+      <SeasonsSection
+        seasons={seasons}
+        topSeasons={topSeasons}
+        currentId={current?.id ?? null}
+        tournaments={tournaments}
+        onChanged={load}
+        actionSlot={seasonSlot}
+      />
 
       {showForm && editingId == null && tournamentForm}
 
@@ -306,66 +374,48 @@ export default function GamesListPage() {
       )}
 
       <div className="history-week-list section-gap">
-        {entries.map((entry) => {
-          if (entry.kind === 'more-upcoming') {
-            return (
-              <button
-                key="more-upcoming"
-                type="button"
-                className="report-more-toggle more-upcoming-toggle"
-                onClick={() => setShowAllUpcoming(true)}
-              >
-                + {entry.count} more upcoming tournament{entry.count === 1 ? '' : 's'}
-              </button>
-            )
-          }
-          if (entry.kind === 'game') {
-            return (
-              <div key={`g-${entry.game.id}`} className="history-week">
-                <GameRow game={entry.game} />
-              </div>
-            )
-          }
-          const { tournament, games: gs, pending } = entry
-          const summaryLine = tournamentSummaryLine(gs)
-          if (showForm && editingId === tournament.id) {
-            return (
-              <div key={`t-${tournament.id}`} className="history-week">
-                {tournamentForm}
-              </div>
-            )
-          }
-          return (
-            <div key={`t-${tournament.id}`} className="history-week">
-              <Link to={`/tournaments/${tournament.id}`} className="tournament-section-link">
-                <div className="history-week-header">
-                  <span>{tournament.name} · {formatDateRange(tournament.startDate, tournament.endDate)}</span>
-                  <span className="history-week-count">
-                    {gs.length === 0 && pending.length === 0
-                      ? 'no games yet'
-                      : [
-                          gs.length > 0 && `${gs.length} game${gs.length === 1 ? '' : 's'}`,
-                          pending.length > 0 && `${pending.length} to classify`,
-                        ].filter(Boolean).join(' · ')}
-                  </span>
-                </div>
-                {summaryLine && <p className="tournament-section-summary">{summaryLine}</p>}
-              </Link>
-              {tournament.taperDays != null && (
-                <p className="tournament-section-summary">
-                  Tapering {tournament.taperDays} days into this one.
-                </p>
-              )}
-              {gs.map((g) => <GameRow key={g.id} game={g} />)}
-              {pending.map((a) => <PendingGameRow key={a.id} activity={a} onMarkGame={markAsGame} disabled={busy} />)}
-              <div className="games-header-actions">
-                <button type="button" className="secondary-btn" onClick={() => startEdit(tournament)}>Edit</button>
-                <button type="button" className="secondary-btn" onClick={() => setConfirmingDelete(tournament)}>Delete</button>
-              </div>
-            </div>
-          )
-        })}
+        {entries.map(renderEntry)}
       </div>
+
+      {pastGroups.length > 0 && (
+        <section className="section-gap">
+          <h2 className="trend-chart-title">Past seasons</h2>
+          <div className="history-week-list">
+            {pastGroups.map((group) => {
+              const key = group.season ? group.season.id : 'none'
+              const isOpen = openPast.has(key)
+              const { tournaments: tc, games: gc } = groupCounts(group.entries)
+              const counts = [
+                `${tc} tournament${tc === 1 ? '' : 's'}`,
+                `${gc} game${gc === 1 ? '' : 's'}`,
+              ].join(' · ')
+              return (
+                <div key={`past-${key}`} className="past-season">
+                  <button
+                    type="button"
+                    className="past-season-toggle history-week"
+                    aria-expanded={isOpen}
+                    onClick={() => togglePast(key)}
+                  >
+                    <span className="history-week-header">
+                      <span>{group.season ? `${group.season.name} · ${formatDateRange(group.season.startDate, group.season.endDate)}` : 'Earlier, no season'}</span>
+                      <span className="history-week-count">{counts} {isOpen ? '▾' : '▸'}</span>
+                    </span>
+                  </button>
+                  {isOpen && (
+                    <div className="history-week-list past-season-body">
+                      {group.season && (
+                        <SeasonAdmin season={group.season} tournaments={tournaments} onChanged={load} showTitle={false} />
+                      )}
+                      {group.entries.map(renderEntry)}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
       {toast && <UndoToast message={toast.message} onUndo={toast.undo} onDismiss={dismiss} />}
       <ConfirmSheet
         open={confirmingDelete != null}

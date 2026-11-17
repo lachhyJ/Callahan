@@ -4565,6 +4565,55 @@ td {
   color: var(--accent);
 }
 
+/* Ultimate page season admin, folded to one tappable line (SeasonAdmin).
+   The whole row is the disclosure control and carries the 44px target. */
+.season-admin {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.season-admin-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  background: none;
+  border: none;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.season-admin-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.season-admin-name { font-size: var(--text-sm); font-weight: 600; }
+.season-admin-label { color: var(--text-tertiary); font-weight: 400; }
+.season-admin-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
+.season-admin-chevron { color: var(--text-tertiary); }
+
+/* A collapsed past season: the whole card is the toggle. */
+.past-season-toggle {
+  display: block;
+  width: 100%;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.past-season-body { margin-top: var(--space-sm); }
+
 /* Fold for upcoming tournaments past the next one on the Ultimate list: a
    plain link-row between cards, not a card of its own. */
 .more-upcoming-toggle {
