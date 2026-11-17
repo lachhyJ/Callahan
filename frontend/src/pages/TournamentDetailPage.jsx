@@ -4,7 +4,7 @@ import { getActivities, getTournaments } from '../api/client'
 import { formatDateRange, formatDateMedium } from '../dateUtils'
 import { formatHoursMinutes } from '../utils/format'
 import { summariseGames, groupByDay, unclassifiedTournamentActivities, compareByPlayOrder } from '../utils/tournamentStats'
-import FieldSplitBar from '../components/FieldSplitBar'
+import GameSummaryStats from '../components/GameSummaryStats'
 import TournamentGameChart from '../components/TournamentGameChart'
 import GameRow from '../components/GameRow'
 import PendingGameRow from '../components/PendingGameRow'
@@ -76,7 +76,6 @@ export default function TournamentDetailPage() {
 
   const summary = summariseGames(games)
   const days = groupByDay(games)
-  const hasMetrics = summary.gamesWithMetrics > 0
 
   const chartPoints = games
     .filter((g) => g.livePlaySeconds != null && (chartMode === 'totals' || g.pointsPlayed))
@@ -98,64 +97,7 @@ export default function TournamentDetailPage() {
       <p className="session-date">{formatDateRange(tournament.startDate, tournament.endDate)}</p>
       <h1 className="game-title">{tournament.name}</h1>
 
-      <div className="stat-grid">
-        <div className="stat-card">
-          <span className="stat-label">Games</span>
-          <span className="stat-value">{summary.gameCount}</span>
-        </div>
-        {hasMetrics && (
-          <>
-            <div className="stat-card">
-              <span className="stat-label">Points played</span>
-              <span className="stat-value">{summary.totalPoints}</span>
-            </div>
-            <div className="stat-card">
-              <span className="stat-label">Live play</span>
-              <span className="stat-value">{formatHoursMinutes(summary.totalLiveSeconds)}</span>
-            </div>
-            {summary.avgLiveMinPerPoint != null && (
-              <div className="stat-card">
-                <span className="stat-label">Live min / point</span>
-                <span className="stat-value">{summary.avgLiveMinPerPoint.toFixed(1)}</span>
-              </div>
-            )}
-            {summary.totalDistanceKm > 0 && (
-              <div className="stat-card">
-                <span className="stat-label">Distance covered</span>
-                <span className="stat-value">{summary.totalDistanceKm.toFixed(1)} km</span>
-              </div>
-            )}
-            {summary.totalLiveDistanceKm > 0 && (
-              <div className="stat-card">
-                <span className="stat-label">Distance in play</span>
-                <span className="stat-value">{summary.totalLiveDistanceKm.toFixed(1)} km</span>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {hasMetrics && (
-        <FieldSplitBar
-          liveSeconds={summary.totalLiveSeconds}
-          onFieldSeconds={summary.totalOnFieldSeconds}
-          offFieldSeconds={summary.totalOffFieldSeconds}
-          mixedSeconds={summary.totalMixedSeconds}
-        />
-      )}
-
-      {hasMetrics && summary.gamesWithMetrics < summary.gameCount && (
-        <p className="game-method-note">
-          Field data covers {summary.gamesWithMetrics} of {summary.gameCount} games — the
-          rest have no synced GPS track.
-        </p>
-      )}
-
-      {!hasMetrics && games.length > 0 && (
-        <p className="notes">
-          No on/off-field data for this tournament yet — its games need a synced GPS track.
-        </p>
-      )}
+      <GameSummaryStats summary={summary} noun="tournament" />
 
       {days.length > 1 && (
         <section className="section-gap">

@@ -36,6 +36,7 @@ import GarminStrengthReviewPage from './pages/GarminStrengthReviewPage'
 import ReportsPage from './pages/ReportsPage'
 import ReportDetailPage from './pages/ReportDetailPage'
 import QuotesPage from './pages/QuotesPage'
+import SeasonDetailPage from './pages/SeasonDetailPage'
 import './App.css'
 
 const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon }
@@ -53,6 +54,7 @@ function showsBackLink(pathname) {
     || pathname.startsWith('/reports/')
     || pathname.startsWith('/activities/')
     || pathname.startsWith('/tournaments/')
+    || pathname.startsWith('/seasons/')
 }
 
 
@@ -294,6 +296,7 @@ function AppRoutes() {
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
+          <Route path="/seasons/:seasonId" element={<ProtectedRoute><SeasonDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />
           <Route path="/routines" element={<ProtectedRoute><RoutinesPage /></ProtectedRoute>} />

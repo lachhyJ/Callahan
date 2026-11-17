@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { partitionBySeason, pickCurrentSeason, sortEntries } from './ultimateList'
+import { partitionBySeason, pickCurrentSeason, seasonContents, sortEntries } from './ultimateList'
 
 const TODAY = '2026-11-17'
 const RECENT_SINCE = '2026-11-10'
@@ -80,5 +80,29 @@ describe('partitionBySeason', () => {
     expect(current).toBeNull()
     expect(main).toEqual(sorted)
     expect(pastGroups).toEqual([])
+  })
+})
+
+describe('seasonContents', () => {
+  const seasons = [season(1, '2025-10-01', '2026-04-15'), season(2, '2026-10-01', '2027-04-15')]
+  const t = (id, startDate, endDate, seasonId = null) => ({ id, name: `T${id}`, startDate, endDate, seasonId })
+  const g = (id, date, tournamentId = null) => ({ id, date: `${date}T10:00:00`, tournamentId })
+
+  it('collects tournaments by explicit link or date, oldest first, with their games', () => {
+    const tournaments = [
+      t(1, '2026-03-01', '2026-03-02'),
+      t(2, '2025-11-01', '2025-11-02'),
+      t(3, '2026-11-01', '2026-11-02'),
+      t(4, '2026-11-08', '2026-11-09', 1), // explicitly linked to S1 despite its dates
+    ]
+    const games = [g(10, '2026-03-01', 1), g(11, '2026-03-02', 1), g(12, '2025-11-01', 2), g(13, '2026-11-01', 3)]
+    const { tournaments: ts } = seasonContents(seasons[0], seasons, tournaments, games)
+    expect(ts.map((x) => x.tournament.name)).toEqual(['T2', 'T1', 'T4'])
+    expect(ts.map((x) => x.games.length)).toEqual([1, 2, 0])
+  })
+
+  it('keeps standalone games that fall inside the season range', () => {
+    const games = [g(20, '2025-12-10'), g(21, '2026-06-01'), g(22, '2026-10-05')]
+    expect(seasonContents(seasons[0], seasons, [], games).loose.map((x) => x.id)).toEqual([20])
   })
 })

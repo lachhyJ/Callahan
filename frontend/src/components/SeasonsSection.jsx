@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link } from 'react-router-dom'
 import {
   attachSeasonTournaments,
   createSeason,
@@ -94,14 +95,34 @@ function SeasonForm({ initial, tournaments, submitLabel, onSubmit }) {
   )
 }
 
-// One season's admin, folded to a single line: the Edit / Link tournaments /
-// Delete buttons are rarely needed, so they sit behind a tap instead of
-// taking a card's worth of space above the games every visit.
-// label: optional lead-in ("Current season") shown before the name; when
-// showTitle is false (inside an expanded past-season group, whose header
-// already names it) only the Nationals line and the toggle show.
-export function SeasonAdmin({ season, tournaments, onChanged, label = null, showTitle = true }) {
-  const [open, setOpen] = useState(false)
+// One season as a single tappable line that opens its page, where its
+// totals, tournaments and admin live. label: optional lead-in ("Current
+// season") before the name. With showTitle false (inside an expanded
+// past-season group, whose header already names it) it reads "Season page".
+export function SeasonLink({ season, label = null, showTitle = true }) {
+  const nationals = season.targetTournamentName ? `Nationals: ${season.targetTournamentName}` : 'No Nationals set'
+  return (
+    <Link to={`/seasons/${season.id}`} className="season-admin-toggle season-link">
+      <span className="season-admin-text">
+        {showTitle && (
+          <span className="season-admin-name">
+            {label && <span className="season-admin-label">{label} · </span>}
+            {season.name}
+          </span>
+        )}
+        <span className="season-admin-meta">
+          {showTitle ? `${formatDateRange(season.startDate, season.endDate)} · ` : 'Season page · '}{nationals}
+        </span>
+      </span>
+      <span className="season-admin-chevron" aria-hidden="true">›</span>
+    </Link>
+  )
+}
+
+// Edit / Link tournaments / Delete for one season, shown open on its page.
+// onDeleted runs after a delete instead of onChanged (the page has nothing
+// left to show).
+export function SeasonActions({ season, tournaments, onChanged, onDeleted }) {
   const [editing, setEditing] = useState(false)
   const [notice, setNotice] = useState(null)
   const [error, setError] = useState(null)
@@ -122,32 +143,15 @@ export function SeasonAdmin({ season, tournaments, onChanged, label = null, show
     setConfirmingDelete(false)
     try {
       await deleteSeason(season.id)
-      onChanged()
+      onDeleted()
     } catch (err) {
       setError(err.message)
     }
   }
 
-  const nationals = season.targetTournamentName ? `Nationals: ${season.targetTournamentName}` : 'No Nationals set'
-
   return (
     <div className="season-admin">
-      <button type="button" className="season-admin-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <span className="season-admin-text">
-          {showTitle && (
-            <span className="season-admin-name">
-              {label && <span className="season-admin-label">{label} · </span>}
-              {season.name}
-            </span>
-          )}
-          <span className="season-admin-meta">
-            {showTitle ? `${formatDateRange(season.startDate, season.endDate)} · ` : 'Season options · '}{nationals}
-          </span>
-        </span>
-        <span className="season-admin-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
-      </button>
-
-      {open && !editing && (
+      {!editing && (
         <div className="games-header-actions">
           <button type="button" className="secondary-btn" onClick={() => { setNotice(null); setEditing(true) }}>Edit</button>
           <button type="button" className="secondary-btn" onClick={handleAttach}>Link tournaments</button>
@@ -193,9 +197,9 @@ export function SeasonAdmin({ season, tournaments, onChanged, label = null, show
 }
 
 // Top-of-page season area on the Ultimate page: the "+ Season" button and its
-// create form, plus a folded admin line for each season that isn't past
-// (the current one, and any already entered for later). Past seasons get
-// their admin line inside their own group further down the page.
+// create form, plus a link line for each season that isn't past (the current
+// one, and any already entered for later). Past seasons get their link inside
+// their own group further down the page.
 // actionSlot: optional DOM node (in the page header) the create/cancel button is
 // portalled into, so it sits on one line with the page's other header actions.
 export default function SeasonsSection({ seasons, topSeasons, currentId, tournaments, onChanged, actionSlot = null }) {
@@ -234,11 +238,9 @@ export default function SeasonsSection({ seasons, topSeasons, currentId, tournam
       )}
 
       {topSeasons.map((s) => (
-        <SeasonAdmin
+        <SeasonLink
           key={s.id}
           season={s}
-          tournaments={tournaments}
-          onChanged={onChanged}
           label={s.id === currentId ? (s.endDate < isoDate(new Date()) ? 'Last season' : 'Current season') : 'Next season'}
         />
       ))}

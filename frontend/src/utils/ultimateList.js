@@ -105,3 +105,25 @@ export function groupCounts(entries) {
   }
   return { tournaments, games }
 }
+
+// Everything one season holds, for its detail page: its tournaments (oldest
+// first, so the page reads toward Nationals) each with their games, plus the
+// standalone games that fall inside its range. Uses seasonForEntry, so a
+// tournament lands in the same season here as in the Ultimate page's folds.
+export function seasonContents(season, seasons, tournaments, games) {
+  const byTournament = new Map()
+  const loose = []
+  for (const g of games) {
+    if (g.tournamentId == null) {
+      if (seasonForEntry({ kind: 'game', game: g }, seasons)?.id === season.id) loose.push(g)
+      continue
+    }
+    if (!byTournament.has(g.tournamentId)) byTournament.set(g.tournamentId, [])
+    byTournament.get(g.tournamentId).push(g)
+  }
+  const inSeason = tournaments
+    .filter((t) => seasonForEntry({ kind: 'tournament', tournament: t }, seasons)?.id === season.id)
+    .sort((a, b) => (a.startDate < b.startDate ? -1 : a.startDate > b.startDate ? 1 : a.id - b.id))
+    .map((t) => ({ tournament: t, games: byTournament.get(t.id) ?? [] }))
+  return { tournaments: inSeason, loose }
+}

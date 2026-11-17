@@ -16,7 +16,7 @@ import GameRow from '../components/GameRow'
 import PendingGameRow from '../components/PendingGameRow'
 import UndoToast from '../components/UndoToast'
 import useMarkAsGame from '../hooks/useMarkAsGame'
-import SeasonsSection, { SeasonAdmin } from '../components/SeasonsSection'
+import SeasonsSection, { SeasonLink } from '../components/SeasonsSection'
 import { RECENT_DAYS, rank, sortEntries, partitionBySeason, groupCounts } from '../utils/ultimateList'
 import ConfirmSheet from '../components/ConfirmSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
@@ -405,7 +405,7 @@ export default function GamesListPage() {
                   {isOpen && (
                     <div className="history-week-list past-season-body">
                       {group.season && (
-                        <SeasonAdmin season={group.season} tournaments={tournaments} onChanged={load} showTitle={false} />
+                        <SeasonLink season={group.season} showTitle={false} />
                       )}
                       {group.entries.map(renderEntry)}
                     </div>

@@ -4565,8 +4565,8 @@ td {
   color: var(--accent);
 }
 
-/* Ultimate page season admin, folded to one tappable line (SeasonAdmin).
-   The whole row is the disclosure control and carries the 44px target. */
+/* A season as one tappable line on the Ultimate page (SeasonLink), opening
+   its season page. The whole row is the link and carries the 44px target. */
 .season-admin {
   display: flex;
   flex-direction: column;
@@ -4600,6 +4600,17 @@ td {
 .season-admin-label { color: var(--text-tertiary); font-weight: 400; }
 .season-admin-meta { font-size: var(--text-xs); color: var(--text-tertiary); }
 .season-admin-chevron { color: var(--text-tertiary); }
+
+.season-link { text-decoration: none; }
+.season-link:hover .season-admin-name,
+.season-link:focus-visible .season-admin-name { color: var(--accent); }
+
+/* Nationals tag on its tournament row on the season page. */
+.season-target-tag {
+  margin-left: var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--accent);
+}
 
 /* A collapsed past season: the whole card is the toggle. */
 .past-season-toggle {
