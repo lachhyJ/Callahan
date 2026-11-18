@@ -76,7 +76,7 @@ public class ProgramController : ControllerBase
         return Ok(new { html });
     }
 
-    // "Field 1 — Defence & Acceleration" and "Field 2 — Repeat Effort & COD": the
+    // "Field 1 — Speed" and "Field 2 — Repeat Effort & COD": the
     // number, then any dash, then a title. The dash is what tells the real section
     // from the bare "### Field 1" stub in the no-club block ("same session as
     // in-season"), and tolerating em dash, en dash and hyphen means retyping it on a
