@@ -34,10 +34,11 @@ public class CalDavCalendarClient(
         return await ReadAsync(TrainingCalendarName, from, to, expand: false, ct);
     }
 
-    // The club calendar is never written to, so its events are read expanded: the
-    // server turns each recurring series into one event per date, which is what a
-    // weekly club training is. The Training calendar is not, because a move rewrites
-    // the event's stored resource and an expanded copy is not that resource.
+    // The club calendar is never written to, so its recurring series are expanded into
+    // one event per date, which is what a weekly club training is. Expansion is asked of
+    // the server and done here too, since iCloud ignores the request (seen 2026-11-23)
+    // and returns each series once. The Training calendar is never expanded: a move
+    // rewrites the event's stored resource, and an expanded copy is not that resource.
     public async Task<IReadOnlyList<CalendarEvent>> GetClubEventsAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         if (!IsConfigured || ClubCalendarName is not { Length: > 0 } name) return [];
@@ -79,12 +80,17 @@ public class CalDavCalendarClient(
                 if (string.IsNullOrWhiteSpace(ics)) continue;
                 var etag = response.Descendants(D + "getetag").FirstOrDefault()?.Value;
                 var href = response.Element(D + "href")?.Value;
-                events.AddRange(IcalEventParser.Parse(ics, time.LocalTimeZone, etag, href));
-                // A server that ignored the expand hands back the series itself, which
-                // the parser skips. Say so, or a missing club training is a mystery.
-                if (expand && ics.Contains("RRULE:", StringComparison.Ordinal))
+                if (!expand)
                 {
-                    logger.LogWarning("The {Calendar} calendar returned a recurring event unexpanded; it won't show on the Plan page", name);
+                    events.AddRange(IcalEventParser.Parse(ics, time.LocalTimeZone, etag, href));
+                    continue;
+                }
+                events.AddRange(IcalEventParser.ParseInRange(ics, time.LocalTimeZone, from, to, out var unsupported, etag, href));
+                // Only a rule other than daily or weekly; say so, or a missing club
+                // session is a mystery.
+                if (unsupported > 0)
+                {
+                    logger.LogWarning("Skipped {Count} recurring event(s) in the {Calendar} calendar with a rule other than daily or weekly", unsupported, name);
                 }
             }
             return events;
