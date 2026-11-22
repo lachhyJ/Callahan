@@ -5,7 +5,9 @@
 // session type; neither exists for Ultimate, so that heuristic doesn't
 // transfer here — this is a pure keyword match on the title instead. Wrong
 // guesses cost nothing, same as Running's: the picker still requires a
-// confirming tap.
+// confirming tap. New syncs are tagged by the backend
+// (UltimateSessionClassifier, which also has the time-slot fallback); this list
+// must match its TitleKeywords, and a backend test enforces that.
 //
 // Checked in this order because a title like "Throws- Solo" should read as
 // a Throws session, not a Solo one — "throws" is checked before the more

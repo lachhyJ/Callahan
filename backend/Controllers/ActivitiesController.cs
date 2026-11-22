@@ -253,6 +253,26 @@ public class ActivitiesController : ControllerBase
                 .FirstOrDefaultAsync(t => t.StartDate <= activity.Date && activity.Date <= t.EndDate);
         }
 
+        // Tag Ultimate activities at sync so the user doesn't have to confirm a
+        // suggestion. New-activity branch only: a re-sync never reaches here, so
+        // a tag the user changed or cleared is never overwritten.
+        if (type == ActivityType.Ultimate && activity.SessionTags.Count == 0)
+        {
+            var name = UltimateSessionClassifier.Classify(
+                activity.Notes, activity.StartTimeLocal, activity.DurationSeconds, activity.Tournament is not null);
+            if (name is not null)
+            {
+                var sessionType = await _db.ActivitySessionTypes
+                    .FirstOrDefaultAsync(t => t.Name == name && t.ActivityType == ActivityType.Ultimate);
+                if (sessionType is not null)
+                {
+                    activity.ActivitySessionTypeId = sessionType.Id;
+                    activity.ActivitySessionType = sessionType;
+                    activity.SessionTags.Add(new ActivitySessionTag { ActivitySessionTypeId = sessionType.Id, SessionType = sessionType });
+                }
+            }
+        }
+
         _db.Activities.Add(activity);
         await _db.SaveChangesAsync();
 
