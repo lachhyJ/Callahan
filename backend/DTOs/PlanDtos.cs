@@ -32,7 +32,11 @@ public record WeekPlanDto(
     bool CalendarUnavailable = false,
     string? CalendarMessage = null,
     List<PlanSlotDto>? Unplaced = null,
-    List<CalendarEventDto>? OtherEvents = null);
+    List<CalendarEventDto>? OtherEvents = null,
+    // Club sessions from the club calendar, shown on their days as fixed: the plan is
+    // made around them, never by moving them. Read whether or not the Training calendar
+    // could be, since they matter most when planning from the program's own week.
+    List<CalendarEventDto>? ClubEvents = null);
 
 public record CalendarEventDto(string Uid, string Title, DateOnly Day, string? TimeOfDay);
 

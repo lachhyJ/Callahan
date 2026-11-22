@@ -20,12 +20,15 @@ public class PlanController : ControllerBase
     private readonly AppDbContext _db;
     private readonly TimeProvider _time;
     private readonly ICalendarClient? _calendar;
+    private readonly ILogger<PlanController>? _logger;
 
-    public PlanController(AppDbContext db, TimeProvider? time = null, ICalendarClient? calendar = null)
+    public PlanController(
+        AppDbContext db, TimeProvider? time = null, ICalendarClient? calendar = null, ILogger<PlanController>? logger = null)
     {
         _db = db;
         _time = time ?? TimeProvider.System;
         _calendar = calendar;
+        _logger = logger;
     }
 
     private static DateOnly MondayOf(DateOnly d) => CalendarDates.MondayOf(d);
@@ -44,12 +47,15 @@ public class PlanController : ControllerBase
         var calendarOn = _calendar is { IsConfigured: true };
         string? calendarMessage = null;
 
+        var club = (await ClubEvents.ForWeekAsync(_calendar, monday, monday.AddDays(WeekPlanBuilder.DaysInWeek - 1), _logger, ct))
+            .Select(ToDto).ToList();
+
         if (calendarOn)
         {
             try
             {
                 var fromCalendar = await PlanWeekLoader.LoadFromCalendarAsync(_db, _calendar!, monday, today, ct);
-                return Ok(ToDto(fromCalendar));
+                return Ok(ToDto(fromCalendar) with { ClubEvents = club });
             }
             catch (CalendarUnavailableException ex)
             {
@@ -70,8 +76,11 @@ public class PlanController : ControllerBase
             ankle,
             CalendarEnabled: calendarOn,
             CalendarUnavailable: calendarOn,
-            CalendarMessage: calendarMessage));
+            CalendarMessage: calendarMessage,
+            ClubEvents: club));
     }
+
+    private static CalendarEventDto ToDto(CalendarEvent e) => new(e.Uid, e.Title, e.Day, e.Part?.ToString());
 
     private static PlanSlotDto ToDto(WeekPlanBuilder.SlotResult s) => new(
         s.SlotId, s.Label, s.Kind.ToString(), s.State.ToString(),
@@ -87,7 +96,7 @@ public class PlanController : ControllerBase
         new AnkleCircuitDto(PlanWeekLoader.AnkleCircuitRoutineId, c.AnkleCompletedDates),
         CalendarEnabled: true,
         Unplaced: c.Week.Unplaced.Select(ToDto).ToList(),
-        OtherEvents: c.OtherEvents.Select(e => new CalendarEventDto(e.Uid, e.Title, e.Day, e.Part?.ToString())).ToList());
+        OtherEvents: c.OtherEvents.Select(ToDto).ToList());
 
     // Moving a slot and ticking it are the same write - both are "this week
     // deviates from the program here" - so they share one row and one endpoint.

@@ -5455,6 +5455,26 @@ td {
 
 .plan-slot-rest { font-size: var(--text-sm); color: var(--text-tertiary); }
 
+/* Club sessions are fixed points the week is planned around, not slots: no
+   disclosure, so no 44px row, and set apart by a quiet tag rather than colour. */
+.plan-club {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-xs);
+  padding: var(--space-xs) 0;
+}
+.plan-club .plan-slot-label { color: var(--text-secondary); }
+.plan-club-meta { display: flex; align-items: baseline; gap: var(--space-xs); white-space: nowrap; }
+.plan-club-meta .plan-slot-part { margin-left: 0; }
+.plan-club-tag {
+  padding: 0 var(--space-2xs);
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
 .plan-slot-main {
   display: flex;
   align-items: baseline;

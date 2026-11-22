@@ -44,8 +44,12 @@ public class PlanControllerTests
     // --- calendar mode -----------------------------------------------------
 
     private sealed class FakeCalendar(
-        IReadOnlyList<CalendarEvent>? events = null, string? down = null, bool configured = true, Exception? writeFails = null) : ICalendarClient
+        IReadOnlyList<CalendarEvent>? events = null, string? down = null, bool configured = true, Exception? writeFails = null,
+        IReadOnlyList<CalendarEvent>? club = null, string? clubDown = null) : ICalendarClient
     {
+        public Task<IReadOnlyList<CalendarEvent>> GetClubEventsAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
+            clubDown is not null ? throw new CalendarUnavailableException(clubDown) : Task.FromResult(club ?? []);
+
         public bool IsConfigured => configured;
 
         public List<(string Title, DateOnly Day, TimeOfDay Part)> Created { get; } = [];
@@ -123,6 +127,58 @@ public class PlanControllerTests
         Assert.False(gym.IsLinked); // matched by its title
         Assert.Equal(["Field 1 - Acceleration & Jumps", "Aerobic - easy ride, or rest"], week.Unplaced!.Select(s => s.Label));
         Assert.Equal(["Dinner"], week.OtherEvents!.Select(e => e.Title));
+    }
+
+    [Fact]
+    public async Task ClubSessionsFromTheClubCalendarRideAlongAndTheRestOfLifeDoesNot()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        SeedSessions(db);
+        var calendar = new FakeCalendar(
+            [Ev("g", "Gym 1", 1)],
+            club: [Ev("c", "Chilly training", 3, TimeOfDay.Evening), Ev("p", "Pod", 5), Ev("dentist", "Dentist", 2),
+                   Ev("next", "Chilly training", 10)]);
+
+        var week = await Week(Controller(db, calendar));
+
+        Assert.Equal([("Chilly training", 3), ("Pod", 5)],
+            week.ClubEvents!.Select(e => (e.Title, e.Day.DayNumber - Monday.DayNumber)));
+        Assert.Equal("Evening", week.ClubEvents![0].TimeOfDay);
+        // Club sessions are never matched to the program's sessions or offered for linking.
+        Assert.DoesNotContain(week.OtherEvents!, e => e.Title == "Chilly training");
+        Assert.Equal("Gym 1", Assert.Single(week.Days[1].Slots).Label);
+    }
+
+    [Fact]
+    public async Task ClubSessionsStillShowWhenTheTrainingCalendarCantBeRead()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        SeedSessions(db);
+        var calendar = new FakeCalendar(down: "There's no calendar called \"Training\" on this account.",
+            club: [Ev("c", "Chilly training", 3)]);
+
+        var week = await Week(Controller(db, calendar));
+
+        Assert.True(week.CalendarUnavailable);
+        Assert.Equal(["Chilly training"], week.ClubEvents!.Select(e => e.Title));
+    }
+
+    [Fact]
+    public async Task AClubCalendarThatCantBeReadLeavesThePlanAsItWas()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        SeedSessions(db);
+        var calendar = new FakeCalendar([Ev("g", "Gym 1", 1)], clubDown: "There's no calendar called \"Mine\" on this account.");
+
+        var week = await Week(Controller(db, calendar));
+
+        Assert.False(week.CalendarUnavailable);
+        Assert.Null(week.CalendarMessage);
+        Assert.Empty(week.ClubEvents!);
+        Assert.Equal("Gym 1", Assert.Single(week.Days[1].Slots).Label);
     }
 
     [Fact]

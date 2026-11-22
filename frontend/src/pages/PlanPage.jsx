@@ -392,6 +392,21 @@ function OtherEvents({ events, unplaced, weekStart, onChange }) {
   )
 }
 
+// A club session from the club calendar. Fixed: it is shown so the week is planned
+// around it, and there is nothing to tick, move or link - Garmin logs it when it
+// happens, and Calendar is where it gets changed.
+function ClubRow({ event }) {
+  return (
+    <div className="plan-slot plan-club">
+      <span className="plan-slot-label">{event.title}</span>
+      <span className="plan-club-meta">
+        {event.timeOfDay && <span className="plan-slot-part">{event.timeOfDay}</span>}
+        <span className="plan-club-tag">Club</span>
+      </span>
+    </div>
+  )
+}
+
 // The Monday of the week the current training day falls in. Between midnight
 // and 3am on a Monday that's still last week, matching the backend's "today".
 function currentTrainingWeek() {
@@ -498,7 +513,9 @@ export default function PlanPage() {
           )}
 
           <div className="plan-days">
-            {plan.days.map((day) => (
+            {plan.days.map((day) => {
+              const club = (plan.clubEvents ?? []).filter((e) => e.day === day.date)
+              return (
               <section
                 key={day.date}
                 className={`plan-day${day.date === today ? ' plan-day-today' : ''}`}
@@ -507,8 +524,9 @@ export default function PlanPage() {
                   <span className="plan-day-name">{day.dayName}</span>
                   <span className="plan-day-date">{formatDateMedium(day.date)}</span>
                 </header>
+                {club.map((e) => <ClubRow key={`${e.uid}-${e.day}`} event={e} />)}
                 {day.slots.length === 0
-                  ? <p className="plan-day-empty">Nothing planned</p>
+                  ? club.length === 0 && <p className="plan-day-empty">Nothing planned</p>
                   : day.slots.map((slot) => (
                       <SlotRow
                         key={slot.slotId}
@@ -522,7 +540,8 @@ export default function PlanPage() {
                       />
                     ))}
               </section>
-            ))}
+              )
+            })}
             {calendarMode && (
               <>
                 <UnplacedList slots={plan.unplaced} weekStart={plan.weekStart} days={plan.days} onChange={load} />

@@ -13,7 +13,8 @@ namespace Callahan.Api.Services.Calendar;
 // because iCloud's calendar addresses are per-account and not meant to be typed.
 //
 // Config: Calendar:Username, Calendar:Password (an app-specific password, never the
-// Apple ID password), Calendar:CalendarName (default "Training") and
+// Apple ID password), Calendar:CalendarName (default "Training"),
+// Calendar:ClubCalendarName (default "Mine", read-only, empty for none) and
 // Calendar:ServerUrl (default iCloud). Without a username and password it is off.
 public class CalDavCalendarClient(
     HttpClient http, IConfiguration config, TimeProvider time, ILogger<CalDavCalendarClient> logger) : ICalendarClient
@@ -30,18 +31,42 @@ public class CalDavCalendarClient(
     public async Task<IReadOnlyList<CalendarEvent>> GetEventsAsync(DateOnly from, DateOnly to, CancellationToken ct)
     {
         if (!IsConfigured) throw new CalendarUnavailableException("The calendar isn't set up on this server.");
+        return await ReadAsync(TrainingCalendarName, from, to, expand: false, ct);
+    }
 
+    // The club calendar is never written to, so its events are read expanded: the
+    // server turns each recurring series into one event per date, which is what a
+    // weekly club training is. The Training calendar is not, because a move rewrites
+    // the event's stored resource and an expanded copy is not that resource.
+    public async Task<IReadOnlyList<CalendarEvent>> GetClubEventsAsync(DateOnly from, DateOnly to, CancellationToken ct)
+    {
+        if (!IsConfigured || ClubCalendarName is not { Length: > 0 } name) return [];
+        return await ReadAsync(name, from, to, expand: true, ct);
+    }
+
+    private string TrainingCalendarName => config["Calendar:CalendarName"] is { Length: > 0 } n ? n : "Training";
+
+    // Empty turns the club calendar off; unset means "Mine".
+    private string ClubCalendarName => config["Calendar:ClubCalendarName"] ?? "Mine";
+
+    private async Task<IReadOnlyList<CalendarEvent>> ReadAsync(string name, DateOnly from, DateOnly to, bool expand, CancellationToken ct)
+    {
         try
         {
-            var calendar = await CalendarUrlAsync(ct);
+            var calendar = await CalendarUrlAsync(name, ct);
 
             // Padded a day either side: a floating time has no zone, so the server
             // compares it as UTC and an event near midnight can fall just outside.
             // The caller filters to the exact training days.
-            var range = $"""<c:time-range start="{Utc(from.AddDays(-1))}" end="{Utc(to.AddDays(2))}"/>""";
+            var start = Utc(from.AddDays(-1));
+            var end = Utc(to.AddDays(2));
+            var range = $"""<c:time-range start="{start}" end="{end}"/>""";
+            var data = expand
+                ? $"""<c:calendar-data><c:expand start="{start}" end="{end}"/></c:calendar-data>"""
+                : "<c:calendar-data/>";
             var body = $"""
                 <c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav">
-                  <d:prop><d:getetag/><c:calendar-data/></d:prop>
+                  <d:prop><d:getetag/>{data}</d:prop>
                   <c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">{range}</c:comp-filter></c:comp-filter></c:filter>
                 </c:calendar-query>
                 """;
@@ -55,12 +80,18 @@ public class CalDavCalendarClient(
                 var etag = response.Descendants(D + "getetag").FirstOrDefault()?.Value;
                 var href = response.Element(D + "href")?.Value;
                 events.AddRange(IcalEventParser.Parse(ics, time.LocalTimeZone, etag, href));
+                // A server that ignored the expand hands back the series itself, which
+                // the parser skips. Say so, or a missing club training is a mystery.
+                if (expand && ics.Contains("RRULE:", StringComparison.Ordinal))
+                {
+                    logger.LogWarning("The {Calendar} calendar returned a recurring event unexpanded; it won't show on the Plan page", name);
+                }
             }
             return events;
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or XmlException)
         {
-            logger.LogWarning(ex, "Couldn't read the Training calendar");
+            logger.LogWarning(ex, "Couldn't read the {Calendar} calendar", name);
             throw new CalendarUnavailableException("Couldn't reach your calendar.", ex);
         }
     }
@@ -113,7 +144,7 @@ public class CalDavCalendarClient(
     {
         try
         {
-            var calendar = await CalendarUrlAsync(ct);
+            var calendar = await CalendarUrlAsync(TrainingCalendarName, ct);
             var url = href is null ? new Uri(calendar, newName!) : new Uri(calendar, href);
 
             using var request = new HttpRequestMessage(method, url);
@@ -145,10 +176,9 @@ public class CalDavCalendarClient(
 
     private static string Utc(DateOnly d) => d.ToDateTime(TimeOnly.MinValue).ToString("yyyyMMdd'T'HHmmss'Z'");
 
-    private async Task<Uri> CalendarUrlAsync(CancellationToken ct)
+    private async Task<Uri> CalendarUrlAsync(string name, CancellationToken ct)
     {
         var root = new Uri(config["Calendar:ServerUrl"] is { Length: > 0 } s ? s : "https://caldav.icloud.com/");
-        var name = config["Calendar:CalendarName"] is { Length: > 0 } n ? n : "Training";
         var key = $"{root}|{config["Calendar:Username"]}|{name}";
         if (CalendarUrls.TryGetValue(key, out var cached)) return cached;
 

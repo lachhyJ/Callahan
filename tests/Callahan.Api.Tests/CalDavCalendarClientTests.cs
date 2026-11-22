@@ -68,10 +68,12 @@ public class CalDavCalendarClientTests
     }
 
     // A unique username per test: the calendar's address is cached per process.
-    private static CalDavCalendarClient Client(Stub stub, string user, string? password = "app-pw", string? name = null)
+    private static CalDavCalendarClient Client(
+        Stub stub, string user, string? password = "app-pw", string? name = null, string? clubName = null)
     {
         var settings = new Dictionary<string, string?> { ["Calendar:Username"] = user, ["Calendar:Password"] = password };
         if (name is not null) settings["Calendar:CalendarName"] = name;
+        if (clubName is not null) settings["Calendar:ClubCalendarName"] = clubName;
         var config = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
         return new CalDavCalendarClient(
             new HttpClient(stub), config, FixedTimeProvider.Melbourne(new DateTime(2026, 10, 6, 9, 0, 0)),
@@ -146,6 +148,35 @@ public class CalDavCalendarClientTests
         var stub = new Stub(r => ICloudLike(r, calendarName: "My Training"));
         var events = await Client(stub, "named@example.com", name: "my training").GetEventsAsync(Mon, Mon.AddDays(6), default);
         Assert.Single(events);
+    }
+
+    [Fact]
+    public async Task TheClubCalendarIsReadByItsOwnNameWithRecurringEventsExpanded()
+    {
+        var stub = new Stub(r => ICloudLike(r));
+        var events = await Client(stub, "club@example.com", clubName: "home").GetClubEventsAsync(Mon, Mon.AddDays(6), default);
+
+        Assert.Single(events);
+        var report = Assert.Single(stub.Requests, r => r.Method == "REPORT");
+        Assert.Equal("/123/calendars/home/", report.Path);
+        Assert.Contains("<c:expand start=", report.Body);
+        Assert.DoesNotContain(stub.Requests, r => r.Method is "PUT" or "DELETE");
+    }
+
+    [Fact]
+    public async Task TheTrainingCalendarIsNotReadExpanded()
+    {
+        var stub = new Stub(r => ICloudLike(r));
+        await Client(stub, "noexpand@example.com").GetEventsAsync(Mon, Mon.AddDays(6), default);
+        Assert.DoesNotContain("expand", Assert.Single(stub.Requests, r => r.Method == "REPORT").Body);
+    }
+
+    [Fact]
+    public async Task AnEmptyClubCalendarNameTurnsItOff()
+    {
+        var stub = new Stub(r => ICloudLike(r));
+        Assert.Empty(await Client(stub, "clubless@example.com", clubName: "").GetClubEventsAsync(Mon, Mon.AddDays(6), default));
+        Assert.Empty(stub.Requests);
     }
 
     [Fact]

@@ -22,6 +22,12 @@ public interface ICalendarClient
     // so callers filter on CalendarEvent.Day.
     Task<IReadOnlyList<CalendarEvent>> GetEventsAsync(DateOnly from, DateOnly to, CancellationToken ct);
 
+    // Every event in the club calendar near the two dates, one per date for a recurring
+    // series. Read-only: nothing here is ever written to it. Empty when there is no club
+    // calendar. Callers pick out the club sessions with ClubEvents.
+    Task<IReadOnlyList<CalendarEvent>> GetClubEventsAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
+        Task.FromResult<IReadOnlyList<CalendarEvent>>([]);
+
     // Writes. Only ever to the Training calendar. A new event is written at the part
     // of the day's default start; a move keeps the event's length and everything else
     // about it; a delete removes the event. Moves and deletes carry the ETag the event
