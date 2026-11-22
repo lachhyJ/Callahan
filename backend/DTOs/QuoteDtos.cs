@@ -1,6 +1,6 @@
 namespace Callahan.Api.DTOs;
 
-public record QuoteDto(int Id, string Text, DateTime CreatedAt);
+public record QuoteDto(int Id, string Text, DateTime CreatedAt, bool Pinned);
 
 // Several lines can arrive at once (pasting a whole list), each one its own quote.
 public record AddQuotesRequest(List<string>? Texts);

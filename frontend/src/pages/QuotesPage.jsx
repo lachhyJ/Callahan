@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { addQuotes, deleteQuote, getQuotes, restoreQuote } from '../api/client'
+import { addQuotes, deleteQuote, getQuotes, pinQuote, restoreQuote, unpinQuote } from '../api/client'
 import {
   QUOTE_SOFT_LIMIT, addSummary, isLongQuote, isTooLongQuote, sortQuotes, splitQuoteLines,
 } from '../utils/quotes'
@@ -61,6 +61,18 @@ export default function QuotesPage() {
     }
   }
 
+  async function handleTogglePin(quote) {
+    setError(null)
+    setNote('')
+    try {
+      const updated = quote.pinned ? await unpinQuote(quote.id) : await pinQuote(quote.id)
+      // Pinning moves the pin: clear it everywhere else, then take the server's row.
+      setQuotes((current) => current.map((q) => (q.id === updated.id ? updated : { ...q, pinned: false })))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function handleUndo() {
     if (!deleted) return
     const quote = deleted
@@ -77,7 +89,7 @@ export default function QuotesPage() {
     <main className="page">
       <h1>Quotes</h1>
       <p className="page-subtitle">
-        One of these shows beside the lock screen date each day. Only about {QUOTE_SOFT_LIMIT} characters fit.
+        One of these shows beside the lock screen date each day, or pin one to keep it there. Only about {QUOTE_SOFT_LIMIT} characters fit.
       </p>
 
       {deleted && (
@@ -122,16 +134,28 @@ export default function QuotesPage() {
               <li key={quote.id} className="quotes-row">
                 <span className="quotes-text">
                   {quote.text}
+                  {quote.pinned && <span className="quotes-pinned">Pinned</span>}
                   {isLongQuote(quote.text) && <span className="quotes-long">May be cut off</span>}
                 </span>
-                <button
-                  type="button"
-                  className="quotes-delete"
-                  aria-label={`Delete "${quote.text}"`}
-                  onClick={() => handleDelete(quote)}
-                >
-                  Delete
-                </button>
+                <div className="quotes-actions">
+                  <button
+                    type="button"
+                    className="quotes-pin"
+                    aria-pressed={!!quote.pinned}
+                    aria-label={`${quote.pinned ? 'Unpin' : 'Pin'} "${quote.text}"`}
+                    onClick={() => handleTogglePin(quote)}
+                  >
+                    {quote.pinned ? 'Unpin' : 'Pin'}
+                  </button>
+                  <button
+                    type="button"
+                    className="quotes-delete"
+                    aria-label={`Delete "${quote.text}"`}
+                    onClick={() => handleDelete(quote)}
+                  >
+                    Delete
+                  </button>
+                </div>
               </li>
             ))}
           </ul>

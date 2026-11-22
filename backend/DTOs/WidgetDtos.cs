@@ -10,8 +10,9 @@ public record WidgetTrainingStatusDto(
     int? ChronicLoad);
 
 // The lock-screen quotes widget: the whole live list, id and text. The widget picks
-// the day's quote itself (see QuotePicker.swift) so it can keep rotating offline.
-public record WidgetQuoteDto(int Id, string Text);
+// the day's quote itself (see QuotePicker.swift) so it can keep rotating offline;
+// a pinned quote overrides the rotation.
+public record WidgetQuoteDto(int Id, string Text, bool Pinned);
 
 // The "this week" widget: how much of the program's week has been done, by what was
 // logged, not by the planner's day-by-day matching. `TrainingDay` comes from the

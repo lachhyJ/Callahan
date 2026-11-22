@@ -220,4 +220,56 @@ public class QuotesControllerTests
         var dtos = Assert.IsType<List<WidgetQuoteDto>>(Assert.IsType<OkObjectResult>(result.Result).Value);
         Assert.Empty(dtos);
     }
+
+    [Fact]
+    public async Task PinningMovesThePin_AndTheWidgetSeesIt()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var ids = (await Add(db, "One", "Two")).Quotes.Select(q => q.Id).ToList();
+        var controller = new QuotesController(db);
+
+        Assert.IsType<OkObjectResult>((await controller.Pin(ids[0])).Result);
+        Assert.IsType<OkObjectResult>((await controller.Pin(ids[1])).Result);
+
+        var pinned = (await List(db)).Where(q => q.Pinned).ToList();
+        Assert.Equal(ids[1], Assert.Single(pinned).Id);
+
+        var widget = await Widget(db, Key, Key).GetQuotes();
+        var dtos = Assert.IsType<List<WidgetQuoteDto>>(Assert.IsType<OkObjectResult>(widget.Result).Value);
+        Assert.Equal(ids[1], Assert.Single(dtos, d => d.Pinned).Id);
+    }
+
+    [Fact]
+    public async Task UnpinClearsIt_AndDeletingAPinnedQuoteDoesNotRepinOnRestore()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var id = (await Add(db, "One")).Quotes.Single().Id;
+        var controller = new QuotesController(db);
+
+        await controller.Pin(id);
+        await controller.Unpin(id);
+        Assert.DoesNotContain(await List(db), q => q.Pinned);
+
+        await controller.Pin(id);
+        await controller.Delete(id);
+        await controller.Restore(id);
+        Assert.DoesNotContain(await List(db), q => q.Pinned);
+    }
+
+    [Fact]
+    public async Task PinningAMissingOrDeletedQuoteIs404_AndKeepsTheExistingPin()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        var ids = (await Add(db, "One", "Two")).Quotes.Select(q => q.Id).ToList();
+        var controller = new QuotesController(db);
+        await controller.Pin(ids[0]);
+        await controller.Delete(ids[1]);
+
+        Assert.IsType<NotFoundResult>((await controller.Pin(ids[1])).Result);
+        Assert.IsType<NotFoundResult>((await controller.Pin(9999)).Result);
+        Assert.Equal(ids[0], Assert.Single(await List(db), q => q.Pinned).Id);
+    }
 }

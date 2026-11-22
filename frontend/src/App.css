@@ -6189,6 +6189,19 @@ td {
   color: var(--text-tertiary);
 }
 
+.quotes-pinned {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+}
+
+.quotes-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-xs);
+}
+
+.quotes-pin,
 .quotes-delete {
   flex-shrink: 0;
   min-width: 44px;
@@ -6198,6 +6211,11 @@ td {
   color: var(--text-h);
   touch-action: manipulation;
   user-select: none;
+}
+
+.quotes-pin[aria-pressed='true'] {
+  border-color: var(--text-h);
+  font-weight: 600;
 }
 
 .quotes-warning {

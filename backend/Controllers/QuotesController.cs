@@ -40,7 +40,7 @@ public class QuotesController : ControllerBase
         await _db.SaveChangesAsync();
     }
 
-    private static QuoteDto ToDto(Quote q) => new(q.Id, q.Text, q.CreatedAt);
+    private static QuoteDto ToDto(Quote q) => new(q.Id, q.Text, q.CreatedAt, q.PinnedAt != null);
 
     [HttpGet]
     public async Task<ActionResult<List<QuoteDto>>> GetAll()
@@ -103,8 +103,34 @@ public class QuotesController : ControllerBase
         if (quote is null) return NotFound();
 
         quote.DeletedAt = DateTime.UtcNow;
+        quote.PinnedAt = null;
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    // Pinning one quote unpins whichever was pinned before: the widget has one slot.
+    [HttpPut("{id}/pin")]
+    public async Task<ActionResult<QuoteDto>> Pin(int id)
+    {
+        var quotes = await _db.Quotes.Where(q => q.PinnedAt != null || q.Id == id).ToListAsync();
+        var quote = quotes.FirstOrDefault(q => q.Id == id);
+        if (quote is null) return NotFound();
+
+        foreach (var other in quotes.Where(q => q.Id != id)) other.PinnedAt = null;
+        quote.PinnedAt ??= DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(quote));
+    }
+
+    [HttpDelete("{id}/pin")]
+    public async Task<ActionResult<QuoteDto>> Unpin(int id)
+    {
+        var quote = await _db.Quotes.FirstOrDefaultAsync(q => q.Id == id);
+        if (quote is null) return NotFound();
+
+        quote.PinnedAt = null;
+        await _db.SaveChangesAsync();
+        return Ok(ToDto(quote));
     }
 
     [HttpPost("{id}/restore")]

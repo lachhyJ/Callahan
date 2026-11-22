@@ -4,9 +4,25 @@ import Foundation
 struct WidgetQuote: Codable, Equatable {
     let id: Int
     let text: String
+    /// The quote fixed as the day's pick. Absent in a list cached before pinning
+    /// existed, so it decodes as false rather than failing the whole list.
+    let pinned: Bool
+
+    init(id: Int, text: String, pinned: Bool = false) {
+        self.id = id
+        self.text = text
+        self.pinned = pinned
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int.self, forKey: .id)
+        text = try c.decode(String.self, forKey: .text)
+        pinned = try c.decodeIfPresent(Bool.self, forKey: .pinned) ?? false
+    }
 }
 
-/// Which quote shows on a given day.
+/// Which quote shows on a given day: the pinned one if there is one, otherwise the rotation below.
 ///
 /// The pick has to be a pure function of (day, list), not a `randomElement()`:
 /// WidgetKit rebuilds the timeline every time the app asks for a reload (launch,
@@ -45,7 +61,10 @@ enum QuotePicker {
     }
 
     static func pick(from quotes: [WidgetQuote], dayKey: String) -> WidgetQuote? {
-        quotes.max { a, b in
+        // A pinned quote is the pick every day. The server allows one; if several ever
+        // arrive, the lowest id wins so it is still stable.
+        if let pinned = quotes.filter(\.pinned).min(by: { $0.id < $1.id }) { return pinned }
+        return quotes.max { a, b in
             let sa = score(dayKey: dayKey, id: a.id), sb = score(dayKey: dayKey, id: b.id)
             // Equal scores are not expected; the lower id wins so it is still stable.
             return sa != sb ? sa < sb : a.id > b.id

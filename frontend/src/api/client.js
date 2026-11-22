@@ -685,6 +685,14 @@ export function deleteQuote(id) {
   return apiFetch(`/api/quotes/${id}`, { method: 'DELETE' }).then(afterWrite)
 }
 
+export function pinQuote(id) {
+  return apiFetch(`/api/quotes/${id}/pin`, { method: 'PUT' }).then(afterWrite)
+}
+
+export function unpinQuote(id) {
+  return apiFetch(`/api/quotes/${id}/pin`, { method: 'DELETE' }).then(afterWrite)
+}
+
 export function restoreQuote(id) {
   return apiFetch(`/api/quotes/${id}/restore`, { method: 'POST' }).then(afterWrite)
 }

@@ -83,7 +83,7 @@ public class WidgetController : ControllerBase
 
         var quotes = await _db.Quotes
             .OrderBy(q => q.Id)
-            .Select(q => new WidgetQuoteDto(q.Id, q.Text))
+            .Select(q => new WidgetQuoteDto(q.Id, q.Text, q.PinnedAt != null))
             .ToListAsync();
         return Ok(quotes);
     }
