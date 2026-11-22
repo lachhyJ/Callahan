@@ -27,6 +27,8 @@ describe('suggestUltimateSessionType', () => {
     expect(suggest('Throws- Solo')).toBe(5)
     expect(suggest('Pod')).toBe(6)
     expect(suggest('Club Training')).toBe(7)
+    expect(suggest('Chilly Training')).toBe(7)
+    expect(suggest('Chilly Pod')).toBe(6)
   })
 
   it('suggests nothing for a default Garmin title, or an already-classified activity', () => {

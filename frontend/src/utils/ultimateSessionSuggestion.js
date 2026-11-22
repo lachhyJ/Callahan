@@ -19,6 +19,7 @@ const TITLE_KEYWORDS = [
   { keyword: 'solo', name: 'Solo' },
   { keyword: 'pod', name: 'Pod' },
   { keyword: 'club', name: 'Club Training' },
+  { keyword: 'chilly training', name: 'Club Training' },
   { keyword: 'game', name: 'Game' },
 ]
 
