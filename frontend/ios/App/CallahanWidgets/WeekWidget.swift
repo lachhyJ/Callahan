@@ -219,7 +219,7 @@ private struct WeekContent: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("THIS WEEK")
                 .font(.caption2.weight(.semibold))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.primary)
             tallyRow("Gym", payload.gym)
             tallyRow("Field", payload.field)
             Spacer(minLength: 0)
@@ -233,7 +233,7 @@ private struct WeekContent: View {
                 }
             }
             .font(.footnote.weight(.medium))
-            .foregroundStyle(payload.left.isEmpty ? .primary : .secondary)
+            .foregroundStyle(.primary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -243,23 +243,23 @@ private struct WeekContent: View {
             HStack {
                 Text("THIS WEEK")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                 Spacer()
                 if outdated || fetchFailed {
                     Image(systemName: "clock.badge.exclamationmark").font(.caption2)
                 }
                 Text("\(payload.done) of \(payload.total)")
                     .font(.caption2.weight(.semibold))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
             }
             WeekStrip(days: payload.days, todayIndex: todayIndex)
             Spacer(minLength: 0)
             HStack(spacing: 10) {
                 tallyInline("Gym", payload.gym)
                 tallyInline("Field", payload.field)
-                Text("·").foregroundStyle(.secondary)
+                Text("·")
                 Text(payload.leftText)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             }
@@ -317,8 +317,8 @@ private struct WeekStrip: View {
             ForEach(days, id: \.dayOfWeek) { day in
                 VStack(spacing: 3) {
                     Text(Self.initials.indices.contains(day.dayOfWeek) ? Self.initials[day.dayOfWeek] : "")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(.secondary)
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.primary)
                     ForEach(Array(day.chips.prefix(2).enumerated()), id: \.offset) { _, chip in
                         ChipView(chip: chip)
                     }
@@ -340,20 +340,20 @@ private struct ChipView: View {
 
     var body: some View {
         Text(chip.short)
-            .font(.system(size: 10.5, weight: .medium))
+            .font(.system(size: 11.5, weight: .semibold))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .padding(.horizontal, 4)
             .padding(.vertical, 1.5)
             // Text is never inverted: under Clear the pill and its text would both go
-            // white. A counted chip is a soft fill with normal text, an uncounted one
-            // an outline with dimmer text, so the difference is fill against outline.
-            .foregroundStyle(chip.counted ? Color.primary : Color.secondary)
+            // white. A counted chip is a soft fill, an uncounted one an outline,
+            // both in full-strength text (secondary text washed out under Clear).
+            .foregroundStyle(Color.primary)
             .background {
                 if chip.counted {
                     RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.26))
                 } else {
-                    RoundedRectangle(cornerRadius: 6).strokeBorder(Color.secondary.opacity(0.7), lineWidth: 0.75)
+                    RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary, lineWidth: 1)
                 }
             }
     }
