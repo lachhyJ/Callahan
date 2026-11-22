@@ -61,7 +61,17 @@ public static class IcalEventParser
                 .Select(d => d.Date)
                 .ToHashSet();
 
-            var starts = Occurrences(rule.Value, first, from.AddDays(-1).ToDateTime(TimeOnly.MinValue), to.AddDays(2).ToDateTime(TimeOnly.MinValue));
+            // A rule this reader can't make sense of is one skipped series, never a failed
+            // Plan page.
+            List<DateTime>? starts;
+            try
+            {
+                starts = Occurrences(rule.Value, first, from.AddDays(-1).ToDateTime(TimeOnly.MinValue), to.AddDays(2).ToDateTime(TimeOnly.MinValue));
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                starts = null;
+            }
             if (starts is null) { unsupported++; continue; }
 
             foreach (var start in starts)
@@ -87,11 +97,13 @@ public static class IcalEventParser
         var parts = rule.Split(';', StringSplitOptions.RemoveEmptyEntries)
             .Select(x => x.Split('=', 2))
             .Where(x => x.Length == 2)
-            .ToDictionary(x => x[0].Trim().ToUpperInvariant(), x => x[1].Trim().ToUpperInvariant());
+            .GroupBy(x => x[0].Trim().ToUpperInvariant())
+            .ToDictionary(g => g.Key, g => g.First()[1].Trim().ToUpperInvariant());
 
         var freq = parts.GetValueOrDefault("FREQ");
         if (freq is not ("DAILY" or "WEEKLY")) return null;
-        var interval = parts.TryGetValue("INTERVAL", out var i) && int.TryParse(i, out var n) && n > 0 ? n : 1;
+        var interval = 1;
+        if (parts.TryGetValue("INTERVAL", out var i) && !(int.TryParse(i, out interval) && interval is > 0 and <= 366)) return null;
         int? count = parts.TryGetValue("COUNT", out var c) && int.TryParse(c, out var cn) ? cn : null;
         DateTime? until = parts.TryGetValue("UNTIL", out var u) ? UntilDate(u) : null;
 
@@ -101,7 +113,7 @@ public static class IcalEventParser
             // Only plain weekdays; "1MO" (the first Monday of a month) belongs to monthly rules.
             var parsed = byday.Split(',').Select(WeekDay).ToList();
             if (parsed.Any(d => d is null)) return null;
-            days = parsed.Select(d => d!.Value).ToList();
+            days = parsed.Select(d => d!.Value).Distinct().OrderBy(d => ((int)d + 6) % 7).ToList();
         }
 
         var result = new List<DateTime>();
@@ -112,7 +124,7 @@ public static class IcalEventParser
         for (var step = 0; step < 3000; step++)
         {
             IEnumerable<DateTime> candidates = freq == "WEEKLY"
-                ? days.Select(d => periodStart.AddDays(((int)d + 6) % 7)).OrderBy(d => d)
+                ? days.Select(d => periodStart.AddDays(((int)d + 6) % 7))
                 : [periodStart];
 
             foreach (var date in candidates)
@@ -127,6 +139,7 @@ public static class IcalEventParser
             }
 
             periodStart = periodStart.AddDays(freq == "WEEKLY" ? 7 * interval : interval);
+            if (periodStart >= windowEnd) return result;
         }
         return result;
     }

@@ -113,6 +113,28 @@ public class IcalRecurrenceTests
         Assert.Equal(1, unsupported);
     }
 
+    [Theory]
+    [InlineData("FREQ=WEEKLY;FREQ=WEEKLY")]
+    [InlineData("FREQ=WEEKLY;BYDAY=TH,TH,TH,TH,TH,TH,TH,TH")]
+    public void ARepeatedPartOfARuleIsReadOnce(string rule) => Assert.Single(Expand(Series(rule)));
+
+    [Theory]
+    [InlineData("FREQ=WEEKLY;INTERVAL=2147483647")]
+    [InlineData("FREQ=DAILY;INTERVAL=99999999")]
+    [InlineData("FREQ=WEEKLY;INTERVAL=0")]
+    public void AnAbsurdIntervalIsUnsupportedNotAnError(string rule)
+    {
+        IcalEventParser.ParseInRange(Series(rule), Melbourne, Mon, Mon.AddDays(6), out var unsupported);
+        Assert.Equal(1, unsupported);
+    }
+
+    [Fact]
+    public void ADateNearTheEndOfTimeIsNotAnError()
+    {
+        IcalEventParser.ParseInRange(Series("FREQ=DAILY", start: "99991231T190000"), Melbourne, Mon, Mon.AddDays(6), out var unsupported);
+        Assert.Equal(0, unsupported);
+    }
+
     [Fact]
     public void TheTrainingCalendarsParseStillSkipsSeries()
     {
