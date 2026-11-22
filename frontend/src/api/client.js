@@ -218,10 +218,10 @@ export function getTaperRecommendation() {
 // Creates a real tournament with a taper attached - the same row the games
 // list groups activities under. endDate is optional; omitted, the tournament
 // ends the day it starts.
-export function createTaperEvent({ date, endDate, name, taperDays }) {
+export function createTaperEvent({ date, endDate, name, taperDays, taperProfile }) {
   return apiFetch('/api/taper/events', {
     method: 'POST',
-    body: JSON.stringify({ date, endDate: endDate || null, name: name || null, taperDays }),
+    body: JSON.stringify({ date, endDate: endDate || null, name: name || null, taperDays, taperProfile }),
   })
 }
 
@@ -543,7 +543,9 @@ export function getTournaments() {
   return apiFetch('/api/tournaments')
 }
 
-export function createTournament({ name, startDate, endDate, seasonId, taperDays }) {
+// taperProfile: 'Regionals', 'Nationals' or 'None'. With a profile and no
+// taperDays the server uses that profile's v4 length (5 or 14 days).
+export function createTournament({ name, startDate, endDate, seasonId, taperDays, taperProfile }) {
   return apiFetch('/api/tournaments', {
     method: 'POST',
     body: JSON.stringify({
@@ -554,11 +556,12 @@ export function createTournament({ name, startDate, endDate, seasonId, taperDays
       // null means "not a taper target" - the normal state for a tournament
       // added here rather than from the taper page.
       taperDays: taperDays ?? null,
+      taperProfile: taperProfile ?? 'None',
     }),
   })
 }
 
-export function updateTournament(id, { name, startDate, endDate, seasonId, taperDays }) {
+export function updateTournament(id, { name, startDate, endDate, seasonId, taperDays, taperProfile }) {
   return apiFetch(`/api/tournaments/${id}`, {
     method: 'PUT',
     body: JSON.stringify({
@@ -567,6 +570,7 @@ export function updateTournament(id, { name, startDate, endDate, seasonId, taper
       endDate,
       seasonId: seasonId ?? null,
       taperDays: taperDays ?? null,
+      taperProfile: taperProfile ?? 'None',
     }),
   })
 }

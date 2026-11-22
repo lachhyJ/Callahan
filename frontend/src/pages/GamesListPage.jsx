@@ -21,6 +21,15 @@ import { RECENT_DAYS, rank, sortEntries, partitionBySeason, groupCounts } from '
 import ConfirmSheet from '../components/ConfirmSheet'
 import SyncGarminButton from '../components/SyncGarminButton'
 
+// Program v4's taper table. Smaller tournaments get no taper: just cut the gym
+// session the day before.
+const TAPER_DEFAULT_DAYS = { Regionals: '5', Nationals: '14' }
+const TAPER_HELP = {
+  None: 'No taper: cut the gym session the day before and treat the weekend as hard training. Right for most tournaments, and for past ones you are only recording games for.',
+  Regionals: 'Volume down about 30% with loads and jumps kept. Drives the Taper page and the workout hints.',
+  Nationals: 'The final 2 weeks: accessories cut, main lifts and jumps kept, then a half-volume final week. Drives the Taper page and the workout hints.',
+}
+
 // One-line weekend teaser under a tournament header — null when none of its
 // games have field metrics yet, so the header just shows the game count.
 function tournamentSummaryLine(games) {
@@ -45,7 +54,9 @@ export default function GamesListPage() {
   const [name, setName] = useState('')
   const [startDate, setStartDate] = useState(isoDate(new Date()))
   const [endDate, setEndDate] = useState(isoDate(new Date()))
-  // '' means no taper. Kept as a string so the number input can be emptied.
+  // 'None', 'Regionals' or 'Nationals' (program v4's taper table). Days is kept as
+  // a string so the number input can be emptied; empty means the profile's length.
+  const [taperProfile, setTaperProfile] = useState('None')
   const [taperDays, setTaperDays] = useState('')
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState(null)
@@ -84,6 +95,7 @@ export default function GamesListPage() {
     setName('')
     setStartDate(isoDate(new Date()))
     setEndDate(isoDate(new Date()))
+    setTaperProfile('None')
     setTaperDays('')
     setFormError(null)
     setShowForm(true)
@@ -94,6 +106,7 @@ export default function GamesListPage() {
     setName(t.name)
     setStartDate(t.startDate)
     setEndDate(t.endDate)
+    setTaperProfile(t.taperProfile ?? 'None')
     setTaperDays(t.taperDays == null ? '' : String(t.taperDays))
     setFormError(null)
     setShowForm(true)
@@ -108,7 +121,8 @@ export default function GamesListPage() {
         name,
         startDate,
         endDate,
-        taperDays: taperDays === '' ? null : Number(taperDays),
+        taperProfile,
+        taperDays: taperProfile === 'None' || taperDays === '' ? null : Number(taperDays),
       }
       if (editingId == null) {
         const tournament = await createTournament(fields)
@@ -235,19 +249,34 @@ export default function GamesListPage() {
           <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} required />
         </label>
         <label>
-          Taper length (days)
-          <input
-            type="number"
-            min="1"
-            max="30"
-            value={taperDays}
-            onChange={(e) => setTaperDays(e.target.value)}
-            placeholder="leave blank for no taper"
-          />
+          Taper
+          <select
+            value={taperProfile}
+            onChange={(e) => {
+              setTaperProfile(e.target.value)
+              setTaperDays(TAPER_DEFAULT_DAYS[e.target.value] ?? '')
+            }}
+          >
+            <option value="None">None</option>
+            <option value="Regionals">Regionals</option>
+            <option value="Nationals">Nationals</option>
+          </select>
         </label>
+        {taperProfile !== 'None' && (
+          <label>
+            Taper length (days)
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={taperDays}
+              onChange={(e) => setTaperDays(e.target.value)}
+              placeholder={String(TAPER_DEFAULT_DAYS[taperProfile])}
+            />
+          </label>
+        )}
         <p className="trend-chart-caption">
-          Set a taper length to have this tournament drive the Taper page. Past tournaments
-          you're only recording games for should leave it blank.
+          {TAPER_HELP[taperProfile]}
         </p>
         {formError && <p className="error">{formError}</p>}
         <button type="submit" disabled={saving}>
@@ -312,7 +341,7 @@ export default function GamesListPage() {
         </Link>
         {tournament.taperDays != null && (
           <p className="tournament-section-summary">
-            Tapering {tournament.taperDays} days into this one.
+            {tournament.taperProfile ?? 'Regionals'} taper, {tournament.taperDays} days.
           </p>
         )}
         {gs.map((g) => <GameRow key={g.id} game={g} />)}

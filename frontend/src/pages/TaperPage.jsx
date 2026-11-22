@@ -13,22 +13,27 @@ import { formatDateLong, isoDate } from '../dateUtils'
 
 const PHASE_LABELS = {
   build: 'Build',
-  early_taper: 'Early taper',
-  peak_taper: 'Peak taper',
-  sharpen: 'Sharpen',
+  taper: 'Taper',
+  final_days: 'Final days',
   game_day: 'Game day',
 }
 
-const PHASE_ORDER = ['build', 'early_taper', 'peak_taper', 'sharpen', 'game_day']
+// Each v4 taper profile's phases in order: Regionals is one step, Nationals adds
+// the half-volume final week.
+const PHASE_ORDER = {
+  Regionals: ['build', 'taper', 'game_day'],
+  Nationals: ['build', 'taper', 'final_days', 'game_day'],
+}
 
 // The taper's whole shape — where "today" sits between Build and Game day —
 // otherwise only exists as a text label. One glance here should tell you
 // what a sentence currently takes to say.
-function PhaseStepper({ phase }) {
-  const currentIndex = PHASE_ORDER.indexOf(phase)
+function PhaseStepper({ phase, profile }) {
+  const order = PHASE_ORDER[profile] ?? PHASE_ORDER.Regionals
+  const currentIndex = order.indexOf(phase)
   return (
     <div className="phase-stepper" role="img" aria-label={`Taper phase: ${PHASE_LABELS[phase] ?? phase}`}>
-      {PHASE_ORDER.map((p, i) => (
+      {order.map((p, i) => (
         <span
           key={p}
           className={`phase-step${i < currentIndex ? ' done' : ''}${i === currentIndex ? ' active' : ''}`}
@@ -221,7 +226,7 @@ export default function TaperPage() {
               <p className="streak-value" style={{ fontSize: 'var(--text-lg)' }}>
                 {PHASE_LABELS[recommendation.phase] ?? recommendation.phase}
               </p>
-              <PhaseStepper phase={recommendation.phase} />
+              <PhaseStepper phase={recommendation.phase} profile={upcoming.taperProfile} />
               <p className="page-subtitle">{recommendation.message}</p>
             </div>
 
@@ -315,7 +320,9 @@ function TournamentsTab({ events, onCreated, onDelete }) {
   // the day it starts. The taper always counts down to `date` either way.
   const [endDate, setEndDate] = useState('')
   const [name, setName] = useState('')
-  const [taperDays, setTaperDays] = useState(10)
+  const [taperProfile, setTaperProfile] = useState('Regionals')
+  // Empty means the profile's own length (5 or 14 days).
+  const [taperDays, setTaperDays] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
 
@@ -324,11 +331,12 @@ function TournamentsTab({ events, onCreated, onDelete }) {
     setError(null)
     setSaving(true)
     try {
-      await createTaperEvent({ date, endDate, name, taperDays: Number(taperDays) || 10 })
+      await createTaperEvent({ date, endDate, name, taperProfile, taperDays: Number(taperDays) || 0 })
       setDate('')
       setEndDate('')
       setName('')
-      setTaperDays(10)
+      setTaperProfile('Regionals')
+      setTaperDays('')
       onCreated()
     } catch (err) {
       setError(err.message)
@@ -354,8 +362,22 @@ function TournamentsTab({ events, onCreated, onDelete }) {
           <input type="text" placeholder="e.g. Regionals" value={name} onChange={(e) => setName(e.target.value)} />
         </label>
         <label>
+          Taper
+          <select value={taperProfile} onChange={(e) => { setTaperProfile(e.target.value); setTaperDays('') }}>
+            <option value="Regionals">Regionals (5 days, volume down ~30%)</option>
+            <option value="Nationals">Nationals (final 2 weeks)</option>
+          </select>
+        </label>
+        <label>
           Taper length (days)
-          <input type="number" min="1" max="21" value={taperDays} onChange={(e) => setTaperDays(e.target.value)} />
+          <input
+            type="number"
+            min="1"
+            max="21"
+            value={taperDays}
+            placeholder={taperProfile === 'Nationals' ? '14' : '5'}
+            onChange={(e) => setTaperDays(e.target.value)}
+          />
         </label>
         {error && <p className="error">{error}</p>}
         <button type="submit" disabled={saving || !date}>{saving ? 'Saving…' : 'Add tournament'}</button>
@@ -374,7 +396,7 @@ function TournamentsTab({ events, onCreated, onDelete }) {
                 <div>
                   <span className="streak-label">{ev.name || 'Tournament'}</span>
                   <div className="page-subtitle">
-                    {formatDateLong(ev.date)} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperDays}-day taper
+                    {formatDateLong(ev.date)} · {ev.daysUntil >= 0 ? `${ev.daysUntil} days away` : 'past'} · {ev.taperProfile ?? 'Regionals'} taper, {ev.taperDays} days
                   </div>
                 </div>
                 <button type="button" className="secondary-btn" onClick={() => onDelete(ev.id, ev.name || 'this tournament')}>End taper</button>

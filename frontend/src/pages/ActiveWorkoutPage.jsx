@@ -163,6 +163,7 @@ function exerciseFromStart(ex) {
     targetDurationSeconds: ex.targetDurationSeconds ?? null,
     workoutTemplateExerciseId: ex.workoutTemplateExerciseId ?? null,
     targetSets: ex.targetSets,
+    keepInTaper: ex.keepInTaper ?? false,
     cue: ex.cue ?? '',
     // Runs straight into the next card as a superset — set from Rearrange mode.
     // Ad-hoc / finisher additions have no template slot and never carry it.
@@ -230,16 +231,33 @@ function layoutEquals(a, b) {
     && x.supersetWithNext === b[i].supersetWithNext)
 }
 
-// Suggested set count during a taper phase, scaled off the exercise's real
-// program target (not the current row count, which the athlete may already
-// have edited) — informational only, doesn't change what's rendered.
-// Skipped for game day (rest/activation, not a scaled-down lifting day) and
-// for exercises with no program target (custom/finisher additions).
+// Suggested sets during a taper, scaled off the exercise's real program target
+// (not the current row count, which the athlete may already have edited) —
+// informational only, doesn't change what's rendered. A slot flagged keepInTaper
+// (main lifts and jumps) uses the taper's keepPct, everything else its
+// accessoryPct, where 0 means skip it today (a Nationals taper cuts accessories).
+// An exercise restored from a session saved before the flag existed has no
+// keepInTaper at all; it falls back to the week's overall target rather than
+// telling a main lift to skip. Returns 0 for skip, null for no hint. Skipped for
+// game day (rest/activation, not a scaled-down lifting day) and for exercises
+// with no program target (custom/finisher additions).
 function taperSetSuggestion(ex, taper) {
   if (!ex.workoutTemplateExerciseId || !ex.targetSets) return null
   if (!taper || taper.gymTargetPct === null || taper.gymTargetPct === undefined) return null
   if (taper.phase === 'game_day') return null
-  return Math.max(1, Math.round(ex.targetSets * taper.gymTargetPct))
+  const pct = ex.keepInTaper === undefined
+    ? taper.gymTargetPct
+    : ex.keepInTaper ? taper.keepPct ?? taper.gymTargetPct : taper.accessoryPct ?? taper.gymTargetPct
+  if (pct === 0) return 0
+  return Math.max(1, Math.round(ex.targetSets * pct))
+}
+
+function taperSetHint(ex, taper) {
+  const sets = taperSetSuggestion(ex, taper)
+  if (sets === null) return null
+  if (sets === 0) return 'Taper: skip this one today'
+  if (sets >= ex.targetSets) return `Taper: keep all ${ex.targetSets} sets, same load`
+  return `Taper: try ~${sets} sets today`
 }
 
 // Weight still sitting on the bar/machine right now, for the plate
@@ -1777,8 +1795,8 @@ export default function ActiveWorkoutPage() {
             </span>
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
-          {taperSetSuggestion(ex, taper) !== null && (
-            <p className="taper-nudge taper-nudge-exercise">Taper: try ~{taperSetSuggestion(ex, taper)} sets today</p>
+          {taperSetHint(ex, taper) !== null && (
+            <p className="taper-nudge taper-nudge-exercise">{taperSetHint(ex, taper)}</p>
           )}
           {focusedRestExIdx === exIdx && (
             <div className="rest-presets">
