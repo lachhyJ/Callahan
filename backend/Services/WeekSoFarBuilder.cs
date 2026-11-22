@@ -35,12 +35,16 @@ public static partial class WeekSoFarBuilder
     public record ActivityLog(
         DateOnly Date, ActivityType Type, int? SessionTypeId, string? SessionTypeName, SessionTypeFamily? Family);
 
+    // `planned` maps a slot's index in `slots` to the day the Training calendar has it
+    // on this week; slots it doesn't name are unplanned. A session that is done shows
+    // where it was logged, so only the ones still to do are drawn on their planned day.
     public static WidgetWeekDto Build(
         DateOnly weekStart,
         DateOnly trainingDay,
         IReadOnlyList<SlotInput> slots,
         IReadOnlyList<GymLog> gymLogs,
-        IReadOnlyList<ActivityLog> activityLogs)
+        IReadOnlyList<ActivityLog> activityLogs,
+        IReadOnlyDictionary<int, DateOnly>? planned = null)
     {
         // Only this Monday-Sunday counts, whatever the caller passed in.
         bool InWeek(DateOnly d) => d >= weekStart && d <= weekStart.AddDays(6);
@@ -75,13 +79,25 @@ public static partial class WeekSoFarBuilder
             Place(activityLogs[j].Date, new WidgetChipDto(ActivityChip(activityLogs[j]), activityUsed[j]));
         }
 
-        // What is left, in the program's own order (slots interleave Gym and Field).
+        // What is left, in the program's own order (slots interleave Gym and Field), and
+        // each of those on its planned day, after what was logged there.
         var left = new List<string>();
         int gi = 0, fi = 0;
-        foreach (var slot in slots)
+        for (var s = 0; s < slots.Count; s++)
         {
-            if (slot.Kind == PlanSlotKind.Gym) { if (!gymFilled[gi++]) left.Add(ShortLabel(slot.Label)); }
-            else if (slot.Kind == PlanSlotKind.Field) { if (!fieldFilled[fi++]) left.Add(ShortLabel(slot.Label)); }
+            var slot = slots[s];
+            var done = slot.Kind switch
+            {
+                PlanSlotKind.Gym => gymFilled[gi++],
+                PlanSlotKind.Field => fieldFilled[fi++],
+                _ => true
+            };
+            if (done) continue;
+            left.Add(ShortLabel(slot.Label));
+            if (planned is not null && planned.TryGetValue(s, out var day))
+            {
+                Place(day, new WidgetChipDto(SlotChip(slot), false, day < trainingDay ? "Overdue" : "Planned"));
+            }
         }
 
         return new WidgetWeekDto(
@@ -193,6 +209,18 @@ public static partial class WeekSoFarBuilder
 
     // "Field 2 - Repeat Effort & COD" -> "Field 2"; "Gym 2" stays.
     public static string ShortLabel(string label) => label.Split(" - ")[0];
+
+    // A program session's chip, worded like the chip it becomes once logged: "Gym A" ->
+    // "GA", "Field 1" -> "F1", "Pod" -> "Pod".
+    private static string SlotChip(SlotInput slot)
+    {
+        var label = ShortLabel(slot.Label);
+        if (slot.Kind == PlanSlotKind.Gym) return GymChip(label);
+        var f = FieldNumber().Match(label);
+        if (f.Success) return $"F{f.Groups[1].Value}";
+        var word = label.Split(' ')[0];
+        return word.Length <= 5 ? word : word[..5];
+    }
 
     // "Gym 1" -> "G1", "Gym A" -> "GA". A custom workout (no template, or one that is not
     // Gym n / Gym A) is "Gym".

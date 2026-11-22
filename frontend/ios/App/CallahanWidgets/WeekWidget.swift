@@ -25,6 +25,13 @@ struct WeekPayload: Codable, Equatable {
         let short: String
         /// Whether it filled one of the program's sessions for the week.
         let counted: Bool
+        /// Nil for something logged. "Planned" for a program session not done yet, on
+        /// the day the Training calendar has it; "Overdue" once that day has passed.
+        /// Optional so a payload from before the plan existed still decodes.
+        var plan: String? = nil
+
+        var isPlanned: Bool { plan != nil }
+        var isOverdue: Bool { plan == "Overdue" }
     }
 
     struct Day: Codable, Equatable {
@@ -168,10 +175,10 @@ extension WeekPayload {
         left: ["Gym 2", "Field 2", "Gym 3"],
         days: [
             .init(dayOfWeek: 0, chips: [.init(short: "G1", counted: true)]),
-            .init(dayOfWeek: 1, chips: [.init(short: "F1", counted: true)]),
+            .init(dayOfWeek: 1, chips: [.init(short: "F1", counted: true), .init(short: "G2", counted: false, plan: "Overdue")]),
             .init(dayOfWeek: 2, chips: []),
-            .init(dayOfWeek: 3, chips: []),
-            .init(dayOfWeek: 4, chips: []),
+            .init(dayOfWeek: 3, chips: [.init(short: "F2", counted: false, plan: "Planned")]),
+            .init(dayOfWeek: 4, chips: [.init(short: "G3", counted: false, plan: "Planned")]),
             .init(dayOfWeek: 5, chips: []),
             .init(dayOfWeek: 6, chips: []),
         ])
@@ -303,9 +310,11 @@ private struct Dots: View {
     }
 }
 
-/// Seven days, Monday first, each with what was logged on it. A chip that filled one
-/// of the program's sessions has a soft fill; one that only shows (a third field session, a
-/// run, a custom workout) is an outline. Today gets a faint highlight.
+/// Seven days, Monday first, each with what was logged on it and then what is planned
+/// for it. A chip that filled one of the program's sessions has a soft fill; one that only
+/// shows (a third field session, a run, a custom workout) is a solid outline; a session
+/// still to do is a dashed outline on its planned day, struck through once that day has
+/// passed. Today gets a faint highlight.
 private struct WeekStrip: View {
     let days: [WeekPayload.Day]
     let todayIndex: Int?
@@ -340,6 +349,7 @@ private struct ChipView: View {
 
     var body: some View {
         Text(chip.short)
+            .strikethrough(chip.isOverdue)
             .font(.system(size: 11.5, weight: .semibold))
             .lineLimit(1)
             .minimumScaleFactor(0.7)
@@ -350,7 +360,12 @@ private struct ChipView: View {
             // both in full-strength text (secondary text washed out under Clear).
             .foregroundStyle(Color.primary)
             .background {
-                if chip.counted {
+                if chip.isPlanned {
+                    // Dashed rather than faint: Clear and Tinted flatten opacity to one
+                    // accent, so "not done yet" has to be a shape.
+                    RoundedRectangle(cornerRadius: 6)
+                        .strokeBorder(Color.primary, style: StrokeStyle(lineWidth: 1, dash: [2.5, 2]))
+                } else if chip.counted {
                     RoundedRectangle(cornerRadius: 6).fill(Color.primary.opacity(0.26))
                 } else {
                     RoundedRectangle(cornerRadius: 6).strokeBorder(Color.primary, lineWidth: 1)

@@ -20,9 +20,12 @@ public record WidgetQuoteDto(int Id, string Text, bool Pinned);
 // "today" from the device clock.
 public record WidgetTallyDto(int Done, int Total);
 
-// One thing logged on a day. `Short` is the chip text (G1, F2, Pod, Run); `Counted`
-// is whether it filled one of the program's sessions for the week.
-public record WidgetChipDto(string Short, bool Counted);
+// One thing on a day. `Short` is the chip text (G1, F2, Pod, Run). A logged chip has
+// `Plan` null and `Counted` saying whether it filled one of the program's sessions. A
+// program session not yet done this week, on the day the Training calendar has it,
+// has `Plan` "Planned", or "Overdue" once that day has passed. Older widget builds
+// ignore `Plan` and draw such a chip as an uncounted outline.
+public record WidgetChipDto(string Short, bool Counted, string? Plan = null);
 
 public record WidgetWeekDayDto(int DayOfWeek, List<WidgetChipDto> Chips);
 

@@ -3,6 +3,7 @@ using System.Text;
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Services;
+using Callahan.Api.Services.Calendar;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
@@ -34,12 +35,14 @@ public class WidgetController : ControllerBase
     private readonly AppDbContext _db;
     private readonly IConfiguration _config;
     private readonly TimeProvider _time;
+    private readonly ICalendarClient? _calendar;
 
-    public WidgetController(AppDbContext db, IConfiguration config, TimeProvider? time = null)
+    public WidgetController(AppDbContext db, IConfiguration config, TimeProvider? time = null, ICalendarClient? calendar = null)
     {
         _db = db;
         _config = config;
         _time = time ?? TimeProvider.System;
+        _calendar = calendar;
     }
 
     // Newest day that has a status, not "latest readable" like /wellness/latest:
@@ -66,12 +69,12 @@ public class WidgetController : ControllerBase
     // user-switchable zone), sent back so the widget never works it out from the
     // device clock; the week is the Monday-Sunday around it.
     [HttpGet("week")]
-    public async Task<ActionResult<WidgetWeekDto>> GetWeek()
+    public async Task<ActionResult<WidgetWeekDto>> GetWeek(CancellationToken ct = default)
     {
         if (!KeyMatches()) return NotFound();
 
         var today = CalendarDates.TrainingDay(_time.LocalNow());
-        return Ok(await WeekSoFarLoader.LoadAsync(_db, today));
+        return Ok(await WeekSoFarLoader.LoadAsync(_db, today, _calendar, ct));
     }
 
     // The whole live quote list for the lock-screen widget. An empty list is a normal

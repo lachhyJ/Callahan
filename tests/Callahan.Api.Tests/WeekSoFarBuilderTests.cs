@@ -40,6 +40,48 @@ public class WeekSoFarBuilderTests
 
     private static string[] Chips(WidgetWeekDto w, int day) => w.Days[day].Chips.Select(c => c.Short).ToArray();
 
+    // Wednesday, with Field 1 (slot 0) planned Monday, Gym 1 (slot 1) planned
+    // Wednesday and Gym 2 (slot 2) planned Friday; Field 2 and Gym 3 aren't planned.
+    private static WidgetWeekDto Planned(IReadOnlyList<GymLog>? gym = null, IReadOnlyList<ActivityLog>? activities = null) =>
+        WeekSoFarBuilder.Build(Monday, Day(2), Program, gym ?? [], activities ?? [],
+            new Dictionary<int, DateOnly> { [0] = Day(0), [1] = Day(2), [2] = Day(4) });
+
+    private static (string, bool, string?)[] Full(WidgetWeekDto w, int day) =>
+        w.Days[day].Chips.Select(c => (c.Short, c.Counted, c.Plan)).ToArray();
+
+    [Fact]
+    public void ASessionStillToDoShowsOnItsPlannedDayAndIsOverdueOnceThatDayHasPassed()
+    {
+        var w = Planned();
+        Assert.Equal([("F1", false, "Overdue")], Full(w, 0));
+        Assert.Equal([("G1", false, "Planned")], Full(w, 2)); // today is not overdue
+        Assert.Equal([("G2", false, "Planned")], Full(w, 4));
+        Assert.Equal(3, w.Days.Sum(d => d.Chips.Count)); // Field 2 and Gym 3 aren't planned, so on no day
+    }
+
+    [Fact]
+    public void ADoneSessionShowsWhereItWasLoggedNotWhereItWasPlanned()
+    {
+        // Field 1 planned Monday, done Tuesday; Gym 1 planned today, done Monday.
+        var w = Planned(gym: [Gym(0, 4, "Gym 1")], activities: [Field(1, Field1, "Field 1 - Acceleration & Jumps")]);
+        Assert.Equal([("G1", true, null)], Full(w, 0));
+        Assert.Equal([("F1", true, null)], Full(w, 1));
+        Assert.Empty(Full(w, 2));
+    }
+
+    [Fact]
+    public void APlannedChipComesAfterWhatWasLoggedThatDay()
+    {
+        var w = Planned(gym: [Gym(2, null, null)]);
+        Assert.Equal([("Gym", false, null), ("G1", false, "Planned")], Full(w, 2));
+    }
+
+    [Fact]
+    public void WithoutACalendarNothingIsPlanned()
+    {
+        Assert.All(Build().Days, d => Assert.All(d.Chips, c => Assert.Null(c.Plan)));
+    }
+
     [Fact]
     public void AnEmptyWeekIsEverythingStillToDoInProgramOrder()
     {

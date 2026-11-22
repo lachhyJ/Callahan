@@ -3,6 +3,7 @@ using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
 using Callahan.Api.Services;
+using Callahan.Api.Services.Calendar;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.Sqlite;
@@ -25,11 +26,22 @@ public class WidgetWeekControllerTests
         .AddInMemoryCollection(key is null ? [] : new Dictionary<string, string?> { ["Widget:Key"] = key })
         .Build();
 
-    private static WidgetController Widget(AppDbContext db, DateTime now, string? configured, string? supplied)
+    private sealed class FakeCalendar(IReadOnlyList<CalendarEvent> events, bool down = false) : ICalendarClient
+    {
+        public bool IsConfigured => true;
+        public Task<IReadOnlyList<CalendarEvent>> GetEventsAsync(DateOnly from, DateOnly to, CancellationToken ct) =>
+            down ? throw new CalendarUnavailableException("down") : Task.FromResult(events);
+        public Task CreateEventAsync(string title, DateOnly day, TimeOfDay part, CancellationToken ct) => throw new NotSupportedException();
+        public Task MoveEventAsync(CalendarEvent existing, DateOnly day, TimeOfDay part, CancellationToken ct) => throw new NotSupportedException();
+        public Task DeleteEventAsync(CalendarEvent existing, CancellationToken ct) => throw new NotSupportedException();
+    }
+
+    private static WidgetController Widget(
+        AppDbContext db, DateTime now, string? configured, string? supplied, ICalendarClient? calendar = null)
     {
         var http = new DefaultHttpContext();
         if (supplied is not null) http.Request.Headers[WidgetController.KeyHeader] = supplied;
-        return new WidgetController(db, Config(configured), FixedTimeProvider.Melbourne(now))
+        return new WidgetController(db, Config(configured), FixedTimeProvider.Melbourne(now), calendar)
         {
             ControllerContext = new ControllerContext { HttpContext = http },
         };
@@ -194,5 +206,37 @@ public class WidgetWeekControllerTests
         Assert.Equal(new DateOnly(2026, 10, 5), w.WeekStart);
         Assert.Equal(0, w.Gym.Done);
         Assert.All(w.Days, d => Assert.Empty(d.Chips));
+    }
+
+    [Fact]
+    public async Task TheTrainingCalendarPutsWhatIsLeftOnItsPlannedDay()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        SeedProgram(db);
+        // Wednesday morning: Field 1 was planned Monday and not done; Gym 1 is Friday.
+        var calendar = new FakeCalendar([
+            new CalendarEvent("f", "t0 backup/field 1/throws", Monday, TimeOfDay.Morning),
+            new CalendarEvent("g", "Gym 1", Monday.AddDays(4), TimeOfDay.Arvo)]);
+
+        var result = await Widget(db, WednesdayMorning, Key, Key, calendar).GetWeek();
+        var week = Assert.IsType<WidgetWeekDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+
+        Assert.Equal(("F1", "Overdue"), week.Days[0].Chips.Select(c => (c.Short, c.Plan)).Single());
+        Assert.Equal(("G1", "Planned"), week.Days[4].Chips.Select(c => (c.Short, c.Plan)).Single());
+    }
+
+    [Fact]
+    public async Task ACalendarThatCantBeReadLeavesTheWeekAsItWas()
+    {
+        using var conn = new SqliteConnection("DataSource=:memory:");
+        using var db = TestData.OpenDb(conn);
+        SeedProgram(db);
+
+        var result = await Widget(db, WednesdayMorning, Key, Key, new FakeCalendar([], down: true)).GetWeek();
+        var week = Assert.IsType<WidgetWeekDto>(Assert.IsType<OkObjectResult>(result.Result).Value);
+
+        Assert.All(week.Days, d => Assert.Empty(d.Chips));
+        Assert.Equal(["Field 1", "Gym 1"], week.Left);
     }
 }

@@ -1,6 +1,7 @@
 using Callahan.Api.Data;
 using Callahan.Api.DTOs;
 using Callahan.Api.Models;
+using Callahan.Api.Services.Calendar;
 using Microsoft.EntityFrameworkCore;
 
 namespace Callahan.Api.Services;
@@ -9,22 +10,44 @@ namespace Callahan.Api.Services;
 // are already excluded by the DbContext's query filters.
 public static class WeekSoFarLoader
 {
-    public static async Task<WidgetWeekDto> LoadAsync(AppDbContext db, DateOnly trainingDay)
+    // With a calendar, the sessions still to do are also placed on the day the Training
+    // calendar has them. A calendar that can't be read just leaves them off: the widget
+    // is then what it was before the calendar existed.
+    public static async Task<WidgetWeekDto> LoadAsync(
+        AppDbContext db, DateOnly trainingDay, ICalendarClient? calendar = null, CancellationToken ct = default)
     {
         var weekStart = CalendarDates.MondayOf(trainingDay);
         var weekEnd = weekStart.AddDays(WeekPlanBuilder.DaysInWeek - 1);
 
         // Non-optional Gym and Field slots of the current block only, in program order.
         var mode = await TrainingModeStore.GetAsync(db);
-        var slots = await db.PlanSlots
+        var rows = await db.PlanSlots
             .Where(s => (s.Block == TemplateBlock.Any || s.Block == mode) && !s.IsOptional && (s.Kind == PlanSlotKind.Gym || s.Kind == PlanSlotKind.Field))
             .OrderBy(s => s.DefaultDayOfWeek).ThenBy(s => s.SlotOrder)
-            .Select(s => new WeekSoFarBuilder.SlotInput(s.Kind, s.Label, s.WorkoutTemplateId, s.ActivitySessionTypeId))
+            .Select(s => new { s.Id, Slot = new WeekSoFarBuilder.SlotInput(s.Kind, s.Label, s.WorkoutTemplateId, s.ActivitySessionTypeId) })
             .ToListAsync();
+        var slots = rows.Select(r => r.Slot).ToList();
 
         var (gym, activities) = await LoadLogsAsync(db, weekStart, weekEnd);
 
-        return WeekSoFarBuilder.Build(weekStart, trainingDay, slots, gym, activities);
+        Dictionary<int, DateOnly>? planned = null;
+        if (calendar is { IsConfigured: true })
+        {
+            try
+            {
+                var matched = (await PlanWeekLoader.MatchAsync(db, calendar, weekStart, ct)).Matched;
+                planned = rows
+                    .Select((r, i) => (i, r.Id))
+                    .Where(x => matched.BySlot.ContainsKey(x.Id))
+                    .ToDictionary(x => x.i, x => matched.BySlot[x.Id].Day);
+            }
+            catch (CalendarUnavailableException)
+            {
+                planned = null;
+            }
+        }
+
+        return WeekSoFarBuilder.Build(weekStart, trainingDay, slots, gym, activities, planned);
     }
 
     // The due-badge inputs: the current block's non-optional Gym slots with their planned
