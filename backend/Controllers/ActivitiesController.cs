@@ -698,7 +698,7 @@ public class ActivitiesController : ControllerBase
     }
 
     // A malformed or partial blob must degrade to NoTrack, never 500 the sync.
-    private static List<TrackSample>? TryDecodeTrack(string json)
+    internal static List<TrackSample>? TryDecodeTrack(string json)
     {
         try
         {

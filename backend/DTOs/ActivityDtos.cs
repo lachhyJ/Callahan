@@ -202,3 +202,25 @@ public record DeletedActivityDto(
     int? ActivitySessionTypeId,
     string? ActivitySessionTypeName,
     DateTime DeletedAt);
+
+// One Club Training recording with the figures the club-session list and page
+// show side by side. Distance is Garmin's whole-recording figure. The
+// track-derived pair is null when no track has synced; max HR and zones are
+// null when Garmin's summary didn't carry them.
+public record ClubSessionDto(
+    int Id,
+    DateOnly Date,
+    DateTime? StartTimeLocal,
+    int DurationSeconds,
+    string? Title,
+    decimal? DistanceKm,
+    int? Calories,
+    int? AvgHeartRate,
+    int? MaxHeartRate,
+    decimal? TrainingLoad,
+    decimal? AerobicTrainingEffect,
+    decimal? AnaerobicTrainingEffect,
+    string? TrainingEffectLabel,
+    IReadOnlyList<int>? ZoneSeconds,
+    decimal? HighSpeedDistanceM,
+    int? SprintCount);
