@@ -49,7 +49,7 @@ public static partial class CalendarMatcher
             if (taken.Contains(ev.Uid)) continue;
             var title = Normalise(ev.Title);
             var slot = slots.FirstOrDefault(s =>
-                !bySlot.ContainsKey(s.SlotId) && MatchKeys(s.Kind, s.Label).Any(k => StartsWithWord(title, k)));
+                !bySlot.ContainsKey(s.SlotId) && MatchKeys(s.Kind, s.Label).Any(k => Names(title, k, s.Kind)));
             if (slot is null) continue;
             bySlot[slot.SlotId] = ev;
             taken.Add(ev.Uid);
@@ -60,10 +60,23 @@ public static partial class CalendarMatcher
 
     private static string Normalise(string s) => Whitespace().Replace(s.Trim().ToLowerInvariant(), " ");
 
-    // "gym 1" matches "gym 1" and "gym 1 - upper" but not "gym 10".
-    private static bool StartsWithWord(string title, string key) =>
-        title.StartsWith(key, StringComparison.Ordinal)
-        && (title.Length == key.Length || !char.IsLetterOrDigit(title[key.Length]));
+    // A Gym or Field name may sit anywhere in the title, as a whole phrase: a test day
+    // that is also a session reads "T0 backup/Field 1/throws". "gym 1" still never
+    // matches "gym 10" or "xgym 1". The aerobic words must start the title, since "run"
+    // turns up inside other events ("T0 - 2km run test") that aren't the aerobic session.
+    private static bool Names(string title, string key, PlanSlotKind kind)
+    {
+        for (var at = title.IndexOf(key, StringComparison.Ordinal); at >= 0; at = title.IndexOf(key, at + 1, StringComparison.Ordinal))
+        {
+            if (kind == PlanSlotKind.Aerobic && at > 0) return false;
+            var end = at + key.Length;
+            if ((at == 0 || !char.IsLetterOrDigit(title[at - 1])) && (end == title.Length || !char.IsLetterOrDigit(title[end])))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
 
     [GeneratedRegex(@"\s+")]
     private static partial Regex Whitespace();

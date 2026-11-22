@@ -172,6 +172,29 @@ public class CalendarMatcherTests
     }
 
     [Theory]
+    [InlineData("t0 backup/field 1/throws")]
+    [InlineData("T0 backup - Field 1")]
+    [InlineData("(Field 1)")]
+    public void AGymOrFieldNameCountsAnywhereInTheTitle(string title)
+    {
+        Assert.Equal("a", CalendarMatcher.Match([Field1], [Ev("a", title)]).BySlot[3].Uid);
+    }
+
+    [Theory]
+    [InlineData("t0 backup/field 10/throws")]
+    [InlineData("midfield 1")]
+    public void AnywhereIsStillAWholePhrase(string title)
+    {
+        Assert.Empty(CalendarMatcher.Match([Field1], [Ev("a", title)]).BySlot);
+    }
+
+    [Fact]
+    public void TheAerobicWordsMustStartTheTitle()
+    {
+        Assert.Empty(CalendarMatcher.Match([Aerobic], [Ev("a", "T0 - 2km run test")]).BySlot);
+    }
+
+    [Theory]
     [InlineData("Aerobic run")]
     [InlineData("run")]
     [InlineData("Run - easy")]
