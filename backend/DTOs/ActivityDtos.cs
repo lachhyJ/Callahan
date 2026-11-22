@@ -161,11 +161,13 @@ public record UpdateConeDistanceRequest(int? ConeDistanceM);
 
 public record UpdateActivityTournamentRequest(int? TournamentId);
 
-public record TournamentDto(int Id, string Name, DateOnly StartDate, DateOnly EndDate, int GameCount, int? SeasonId, int? TaperDays);
+public record TournamentDto(int Id, string Name, DateOnly StartDate, DateOnly EndDate, int GameCount, int? SeasonId, int? TaperDays, string? TaperProfile = null);
 
-public record CreateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays);
+// TaperProfile: "Regionals", "Nationals" or "None". Left out (an older client), a
+// TaperDays above 0 keeps the tournament's existing profile, or Regionals.
+public record CreateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays, string? TaperProfile = null);
 
-public record UpdateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays);
+public record UpdateTournamentRequest(string Name, DateOnly StartDate, DateOnly EndDate, int? SeasonId, int? TaperDays, string? TaperProfile = null);
 
 // Response from the date-range attach sweep - how many previously-unlinked
 // Ultimate activities in [StartDate, EndDate] got linked to this tournament.

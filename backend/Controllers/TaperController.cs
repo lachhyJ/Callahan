@@ -32,7 +32,7 @@ public class TaperController : ControllerBase
     private static TaperEventDto ToDto(Tournament t, DateOnly today) =>
         new(t.Id, t.StartDate, t.Name, t.TaperDays ?? 0,
             (t.StartDate.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days,
-            t.PlannedReductionPercent);
+            t.PlannedReductionPercent, t.TaperProfile?.ToString());
 
     // Tournaments without a taper are invisible to every endpoint here - a
     // backfilled past tournament is a real row but not a taper target, and
@@ -57,7 +57,7 @@ public class TaperController : ControllerBase
     [HttpPost("events")]
     public async Task<ActionResult<TaperEventDto>> CreateEvent(CreateTaperEventRequest request)
     {
-        var taperDays = request.TaperDays <= 0 ? 10 : request.TaperDays;
+        var profile = TaperPhaseCalculator.Parse(request.TaperProfile) ?? TaperProfile.Regionals;
         var endDate = request.EndDate ?? request.Date;
         if (endDate < request.Date)
         {
@@ -73,9 +73,8 @@ public class TaperController : ControllerBase
             Name = string.IsNullOrWhiteSpace(request.Name) ? "Tournament" : request.Name,
             StartDate = request.Date,
             EndDate = endDate,
-            TaperDays = taperDays,
-            PlannedReductionPercent = TaperPhaseCalculator.PlannedReduction(taperDays, request.Name),
         };
+        TaperPhaseCalculator.Apply(taperEvent, profile, request.TaperDays);
         _db.Tournaments.Add(taperEvent);
         await _db.SaveChangesAsync();
 
@@ -92,8 +91,7 @@ public class TaperController : ControllerBase
         // Clearing the taper, not deleting the tournament - the row may already
         // group games, and those outlive any taper planned into it. Deleting
         // the tournament outright is the games list's job.
-        taperEvent.TaperDays = null;
-        taperEvent.PlannedReductionPercent = null;
+        TaperPhaseCalculator.Apply(taperEvent, null, null);
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -117,7 +115,7 @@ public class TaperController : ControllerBase
 
         var daysUntil = (upcoming.StartDate.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days;
         var taperDays = upcoming.TaperDays!.Value;
-        var phase = TaperPhaseCalculator.Compute(daysUntil, taperDays, upcoming.Name);
+        var phase = TaperPhaseCalculator.Compute(daysUntil, taperDays, upcoming.TaperProfile ?? TaperProfile.Regionals, upcoming.Name);
         var eventDto = ToDto(upcoming, today);
 
         if (phase.Phase == "build")
@@ -152,7 +150,7 @@ public class TaperController : ControllerBase
             eventDto, phase.Phase, phase.Message,
             phase.TargetPct, gymBaselineVolume, gymThisWeekVolume,
             phase.TargetPct, runBaselineDistance, runThisWeekDistance,
-            tapersCompleted));
+            tapersCompleted, phase.KeepPct, phase.AccessoryPct));
     }
 
     [HttpGet("events/{eventId}/checkins")]

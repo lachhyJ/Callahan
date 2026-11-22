@@ -27,6 +27,10 @@ public class Tournament
     // "days until" drifts. Null whenever TaperDays is null.
     public decimal? PlannedReductionPercent { get; set; }
 
+    // Which v4 taper this is (see TaperProfile). Set and cleared together with
+    // TaperDays: a taper always has a profile, and no taper never has one.
+    public TaperProfile? TaperProfile { get; set; }
+
     // Optional: which season this tournament belongs to. Set manually or by the
     // date-range attach sweep on SeasonsController.
     public int? SeasonId { get; set; }

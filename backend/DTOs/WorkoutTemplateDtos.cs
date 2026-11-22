@@ -27,7 +27,8 @@ public record WorkoutTemplateExerciseStartDto(
     int? SupersetRestSeconds,
     List<PreviousSetDto> PreviousSets,
     bool ReadyToProgress,
-    string? ShortName = null);
+    string? ShortName = null,
+    bool KeepInTaper = false);
 
 public record WorkoutTemplateStartDto(
     int TemplateId,

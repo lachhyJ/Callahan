@@ -68,6 +68,48 @@ public class TournamentTaperMergeTests
         Assert.Null(cleared.PlannedReductionPercent);
     }
 
+    // A profile with no length gets v4's: 5 days for Regionals, 14 for Nationals.
+    // Clearing it with "None" drops days, profile and planned figure together.
+    [Fact]
+    public async Task ProfileSetsDefaultLengthAndNoneClearsIt()
+    {
+        using var conn = new SqliteConnection("Filename=:memory:");
+        using var db = NewDb(conn);
+        var controller = new TournamentsController(db);
+
+        var created = Unwrap(await controller.Create(new CreateTournamentRequest(
+            "AUC", new DateOnly(2027, 4, 15), new DateOnly(2027, 4, 18), null, null, "Nationals")));
+        Assert.Equal(14, created.TaperDays);
+        Assert.Equal("Nationals", created.TaperProfile);
+        Assert.Equal(0.5m, (await db.Tournaments.SingleAsync()).PlannedReductionPercent);
+
+        await controller.Update(created.Id, new UpdateTournamentRequest(
+            "AUC", new DateOnly(2027, 4, 15), new DateOnly(2027, 4, 18), null, 14, "None"));
+        var cleared = await db.Tournaments.SingleAsync();
+        Assert.Null(cleared.TaperDays);
+        Assert.Null(cleared.TaperProfile);
+        Assert.Null(cleared.PlannedReductionPercent);
+    }
+
+    // A phone still on the bundle from before taper profiles sends TaperDays and
+    // no profile. Saving a rename from it must keep a Nationals taper as it is.
+    [Fact]
+    public async Task OldClientEditKeepsTheExistingProfile()
+    {
+        using var conn = new SqliteConnection("Filename=:memory:");
+        using var db = NewDb(conn);
+        var controller = new TournamentsController(db);
+
+        var created = Unwrap(await controller.Create(new CreateTournamentRequest(
+            "AUC", new DateOnly(2027, 4, 15), new DateOnly(2027, 4, 18), null, 14, "Nationals")));
+        await controller.Update(created.Id, new UpdateTournamentRequest(
+            "AUC DI", new DateOnly(2027, 4, 15), new DateOnly(2027, 4, 18), null, 14));
+
+        var saved = await db.Tournaments.SingleAsync();
+        Assert.Equal(TaperProfile.Nationals, saved.TaperProfile);
+        Assert.Equal(14, saved.TaperDays);
+    }
+
     // Editing a tournament's dates used to leave game membership untouched, so
     // widening the window to cover a day you'd forgotten silently picked up
     // nothing. Games outside the new window stay attached deliberately - a

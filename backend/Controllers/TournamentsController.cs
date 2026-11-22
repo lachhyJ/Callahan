@@ -21,21 +21,18 @@ public class TournamentsController : ControllerBase
     }
 
     private static TournamentDto ToDto(Tournament t, int gameCount) =>
-        new(t.Id, t.Name, t.StartDate, t.EndDate, gameCount, t.SeasonId, t.TaperDays);
+        new(t.Id, t.Name, t.StartDate, t.EndDate, gameCount, t.SeasonId, t.TaperDays, t.TaperProfile?.ToString());
 
-    // Applies a requested taper length, keeping PlannedReductionPercent in step:
-    // set together, cleared together. Re-stamps the planned figure only when the
-    // length actually changes, so editing a tournament's name or dates doesn't
-    // silently move the number a finished taper is measured against.
-    private static void ApplyTaperDays(Tournament t, int? requested)
+    // A request that names no profile at all comes from a client older than taper
+    // profiles, which only knew TaperDays: a length above 0 keeps whatever profile
+    // the tournament already has (or Regionals, the short one), so saving a name
+    // change from a stale bundle can't silently drop a planned taper.
+    private static void ApplyTaper(Tournament t, string? requestedProfile, int? requestedDays)
     {
-        var taperDays = requested is > 0 ? requested : null;
-        if (taperDays == t.TaperDays) return;
-
-        t.TaperDays = taperDays;
-        t.PlannedReductionPercent = taperDays is null
-            ? null
-            : TaperPhaseCalculator.PlannedReduction(taperDays.Value, t.Name);
+        var profile = requestedProfile is null
+            ? (requestedDays is > 0 ? t.TaperProfile ?? TaperProfile.Regionals : null)
+            : TaperPhaseCalculator.Parse(requestedProfile);
+        TaperPhaseCalculator.Apply(t, profile, requestedDays);
     }
 
     // Links every Ultimate activity in [StartDate, EndDate] that isn't already
@@ -64,7 +61,7 @@ public class TournamentsController : ControllerBase
     {
         var tournaments = await _db.Tournaments
             .OrderByDescending(t => t.StartDate)
-            .Select(t => new TournamentDto(t.Id, t.Name, t.StartDate, t.EndDate, t.Activities.Count, t.SeasonId, t.TaperDays))
+            .Select(t => new TournamentDto(t.Id, t.Name, t.StartDate, t.EndDate, t.Activities.Count, t.SeasonId, t.TaperDays, t.TaperProfile == null ? null : t.TaperProfile.ToString()))
             .ToListAsync();
 
         return Ok(tournaments);
@@ -85,7 +82,7 @@ public class TournamentsController : ControllerBase
             EndDate = request.EndDate,
             SeasonId = request.SeasonId,
         };
-        ApplyTaperDays(tournament, request.TaperDays);
+        ApplyTaper(tournament, request.TaperProfile, request.TaperDays);
         _db.Tournaments.Add(tournament);
         await _db.SaveChangesAsync();
 
@@ -109,7 +106,7 @@ public class TournamentsController : ControllerBase
         tournament.StartDate = request.StartDate;
         tournament.EndDate = request.EndDate;
         tournament.SeasonId = request.SeasonId;
-        ApplyTaperDays(tournament, request.TaperDays);
+        ApplyTaper(tournament, request.TaperProfile, request.TaperDays);
 
         if (datesChanged)
         {

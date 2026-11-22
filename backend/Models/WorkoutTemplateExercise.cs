@@ -54,4 +54,9 @@ public class WorkoutTemplateExercise
     // everywhere else, including on lone (non-superset) slots, where it's
     // simply never read. Null means "use the app's default (90s)".
     public int? SupersetRestSeconds { get; set; }
+
+    // A main lift or jump that a Nationals taper keeps when it cuts accessories
+    // (program v4: "cut accessories, keep main lifts and all jump work"). Set on
+    // pogo hops, trap bar deadlift and barbell squat.
+    public bool KeepInTaper { get; set; }
 }

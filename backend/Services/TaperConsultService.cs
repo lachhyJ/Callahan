@@ -102,7 +102,7 @@ public class TaperConsultService
     private async Task<(string SystemPrompt, bool ComparedToPriorTaper)> BuildSystemPromptAsync(Tournament taperEvent, DateOnly today)
     {
         var daysUntil = (taperEvent.StartDate.ToDateTime(TimeOnly.MinValue) - today.ToDateTime(TimeOnly.MinValue)).Days;
-        var phase = TaperPhaseCalculator.Compute(daysUntil, taperEvent.TaperDays!.Value, taperEvent.Name);
+        var phase = TaperPhaseCalculator.Compute(daysUntil, taperEvent.TaperDays!.Value, taperEvent.TaperProfile ?? TaperProfile.Regionals, taperEvent.Name);
 
         var (windowStart, windowEnd) = TaperPhaseCalculator.CheckInWindow(taperEvent.StartDate, taperEvent.TaperDays!.Value);
 
@@ -119,7 +119,7 @@ public class TaperConsultService
         sb.AppendLine("You draw on established taper-research knowledge (progressive volume reduction while holding intensity/frequency steady), applied to this athlete's own real data below.");
         sb.AppendLine("Never contradict the deterministic taper phase/target guidance already shown to the athlete elsewhere in the app — you are explanatory, personalized context alongside it, not a replacement for it.");
         sb.AppendLine();
-        sb.AppendLine($"Tournament: {taperEvent.Name ?? "unnamed"} on {taperEvent.StartDate:yyyy-MM-dd}. Taper length: {taperEvent.TaperDays} days.");
+        sb.AppendLine($"Tournament: {taperEvent.Name ?? "unnamed"} on {taperEvent.StartDate:yyyy-MM-dd}. Taper length: {taperEvent.TaperDays} days ({taperEvent.TaperProfile?.ToString() ?? "Regionals"} taper).");
         sb.AppendLine($"Current phase: {phase.Phase}. Deterministic guidance: {phase.Message}");
         sb.AppendLine();
 

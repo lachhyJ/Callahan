@@ -3,11 +3,12 @@ namespace Callahan.Api.DTOs;
 // The taper-facing view of a Tournament. `Date` is the tournament's StartDate -
 // what a taper counts down to - so the taper surfaces don't have to care that
 // the underlying row spans a weekend.
-public record TaperEventDto(int Id, DateOnly Date, string? Name, int TaperDays, int DaysUntil, decimal? PlannedReductionPercent);
+public record TaperEventDto(int Id, DateOnly Date, string? Name, int TaperDays, int DaysUntil, decimal? PlannedReductionPercent, string? TaperProfile = null);
 
 // EndDate is optional: the taper page's form asks for a single date, and a
 // tournament created there ends the day it starts unless told otherwise.
-public record CreateTaperEventRequest(DateOnly Date, DateOnly? EndDate, string? Name, int TaperDays);
+// TaperProfile is "Regionals" or "Nationals"; absent means Regionals, the shorter one.
+public record CreateTaperEventRequest(DateOnly Date, DateOnly? EndDate, string? Name, int TaperDays, string? TaperProfile = null);
 
 public record TaperRecommendationDto(
     TaperEventDto? UpcomingEvent,
@@ -19,7 +20,9 @@ public record TaperRecommendationDto(
     decimal? RunTargetPct,
     decimal? RunBaselineDistanceKm,
     decimal? RunThisWeekDistanceKm,
-    int TapersCompleted);
+    int TapersCompleted,
+    decimal? KeepPct = null,
+    decimal? AccessoryPct = null);
 
 public record TaperCheckInDto(int Id, DateOnly Date, int Energy, int Soreness, int Motivation, string? Context);
 

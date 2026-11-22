@@ -1494,6 +1494,9 @@ namespace Callahan.Api.Migrations
                     b.Property<int?>("TaperDays")
                         .HasColumnType("INTEGER");
 
+                    b.Property<int?>("TaperProfile")
+                        .HasColumnType("INTEGER");
+
                     b.HasKey("Id");
 
                     b.HasIndex("SeasonId");
@@ -1689,6 +1692,9 @@ namespace Callahan.Api.Migrations
                     b.Property<int>("ExerciseOrder")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("KeepInTaper")
+                        .HasColumnType("INTEGER");
+
                     b.Property<int>("RestSeconds")
                         .HasColumnType("INTEGER");
 
@@ -1737,6 +1743,7 @@ namespace Callahan.Api.Migrations
                             Id = 1,
                             ExerciseId = 11,
                             ExerciseOrder = 1,
+                            KeepInTaper = false,
                             RestSeconds = 150,
                             SupersetWithNext = false,
                             TargetReps = "5-6",
@@ -1749,6 +1756,7 @@ namespace Callahan.Api.Migrations
                             Id = 2,
                             ExerciseId = 12,
                             ExerciseOrder = 2,
+                            KeepInTaper = false,
                             RestSeconds = 150,
                             SupersetWithNext = false,
                             TargetReps = "8/leg",
@@ -1761,6 +1769,7 @@ namespace Callahan.Api.Migrations
                             Id = 3,
                             ExerciseId = 8,
                             ExerciseOrder = 3,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "10-12",
@@ -1773,6 +1782,7 @@ namespace Callahan.Api.Migrations
                             Id = 4,
                             ExerciseId = 13,
                             ExerciseOrder = 4,
+                            KeepInTaper = false,
                             RestSeconds = 60,
                             SupersetWithNext = false,
                             TargetReps = "8-10/leg",
@@ -1785,6 +1795,7 @@ namespace Callahan.Api.Migrations
                             Id = 5,
                             ExerciseId = 14,
                             ExerciseOrder = 1,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "8",
@@ -1797,6 +1808,7 @@ namespace Callahan.Api.Migrations
                             Id = 6,
                             ExerciseId = 5,
                             ExerciseOrder = 2,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "6-8",
@@ -1809,6 +1821,7 @@ namespace Callahan.Api.Migrations
                             Id = 7,
                             ExerciseId = 15,
                             ExerciseOrder = 3,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "10",
@@ -1821,6 +1834,7 @@ namespace Callahan.Api.Migrations
                             Id = 8,
                             ExerciseId = 16,
                             ExerciseOrder = 4,
+                            KeepInTaper = false,
                             RestSeconds = 60,
                             SupersetWithNext = false,
                             TargetReps = "12",
@@ -1833,6 +1847,7 @@ namespace Callahan.Api.Migrations
                             Id = 9,
                             ExerciseId = 17,
                             ExerciseOrder = 5,
+                            KeepInTaper = false,
                             RestSeconds = 60,
                             SupersetWithNext = false,
                             TargetReps = "15",
@@ -1845,6 +1860,7 @@ namespace Callahan.Api.Migrations
                             Id = 10,
                             ExerciseId = 18,
                             ExerciseOrder = 6,
+                            KeepInTaper = false,
                             RestSeconds = 60,
                             SupersetWithNext = false,
                             TargetReps = "15-20/leg",
@@ -1857,6 +1873,7 @@ namespace Callahan.Api.Migrations
                             Id = 11,
                             ExerciseId = 19,
                             ExerciseOrder = 1,
+                            KeepInTaper = false,
                             RestSeconds = 150,
                             SupersetWithNext = false,
                             TargetReps = "6-8",
@@ -1869,6 +1886,7 @@ namespace Callahan.Api.Migrations
                             Id = 12,
                             ExerciseId = 20,
                             ExerciseOrder = 2,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "8/leg",
@@ -1881,6 +1899,7 @@ namespace Callahan.Api.Migrations
                             Id = 13,
                             ExerciseId = 21,
                             ExerciseOrder = 3,
+                            KeepInTaper = false,
                             RestSeconds = 150,
                             SupersetWithNext = false,
                             TargetReps = "6",
@@ -1893,6 +1912,7 @@ namespace Callahan.Api.Migrations
                             Id = 14,
                             ExerciseId = 22,
                             ExerciseOrder = 4,
+                            KeepInTaper = false,
                             RestSeconds = 90,
                             SupersetWithNext = false,
                             TargetReps = "AMRAP",
@@ -1905,6 +1925,7 @@ namespace Callahan.Api.Migrations
                             Id = 15,
                             ExerciseId = 23,
                             ExerciseOrder = 5,
+                            KeepInTaper = false,
                             RestSeconds = 60,
                             SupersetWithNext = false,
                             TargetReps = "12/side",
@@ -1917,6 +1938,7 @@ namespace Callahan.Api.Migrations
                             Id = 16,
                             ExerciseId = 24,
                             ExerciseOrder = 6,
+                            KeepInTaper = false,
                             RestSeconds = 105,
                             SupersetWithNext = false,
                             TargetReps = "5",
