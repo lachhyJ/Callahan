@@ -37,6 +37,8 @@ import ReportsPage from './pages/ReportsPage'
 import ReportDetailPage from './pages/ReportDetailPage'
 import QuotesPage from './pages/QuotesPage'
 import SeasonDetailPage from './pages/SeasonDetailPage'
+import ClubSessionsPage from './pages/ClubSessionsPage'
+import ClubSessionPage from './pages/ClubSessionPage'
 import './App.css'
 
 const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIcon }
@@ -45,7 +47,7 @@ const DASHBOARD_TAB = { to: '/dashboard', label: 'Dashboard', Icon: DashboardIco
 // bottom tabs or a top-level action — these get a Back button in the top
 // bar. Everything else (Workout, Dashboard, Login, an active workout, the
 // two logging forms) has its own way out already.
-const BACK_LINK_ROUTES = ['/history', '/exercises', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate', '/quotes']
+const BACK_LINK_ROUTES = ['/history', '/exercises', '/trends', '/program', '/recently-deleted', '/garmin-strength-review', '/reports', '/wellness', '/plan', '/routines', '/taper', '/ultimate', '/quotes', '/club-sessions']
 
 function showsBackLink(pathname) {
   return BACK_LINK_ROUTES.includes(pathname)
@@ -55,6 +57,7 @@ function showsBackLink(pathname) {
     || pathname.startsWith('/activities/')
     || pathname.startsWith('/tournaments/')
     || pathname.startsWith('/seasons/')
+    || pathname.startsWith('/club-sessions/')
 }
 
 
@@ -296,6 +299,8 @@ function AppRoutes() {
           <Route path="/activities/:activityId" element={<ProtectedRoute><UltimateGameDetailPage /></ProtectedRoute>} />
           <Route path="/ultimate" element={<ProtectedRoute><GamesListPage /></ProtectedRoute>} />
           <Route path="/tournaments/:tournamentId" element={<ProtectedRoute><TournamentDetailPage /></ProtectedRoute>} />
+          <Route path="/club-sessions" element={<ProtectedRoute><ClubSessionsPage /></ProtectedRoute>} />
+          <Route path="/club-sessions/:sessionId" element={<ProtectedRoute><ClubSessionPage /></ProtectedRoute>} />
           <Route path="/seasons/:seasonId" element={<ProtectedRoute><SeasonDetailPage /></ProtectedRoute>} />
           <Route path="/trends" element={<ProtectedRoute><TrendsPage /></ProtectedRoute>} />
           <Route path="/program" element={<ProtectedRoute><ProgramPage /></ProtectedRoute>} />

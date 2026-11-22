@@ -377,6 +377,13 @@ export default function GamesListPage() {
         </p>
       )}
 
+      <Link to="/club-sessions" className="season-admin-toggle season-link">
+        <span className="season-admin-text">
+          <span className="season-admin-name">Club sessions</span>
+          <span className="season-admin-meta">Distance, heart rate, load and sprints, session by session</span>
+        </span>
+      </Link>
+
       <SeasonsSection
         seasons={seasons}
         topSeasons={topSeasons}

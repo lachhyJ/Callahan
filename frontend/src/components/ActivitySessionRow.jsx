@@ -119,11 +119,13 @@ export default function ActivitySessionRow({ activity, sessionTypes, openPickerI
     setDraft((d) => (d.ids.includes(id) ? { ...d, primary: id } : d))
   }
 
+  const isClub = activity.activitySessionTypeName === 'Club Training'
+
   return (
     <span className="activity-classify">
       <span className="activity-classify-row">
         {activity.type === 'Ultimate' ? (
-          <Link to={`/activities/${activity.id}`} className="activity-classify-link">
+          <Link to={isClub ? `/club-sessions/${activity.id}` : `/activities/${activity.id}`} className="activity-classify-link">
             {activityLabel(activity)}
             {teaser && <span className="activity-classify-teaser"> · {teaser}</span>}
           </Link>

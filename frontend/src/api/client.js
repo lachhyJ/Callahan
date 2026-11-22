@@ -700,3 +700,13 @@ export function unpinQuote(id) {
 export function restoreQuote(id) {
   return apiFetch(`/api/quotes/${id}/restore`, { method: 'POST' }).then(afterWrite)
 }
+
+// Club Training sessions with the per-session figures (distance, HR, load,
+// zones, and the track-derived high-speed distance and sprint count).
+export function getClubSessions() {
+  return apiFetch('/api/club-sessions')
+}
+
+export function getClubSession(id) {
+  return apiFetch(`/api/club-sessions/${id}`)
+}

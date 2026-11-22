@@ -6221,3 +6221,31 @@ td {
 .quotes-warning {
   color: var(--warning-text);
 }
+
+/* Club sessions: list columns and the heart-rate zone bar. */
+.club-table { display: flex; flex-direction: column; }
+.club-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+  align-items: center;
+  gap: var(--space-xs);
+  min-height: 44px;
+  padding: var(--space-xs) 0;
+  color: var(--text-h);
+  text-decoration: none;
+  border-bottom: 1px solid var(--surface-sunken);
+  font-variant-numeric: tabular-nums;
+  touch-action: manipulation;
+}
+.club-row-head { font-size: var(--text-xs); color: var(--text); min-height: 0; }
+.club-num { text-align: right; }
+.club-session-cell { display: flex; flex-direction: column; }
+.club-session-sub { font-size: var(--text-xs); color: var(--text); }
+.club-zone-bar { display: flex; height: 20px; border-radius: var(--radius-md); overflow: hidden; background: var(--surface-sunken); }
+.club-zone-legend { list-style: none; padding: 0; margin: var(--space-xs) 0 0; display: flex; flex-direction: column; gap: var(--space-2xs); font-size: var(--text-xs); }
+.club-zone-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: var(--space-xs); }
+.club-zone-1 { background: var(--zone-1, #9bb4c8); }
+.club-zone-2 { background: var(--zone-2, #6fae8f); }
+.club-zone-3 { background: var(--zone-3, #e0c35a); }
+.club-zone-4 { background: var(--orange-400); }
+.club-zone-5 { background: var(--zone-5, #c8453d); }
