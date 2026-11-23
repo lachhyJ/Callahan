@@ -80,6 +80,13 @@ Both passes produce *candidates*. Before deleting, for each one:
    exported for testability. These are correct findings and wrong deletions.
 3. Confirm nothing in `index.html`, `public/`, or the Capacitor iOS shell
    references it — those are outside the module graph entirely.
+4. **When the removal includes an API route or endpoint**, grep harness and
+   infrastructure config for its path as well as source:
+   `frontend/playwright.config.js` (`webServer.url`), compose healthchecks, CI
+   smoke URLs and deploy probes. No compiler or test run reads these until
+   they're needed. Removing `/api/streaks` left Playwright's readiness probe
+   pointing at it: an unauthenticated GET would have returned 404, outside the
+   200–403 "ready" range, and the visual suite would have hung at startup.
 
 ## Pre-flight, before reporting or deleting
 
@@ -87,6 +94,7 @@ Both passes produce *candidates*. Before deleting, for each one:
 - [ ] The result is plausible — "everything is dead" means the tool is broken.
 - [ ] Each candidate was cross-checked by bare-name grep (step 1 above).
 - [ ] Template-literal class construction was checked before any CSS deletion.
+- [ ] Any removed route's path was grepped in harness/infra config, not just source.
 - [ ] Findings are presented as candidates with their false-positive class
       named, not as a delete list.
 - [ ] `npm run build && npm test` in `frontend/` after any deletion — the graph

@@ -19,6 +19,15 @@ written by the same author, in the same sitting, against the same mental model
 as the code, are exactly the case where a whole assertion can be vacuous
 without looking wrong.
 
+## Step 0 — commit the change under test first
+
+Before applying the first mutation, run `git status` on the files you'll mutate. If any of
+them has uncommitted changes, commit them now (a WIP commit is fine and can be squashed
+later). Do this every time; it is not a judgement call. The rule below about reverting at
+edit level already existed, and a later session still planned `sed` mutations reverted with
+`git checkout <file>` over an uncommitted feature. Only the auto-mode classifier stopped it.
+With the feature committed, `git restore <file>` is a safe revert and needs no thought.
+
 ## Step 1 — mutation-check
 
 Introduce known breakages **one at a time**, re-run the suite against each, and
@@ -41,7 +50,17 @@ silently deletes the very code you were testing (seen: two new exported helpers
 vanished, and the "restored" run showed 6 failures from tests importing them).
 Reverse the specific edit, or `git stash` a snapshot just before mutating and
 pop it after. Then re-run and confirm the suite returns to the **exact**
-pre-mutation pass count, not just "mostly green".
+pre-mutation pass count, not just "mostly green". (Step 0 exists so this
+paragraph never has to apply.)
+
+**Mirrored implementations: mutate both sides.** When a reference
+implementation and its port each have their own tests (the Python FieldGeometry
+reference and its C# port), "the suites mirror each other" is a claim to check.
+Apply the same mutation list to both. Every C# mutant was caught, but a Python
+mutant that sorted laps wrongly survived, because only the C# test had the
+out-of-order-laps case. Parity dumps on fixtures can't catch this when no fixture
+contains the case. A mutant caught on one side and missed on the other tells you
+exactly which test is missing.
 
 ## Step 2 — a surviving mutant is a question, not a verdict
 
@@ -122,7 +141,11 @@ rewrites snapshots that *fail*, and that one was passing on tolerance.
 
 ## Pre-flight
 
+- [ ] Before the first mutation, `git status` showed no uncommitted changes in
+      the files being mutated (Step 0).
 - [ ] The suite has been watched to **fail**, not only to pass.
+- [ ] Where a reference implementation and a port each have tests, the same
+      mutations were run against both sides.
 - [ ] Mutations covered distinct failure classes, applied one at a time, each
       reverted after.
 - [ ] Every surviving mutant was resolved by deriving its divergence input

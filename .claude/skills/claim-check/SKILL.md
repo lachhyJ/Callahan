@@ -118,6 +118,15 @@ When shaping from a backlog idea, first list every "first X", "no existing Y"
 and "new infrastructure" assertion in the item, grep the code for each, and
 price any cost figure from the model table before scope is set.
 
+**Recommending next work from the backlog.** Ranking backlog items by effort is
+shaping too, so it needs the same check. A list recommended "use synced bodyweight"
+as a small change because the backlog said it would replace "the constant behind
+assisted / bodyweight load maths". No such constant exists: assisted lifts store
+negative weight and bodyweight lifts store 0. The same list said the Due badge was
+in-season only, which the code contradicted. Before putting a backlog item in a
+recommendation list, grep for the one concrete code claim the recommendation rests
+on. An effort estimate built on backlog prose is a claim, not a finding.
+
 **"A simple rule will do" is a claim about a distribution.** A backlog item
 for shortening exercise names on the Garmin field chose a rule (drop a
 trailing parenthetical, cut at a word boundary) over a display-name column.
