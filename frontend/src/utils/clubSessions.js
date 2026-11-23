@@ -2,6 +2,18 @@
 
 export const ZONE_LABELS = ['Zone 1', 'Zone 2', 'Zone 3', 'Zone 4', 'Zone 5']
 
+// Mirrors ClubSessionsController.CountFrom: sessions before this aren't listed.
+export const CLUB_SESSIONS_FROM = '2026-11-18'
+
+// Whether /api/club-sessions has this activity: Ultimate, tagged Club Training as
+// primary or extra, and on or after the count start. Anything else links to the
+// plain activity page, so an older club session never lands on a not-found.
+export function isListedClubSession(activity) {
+  if (activity.type !== 'Ultimate' || !activity.date || activity.date < CLUB_SESSIONS_FROM) return false
+  return activity.activitySessionTypeName === 'Club Training'
+    || (activity.sessionTypes ?? []).some((t) => t.name === 'Club Training')
+}
+
 // Figures shown side by side, in list order. Each returns a display string or
 // null (rendered as a dash) so a session with no track or no HR still lines up.
 export const CLUB_COLUMNS = [

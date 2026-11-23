@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { zoneShares, versusUsual, CLUB_COLUMNS } from './clubSessions'
+import { zoneShares, versusUsual, CLUB_COLUMNS, isListedClubSession } from './clubSessions'
 
 describe('zoneShares', () => {
   it('is null without zones or with an all-zero set', () => {
@@ -30,5 +30,26 @@ describe('CLUB_COLUMNS', () => {
   it('renders missing figures as null so the row can show a dash', () => {
     const s = { distanceKm: null, avgHeartRate: null, trainingLoad: null, sprintCount: null }
     expect(CLUB_COLUMNS.map((c) => c.value(s))).toEqual([null, null, null, null])
+  })
+})
+
+describe('isListedClubSession', () => {
+  const club = { type: 'Ultimate', date: '2026-11-18', activitySessionTypeName: 'Club Training', sessionTypes: [] }
+
+  it('lists a club session on or after the count start', () => {
+    expect(isListedClubSession(club)).toBe(true)
+  })
+
+  it('leaves out a club session from before the count start', () => {
+    expect(isListedClubSession({ ...club, date: '2026-11-17' })).toBe(false)
+  })
+
+  it('counts Club Training as an extra tag', () => {
+    expect(isListedClubSession({ ...club, activitySessionTypeName: 'Pod', sessionTypes: [{ name: 'Club Training' }] })).toBe(true)
+  })
+
+  it('leaves out other Ultimate sessions and non-Ultimate activities', () => {
+    expect(isListedClubSession({ ...club, activitySessionTypeName: 'Pod' })).toBe(false)
+    expect(isListedClubSession({ ...club, type: 'Run' })).toBe(false)
   })
 })

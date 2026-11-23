@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { activityLabel, livePlayTeaser } from '../utils/activityLabel'
 import { suggestRunSessionType } from '../utils/runSessionSuggestion'
 import { suggestUltimateSessionType } from '../utils/ultimateSessionSuggestion'
+import { isListedClubSession } from '../utils/clubSessions'
 
 function suggestSessionType(activity, typesForActivity) {
   if (activity.type === 'Running') return suggestRunSessionType(activity, typesForActivity)
@@ -119,9 +120,7 @@ export default function ActivitySessionRow({ activity, sessionTypes, openPickerI
     setDraft((d) => (d.ids.includes(id) ? { ...d, primary: id } : d))
   }
 
-  // Primary or extra tag, matching what /api/club-sessions lists.
-  const isClub = activity.activitySessionTypeName === 'Club Training'
-    || (activity.sessionTypes ?? []).some((t) => t.name === 'Club Training')
+  const isClub = isListedClubSession(activity)
 
   return (
     <span className="activity-classify">
