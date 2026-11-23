@@ -17,6 +17,11 @@ public class ClubSessionsController : ControllerBase
 {
     private const string ClubTrainingName = "Club Training";
 
+    // Club sessions only count from this date (set 2026-11-23: from the Wednesday
+    // session just gone). Earlier Club Training activities keep their tag but are
+    // not listed, compared or linked to a session page.
+    internal static readonly DateOnly CountFrom = new(2026, 11, 18);
+
     private readonly AppDbContext _db;
 
     public ClubSessionsController(AppDbContext db)
@@ -25,7 +30,7 @@ public class ClubSessionsController : ControllerBase
     }
 
     private IQueryable<Activity> ClubQuery() => _db.Activities.AsNoTracking()
-        .Where(a => a.Type == ActivityType.Ultimate
+        .Where(a => a.Type == ActivityType.Ultimate && a.Date >= CountFrom
             && a.SessionTags.Any(t => t.SessionType.Name == ClubTrainingName));
 
     [HttpGet]

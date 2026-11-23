@@ -73,7 +73,9 @@ public class ClubSessionsTests
     {
         using var conn = new SqliteConnection("DataSource=:memory:");
         using var db = TestData.OpenDb(conn);
-        var older = await Add(db, ClubTraining, new DateOnly(2026, 11, 15), """{"maxHR":190}""", track: false);
+        var older = await Add(db, ClubTraining, new DateOnly(2026, 11, 18), """{"maxHR":190}""", track: false);
+        // Before the count-from date: tagged Club Training but not listed.
+        var before = await Add(db, ClubTraining, new DateOnly(2026, 11, 17), "{}", track: true);
         var newer = await Add(db, ClubTraining, new DateOnly(2026, 11, 22), """{"maxHR":195}""", track: true);
         await Add(db, Pod, new DateOnly(2026, 11, 20), "{}", track: true);
 
@@ -83,6 +85,8 @@ public class ClubSessionsTests
         Assert.Equal(1, list[0].SprintCount);
         Assert.Equal(195, list[0].MaxHeartRate);
         Assert.Null(list[1].SprintCount); // no track synced
+        Assert.DoesNotContain(before, list.Select(x => x.Id));
+        Assert.IsType<NotFoundResult>((await new ClubSessionsController(db).Get(before)).Result);
 
         var one = await new ClubSessionsController(db).Get(older);
         Assert.IsType<OkObjectResult>(one.Result);
