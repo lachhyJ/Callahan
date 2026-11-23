@@ -923,7 +923,8 @@ td {
   flex: 1;
   height: 4px;
   border-radius: var(--radius-full);
-  background: var(--surface-raised);
+  /* Not --surface-raised: the stepper sits on a raised card, so that hid every step still to come. */
+  background: color-mix(in srgb, var(--text-h) 18%, transparent);
 
   &.done {
     background: var(--accent);
