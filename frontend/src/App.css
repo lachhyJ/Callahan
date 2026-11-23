@@ -3265,6 +3265,11 @@ td {
   text-decoration-color: transparent;
   text-underline-offset: 2px;
   transition: text-decoration-color var(--duration-fast) var(--ease-out);
+  /* 44px tap target from vertical padding; the negative margin keeps the row
+     height it had when the link was its 23px line box. */
+  padding: 11px 0;
+  margin: -11px 0;
+  touch-action: manipulation;
 
   &:hover,
   &:focus-visible {

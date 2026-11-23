@@ -119,7 +119,9 @@ export default function ActivitySessionRow({ activity, sessionTypes, openPickerI
     setDraft((d) => (d.ids.includes(id) ? { ...d, primary: id } : d))
   }
 
+  // Primary or extra tag, matching what /api/club-sessions lists.
   const isClub = activity.activitySessionTypeName === 'Club Training'
+    || (activity.sessionTypes ?? []).some((t) => t.name === 'Club Training')
 
   return (
     <span className="activity-classify">

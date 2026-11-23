@@ -48,7 +48,10 @@ async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error ?? `Request failed (${res.status})`)
+    const err = new Error(body.error ?? `Request failed (${res.status})`)
+    // Lets a page tell "not there" from "something broke" without parsing the message.
+    err.status = res.status
+    throw err
   }
 
   if (res.status === 204) return null

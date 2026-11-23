@@ -27,7 +27,10 @@ export default function ClubSessionPage() {
   useEffect(() => {
     setSession(null)
     setError(null)
-    getClubSession(sessionId).then(setSession).catch((err) => setError(err.message))
+    getClubSession(sessionId).then(setSession).catch((err) => setError(
+      // 404 covers both a deleted activity and one no longer tagged Club Training.
+      err.status === 404 ? 'This isn\'t a club session any more. It may have been retagged or deleted.' : err.message,
+    ))
   }, [sessionId])
 
   // Silent: the comparison is an extra, never allowed to block the figures.
@@ -35,7 +38,14 @@ export default function ClubSessionPage() {
     getClubSessions().then(setAll).catch(() => {})
   }, [])
 
-  if (error) return <main className="page"><p className="error">{error}</p></main>
+  if (error) {
+    return (
+      <main className="page">
+        <p className="error">{error}</p>
+        <p><Link to="/club-sessions" className="season-link club-back-link">All club sessions</Link></p>
+      </main>
+    )
+  }
   if (!session) return <main className="page"><p>Loading…</p></main>
 
   const vs = (pick) => versusUsual(all, session, pick)
