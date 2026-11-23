@@ -79,7 +79,7 @@ export default function ClubSessionPage() {
         GPS track; the threshold is provisional.
         {session.sprintCount == null && ' No GPS track has synced for this session yet.'}
       </p>
-      <p><Link to="/club-sessions" className="season-link">All club sessions</Link></p>
+      <p><Link to="/club-sessions" className="season-link club-back-link">All club sessions</Link></p>
     </main>
   )
 }
