@@ -192,6 +192,17 @@ export function unusedPreviousSet(previousSets, sets) {
 
 const isWarmupSet = (s) => s?.type === 'Warmup'
 
+// Whether an exercise gets the manual "Breather" button: per-side work, where the
+// pause between legs is the point. Timed holds have their own per-side gap, so
+// they are left out. "Per side" is read from the flag, a target like "8/leg" or
+// "12/side", or a "Single Leg" name (a single-leg calf raise is prescribed "12").
+export function showsBreather(ex) {
+  if (!ex || ex.isTimeBased) return false
+  return !!ex.isPerSide
+    || /\/\s*(leg|side|arm)\b/i.test(String(ex.targetReps ?? ''))
+    || /^single[- ]leg\b/i.test(ex.exerciseName ?? '')
+}
+
 export function warmupCount(ex) {
   return ex.sets.filter((s) => s.type === 'Warmup').length
 }

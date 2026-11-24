@@ -52,6 +52,7 @@ export default function RoutineItemRow({ item }) {
       <div className="routine-item-main">
         <span className="routine-item-name">{item.name}</span>
         {item.prescription && <span className="routine-item-prescription">{item.prescription}</span>}
+        {item.cue && <span className="routine-item-cue">{item.cue}</span>}
       </div>
       {item.holdSeconds != null && (
         holdTimer ? (

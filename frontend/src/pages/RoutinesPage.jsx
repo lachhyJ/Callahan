@@ -111,14 +111,6 @@ function RoutineCard({ routine, onChange }) {
         {routine.items.map((item) => <RoutineItemRow key={item.id} item={item} />)}
       </div>
 
-      {routine.items.some((i) => i.cue) && (
-        <ul className="routine-cues">
-          {routine.items.filter((i) => i.cue).map((i) => (
-            <li key={i.id}><strong>{i.name}:</strong> {i.cue}</li>
-          ))}
-        </ul>
-      )}
-
       {done && (
         <label className="routine-note-field">
           <span>Notes</span>

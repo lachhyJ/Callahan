@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, supersetGroupLabel, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, supersetGroupLabel, showsBreather, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { useRestTimer } from '../useRestTimer'
 import { endWorkoutActivity } from '../restActivity'
@@ -1780,7 +1780,7 @@ export default function ActiveWorkoutPage() {
               />
               s
             </span>
-            <span className="breather-control">
+            {showsBreather(ex) && <span className="breather-control">
               <button type="button" className="breather-btn" onClick={() => startBreather(ex)}>
                 Breather
               </button>
@@ -1792,7 +1792,7 @@ export default function ActiveWorkoutPage() {
               >
                 {breatherSeconds}s
               </button>
-            </span>
+            </span>}
             {ex.tempo && <span className="tempo-badge" title="Eccentric : pause : concentric">Tempo {ex.tempo}</span>}
           </p>
           {taperSetHint(ex, taper) !== null && (

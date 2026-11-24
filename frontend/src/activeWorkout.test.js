@@ -12,6 +12,7 @@ import {
   supersetGroupLabel,
   suppressesRest,
   nextIncompleteInGroup,
+  showsBreather,
   isSupersetRestOwner,
   isSupersetGroupConfigOwner,
   advanceHold,
@@ -1016,6 +1017,16 @@ describe('warm-ups inside a superset', () => {
     expect(restDescriptorAfterSet(ex, 1, 0).restSeconds).toBe(90)
   })
 
+  it('a working set is judged against the partner\'s set of the same round, not the same row', () => {
+    const ex = pair()
+    ex[1].sets[0].completed = true
+    ex[1].sets[1].completed = true
+    for (let i = 0; i < 4; i++) ex[0].sets[i].completed = true // warm-ups + working 1, 2
+    // Press working set 2 sits at row 3; pull-up has already done its round 2 (row 1),
+    // though its row 3 is still open.
+    expect(suppressesRest(ex, 0, 3)).toBe(false)
+  })
+
   it('rounds the partner has no working set for rest normally', () => {
     const ex = pair()
     ex[1].sets.splice(2) // pull-up down to two working sets
@@ -1034,5 +1045,25 @@ describe('warm-ups inside a superset', () => {
     expect(nextSetDescriptor(ex).nextSetNumber).toBe(3)
     ex[0].sets[2].completed = true
     expect(nextSetDescriptor(ex).exerciseName).toBe('Pull-up')
+  })
+})
+
+describe('showsBreather', () => {
+  const ex = (exerciseName, targetReps, extra = {}) => ({ exerciseName, targetReps, ...extra })
+  it('is on for per-side work', () => {
+    expect(showsBreather(ex('Bulgarian Split Squat (Barbell)', '8/leg'))).toBe(true)
+    expect(showsBreather(ex('Lateral Lunge', '8/side'))).toBe(true)
+    expect(showsBreather(ex('Pallof Press', '12/side'))).toBe(true)
+    expect(showsBreather(ex('Single Leg RDL (DB)', '8/leg'))).toBe(true)
+    expect(showsBreather(ex('Single Leg Hamstring Curl', '8-10/leg'))).toBe(true)
+    expect(showsBreather(ex('Single Leg Standing Calf Raise', '12'))).toBe(true)
+    expect(showsBreather(ex('Something', '10', { isPerSide: true }))).toBe(true)
+  })
+  it('is off for bilateral and timed exercises', () => {
+    expect(showsBreather(ex('Incline DB Press', '8'))).toBe(false)
+    expect(showsBreather(ex('Pull-up', '3'))).toBe(false)
+    expect(showsBreather(ex('Trap Bar Deadlift', '4'))).toBe(false)
+    expect(showsBreather(ex('Seated Calf Raise', '15'))).toBe(false)
+    expect(showsBreather(ex('Copenhagen Plank', '20 secs/side', { isTimeBased: true, isPerSide: true }))).toBe(false)
   })
 })
