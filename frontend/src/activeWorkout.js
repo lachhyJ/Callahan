@@ -190,6 +190,8 @@ export function unusedPreviousSet(previousSets, sets) {
   )
 }
 
+const isWarmupSet = (s) => s?.type === 'Warmup'
+
 export function warmupCount(ex) {
   return ex.sets.filter((s) => s.type === 'Warmup').length
 }
@@ -353,11 +355,16 @@ export function isSupersetGroupRestActive(exercises, exIdx) {
 function groupMemberDueNext(exercises, groupStart, groupEnd) {
   let best = null
   for (let i = groupStart; i <= groupEnd; i++) {
-    const j = exercises[i].sets.findIndex((s) => !s.completed)
+    const sets = exercises[i].sets
+    const j = sets.findIndex((s) => !s.completed)
     if (j === -1) continue
-    if (!best || j < best.j) best = { i, j }
+    // A member with a warm-up still to do goes first, in group order; after
+    // that the round is how many *working* sets each has done, so warm-ups
+    // never shift which working set pairs with which.
+    const rank = isWarmupSet(sets[j]) ? -1 : sets.filter((s) => !isWarmupSet(s) && s.completed).length
+    if (!best || rank < best.rank) best = { i, j, rank }
   }
-  return best
+  return best && { i: best.i, j: best.j }
 }
 
 // The group member whose turn is next, cycling forward from `fromIdx` and
@@ -366,6 +373,10 @@ function groupMemberDueNext(exercises, groupStart, groupEnd) {
 // later round left (every round but its last). Used right after ticking a
 // set, where `fromIdx` is the exercise just ticked.
 export function nextIncompleteInGroup(exercises, groupStart, groupEnd, fromIdx) {
+  // A member's warm-ups are its own business: until they are done the turn
+  // stays on that exercise rather than rotating to the partner.
+  const own = exercises[fromIdx]?.sets.findIndex((s) => !s.completed) ?? -1
+  if (own !== -1 && isWarmupSet(exercises[fromIdx].sets[own])) return { i: fromIdx, j: own }
   const span = groupEnd - groupStart + 1
   for (let step = 1; step <= span; step++) {
     const i = groupStart + ((fromIdx - groupStart + step) % span)
@@ -521,10 +532,17 @@ export function supersetGroupLabel(exercises, exIdx) {
 // flagged as "last". Assumes each exercise's own sets are ticked in order,
 // same as the rest of this module (e.g. groupMemberDueNext).
 export function suppressesRest(exercises, exIdx, setIdx = exercises[exIdx]?.sets.findIndex((s) => !s.completed)) {
+  const sets = exercises[exIdx]?.sets
+  if (!sets || setIdx == null || setIdx < 0 || isWarmupSet(sets[setIdx])) return false
+  // Warm-ups sit outside the superset's rounds: ticking one rests like a lone
+  // exercise, and the round a working set belongs to is its working-set number,
+  // so with warm-ups on only one member the partner's first working set still
+  // pairs with this one's first.
+  const round = sets.slice(0, setIdx).filter((s) => !isWarmupSet(s)).length
   const [, groupEnd] = supersetGroupBounds(exercises, exIdx)
   for (let i = exIdx + 1; i <= groupEnd; i++) {
-    const s = exercises[i].sets[setIdx]
-    if (s && !s.completed) return true
+    const partner = exercises[i].sets.filter((s) => !isWarmupSet(s))[round]
+    if (partner && !partner.completed) return true
   }
   return false
 }
@@ -546,7 +564,11 @@ export function restDescriptorAfterSet(exercises, exIdx, setIdx) {
   // are exhausted, not only the one flagged as the group's last exercise, so
   // this can't just scan from the group's top the way it used to.
   const [groupStart, groupEnd] = supersetGroupBounds(exercises, exIdx)
-  const restSeconds = groupRestSeconds(exercises, groupStart, groupEnd, exIdx)
+  // A warm-up inside a superset rests on the exercise's own rest, not the
+  // group's shared round rest, since no partner is waiting on it.
+  const restSeconds = groupEnd > groupStart && isWarmupSet(ex.sets[setIdx])
+    ? ex.restSeconds || 90
+    : groupRestSeconds(exercises, groupStart, groupEnd, exIdx)
 
   // The set due is the first unticked one, not the row after the one just
   // ticked: a row turned into a Warmup moves above ticked working sets, so the

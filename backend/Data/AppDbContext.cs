@@ -342,12 +342,20 @@ public class AppDbContext : DbContext
                     "This is not an accessory block. Three years of recurrence with no structural diagnosis; "
                     + "the working assumption is functional instability, which responds to proprioceptive and "
                     + "balance work. Highest value, lowest cost thing in the program.\n\n"
+                    + "Where and how: the start of every session, at least 3 a week, usually 4-5. Barefoot where "
+                    + "practical (shoes off on a gym mat, barefoot or socks on grass), but done in shoes beats "
+                    + "skipped. Keep a band in your bag.\n\n"
+                    + "Why 3 a week: the trial behind this (Hupperets 2009) used three sessions a week for eight "
+                    + "weeks built into the warm-up, and recurrence fell by about 35%. Plausible for you, not "
+                    + "promised. If it recurs after 3+ months of at least 3 ticked sessions a week, the "
+                    + "functional-instability assumption is probably wrong, and imaging or a third opinion is "
+                    + "worth pushing for.\n\n"
                     + "Progression ladder - move up when the current level feels easy, roughly every 2-3 weeks:\n"
                     + "- Eyes open, firm ground\n"
                     + "- Eyes closed, firm ground\n"
-                    + "- Unstable surface (pillow, folded mat)\n"
+                    + "- Unstable surface (pillow, folded mat, or BOSU dome-side-up)\n"
                     + "- Unstable surface + ball toss against a wall\n"
-                    + "- Single-leg hop and stick, multi-directional\n\n"
+                    + "- Single-leg hop and stick, multi-directional - firm ground matters more than surface wobble; you land on grass in cleats, not on a dome\n\n"
                     + "Keep the braces for games and pod sessions. Braces and neuromuscular work are "
                     + "complementary, not alternatives."
             });
@@ -355,12 +363,12 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RoutineItem>().HasData(
             // Ankle Circuit (program v4: the Y-reach moved in from Gym 3, the slow calf raise
             // is out - the calf raise lives in Gym A / Gym 1 now)
-            new RoutineItem { Id = 1, RoutineId = 1, ItemOrder = 1, Name = "Single-leg balance, eyes open", Prescription = "45 secs/side" },
-            new RoutineItem { Id = 2, RoutineId = 1, ItemOrder = 2, Name = "Single-leg balance, eyes closed", Prescription = "30 secs/side" },
-            new RoutineItem { Id = 3, RoutineId = 1, ItemOrder = 3, Name = "Single-leg balance + head turns", Prescription = "20 secs/side" },
-            new RoutineItem { Id = 11, RoutineId = 1, ItemOrder = 4, Name = "Single-leg balance + reach (Y-pattern)", Prescription = "3 reaches/direction/side" },
-            new RoutineItem { Id = 4, RoutineId = 1, ItemOrder = 5, Name = "Banded ankle eversion", Prescription = "15/side" },
-            new RoutineItem { Id = 5, RoutineId = 1, ItemOrder = 6, Name = "Tibialis raises", Prescription = "20" });
+            new RoutineItem { Id = 1, RoutineId = 1, ItemOrder = 1, Name = "Single-leg balance, eyes open", Prescription = "45 secs/side", Cue = "Firm floor, soft knee, hips level, eyes on one fixed spot. If you touch down, put the foot back and carry on." },
+            new RoutineItem { Id = 2, RoutineId = 1, ItemOrder = 2, Name = "Single-leg balance, eyes closed", Prescription = "30 secs/side", Cue = "Same stance, eyes shut, wall or bench within reach. Small constant wobbles at the ankle are the work, so stay loose. Your time to failure on each side is one of the program's tests." },
+            new RoutineItem { Id = 3, RoutineId = 1, ItemOrder = 3, Name = "Single-leg balance + head turns", Prescription = "20 secs/side", Cue = "Eyes open. Turn your head slowly left and right while hips and standing knee stay still." },
+            new RoutineItem { Id = 11, RoutineId = 1, ItemOrder = 4, Name = "Single-leg balance + reach (Y-pattern)", Prescription = "3 reaches/direction/side", Cue = "Tap the free foot as far as you can reach forward, then behind and across the standing leg, then behind and out to the side, back to the start each time. Light tap, no weight on it." },
+            new RoutineItem { Id = 4, RoutineId = 1, ItemOrder = 5, Name = "Banded ankle eversion", Prescription = "15/side", Cue = "Seated, band round the forefoot anchored on the inside of that foot. Turn the sole outward against the band, moving only at the ankle; about 2 secs back." },
+            new RoutineItem { Id = 5, RoutineId = 1, ItemOrder = 6, Name = "Tibialis raises", Prescription = "20", Cue = "Back to a wall, feet about a foot and a half out, heels down. Pull the toes up toward the shins as high as they go; lower under control." });
 
         // One deviation row per slot per week.
         modelBuilder.Entity<PlanSlotWeek>()

@@ -11,6 +11,7 @@ import {
   supersetGroupBounds,
   supersetGroupLabel,
   suppressesRest,
+  nextIncompleteInGroup,
   isSupersetRestOwner,
   isSupersetGroupConfigOwner,
   advanceHold,
@@ -971,5 +972,67 @@ describe('removed warm-ups', () => {
     // Another warm-up was deleted too, so the block is shorter than the old slot.
     expect(warmupInsertIndex(sets, { at: 4 })).toBe(2)
     expect(warmupInsertIndex([n(0)], { at: 1 })).toBe(0)
+  })
+})
+
+describe('warm-ups inside a superset', () => {
+  const w = (done = false) => ({ ...set(20, 8, done), type: 'Warmup' })
+  const n = (done = false) => ({ ...set(30, 8, done), type: 'Normal' })
+  // Gym A's incline press (two warm-ups, four working) paired with pull-ups (four working).
+  function pair() {
+    return [
+      { ...exercise('Incline DB Press', 120, '8', [w(), w(), n(), n(), n(), n()]), supersetWithNext: true, supersetRestSeconds: 90 },
+      { ...exercise('Pull-up', 90, '3', [n(), n(), n(), n()]), supersetWithNext: false },
+    ]
+  }
+
+  it('ticking a warm-up does not suppress the rest', () => {
+    const ex = pair()
+    ex[0].sets[0].completed = true
+    expect(suppressesRest(ex, 0, 0)).toBe(false)
+    ex[0].sets[1].completed = true
+    expect(suppressesRest(ex, 0, 1)).toBe(false)
+  })
+
+  it('stays on the same exercise until its warm-ups are done, resting on its own rest', () => {
+    const ex = pair()
+    ex[0].sets[0].completed = true
+    expect(nextIncompleteInGroup(ex, 0, 1, 0)).toEqual({ i: 0, j: 1 })
+    const d = restDescriptorAfterSet(ex, 0, 0)
+    expect(d.exerciseName).toBe('Incline DB Press')
+    expect(d.nextSetNumber).toBe(2)
+    expect(d.restSeconds).toBe(120)
+  })
+
+  it('pairs working sets by working-set number, not row index', () => {
+    const ex = pair()
+    ex[0].sets[0].completed = true
+    ex[0].sets[1].completed = true
+    ex[0].sets[2].completed = true // working set 1; row index 2
+    expect(suppressesRest(ex, 0, 2)).toBe(true) // pull-up working set 1 still owed
+    expect(nextIncompleteInGroup(ex, 0, 1, 0)).toEqual({ i: 1, j: 0 })
+    ex[1].sets[0].completed = true
+    expect(suppressesRest(ex, 1, 0)).toBe(false) // closes round 1: group rest applies
+    expect(restDescriptorAfterSet(ex, 1, 0).restSeconds).toBe(90)
+  })
+
+  it('rounds the partner has no working set for rest normally', () => {
+    const ex = pair()
+    ex[1].sets.splice(2) // pull-up down to two working sets
+    for (let i = 0; i < 4; i++) ex[0].sets[i].completed = true
+    expect(suppressesRest(ex, 0, 4)).toBe(false) // press working set 3, nothing owed
+  })
+
+  it('the ambient card points at the warm-up first, then rotates by working sets', () => {
+    const ex = pair()
+    expect(nextSetDescriptor(ex).nextSetNumber).toBe(1)
+    ex[0].sets[0].completed = true
+    const d = nextSetDescriptor(ex)
+    expect(d.exerciseName).toBe('Incline DB Press')
+    expect(d.nextSetNumber).toBe(2)
+    ex[0].sets[1].completed = true
+    expect(nextSetDescriptor(ex).nextSetNumber).toBe(3)
+    ex[0].sets[2].completed = true
+    expect(nextSetDescriptor(ex).exerciseName).toBe('Pull-up')
   })
 })
