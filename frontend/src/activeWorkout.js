@@ -486,6 +486,24 @@ export function supersetGroupBounds(exercises, exIdx) {
   return [start, end]
 }
 
+// "Superset" for a session with one group; "Superset A", "Superset B"… when
+// there are several, so back-to-back groups can be told apart. Derived from
+// group order at render time, never stored.
+export function supersetGroupLabel(exercises, exIdx) {
+  const [start] = supersetGroupBounds(exercises, exIdx)
+  let groups = 0
+  let position = 0
+  for (let i = 0; i < exercises.length; i++) {
+    const [s, e] = supersetGroupBounds(exercises, i)
+    if (s === i && e > s) {
+      groups++
+      if (s === start) position = groups
+    }
+  }
+  if (groups < 2 || position === 0) return 'Superset'
+  return `Superset ${String.fromCharCode(64 + position)}`
+}
+
 // Completing set `setIdx` on exIdx should not fire a rest as long as some
 // *later* group member still owes that same round — i.e. still has a set at
 // that index and hasn't done it yet. Only whoever closes out the round rests,

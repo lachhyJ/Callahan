@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import DOMPurify from 'dompurify'
 import { getFieldSessions, getRoutines, markRoutineDone, undoRoutineDone } from '../api/client'
 import { trainingDayIso, formatDateMedium } from '../dateUtils'
+import RoutineItemRow from '../components/RoutineItemRow'
 
 // The routines' Notes field is plain text with blank-line paragraphs and "- "
 // bullets — the two things the program actually uses. Rendered here rather than
@@ -106,16 +107,9 @@ function RoutineCard({ routine, onChange }) {
         <p className="routine-last">Last done {formatDateMedium(lastDone.date)}</p>
       )}
 
-      <table className="routine-items">
-        <tbody>
-          {routine.items.map((item) => (
-            <tr key={item.id}>
-              <th scope="row">{item.name}</th>
-              <td className="routine-dose">{item.prescription}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="routine-items">
+        {routine.items.map((item) => <RoutineItemRow key={item.id} item={item} />)}
+      </div>
 
       {routine.items.some((i) => i.cue) && (
         <ul className="routine-cues">

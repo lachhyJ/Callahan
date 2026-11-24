@@ -9,6 +9,7 @@ import {
   restDescriptorAfterSet,
   upcomingDescriptors,
   supersetGroupBounds,
+  supersetGroupLabel,
   suppressesRest,
   isSupersetRestOwner,
   isSupersetGroupConfigOwner,
@@ -314,6 +315,20 @@ describe('superset grouping', () => {
       { ...exercise('Hip Thrust', 90, '8', [set(60, 8, false)]), supersetWithNext: false },
     ]
   }
+
+  it('supersetGroupLabel is plain with one group and lettered with several', () => {
+    const one = gymOne()
+    expect(supersetGroupLabel(one, 1)).toBe('Superset')
+    const two = [
+      { ...one[0], supersetWithNext: true }, { ...one[0], supersetWithNext: false },
+      { ...one[1], supersetWithNext: true }, { ...one[1], supersetWithNext: false },
+      { ...one[3], supersetWithNext: false },
+    ]
+    expect(supersetGroupLabel(two, 0)).toBe('Superset A')
+    expect(supersetGroupLabel(two, 1)).toBe('Superset A')
+    expect(supersetGroupLabel(two, 2)).toBe('Superset B')
+    expect(supersetGroupLabel(two, 3)).toBe('Superset B')
+  })
 
   it('supersetGroupBounds spans the whole E/F/G run from any member', () => {
     const ex = gymOne()

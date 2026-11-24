@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import DOMPurify from 'dompurify'
 import { createExercise, createWorkoutSession, getExerciseHistory, getFinishers, getPickableExercises, getProgramWarmup, getTaperRecommendation, startWorkoutTemplate, updateCue, updateRestSeconds, updateSupersetRestSeconds, updateTemplateLayout } from '../api/client'
-import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
+import { advanceHold, clearActiveWorkout, earliestStartedAt, isSupersetGroupConfigOwner, isSupersetGroupRestActive, isSupersetRestOwner, isTimeSet, loadActiveWorkout, nextIncompleteInGroup, restDescriptorAfterSet, restoreStartedAt, saveActiveWorkout, supersetGroupBounds, supersetGroupLabel, suppressesRest, unusedPreviousSet, noteTapHandledByPointer, consumeClickAfterPointerTap, canMoveSetRow, moveSetRow, insertIndexForPrevious, rememberRemovedWarmup, takeRemovedWarmup, warmupInsertIndex } from '../activeWorkout'
 import { shouldOfferCreate } from '../utils/exerciseCreate'
 import { useRestTimer } from '../useRestTimer'
 import { endWorkoutActivity } from '../restActivity'
@@ -1667,7 +1667,7 @@ export default function ActiveWorkoutPage() {
         <div id={`exercise-card-${ex.exerciseId}`} className={`exercise-card${inSuperset ? ' superset-member' : ''}${supersetPos}`}>
           {isGroupConfigOwner && (
             <div className="superset-pill-row">
-              <span className="superset-pill">Superset · {gEnd - gStart + 1}</span>
+              <span className="superset-pill">{supersetGroupLabel(exercises, exIdx)} · {gEnd - gStart + 1}</span>
               <span
                 className={`rest-control superset-rest-control${isSupersetGroupRestActive(exercises, exIdx) ? '' : ' rest-control--dormant'}`}
                 title={isSupersetGroupRestActive(exercises, exIdx) ? 'Rest used between rounds of this whole superset' : 'Not used — only one exercise in this superset still has work, so its own rest applies instead'}
