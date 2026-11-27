@@ -1550,6 +1550,13 @@ td {
     font-size: var(--text-base);
     color: var(--text-h);
   }
+
+  & .weight-input-toolbar-jump-pct {
+    font-style: normal;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
 }
 
 /* With chips the strip is a row of separate pills, not one joined capsule: the

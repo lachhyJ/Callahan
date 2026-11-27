@@ -2229,6 +2229,7 @@ export default function ActiveWorkoutPage() {
                   >
                     <b>{isLb ? jump.lb : jump.kg}</b>
                     <span>{isLb ? `${jump.kg} kg` : `${jump.lb} lb`}</span>
+                    <i className="weight-input-toolbar-jump-pct">+{jump.pct}%</i>
                   </button>
                 ))}
               </div>
